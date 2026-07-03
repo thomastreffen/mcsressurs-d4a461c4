@@ -319,20 +319,42 @@ Deno.serve(async (req) => {
       .in("id", blockIdsToDelete)
       .is("deleted_at", null);
 
-    // Also soft-delete the linked event if it's a task (tasks have no existence outside the plan)
-    if (isSystemBlock && block.project_id) {
-      const { data: linkedEvent } = await supabase
-        .from("events")
-        .select("id, project_type")
-        .eq("id", block.project_id)
-        .is("deleted_at", null)
-        .maybeSingle();
+    // Also soft-delete the linked task event(s) if they exist.
+    // Tasks (project_type='task') have no existence outside the plan — when
+    // removed from plan they should also be soft-deleted so no ghost card
+    // survives via a stale schedule_block pointing to a "live" event.
+    // We check BOTH job_id (canonical activity reference) and project_id
+    // (legacy path where project_id pointed directly to the child task event).
+    if (isSystemBlock) {
+      const linkedEventIds = [block.job_id, block.project_id].filter(Boolean) as string[];
+      if (linkedEventIds.length > 0) {
+        const { data: linkedEvents } = await supabase
+          .from("events")
+          .select("id, project_type")
+          .in("id", linkedEventIds)
+          .is("deleted_at", null);
 
-      if (linkedEvent?.project_type === "task") {
-        await supabase.from("events")
-          .update({ deleted_at: new Date().toISOString(), status: "cancelled" })
-          .eq("id", linkedEvent.id);
-        console.log(`[delete-schedule-block] Soft-deleted linked task event ${linkedEvent.id}`);
+        for (const linkedEvent of linkedEvents || []) {
+          if (linkedEvent.project_type === "task") {
+            // Before soft-deleting the task, check if any OTHER active
+            // schedule_blocks still reference this event. If yes, leave it.
+            const { count: otherRefs } = await supabase
+              .from("schedule_blocks")
+              .select("id", { count: "exact", head: true })
+              .or(`job_id.eq.${linkedEvent.id},project_id.eq.${linkedEvent.id}`)
+              .is("deleted_at", null)
+              .not("id", "in", `(${blockIdsToDelete.map((b) => `"${b}"`).join(",")})`);
+
+            if ((otherRefs ?? 0) === 0) {
+              await supabase.from("events")
+                .update({ deleted_at: new Date().toISOString(), status: "cancelled" })
+                .eq("id", linkedEvent.id);
+              console.log(`[delete-schedule-block] Soft-deleted linked task event ${linkedEvent.id}`);
+            } else {
+              console.log(`[delete-schedule-block] Kept linked task ${linkedEvent.id} — ${otherRefs} other active blocks still reference it`);
+            }
+          }
+        }
       }
     }
 
