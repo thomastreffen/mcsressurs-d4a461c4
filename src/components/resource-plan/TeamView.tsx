@@ -197,8 +197,12 @@ export function TeamView({
   // same (activityId, tech, start, end), keep the richer one (job_id + project_id
   // linked) so parent-project navigation still works.
   const dedupedBlocks = useMemo(() => {
+    // Defense-in-depth: drop any block that is soft-deleted BEFORE dedup so
+    // that a stale/deleted block can never "win" the richness comparison and
+    // resurrect a ghost card.
+    const alive = scheduleBlocks.filter((b) => !(b as any).deleted_at);
     const byId = Array.from(
-      new Map(scheduleBlocks.map((b) => [b.id, b])).values(),
+      new Map(alive.map((b) => [b.id, b])).values(),
     );
     const byLogicalKey = new Map<string, ScheduleBlock>();
     const dupGroups: Record<string, string[]> = {};
