@@ -338,14 +338,14 @@ Deno.serve(async (req) => {
           if (linkedEvent.project_type === "task") {
             // Before soft-deleting the task, check if any OTHER active
             // schedule_blocks still reference this event. If yes, leave it.
-            const { count: otherRefs } = await supabase
+            const { data: refBlocks } = await supabase
               .from("schedule_blocks")
-              .select("id", { count: "exact", head: true })
+              .select("id")
               .or(`job_id.eq.${linkedEvent.id},project_id.eq.${linkedEvent.id}`)
-              .is("deleted_at", null)
-              .not("id", "in", `(${blockIdsToDelete.map((b) => `"${b}"`).join(",")})`);
+              .is("deleted_at", null);
+            const otherRefs = (refBlocks || []).filter((r) => !blockIdsToDelete.includes(r.id)).length;
 
-            if ((otherRefs ?? 0) === 0) {
+            if (otherRefs === 0) {
               await supabase.from("events")
                 .update({ deleted_at: new Date().toISOString(), status: "cancelled" })
                 .eq("id", linkedEvent.id);
