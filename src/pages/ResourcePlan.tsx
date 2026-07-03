@@ -919,9 +919,21 @@ export default function ResourcePlan() {
             onTechColorChange={handleTechColorChange}
             onBlockClick={(block) => {
               const targetId = block.job_id || block.project_id;
-              if (!targetId) return;
-              const ev = calEvents.find((e) => e.id === targetId);
-              if (ev) handleEventClick(ev);
+              const ev = targetId ? calEvents.find((e) => e.id === targetId) : undefined;
+              if (ev) {
+                handleEventClick(ev);
+                return;
+              }
+              // Fallback: no clickable calendar event (e.g. event exists but has
+              // no visible event_technicians assignment, or event was removed
+              // from the calendar view). Open the schedule-block detail panel
+              // so the user can still inspect and "Fjern fra plan".
+              console.info("[ResourcePlan] Block click → no calendar event found, opening block detail panel", {
+                block_id: block.id,
+                job_id: block.job_id,
+                project_id: block.project_id,
+              });
+              setSelectedBlock(block);
             }}
             onCellCreate={(techId, day) => {
               if (!canWriteEvents) return;
