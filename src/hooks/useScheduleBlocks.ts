@@ -102,8 +102,8 @@ export function useScheduleBlocks(
         .select(`
           *,
           technicians!inner(name, color),
-          events!schedule_blocks_project_id_fkey(title, job_number, internal_number),
-          job:events!schedule_blocks_job_id_fkey(title, status, job_number)
+          events!schedule_blocks_project_id_fkey(title, job_number, internal_number, deleted_at),
+          job:events!schedule_blocks_job_id_fkey(title, status, job_number, deleted_at)
         `)
         .is("deleted_at", null)
         .lt("start_at", weekEnd.toISOString())
@@ -132,9 +132,29 @@ export function useScheduleBlocks(
         return;
       }
 
-      const mapped = (data ?? []).map(mapRow);
+      const rows = data ?? [];
 
-      // Defensive: detect orphaned project_id (project was soft-deleted, events join returns null title)
+      // Ghost filter: drop any block whose linked event(s) are soft-deleted
+      // or missing. These blocks have no clickable target and must not render.
+      const ghostRows: any[] = [];
+      const liveRows: any[] = [];
+      for (const row of rows) {
+        const jobRow = (row as any).job;
+        const projRow = (row as any).events;
+        const jobDead = row.job_id && (!jobRow || jobRow.deleted_at != null);
+        const projDead = row.project_id && (!projRow || projRow.deleted_at != null);
+        // Block is a ghost if:
+        //  - job_id is dead (activity is gone), or
+        //  - no job_id and project_id is dead
+        const isGhost = jobDead || (!row.job_id && projDead);
+        if (isGhost) ghostRows.push(row);
+        else liveRows.push(row);
+      }
+
+      const mapped = liveRows.map(mapRow);
+
+      // Defensive: detect orphaned project_id where project is soft-deleted
+      // but job is still valid → unlink project reference so click routes to job.
       const orphanIds: string[] = [];
       for (const b of mapped) {
         if (b.project_id && b.project_title === null) {
@@ -146,7 +166,13 @@ export function useScheduleBlocks(
       }
 
       // Fire-and-forget cleanup via server-side function
-      if (orphanIds.length > 0) {
+      if (orphanIds.length > 0 || ghostRows.length > 0) {
+        if (ghostRows.length > 0) {
+          console.warn("[ScheduleBlocks] Filtered ghost blocks (linked event deleted/missing)", {
+            count: ghostRows.length,
+            ids: ghostRows.map((r) => r.id),
+          });
+        }
         supabase.rpc("sweep_orphan_schedule_blocks").then(({ error: cleanupErr }) => {
           if (cleanupErr) console.error("[ScheduleBlocks] Orphan sweep error:", cleanupErr);
         });
