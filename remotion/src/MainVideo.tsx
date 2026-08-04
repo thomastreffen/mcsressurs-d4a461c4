@@ -19,32 +19,33 @@ export const MainVideo = () => {
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition
           presentation={fade({})}
-          timing={{ type: "from-to", frameRange: [0, 20], progression: (f) => f / 20 }}
+          timing={linearTiming({ durationInFrames: 20 })}
         />
         <TransitionSeries.Sequence durationInFrames={120}>
           <Scene2 />
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition
           presentation={fade({})}
-          timing={{ type: "from-to", frameRange: [0, 20], progression: (f) => f / 20 }}
+          timing={linearTiming({ durationInFrames: 20 })}
         />
         <TransitionSeries.Sequence durationInFrames={120}>
           <Scene3 />
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition
           presentation={fade({})}
-          timing={{ type: "from-to", frameRange: [0, 20], progression: (f) => f / 20 }}
+          timing={linearTiming({ durationInFrames: 20 })}
         />
         <TransitionSeries.Sequence durationInFrames={90}>
           <Scene4 />
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition
           presentation={fade({})}
-          timing={{ type: "from-to", frameRange: [0, 20], progression: (f) => f / 20 }}
+          timing={linearTiming({ durationInFrames: 20 })}
         />
         <TransitionSeries.Sequence durationInFrames={60}>
           <Scene5 />
         </TransitionSeries.Sequence>
+
       </TransitionSeries>
     </AbsoluteFill>
   );
