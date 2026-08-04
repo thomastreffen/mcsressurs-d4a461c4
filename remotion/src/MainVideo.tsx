@@ -1,6 +1,7 @@
-import { AbsoluteFill, TransitionSeries } from "remotion";
+import { AbsoluteFill } from "remotion";
+import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
-import { linearTiming } from "@remotion/transitions";
+
 import { PersistentBackground } from "./components/PersistentBackground";
 import { Scene1 } from "./scenes/Scene1";
 import { Scene2 } from "./scenes/Scene2";
