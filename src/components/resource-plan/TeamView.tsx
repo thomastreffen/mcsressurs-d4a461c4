@@ -505,18 +505,22 @@ export function TeamView({
                         const tone = statusTone(b);
                         const dotCls = statusDot(b);
                         const isSelected = selectedBlockId === b.id;
-                        // Primary: human-readable title (job → block → parent project)
-                        const primaryTitle = b.job_title
-                          || b.title
-                          || b.project_title
-                          || b.outlook_subject
-                          || b.job_number_resolved
-                          || b.internal_number
-                          || "Oppdrag";
-                        // Secondary: JOB-ID / internal number badge
+                        // Primary: always prefer the LIVE event title over the
+                        // (possibly stale) schedule_blocks.title snapshot.
+                        const orderRef = extractOrderRef(b.title, b.description, b.outlook_preview);
+                        const primaryTitle = getResourceCardTitle({
+                          eventTitle: b.job_title,
+                          parentTitle: b.project_title,
+                          blockTitle: b.title,
+                          outlookSubject: b.outlook_subject,
+                          sourceOrderNumber: orderRef,
+                          fallbackRef: b.job_number_resolved || b.internal_number,
+                        });
+                        // Secondary: BST-ref / JOB-ID / internal number + time
                         const refId = b.job_number_resolved || b.internal_number || null;
                         const timeStr = `${fmtHour(b.start_at)}–${fmtHour(b.end_at)}`;
-                        const secondary = refId ? `${refId} · ${timeStr}` : timeStr;
+                        const secondary = getResourceCardSecondary([orderRef, refId, timeStr]);
+
                         return (
                           <div
                             key={b.id}
