@@ -501,8 +501,16 @@ export const ResourceCalendar = memo(function ResourceCalendar({
         title: masked
           ? "Opptatt"
           : (isLinkedToProject
-              ? ((calEvent?.title?.replace("SERVICE – ", "")) || block.project_title || block.title || displayTitle)
+              ? getResourceCardTitle({
+                  eventTitle: calEvent?.title ?? block.job_title,
+                  parentTitle: block.project_title,
+                  blockTitle: block.title,
+                  outlookSubject: block.outlook_subject,
+                  sourceOrderNumber: blockOrderRef,
+                  fallbackRef: block.job_number_resolved || block.internal_number,
+                })
               : displayTitle),
+
         start: block.start_at,
         end: block.end_at,
         backgroundColor: masked
