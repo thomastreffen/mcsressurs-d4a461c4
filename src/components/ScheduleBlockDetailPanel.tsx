@@ -7,6 +7,8 @@ import {
   Plus, Link2, Globe, Trash2, Loader2, Search, Unlink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getResourceCardTitle, extractOrderRef } from "@/lib/resource-card-title";
+
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
