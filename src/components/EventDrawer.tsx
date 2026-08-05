@@ -646,6 +646,17 @@ export function EventDrawer({
       } as any)
       .eq("id", editEvent.id);
 
+    // Keep the schedule_blocks snapshot title in sync so resource plan cards
+    // never keep showing an outdated (often generic) title.
+    if (title) {
+      await (supabase as any)
+        .from("schedule_blocks")
+        .update({ title })
+        .or(`project_id.eq.${editEvent.id},job_id.eq.${editEvent.id}`)
+        .is("deleted_at", null);
+    }
+
+
     const { data: existing } = await supabase
       .from("event_technicians").select("id, technician_id").eq("event_id", editEvent.id);
     const existingIds = new Set((existing || []).map((e) => e.technician_id));
