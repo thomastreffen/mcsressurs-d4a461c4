@@ -461,7 +461,16 @@ export const ResourceCalendar = memo(function ResourceCalendar({
       // sourceLabel only set for genuine Outlook blocks. We no longer label
       // project blocks as "System" – they are first-class planning blocks.
       const sourceLabel = block.source === "outlook" ? "Outlook" : null;
-      const displayTitle = block.outlook_subject || block.title || "Planlagt arbeid";
+      const blockOrderRef = extractOrderRef(block.title, block.description, block.outlook_preview);
+      const displayTitle = getResourceCardTitle({
+        eventTitle: block.job_title,
+        parentTitle: block.project_title,
+        blockTitle: block.title,
+        outlookSubject: block.outlook_subject,
+        sourceOrderNumber: blockOrderRef,
+        fallbackRef: block.job_number_resolved || block.internal_number,
+      });
+
 
       const normalizedTitle = displayTitle.trim().toLowerCase();
       const dedupKey = block.project_id
