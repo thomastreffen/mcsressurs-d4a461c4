@@ -14,6 +14,8 @@ import type { ApprovalSummary } from "@/hooks/useApprovalSummaries";
 import { getNextReminderInfo } from "@/hooks/useApprovalSummaries";
 import type { DayCapacity } from "@/hooks/useCapacity";
 import type { ScheduleBlock } from "@/hooks/useScheduleBlocks";
+import { getResourceCardTitle, extractOrderRef } from "@/lib/resource-card-title";
+
 import {
   filterScheduleBlocksByTechnician,
   getRenderableAssignments,
