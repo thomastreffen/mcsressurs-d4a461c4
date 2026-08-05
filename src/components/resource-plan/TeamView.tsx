@@ -3,6 +3,8 @@ import { addDays, startOfWeek, format, isSameDay } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Palmtree, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getResourceCardTitle, getResourceCardSecondary, extractOrderRef } from "@/lib/resource-card-title";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ScheduleBlock } from "@/hooks/useScheduleBlocks";
