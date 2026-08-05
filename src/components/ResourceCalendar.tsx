@@ -14,6 +14,8 @@ import type { ApprovalSummary } from "@/hooks/useApprovalSummaries";
 import { getNextReminderInfo } from "@/hooks/useApprovalSummaries";
 import type { DayCapacity } from "@/hooks/useCapacity";
 import type { ScheduleBlock } from "@/hooks/useScheduleBlocks";
+import { getResourceCardTitle, extractOrderRef } from "@/lib/resource-card-title";
+
 import {
   filterScheduleBlocksByTechnician,
   getRenderableAssignments,
@@ -461,7 +463,16 @@ export const ResourceCalendar = memo(function ResourceCalendar({
       // sourceLabel only set for genuine Outlook blocks. We no longer label
       // project blocks as "System" – they are first-class planning blocks.
       const sourceLabel = block.source === "outlook" ? "Outlook" : null;
-      const displayTitle = block.outlook_subject || block.title || "Planlagt arbeid";
+      const blockOrderRef = extractOrderRef(block.title, block.description, block.outlook_preview);
+      const displayTitle = getResourceCardTitle({
+        eventTitle: block.job_title,
+        parentTitle: block.project_title,
+        blockTitle: block.title,
+        outlookSubject: block.outlook_subject,
+        sourceOrderNumber: blockOrderRef,
+        fallbackRef: block.job_number_resolved || block.internal_number,
+      });
+
 
       const normalizedTitle = displayTitle.trim().toLowerCase();
       const dedupKey = block.project_id
@@ -490,8 +501,16 @@ export const ResourceCalendar = memo(function ResourceCalendar({
         title: masked
           ? "Opptatt"
           : (isLinkedToProject
-              ? ((calEvent?.title?.replace("SERVICE – ", "")) || block.project_title || block.title || displayTitle)
+              ? getResourceCardTitle({
+                  eventTitle: calEvent?.title ?? block.job_title,
+                  parentTitle: block.project_title,
+                  blockTitle: block.title,
+                  outlookSubject: block.outlook_subject,
+                  sourceOrderNumber: blockOrderRef,
+                  fallbackRef: block.job_number_resolved || block.internal_number,
+                })
               : displayTitle),
+
         start: block.start_at,
         end: block.end_at,
         backgroundColor: masked

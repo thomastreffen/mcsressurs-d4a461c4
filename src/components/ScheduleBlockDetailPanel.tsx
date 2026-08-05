@@ -7,6 +7,8 @@ import {
   Plus, Link2, Globe, Trash2, Loader2, Search, Unlink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getResourceCardTitle, extractOrderRef } from "@/lib/resource-card-title";
+
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -329,7 +331,15 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Systemopprettet</span>
               </div>
             )}
-            <p className="text-sm font-semibold truncate">{block.outlook_subject || block.title || "Uten tittel"}</p>
+            <p className="text-sm font-semibold truncate">{getResourceCardTitle({
+              eventTitle: block.job_title,
+              parentTitle: block.project_title,
+              blockTitle: block.title,
+              outlookSubject: block.outlook_subject,
+              sourceOrderNumber: extractOrderRef(block.title, block.description, block.outlook_preview),
+              fallbackRef: block.job_number_resolved || block.internal_number,
+            })}</p>
+
             {(block.internal_number || block.job_number) && (
               <span className="inline-block font-mono text-[10px] font-semibold bg-primary/10 text-primary rounded px-1.5 py-0.5 mt-0.5">
                 {(() => {

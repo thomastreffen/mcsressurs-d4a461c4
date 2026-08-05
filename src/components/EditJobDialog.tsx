@@ -172,6 +172,14 @@ export function EditJobDialog({ open, onOpenChange, jobId, onSaved }: EditJobDia
         })
         .eq("id", jobId);
 
+      // Keep schedule_blocks snapshot title in sync with the live event title
+      await (supabase as any)
+        .from("schedule_blocks")
+        .update({ title: `SERVICE – ${title}` })
+        .or(`project_id.eq.${jobId},job_id.eq.${jobId}`)
+        .is("deleted_at", null);
+
+
       if (updateError) {
         toast.error("Kunne ikke oppdatere jobb", { description: updateError.message });
         setSubmitting(false);
