@@ -167,26 +167,17 @@ export function ResourceAssignDialog({
       const { startISO, endISO } = normalizeOvernightDates(date, start, endDateValue, end);
 
       // Check overlapping assignments using technician-specific overrides
-      const { data: overlaps } = await supabase
-        .from("event_technicians")
-        .select("technician_id, start_at, end_at, technicians(name), events:event_id(id, title, start_time, end_time, deleted_at)")
-        .in("technician_id", techs);
+      const { data: overlaps } = await (supabase as any).rpc("find_work_visit_conflicts", {
+        p_technician_ids: techs,
+        p_start: startISO,
+        p_end: endISO,
+        p_exclude_event_id: excludeEventId ?? null,
+      });
 
       const found: typeof conflicts = [];
       for (const row of (overlaps || []) as any[]) {
-        const ev = row.events;
-        if (!ev || ev.deleted_at || (excludeEventId && ev.id === excludeEventId)) continue;
-        // Use technician override times, falling back to base event times
-        const effectiveStart = row.start_at || ev.start_time;
-        const effectiveEnd = row.end_at || ev.end_time;
-        if (effectiveStart < endISO && effectiveEnd > startISO) {
-          found.push({
-            techName: row.technicians?.name || "Ukjent",
-            jobTitle: ev.title,
-            start: format(new Date(effectiveStart), "HH:mm"),
-            end: format(new Date(effectiveEnd), "HH:mm"),
-          });
-        }
+        found.push({ techName: row.technician_name || "Ukjent", jobTitle: row.event_title,
+          start: format(new Date(row.conflict_start), "HH:mm"), end: format(new Date(row.conflict_end), "HH:mm") });
       }
       setConflicts(found);
     } catch {

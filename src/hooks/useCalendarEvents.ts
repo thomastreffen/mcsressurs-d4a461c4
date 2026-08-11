@@ -58,6 +58,7 @@ export function useCalendarEvents(
         .from("events")
         .select("id")
         .is("deleted_at", null)
+        .neq("status", "cancelled")
         .lt("start_time", weekEndISO)
         .gt("end_time", weekStartISO);
 
@@ -136,6 +137,7 @@ export function useCalendarEvents(
           )
         `)
         .is("deleted_at", null)
+        .neq("status", "cancelled")
         .in("id", eventIds)
         .order("start_time", { ascending: true });
 

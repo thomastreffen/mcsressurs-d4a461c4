@@ -76,29 +76,14 @@ export function JobQuickEditSheet({
         const startISO = new Date(`${d}T${s}`).toISOString();
         const endISO = new Date(`${d}T${e}`).toISOString();
 
-        const { data: overlaps } = await supabase
-          .from("events")
-          .select(
-            "id, title, start_time, end_time, event_technicians(technician_id, technicians(name))"
-          )
-          .is("deleted_at", null)
-          .neq("id", job.id)
-          .lt("start_time", endISO)
-          .gt("end_time", startISO);
+        const { data: overlaps } = await (supabase as any).rpc("find_work_visit_conflicts", {
+          p_technician_ids: techs, p_start: startISO, p_end: endISO, p_exclude_event_id: job.id,
+        });
 
         const found: typeof conflicts = [];
-        for (const ev of overlaps || []) {
-          const evTechs = (ev as any).event_technicians || [];
-          for (const et of evTechs) {
-            if (techs.includes(et.technician_id)) {
-              found.push({
-                techName: et.technicians?.name || "Ukjent",
-                jobTitle: (ev as any).title,
-                start: format(new Date((ev as any).start_time), "HH:mm"),
-                end: format(new Date((ev as any).end_time), "HH:mm"),
-              });
-            }
-          }
+        for (const row of overlaps || []) {
+          found.push({ techName: row.technician_name || "Ukjent", jobTitle: row.event_title,
+            start: format(new Date(row.conflict_start), "HH:mm"), end: format(new Date(row.conflict_end), "HH:mm") });
         }
         setConflicts(found);
       } catch {

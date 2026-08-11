@@ -103,29 +103,16 @@ export function EditJobDialog({ open, onOpenChange, jobId, onSaved }: EditJobDia
     }
     const { startISO, endISO } = normalizeOvernightDates(startDate, startTime, endDate, endTime);
 
-    const { data: overlapping } = await supabase
-      .from("event_technicians")
-      .select(`
-        technician_id,
-        technicians ( name ),
-        events:event_id ( id, title, start_time, end_time )
-      `)
-      .in("technician_id", techIds);
+    const { data: overlapping } = await (supabase as any).rpc("find_work_visit_conflicts", {
+      p_technician_ids: techIds, p_start: startISO, p_end: endISO, p_exclude_event_id: jobId,
+    });
 
     if (!overlapping) { setConflicts([]); return; }
 
     const found: ConflictInfo[] = [];
     for (const row of overlapping as any[]) {
-      const ev = row.events;
-      if (!ev || ev.id === jobId) continue;
-      if (ev.start_time < endISO && ev.end_time > startISO) {
-        found.push({
-          technicianName: row.technicians?.name ?? "Ukjent",
-          jobTitle: ev.title?.replace("SERVICE – ", "") ?? "",
-          start: format(new Date(ev.start_time), "HH:mm"),
-          end: format(new Date(ev.end_time), "HH:mm"),
-        });
-      }
+      found.push({ technicianName: row.technician_name ?? "Ukjent", jobTitle: row.event_title?.replace("SERVICE – ", "") ?? "",
+        start: format(new Date(row.conflict_start), "HH:mm"), end: format(new Date(row.conflict_end), "HH:mm") });
     }
     setConflicts(found);
   }, [startDate, startTime, endDate, endTime, techIds, jobId]);

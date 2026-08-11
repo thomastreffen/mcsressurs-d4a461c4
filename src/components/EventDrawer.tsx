@@ -162,7 +162,7 @@ export function EventDrawer({
   initialTab,
 }: EventDrawerProps) {
   const navigate = useNavigate();
-  const { syncCreate, syncUpdate, syncDelete } = useCalendarSync();
+  const { syncCreate, syncUpdate } = useCalendarSync();
   const { activeCompanyId, isAllCompanies, companies } = useCompanyContext();
   const { settings: reminderSettings } = useReminderSettings();
   const isEditing = !!editEvent;
@@ -400,27 +400,14 @@ export function EventDrawer({
     try {
       const { startISO, endISO } = normalizeOvernightDates(d, s, ed, e);
 
-      const { data: overlaps } = await supabase
-        .from("event_technicians")
-        .select("technician_id, start_at, end_at, technicians(name), events:event_id(id, title, start_time, end_time, deleted_at)")
-        .in("technician_id", techs);
+      const { data: overlaps } = await (supabase as any).rpc("find_work_visit_conflicts", {
+        p_technician_ids: techs, p_start: startISO, p_end: endISO, p_exclude_event_id: excludeId ?? null,
+      });
 
       const found: ConflictInfo[] = [];
       for (const row of (overlaps || []) as any[]) {
-        const ev = row.events;
-        if (!ev || ev.deleted_at || (excludeId && ev.id === excludeId)) continue;
-
-        const effectiveStart = row.start_at || ev.start_time;
-        const effectiveEnd = row.end_at || ev.end_time;
-
-        if (effectiveStart < endISO && effectiveEnd > startISO) {
-          found.push({
-            techName: row.technicians?.name || "Ukjent",
-            jobTitle: ev.title,
-            start: format(new Date(effectiveStart), "HH:mm"),
-            end: format(new Date(effectiveEnd), "HH:mm"),
-          });
-        }
+        found.push({ techName: row.technician_name || "Ukjent", jobTitle: row.event_title,
+          start: format(new Date(row.conflict_start), "HH:mm"), end: format(new Date(row.conflict_end), "HH:mm") });
       }
       setConflicts(found);
     } catch { setConflicts([]); }
@@ -2251,59 +2238,23 @@ export function EventDrawer({
                 onClick={async () => {
                   setDeleting(true);
                   try {
-                    if (scheduleBlockId) {
-                      const { error } = await supabase.functions.invoke("delete-schedule-block", {
-                        body: { schedule_block_id: scheduleBlockId },
-                      });
-                      if (error) {
-                        toast.error("Kunne ikke slette", { description: error.message });
-                        return;
-                      }
-                    } else if (editEvent) {
-                      await syncDelete(editEvent.id);
-
-                      const { data: linkedBlocks } = await supabase
-                        .from("schedule_blocks")
-                        .select("id")
-                        .eq("project_id", editEvent.id)
-                        .is("deleted_at", null)
-                        .limit(50);
-
-                      if (linkedBlocks && linkedBlocks.length > 0) {
-                        for (const sb of linkedBlocks) {
-                          await supabase.functions.invoke("delete-schedule-block", {
-                            body: { schedule_block_id: sb.id },
-                          });
-                        }
-                      }
-
-                      await supabase
-                        .from("event_technicians")
-                        .delete()
-                        .eq("event_id", editEvent.id);
-
-                      const { data: eventRow } = await supabase
-                        .from("events")
-                        .select("project_type")
-                        .eq("id", editEvent.id)
-                        .single();
-
-                      const isTaskEvent = (eventRow as any)?.project_type === "task";
-
-                      if (isTaskEvent) {
-                        await supabase
-                          .from("events")
-                          .update({ deleted_at: new Date().toISOString(), status: "cancelled" } as any)
-                          .eq("id", editEvent.id);
-                      } else {
-                        await supabase
-                          .from("events")
-                          .update({ status: "requested" } as any)
-                          .eq("id", editEvent.id);
-                      }
+                    const { data, error } = await supabase.functions.invoke("remove-work-visit-from-plan", {
+                      body: scheduleBlockId
+                        ? { action: "remove_assignment", schedule_block_id: scheduleBlockId, technician_id: clickedTechId }
+                        : { action: "remove_event", event_id: editEvent?.id },
+                    });
+                    if (error || data?.error) {
+                      toast.error("Kunne ikke avplanlegge", { description: data?.error || error?.message });
+                      return;
                     }
-
-                    toast.success("Slettet ✓");
+                    const warning = data?.warnings?.[0];
+                    if (warning) {
+                      toast.warning(`Fjernet i ressursplan, men Outlook-sletting feilet for ${warning.technician_name || "montør"}`, {
+                        description: "Nytt forsøk er satt i kø.",
+                      });
+                    } else {
+                      toast.success(data?.status === "already_removed" ? "Allerede fjernet ✓" : "Fjernet fra plan og Outlook ✓");
+                    }
                     onOpenChange(false);
                     onSaved?.();
                   } catch (err: any) {
