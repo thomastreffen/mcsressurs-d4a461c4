@@ -103,7 +103,7 @@ export default function DataIntegrityPage() {
       : activeTab === "calendar" ? report?.orphan_calendar_links ?? [] : report?.resource_plan_findings ?? [];
 
   const filteredItems = showOrphansOnly
-    ? activeItems.filter((i: any) => i.is_orphan)
+    ? activeItems.filter((i: any) => activeTab === "resource_plan" || i.is_orphan)
     : activeItems;
 
   return (

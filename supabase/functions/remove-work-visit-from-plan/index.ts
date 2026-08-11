@@ -49,7 +49,7 @@ async function deleteGraphEvent(token: string, mailbox: string, eventId: string)
     `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox)}/events/${encodeURIComponent(eventId)}`,
     { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
   );
-  return { ok: response.ok || response.status === 404, status: response.status };
+  return { ok: response.ok, missing: response.status === 404, status: response.status };
 }
 
 async function searchAndDelete(
@@ -160,18 +160,20 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
+    const bearer = authHeader.slice("Bearer ".length);
+    const isInternalCall = bearer === serviceKey;
     const authClient = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const { data: authData } = await authClient.auth.getUser();
-    if (!authData.user) return json({ error: "Unauthorized" }, 401);
+    const { data: authData } = isInternalCall ? { data: { user: null } } : await authClient.auth.getUser();
+    if (!isInternalCall && !authData.user) return json({ error: "Unauthorized" }, 401);
 
     const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: canDelete } = await db.rpc("check_permission_v2", {
-      _auth_user_id: authData.user.id,
+    const { data: canDelete } = isInternalCall ? { data: true } : await db.rpc("check_permission_v2", {
+      _auth_user_id: authData.user?.id,
       _perm: "calendar.delete_events",
     });
     const body = await req.json().catch(() => ({}));
     const action = typeof body.action === "string" ? body.action : "remove_assignment";
-    if (!canDelete && action !== "scan_ghosts") return json({ error: "Mangler rettighet: calendar.delete_events" }, 403);
+    if (!canDelete) return json({ error: "Mangler rettighet: calendar.delete_events" }, 403);
 
     if (action === "scan_ghosts") {
       const { data, error } = await db.rpc("scan_resource_plan_ghosts");
@@ -200,7 +202,7 @@ Deno.serve(async (req) => {
       p_technician_id: technicianId,
       p_remove_all: action === "remove_event",
       p_schedule_block_id: scheduleBlockId,
-      p_actor: authData.user.id,
+      p_actor: authData.user?.id ?? null,
     });
     if (localError) return json({ error: localError.message }, 500);
 

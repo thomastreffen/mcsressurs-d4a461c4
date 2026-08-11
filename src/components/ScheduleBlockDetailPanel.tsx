@@ -255,13 +255,13 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
     console.info("[ScheduleBlockDetailPanel] Delete request", requestTrace);
 
     try {
-      const { data, error } = await supabase.functions.invoke("remove-work-visit-from-plan", {
-        body: {
-          action: "remove_assignment",
-          schedule_block_id: block.id,
-          technician_id: block.technician_id,
-        },
-      });
+      const isImportedOutlook = isOutlook && !(block.job_id || block.project_id);
+      const { data, error } = await supabase.functions.invoke(
+        isImportedOutlook ? "delete-schedule-block" : "remove-work-visit-from-plan",
+        { body: isImportedOutlook
+          ? { schedule_block_id: block.id, force_delete_outlook: forceDeleteOutlook ?? false }
+          : { action: "remove_assignment", schedule_block_id: block.id, technician_id: block.technician_id } },
+      );
 
       if (error) {
         console.error("[ScheduleBlockDetailPanel] Delete failed", { request: requestTrace, error });
@@ -275,7 +275,9 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
         result,
       });
 
-      if (result?.status === "success" || result?.status === "already_removed") {
+      if (isImportedOutlook && result?.status === "ok") {
+        toast.success(forceDeleteOutlook ? "Fjernet fra plan og Outlook ✓" : "Fjernet fra plan ✓");
+      } else if (result?.status === "success" || result?.status === "already_removed") {
         const warning = result?.warnings?.[0];
         if (warning) {
           toast.warning(`Fjernet i ressursplan, men Outlook-sletting feilet for ${warning.technician_name || block.technician_name}`, {

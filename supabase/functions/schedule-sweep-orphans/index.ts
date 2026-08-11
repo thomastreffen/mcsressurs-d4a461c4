@@ -25,11 +25,30 @@ Deno.serve(async (req) => {
       .not("deleted_at", "is", null)
       .lt("deleted_at", thirtyDaysAgo);
 
+    // 3. Retry Outlook deletions queued by the atomic unplanning flow.
+    let outlookRetry: unknown = null;
+    try {
+      const retryResponse = await fetch(`${supabaseUrl}/functions/v1/remove-work-visit-from-plan`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "retry_outlook" }),
+      });
+      outlookRetry = retryResponse.ok
+        ? await retryResponse.json()
+        : { error: `HTTP ${retryResponse.status}` };
+    } catch (retryError) {
+      outlookRetry = { error: retryError instanceof Error ? retryError.message : String(retryError) };
+    }
+
     return new Response(
       JSON.stringify({
         status: "ok",
         orphans_unlinked: sweepResult?.unlinked ?? 0,
         purged_old_deleted: purgedCount ?? 0,
+        outlook_retry: outlookRetry,
         ran_at: new Date().toISOString(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
