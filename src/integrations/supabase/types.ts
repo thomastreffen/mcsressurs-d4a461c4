@@ -13659,6 +13659,7 @@ export type Database = {
         | "ready_for_invoicing"
         | "invoiced"
         | "archived"
+        | "cancelled"
       lead_next_action_type:
         | "call"
         | "email"
@@ -13903,6 +13904,7 @@ export const Constants = {
         "ready_for_invoicing",
         "invoiced",
         "archived",
+        "cancelled",
       ],
       lead_next_action_type: [
         "call",
