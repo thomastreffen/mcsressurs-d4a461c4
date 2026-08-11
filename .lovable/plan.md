@@ -1,70 +1,79 @@
+# Samlet avplanlegging uten ghost-bookinger
 
-# Materialliste / Plukkliste-modul
+## Mål
+Én autoritativ avplanleggingsflyt skal frigjøre montøren umiddelbart i MCS, rydde alle interne bookingreferanser og slette riktig Outlook-hendelse. Ekstern sletting kan ikke være del av samme databasetransaksjon, så løsningen bygges som en idempotent saga: lokal opprydding skjer atomisk, Outlook-sletting forsøkes straks, og feil legges i en varig retry-kø med tydelig advarsel.
 
-Bygger en integrert materialflyt per jobb/bestilling: opprett liste, plukk, forbruk, retur, print, eksport, standardpakker, og klargjør AI-forslag. Første versjon — praktisk flyt, ikke fullt lagersystem.
+## Backend og datamodell
 
-## Datamodell (migrasjon)
+- Utvid jobbstatus med `cancelled`, slik at siste montør/hel oppgave kan kanselleres uten at databaseoppdateringen feiler.
+- Opprett `calendar_delete_retry_queue` for Outlook-slettinger med event, montør, kalender-ID-er, tidsrom, forsøk, siste feil og løst-tidspunkt. Tabellen får nødvendige grants, RLS og service-tilgang.
+- Lag en `SECURITY DEFINER`-RPC som låser berørte rader og atomisk:
+  - finner canonical child task via `schedule_block_id`, `job_id` og `project_id`
+  - soft-sletter riktige `schedule_blocks`
+  - fjerner aktuell `event_technicians`-rad og tilhørende `job_approvals`
+  - oppdaterer `job_calendar_links`
+  - beholder child task når andre montører fortsatt er tildelt
+  - soft-sletter/kansellerer child task når siste montør fjernes eller hele oppgaven slettes
+  - oppretter Outlook-delete-jobber før kalender-ID-ene ryddes
+  - skriver gyldige `event_logs`/`activity_log`-poster
+  - returnerer `success` eller `already_removed`, men fullfører eventuelle manglende deler ved gjentatte kall
+- Utvid `event_logs_action_type_check` med avplanleggings- og sync-feilhandlingene som faktisk brukes.
 
-Nye tabeller i `public`:
+## Én Edge Function for remove/retry/sweep
 
-- `material_lists` — én per jobb/ordre. Felter: `job_id`, `order_id`, `company_id`, `status`, tidsstempler for hver fase (`ordered_at`, `received_at`, `picked_at`, `sent_with_installer_at`, `consumption_registered_at`, `completed_at`), `notes`, `created_by`, `approved_by`.
-- `material_list_items` — linjer. Felter: `elnr`, `supplier_sku`, `description`, `quantity_ordered/picked/used/returned`, `return_overridden`, `unit`, `supplier`, `source` (manual/template/copied/ai/added_after), `ai_confidence`, `ai_reason`, `comment`, `sort_order`. DB-trigger: hvis ikke overstyrt, `quantity_returned = picked - used`.
-- `material_templates` + `material_template_items` — standardpakker (company-scoped).
-- `material_products` — intern produktdatabase (elnr, beskrivelse, enhet, leverandør, supplier_sku, kategori, active).
+Opprett `remove-work-visit-from-plan` med autentisering og `check_permission_v2`:
 
-GRANT + RLS for alle: lest/skrevet av `authenticated` innenfor egen `company_id` via eksisterende `user_memberships` / `has_role` mønster. Triggere for `updated_at`. Realtime publisering på `material_lists` og `material_list_items`.
+- `remove_assignment`: fjern kun valgt montør.
+- `remove_event`: fjern alle montører og kanseller child task.
+- `retry_outlook`: behandle åpne delete-jobber.
+- `scan_ghosts`: rapporter funn uten å endre data.
+- `repair_ghosts`: reparer valgte/alle rapporterte funn gjennom samme avplanleggingslogikk.
+
+Outlook-sletting bruker per-montør-ID fra `event_technicians.calendar_event_id`, deretter `job_calendar_links`, `schedule_blocks.outlook_event_id` og til slutt herdet `calendarView`-søk etter `MCS_EVENT_ID`/`MCS_ASSIGNMENT_ID`. `204` og `404` regnes som ferdig fjernet. Andre feil beholdes i retry-køen og returneres per montør.
+
+## Conflict/busy-grunnlag
+
+- Samle intern konfliktsjekk i én backend-RPC og bruk den fra alle opprett/rediger/tildel-dialoger.
+- Ekskluder alltid:
+  - slettede events
+  - `cancelled` events
+  - fjernede tildelinger
+  - soft-slettede schedule blocks
+- Oppdater kalender- og kapasitetsfetcher med samme regler.
+- Når Outlook-delete venter på retry, filtrerer `ms-calendar` kun den kjente MCS-hendelsen fra busy-resultatet ved montør + tidsrom + MCS-metadata, slik at den ikke fortsetter å blokkere ny booking. Andre eksterne avtaler beholdes.
 
 ## Frontend
 
-### Ny fane på jobbkort
-`src/components/project/ProjectSubnav.tsx` + `src/pages/JobDetail.tsx` får ny tab `materiell` mellom Skjemaer og Service. Ny komponent `src/components/material/MaterialTab.tsx` viser jobbinfo-header, status-badge og enten tomtilstand med "Opprett materialliste" eller selve listen.
+- Erstatt alle direkte kombinasjoner av klient-delete, `syncDelete` og løkker over blokker med ett kall til den nye funksjonen.
+- «Fjern fra plan» på ett kalenderkort sender montørens assignment; «Slett hele oppgaven» sender hele child task.
+- Oppdater ressursplan, kalenderhendelser, kapasitet og busy-data straks etter svar og etter refresh.
+- Vis resultat per montør. Ved Outlook-feil vises eksplisitt: «Fjernet i ressursplan, men Outlook-sletting feilet for X. Nytt forsøk er satt i kø.»
+- Ikke vis generell «Slettet ✓» når Outlook-sletting er ubekreftet.
 
-### Tabell/kortvisning
-`MaterialItemsTable.tsx` (desktop) + `MaterialItemCard.tsx` (mobil, via `useIsMobile`). Inline-redigering av antall, plukket, brukt; retur auto-beregnet med override-toggle. Knapper: Legg til vare, Legg til standardpakke, Kopier fra tidligere jobb, Foreslå med AI, Skriv ut plukkliste, Eksporter CSV, Registrer forbruk, Ferdigstill.
+## Ghost-rapport og reparasjon
 
-### Hurtigregistrering forbruk
-`MaterialConsumptionSheet.tsx` — full-screen sheet på mobil, én linje av gangen eller liste. Hurtigknapper "Brukt alt" / "Ikke brukt" / "Mangler". "Legg til ekstra vare" — kilde `added_after`.
+Utvid Dataintegritet med en egen «Ressursplan»-kategori som først viser antall og detaljer for:
 
-### Vare-søk
-`AddMaterialItemDialog.tsx` — søkefelt mot `material_products` (elnr, beskrivelse, supplier_sku) + manuell linje hvis ingen treff.
+- `event_technicians` uten aktiv event
+- tildelinger på slettet/kansellert event
+- aktive `schedule_blocks` på slettet/kansellert event
+- aktive approvals på slettet/kansellert event
+- aktive kalenderkoblinger/Outlook-ID-er på slettet/kansellert event
+- åpne Outlook-delete-retries
 
-### Standardpakker
-`AddTemplateDialog.tsx` — velg pakke, antall ganger, preview linjer. Admin-side `src/pages/MaterialTemplatesPage.tsx` for CRUD på pakker.
+Brukeren kan skanne uten endring og deretter reparere valgte funn eller alle. Eksisterende automatiske sweep endres til å bruke samme regler i stedet for kun å skjule blokker.
 
-### Kopier fra tidligere jobb
-`CopyFromJobDialog.tsx` — lister jobber på samme `customer` eller `address` med eksisterende materialliste.
+## Tester og verifisering
 
-### AI-forslag
-`AiSuggestMaterialsDialog.tsx` — knapp åpner godkjenningsvisning. Sender kontekst til ny edge function `material-ai-suggest` (Lovable AI Gateway, structured tool calling). Returnerer forslag — bruker godkjenner/redigerer/avviser linje for linje. Tekst: "AI-forslag må kontrolleres før bestilling." Edge function-stubb implementeres med Lovable AI; ingen autobestilling.
+- Én montør: avplanlegg, intern konflikt forsvinner, Outlook-delete blir bekreftet eller tydelig køet.
+- To montører: fjern én; bare denne frigjøres, den andre og child task beholdes.
+- Siste montør: alle bookingreferanser ryddes og child task blir `cancelled` + soft-slettet.
+- Hel oppgave: samme fullstendige opprydding for alle montører.
+- Gjentatt kall: `already_removed`/`success`, samtidig som uferdig Outlook-delete fortsatt retries.
+- Refresh: ingen kort fra events, assignments eller schedule blocks.
+- Ny booking samme tidsrom: ingen intern eller MCS-skapt Outlook-konflikt.
+- Enhets-/integrasjonstester for scope-reglene, konfliktfiltrering, idempotens og retry-status; deploy og test Edge Function samt kjør relevante frontendtester.
 
-### PDF-plukkliste
-`src/pages/MaterialPickListPrintPage.tsx` på rute `/jobs/:id/pickliste` — ren A4-layout, kun print-CSS, ingen meny. Topp: MCS-logo, jobbinfo, plassholder QR-kode (bruker eksisterende QR hvis tilgjengelig, ellers tekst-lenke). Tabell med avkrysning, elnr, beskrivelse, antall, enhet, kommentar, retur. Bunn: signaturfelt + instruksjon.
+## Nåværende data
 
-### CSV-eksport
-Helper `src/lib/material-csv.ts` — bygger CSV med jobbnummer, kunde, adresse, elnr, beskrivelse, antall, enhet, leverandør, kommentar. Lastes ned via blob.
-
-### Hooks
-- `useMaterialList(jobId)` — fetch + realtime subscribe.
-- `useMaterialTemplates(companyId)`.
-- `useMaterialProducts()` — søk.
-
-## Sikkerhet
-- RLS per company via `user_memberships`.
-- AI-edge function krever auth (401 hvis mangler).
-- AI overskriver aldri eksisterende linjer; legger til som forslag.
-- `updated_at`-triggere på alle tabeller.
-
-## QA-sjekkliste etter bygg
-- TypeScript-build grønn.
-- Eksisterende JobDetail-faner fungerer.
-- Materialliste kan opprettes fra både jobb og ordre (samme komponent, ulik FK).
-- Print-side rendrer rent A4 uten sidemeny.
-- Mobil: kort-layout, store touch-mål, hurtigknapper synlige.
-
-## Ut av scope (første versjon)
-- Faktisk lagerbeholdning / antall på hylle.
-- Direkte integrasjon mot Onninen/Ahlsell/EFObasen (kun datamodell klar).
-- Automatisk innkjøpsordre.
-- Strekkode-skanning (kan legges til senere).
-
-Bekreft, så starter jeg med migrasjon + minimal end-to-end flyt (fane, opprett liste, legg til linjer, print, CSV) først, deretter standardpakker → kopier → AI-stub → produktsøk.
+Før implementering er det funnet én approval knyttet til en soft-slettet event. Ingen aktive schedule-block- eller event-technician-ghosts ble funnet i øyeblikksbildet. Den nye rapporten vil finne og reparere slike avvik løpende.
