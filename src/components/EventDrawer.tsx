@@ -653,18 +653,16 @@ export function EventDrawer({
 
     if (toRemove.length > 0) {
       const removedTechIds = toRemove.map((r) => r.technician_id);
-      await supabase.from("event_technicians").delete().in("id", toRemove.map((r) => r.id));
-      await (supabase as any)
-        .from("schedule_blocks")
-        .update({ deleted_at: new Date().toISOString() })
-        .eq("project_id", editEvent.id)
-        .in("technician_id", removedTechIds)
-        .is("deleted_at", null);
-
-      const { data: removedTechs } = await supabase.from("technicians").select("user_id").in("id", removedTechIds);
-      const removedUserIds = (removedTechs || []).map((t: any) => t.user_id).filter(Boolean);
-      if (removedUserIds.length > 0) {
-        await supabase.from("job_approvals").delete().eq("job_id", editEvent.id).in("technician_user_id", removedUserIds);
+      for (const technicianId of removedTechIds) {
+        const { data: unplanResult, error: unplanError } = await supabase.functions.invoke("remove-work-visit-from-plan", {
+          body: { action: "remove_assignment", event_id: editEvent.id, technician_id: technicianId },
+        });
+        if (unplanError || unplanResult?.error) {
+          throw new Error(unplanResult?.error || unplanError?.message || "Kunne ikke avplanlegge montør");
+        }
+        if (unplanResult?.warnings?.length) {
+          toast.warning(`Montøren er fjernet, men Outlook-sletting er satt i kø for ${unplanResult.warnings[0].technician_name || "montør"}`);
+        }
       }
     }
 
