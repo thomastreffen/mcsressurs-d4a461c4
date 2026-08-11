@@ -88,10 +88,6 @@ async function searchAndDelete(
     return body.includes(`MCS_EVENT_ID:${job.event_id}`) ||
       (entry.categories ?? []).includes("MCS") && body.includes(`MCS_TECHNICIAN_ID:${job.technician_id}`);
   });
-  if (matches.length === 0 && attempts.length === 0) {
-    // No stored ID and no MCS event in the relevant window means Outlook is already clean.
-    return { ok: true, attempts: [{ source: "calendar_view", event_id: "not_found", status: 404 }] };
-  }
   for (const match of matches) {
     if (!match.id) continue;
     const result = await deleteGraphEvent(token, mailbox, match.id);

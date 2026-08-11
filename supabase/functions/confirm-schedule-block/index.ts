@@ -138,7 +138,7 @@ async function updateOutlookEvent(supabase: any, block: any, projectId: string) 
     categories: ["MCS"],
     body: {
       contentType: "HTML",
-      content: `<p>Koblet til MCS prosjekt: <strong>${projectTitle}</strong></p><p><a href="${projectLink}">Åpne i MCS</a></p><p>MCS_BLOCK_ID:${block.id}</p>`,
+      content: `<p>Koblet til MCS prosjekt: <strong>${projectTitle}</strong></p><p><a href="${projectLink}">Åpne i MCS</a></p><p>MCS_EVENT_ID:${projectId}</p><p>MCS_TECHNICIAN_ID:${block.technician_id}</p><p>MCS_BLOCK_ID:${block.id}</p>`,
     },
   };
 
