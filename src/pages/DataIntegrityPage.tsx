@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Loader2, Search, AlertTriangle, CheckCircle2, Database, Link2, Mail, BookOpen, ArrowRightLeft, Archive, Trash2, Globe } from "lucide-react";
+import { Loader2, Search, AlertTriangle, CheckCircle2, Database, Link2, Mail, BookOpen, ArrowRightLeft, Archive, Trash2, Globe, RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -15,10 +15,11 @@ interface ScanReport {
   orphan_regulation_queries: any[];
   orphan_comm_logs: any[];
   orphan_calendar_links: any[];
-  totals: { regulation_queries: number; communication_logs: number; calendar_links: number; total: number };
+  resource_plan_findings: any[];
+  totals: { regulation_queries: number; communication_logs: number; calendar_links: number; resource_plan: number; total: number };
 }
 
-type TabKey = "regulation" | "communication" | "calendar";
+type TabKey = "regulation" | "communication" | "calendar" | "resource_plan";
 
 export default function DataIntegrityPage() {
   const [scanning, setScanning] = useState(false);
@@ -62,6 +63,19 @@ export default function DataIntegrityPage() {
     }
   };
 
+  const repairResourcePlan = async () => {
+    setMarking(true);
+    try {
+      await invoke({ action: "repair_resource_plan" });
+      toast.success("Ghost-bookinger er reparert; Outlook-retries beholdes til de er bekreftet slettet");
+      await runScan();
+    } catch (e: any) {
+      toast.error("Reparasjon feilet: " + e.message);
+    } finally {
+      setMarking(false);
+    }
+  };
+
   const repair = async (table: string, record_id: string, repair_type: string, new_scope_id?: string) => {
     setRepairing(record_id);
     try {
@@ -79,13 +93,14 @@ export default function DataIntegrityPage() {
     { key: "regulation", label: "Fagforespørsler", icon: <BookOpen className="h-5 w-5" />, count: report?.totals.regulation_queries ?? 0 },
     { key: "communication", label: "Kommunikasjonslogg", icon: <Mail className="h-5 w-5" />, count: report?.totals.communication_logs ?? 0 },
     { key: "calendar", label: "Kalenderkoblinger", icon: <Link2 className="h-5 w-5" />, count: report?.totals.calendar_links ?? 0 },
+    { key: "resource_plan", label: "Ressursplan", icon: <Database className="h-5 w-5" />, count: report?.totals.resource_plan ?? 0 },
   ];
 
   const activeItems = activeTab === "regulation"
     ? report?.orphan_regulation_queries ?? []
     : activeTab === "communication"
       ? report?.orphan_comm_logs ?? []
-      : report?.orphan_calendar_links ?? [];
+      : activeTab === "calendar" ? report?.orphan_calendar_links ?? [] : report?.resource_plan_findings ?? [];
 
   const filteredItems = showOrphansOnly
     ? activeItems.filter((i: any) => i.is_orphan)
@@ -107,11 +122,14 @@ export default function DataIntegrityPage() {
             {marking ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <AlertTriangle className="h-4 w-4 mr-2" />}
             Marker alle som orphan
           </Button>
+          <Button variant="outline" onClick={repairResourcePlan} disabled={marking || !report || report.totals.resource_plan === 0}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Reparer ressursplan
+          </Button>
         </div>
       </div>
 
       {/* Category cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         {categories.map((cat) => (
           <Card
             key={cat.key}
@@ -166,6 +184,7 @@ export default function DataIntegrityPage() {
                       {activeTab === "regulation" && <><TableHead>Spørsmål</TableHead><TableHead>Scope</TableHead></>}
                       {activeTab === "communication" && <><TableHead>Emne</TableHead><TableHead>Type</TableHead></>}
                       {activeTab === "calendar" && <><TableHead>Jobb-ID</TableHead><TableHead>Status</TableHead></>}
+                      {activeTab === "resource_plan" && <><TableHead>Kategori</TableHead><TableHead>Oppgave</TableHead></>}
                       <TableHead>Årsak</TableHead>
                       <TableHead>Markert</TableHead>
                       <TableHead className="text-right">Handlinger</TableHead>
@@ -193,8 +212,11 @@ export default function DataIntegrityPage() {
                             <TableCell><Badge variant="outline">{item.sync_status}</Badge></TableCell>
                           </>
                         )}
-                        <TableCell className="text-sm text-destructive">{item.orphan_reason}</TableCell>
-                        <TableCell>{item.is_orphan ? <Badge variant="destructive" className="text-xs">Ja</Badge> : <span className="text-xs text-muted-foreground">Nei</span>}</TableCell>
+                        {activeTab === "resource_plan" && (
+                          <><TableCell><Badge variant="outline">{item.category}</Badge></TableCell><TableCell className="font-mono text-xs">{item.event_id?.slice(0, 8) || "—"}…</TableCell></>
+                        )}
+                        <TableCell className="text-sm text-destructive">{item.orphan_reason || item.details?.last_error || "Ghost-booking"}</TableCell>
+                        <TableCell>{activeTab === "resource_plan" || item.is_orphan ? <Badge variant="destructive" className="text-xs">Ja</Badge> : <span className="text-xs text-muted-foreground">Nei</span>}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-1 justify-end flex-wrap">
                             {activeTab === "regulation" && (

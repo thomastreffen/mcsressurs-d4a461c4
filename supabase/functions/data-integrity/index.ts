@@ -43,6 +43,10 @@ Deno.serve(async (req) => {
       return await handleMarkOrphans(supabaseAdmin, corsHeaders);
     } else if (action === "repair") {
       return await handleRepair(supabaseAdmin, body, user.id, corsHeaders);
+    } else if (action === "repair_resource_plan") {
+      const { data, error } = await supabaseAdmin.rpc("repair_resource_plan_ghosts");
+      if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -53,6 +57,7 @@ Deno.serve(async (req) => {
 });
 
 async function handleScan(db: any, headers: Record<string, string>) {
+  const { data: resourcePlanReport } = await db.rpc("scan_resource_plan_ghosts");
   // 1. Orphaned regulation_queries: scope_id points to non-existing entity
   const { data: regQueries } = await db
     .from("regulation_queries")
@@ -161,11 +166,13 @@ async function handleScan(db: any, headers: Record<string, string>) {
     orphan_regulation_queries: orphanRegs.slice(0, 50),
     orphan_comm_logs: orphanComms.slice(0, 50),
     orphan_calendar_links: orphanCals.slice(0, 50),
+    resource_plan_findings: resourcePlanReport?.findings ?? [],
     totals: {
       regulation_queries: orphanRegs.length,
       communication_logs: orphanComms.length,
       calendar_links: orphanCals.length,
-      total: orphanRegs.length + orphanComms.length + orphanCals.length,
+      resource_plan: resourcePlanReport?.total ?? 0,
+      total: orphanRegs.length + orphanComms.length + orphanCals.length + (resourcePlanReport?.total ?? 0),
     },
   };
 
