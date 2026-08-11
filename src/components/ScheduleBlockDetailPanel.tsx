@@ -255,12 +255,13 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
     console.info("[ScheduleBlockDetailPanel] Delete request", requestTrace);
 
     try {
-      const { data, error } = await supabase.functions.invoke("delete-schedule-block", {
-        body: {
-          schedule_block_id: block.id,
-          force_delete_outlook: forceDeleteOutlook ?? false,
-        },
-      });
+      const isImportedOutlook = isOutlook && !(block.job_id || block.project_id);
+      const { data, error } = await supabase.functions.invoke(
+        isImportedOutlook ? "delete-schedule-block" : "remove-work-visit-from-plan",
+        { body: isImportedOutlook
+          ? { schedule_block_id: block.id, force_delete_outlook: forceDeleteOutlook ?? false }
+          : { action: "remove_assignment", schedule_block_id: block.id, technician_id: block.technician_id } },
+      );
 
       if (error) {
         console.error("[ScheduleBlockDetailPanel] Delete failed", { request: requestTrace, error });
@@ -274,27 +275,22 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
         result,
       });
 
-      if (result?.status === "ok") {
-        if (result.deleted_in_outlook) {
-          toast.success("Fjernet fra plan og Outlook ✓", {
-            description: `${result.outlook_events_removed} Outlook-hendelse(r) slettet.`,
-          });
-        } else if ((forceDeleteOutlook ?? false) || isSystem) {
-          toast.warning("Delvis sletting", {
-            description: result.outlook_error || "Outlook-avtale ble ikke bekreftet slettet.",
-          });
-        } else if (isOutlook && !forceDeleteOutlook) {
-          toast.success("Fjernet fra plan", {
-            description: "Outlook-avtalen er beholdt.",
+      if (isImportedOutlook && result?.status === "ok") {
+        toast.success(forceDeleteOutlook ? "Fjernet fra plan og Outlook ✓" : "Fjernet fra plan ✓");
+      } else if (result?.status === "success" || result?.status === "already_removed") {
+        const warning = result?.warnings?.[0];
+        if (warning) {
+          toast.warning(`Fjernet i ressursplan, men Outlook-sletting feilet for ${warning.technician_name || block.technician_name}`, {
+            description: "Nytt forsøk er satt i kø.",
           });
         } else {
-          toast.success("Fjernet fra plan ✓");
+          toast.success(result.status === "already_removed" ? "Allerede fjernet ✓" : "Fjernet fra plan og Outlook ✓");
         }
       } else {
         toast.error("Feil ved fjerning");
       }
 
-      const deletedIds: string[] = result?.block_ids_soft_deleted ?? [block.id];
+      const deletedIds: string[] = [block.id];
       onConfirmed?.(deletedIds);
       onClose();
     } catch (err: any) {

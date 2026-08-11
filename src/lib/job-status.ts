@@ -16,7 +16,8 @@ export type JobStatus =
   | "in_progress"
   | "completed"
   | "ready_for_invoicing"
-  | "invoiced";
+  | "invoiced"
+  | "cancelled";
 
 export type StatusAxis = "acceptance" | "execution" | "billing";
 
@@ -106,6 +107,14 @@ export const JOB_STATUS_CONFIG: Record<JobStatus, StatusConfig> = {
     axis: "billing",
     iconHint: "file-check",
   },
+  cancelled: {
+    label: "Kansellert",
+    className: "bg-muted text-muted-foreground",
+    borderClass: "border-l-muted-foreground",
+    dotClass: "bg-muted-foreground",
+    axis: "execution",
+    iconHint: "x",
+  },
 };
 
 export const ALL_STATUSES: JobStatus[] = [
@@ -118,11 +127,12 @@ export const ALL_STATUSES: JobStatus[] = [
   "completed",
   "ready_for_invoicing",
   "invoiced",
+  "cancelled",
 ];
 
 /** Statuses grouped by axis */
 export const ACCEPTANCE_STATUSES: JobStatus[] = ["requested", "approved", "time_change_proposed", "rejected"];
-export const EXECUTION_STATUSES: JobStatus[] = ["scheduled", "in_progress", "completed"];
+export const EXECUTION_STATUSES: JobStatus[] = ["scheduled", "in_progress", "completed", "cancelled"];
 export const BILLING_STATUSES: JobStatus[] = ["ready_for_invoicing", "invoiced"];
 
 export const STATUS_AXIS_LABELS: Record<StatusAxis, string> = {

@@ -141,8 +141,8 @@ export function useScheduleBlocks(
       for (const row of rows) {
         const jobRow = (row as any).job;
         const projRow = (row as any).events;
-        const jobDead = row.job_id && (!jobRow || jobRow.deleted_at != null);
-        const projDead = row.project_id && (!projRow || projRow.deleted_at != null);
+        const jobDead = row.job_id && (!jobRow || jobRow.deleted_at != null || jobRow.status === "cancelled");
+        const projDead = row.project_id && (!projRow || projRow.deleted_at != null || projRow.status === "cancelled");
         // Block is a ghost if:
         //  - job_id is dead (activity is gone), or
         //  - no job_id and project_id is dead
