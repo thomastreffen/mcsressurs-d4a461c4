@@ -1426,6 +1426,84 @@ export type Database = {
           },
         ]
       }
+      calendar_delete_retry_queue: {
+        Row: {
+          attempts: number
+          candidate_event_ids: Json
+          created_at: string
+          end_at: string | null
+          event_id: string
+          event_technician_id: string | null
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          mailbox: string | null
+          next_attempt_at: string
+          resolved_at: string | null
+          start_at: string | null
+          status: string
+          technician_id: string
+          technician_name: string | null
+          technician_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          candidate_event_ids?: Json
+          created_at?: string
+          end_at?: string | null
+          event_id: string
+          event_technician_id?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          mailbox?: string | null
+          next_attempt_at?: string
+          resolved_at?: string | null
+          start_at?: string | null
+          status?: string
+          technician_id: string
+          technician_name?: string | null
+          technician_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          candidate_event_ids?: Json
+          created_at?: string
+          end_at?: string | null
+          event_id?: string
+          event_technician_id?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          mailbox?: string | null
+          next_attempt_at?: string
+          resolved_at?: string | null
+          start_at?: string | null
+          status?: string
+          technician_id?: string
+          technician_name?: string | null
+          technician_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_delete_retry_queue_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_delete_retry_queue_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "technicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_items: {
         Row: {
           attachments_meta: Json | null
@@ -13072,6 +13150,22 @@ export type Database = {
         Args: { _auth_user_id: string; _event_id: string }
         Returns: boolean
       }
+      find_work_visit_conflicts: {
+        Args: {
+          p_end: string
+          p_exclude_event_id?: string
+          p_start: string
+          p_technician_ids: string[]
+        }
+        Returns: {
+          conflict_end: string
+          conflict_start: string
+          event_id: string
+          event_title: string
+          technician_id: string
+          technician_name: string
+        }[]
+      }
       get_active_offer_for_source: {
         Args: { _source_id: string; _source_kind: string }
         Returns: string
@@ -13475,6 +13569,16 @@ export type Database = {
         Args: { _submission_id: string }
         Returns: boolean
       }
+      remove_work_visit_from_plan: {
+        Args: {
+          p_actor?: string
+          p_event_id?: string
+          p_remove_all?: boolean
+          p_schedule_block_id?: string
+          p_technician_id?: string
+        }
+        Returns: Json
+      }
       rename_submission_attachment: {
         Args: {
           _attachment_id: string
@@ -13509,6 +13613,8 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      repair_resource_plan_ghosts: { Args: never; Returns: Json }
+      scan_resource_plan_ghosts: { Args: never; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       submission_has_tracking_token: {
