@@ -563,6 +563,32 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              {/* Elsikkerhet & Compliance */}
+              <Route path="/compliance" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceOverviewPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/kompetanse" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceCompetencePage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/regelverk" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceRegulationsPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/organisasjon" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceOrganisationPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/internkontroll" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceInternalControlPage /></HmsPage>
+                </ProtectedRoute>
+              } />
               {/* HMS & HR module */}
               <Route path="/hms" element={
                 <ProtectedRoute requiredPermission="hms.view">
