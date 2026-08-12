@@ -1,8 +1,12 @@
 /**
  * Kontrollside etter AI-analyse av en mottatt tilsynsrapport.
- * Alt her er forslag: bruker korrigerer, fjerner og legger til før saken opprettes.
- * Tekst hentet fra rapporten vises tydelig atskilt fra AI-forslag. Ingen modaler,
- * ingen prosentvis sikkerhet.
+ *
+ * Dette er en KONTROLLFLATE for importen – ikke en saksbehandlingsflate.
+ * Verdier vises kompakt og lesbart; redigering skjer inline bak
+ * «Rediger opplysninger» per funn. Rapportens ordlyd vises tydelig atskilt
+ * fra AI sin interne vurdering, og manglende data vises som
+ * «Ikke funnet i rapport». Ingen modaler, ingen prosentvis sikkerhet.
+ * Ingenting lagres før «Godkjenn og opprett tilsyn».
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +18,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, CheckCircle2, ChevronDown, ExternalLink, FileText, Plus, Sparkles, Trash2 } from "lucide-react";
+import {
+  AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ExternalLink, FileText, Info, Pencil, Plus, RotateCcw, Sparkles, Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +33,7 @@ import {
   NOT_FOUND_LABEL, clearReportDraft, loadReportDraft,
   type AnalyzedFinding, type ReportAnalysis,
 } from "@/lib/inspection-report";
+import { validateAnalysis } from "@/lib/inspection-report-validation";
 
 interface DraftFinding extends AnalyzedFinding {
   key: string;
@@ -37,6 +44,20 @@ interface DraftFinding extends AnalyzedFinding {
 function MissingHint({ value }: { value: string | null }) {
   if (value) return null;
   return <span className="text-[11px] text-muted-foreground">{NOT_FOUND_LABEL}</span>;
+}
+
+/** Kompakt lesevisning av en verdi fra rapporten */
+function ReadValue({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      {value ? (
+        <p className={`text-sm ${mono ? "font-medium" : ""}`}>{value}</p>
+      ) : (
+        <p className="text-sm italic text-muted-foreground">{NOT_FOUND_LABEL}</p>
+      )}
+    </div>
+  );
 }
 
 export default function InspectionReportReviewPage() {
@@ -55,7 +76,16 @@ export default function InspectionReportReviewPage() {
     (draft?.analysis.findings ?? []).map((f, i) => ({ ...f, key: `ai-${i}`, included: true, manual: false })),
   );
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [editCase, setEditCase] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  const included = findings.filter((f) => f.included);
+  const issues = useMemo(
+    () => (form ? validateAnalysis(form, findings) : []),
+    [form, findings],
+  );
+  const errors = issues.filter((i) => i.severity === "error");
+  const warnings = issues.filter((i) => i.severity === "warning");
 
   if (!draft || !form) {
     return (
@@ -73,8 +103,6 @@ export default function InspectionReportReviewPage() {
   const set = (patch: Partial<ReportAnalysis>) => setForm((f) => ({ ...(f as ReportAnalysis), ...patch }));
   const setFinding = (key: string, patch: Partial<DraftFinding>) =>
     setFindings((list) => list.map((f) => (f.key === key ? { ...f, ...patch } : f)));
-
-  const included = findings.filter((f) => f.included);
 
   const addManual = () => {
     const key = `manual-${crypto.randomUUID().slice(0, 6)}`;
@@ -175,7 +203,6 @@ export default function InspectionReportReviewPage() {
         } as any);
       }
 
-
       await logEvent({
         inspection_id: inspection.id,
         event_type: "report_imported",
@@ -211,8 +238,8 @@ export default function InspectionReportReviewPage() {
 
       <div className="space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Rapport analysert</h1>
-          <Badge variant="secondary">{included.length} funn identifisert</Badge>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Kontroller importen</h1>
+          <Badge variant="secondary">{included.length} funn tas med</Badge>
         </div>
         <p className="text-sm text-muted-foreground">
           {[form.authority_name, inspectionTypeLabel(form.inspection_type)].filter(Boolean).join(" / ")}
@@ -221,36 +248,120 @@ export default function InspectionReportReviewPage() {
           {" · "}Svarfrist: {form.response_deadline ? formatDate(form.response_deadline) : NOT_FOUND_LABEL}
         </p>
         <p className="text-xs text-muted-foreground">
-          Feltene under er forslag fra rapporten. Kontroller og korriger før du oppretter saken – ingenting er lagret ennå.
+          Kontroller at uttrekket stemmer med rapporten. Ingenting er lagret ennå – saken opprettes først når du godkjenner.
         </p>
       </div>
 
+      {/* Kvalitetskontroll av uttrekket */}
+      {(errors.length > 0 || warnings.length > 0) ? (
+        <Card className={errors.length > 0 ? "border-destructive/50" : "border-amber-500/50"}>
+          <CardContent className="space-y-2 p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <AlertTriangle className={`h-4 w-4 ${errors.length > 0 ? "text-destructive" : "text-amber-600"}`} />
+              Kontrollpunkter i uttrekket
+            </p>
+            <ul className="space-y-1 text-sm">
+              {[...errors, ...warnings].map((i, n) => (
+                <li key={n} className="flex gap-2">
+                  <span className={i.severity === "error" ? "text-destructive" : "text-amber-600"}>•</span>
+                  <span className={i.severity === "error" ? "" : "text-muted-foreground"}>{i.message}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-muted-foreground">
+              Kontrollen sammenligner nummerering, originaltekst, hjemmel, krav og frister i uttrekket. Rett opp der det er nødvendig – du kan opprette saken likevel.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <p className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          Uttrekket er konsistent: nummerering henger sammen, og alle funn har originaltekst fra rapporten.
+        </p>
+      )}
+
+      {/* Saksopplysninger – kompakt lesevisning med inline redigering */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">Saksopplysninger</CardTitle></CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Label className="text-xs">Tittel *</Label>
-            <Input value={form.title ?? ""} onChange={(e) => set({ title: e.target.value })} />
-            <MissingHint value={form.title} />
-          </div>
-          <div>
-            <Label className="text-xs">Type tilsyn</Label>
-            <Select value={form.inspection_type} onValueChange={(v) => set({ inspection_type: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{INSPECTION_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">Tilsynsmyndighet / revisor</Label>
-            <Input value={form.authority_name ?? ""} onChange={(e) => set({ authority_name: e.target.value || null })} />
-            <MissingHint value={form.authority_name} />
-          </div>
-          <div>
-            <Label className="text-xs">Saksnummer</Label>
-            <Input value={form.case_number ?? ""} onChange={(e) => set({ case_number: e.target.value || null })} />
-            <MissingHint value={form.case_number} />
-          </div>
-          <div>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+          <CardTitle className="text-base">Saksopplysninger</CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setEditCase((v) => !v)}>
+            {editCase ? <><RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Ferdig</> : <><Pencil className="mr-1.5 h-3.5 w-3.5" /> Rediger opplysninger</>}
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!editCase ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <ReadValue label="Tittel" value={form.title} mono />
+              <ReadValue label="Type tilsyn" value={inspectionTypeLabel(form.inspection_type)} />
+              <ReadValue label="Tilsynsmyndighet / revisor" value={form.authority_name} />
+              <ReadValue label="Saksnummer" value={form.case_number} />
+              <ReadValue label="Kontrolldato" value={form.inspection_date ? formatDate(form.inspection_date) : null} />
+              <ReadValue label="Svarfrist" value={form.response_deadline ? formatDate(form.response_deadline) : null} />
+              <ReadValue label="Kontaktperson" value={form.contact_name} />
+              <ReadValue label="E-post" value={form.contact_email} />
+              <ReadValue label="Telefon" value={form.contact_phone} />
+              <div className="sm:col-span-2 lg:col-span-3">
+                <ReadValue label="Beskrivelse / omfang – rapportens ordlyd" value={form.description} />
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Label className="text-xs">Tittel *</Label>
+                <Input value={form.title ?? ""} onChange={(e) => set({ title: e.target.value })} />
+                <MissingHint value={form.title} />
+              </div>
+              <div>
+                <Label className="text-xs">Type tilsyn</Label>
+                <Select value={form.inspection_type} onValueChange={(v) => set({ inspection_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{INSPECTION_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Tilsynsmyndighet / revisor</Label>
+                <Input value={form.authority_name ?? ""} onChange={(e) => set({ authority_name: e.target.value || null })} />
+                <MissingHint value={form.authority_name} />
+              </div>
+              <div>
+                <Label className="text-xs">Saksnummer</Label>
+                <Input value={form.case_number ?? ""} onChange={(e) => set({ case_number: e.target.value || null })} />
+                <MissingHint value={form.case_number} />
+              </div>
+              <div>
+                <Label className="text-xs">Kontrolldato</Label>
+                <Input type="date" value={form.inspection_date ?? ""} onChange={(e) => set({ inspection_date: e.target.value || null })} />
+                <MissingHint value={form.inspection_date} />
+              </div>
+              <div>
+                <Label className="text-xs">Svarfrist</Label>
+                <Input type="date" value={form.response_deadline ?? ""} onChange={(e) => set({ response_deadline: e.target.value || null })} />
+                <MissingHint value={form.response_deadline} />
+              </div>
+              <div>
+                <Label className="text-xs">Kontaktperson</Label>
+                <Input value={form.contact_name ?? ""} onChange={(e) => set({ contact_name: e.target.value || null })} />
+                <MissingHint value={form.contact_name} />
+              </div>
+              <div>
+                <Label className="text-xs">E-post</Label>
+                <Input value={form.contact_email ?? ""} onChange={(e) => set({ contact_email: e.target.value || null })} />
+                <MissingHint value={form.contact_email} />
+              </div>
+              <div>
+                <Label className="text-xs">Telefon</Label>
+                <Input value={form.contact_phone ?? ""} onChange={(e) => set({ contact_phone: e.target.value || null })} />
+                <MissingHint value={form.contact_phone} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label className="text-xs">Beskrivelse / omfang – rapportens ordlyd</Label>
+                <Textarea rows={3} value={form.description ?? ""} onChange={(e) => set({ description: e.target.value || null })} />
+                <MissingHint value={form.description} />
+              </div>
+            </div>
+          )}
+
+          <div className="max-w-sm">
             <Label className="text-xs">Ansvarlig internt</Label>
             <Select value={responsible} onValueChange={setResponsible}>
               <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
@@ -260,40 +371,11 @@ export default function InspectionReportReviewPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="text-xs">Kontrolldato</Label>
-            <Input type="date" value={form.inspection_date ?? ""} onChange={(e) => set({ inspection_date: e.target.value || null })} />
-            <MissingHint value={form.inspection_date} />
-          </div>
-          <div>
-            <Label className="text-xs">Svarfrist</Label>
-            <Input type="date" value={form.response_deadline ?? ""} onChange={(e) => set({ response_deadline: e.target.value || null })} />
-            <MissingHint value={form.response_deadline} />
-          </div>
-          <div>
-            <Label className="text-xs">Kontaktperson</Label>
-            <Input value={form.contact_name ?? ""} onChange={(e) => set({ contact_name: e.target.value || null })} />
-            <MissingHint value={form.contact_name} />
-          </div>
-          <div>
-            <Label className="text-xs">E-post</Label>
-            <Input value={form.contact_email ?? ""} onChange={(e) => set({ contact_email: e.target.value || null })} />
-            <MissingHint value={form.contact_email} />
-          </div>
-          <div>
-            <Label className="text-xs">Telefon</Label>
-            <Input value={form.contact_phone ?? ""} onChange={(e) => set({ contact_phone: e.target.value || null })} />
-            <MissingHint value={form.contact_phone} />
-          </div>
-          <div className="sm:col-span-2">
-            <Label className="text-xs">Beskrivelse / omfang – rapportens ordlyd</Label>
-            <Textarea rows={3} value={form.description ?? ""} onChange={(e) => set({ description: e.target.value || null })} />
-            <MissingHint value={form.description} />
-          </div>
+
           {form.report_summary && (
-            <div className="sm:col-span-2 rounded-md border border-dashed bg-muted/40 p-3">
+            <div className="rounded-md border border-dashed bg-muted/40 p-3">
               <p className="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                <Sparkles className="h-3 w-3" /> AI-sammendrag (forslag, lagres ikke)
+                <Sparkles className="h-3 w-3" /> AI-sammendrag (intern vurdering, lagres ikke)
               </p>
               <p className="text-sm text-muted-foreground">{form.report_summary}</p>
             </div>
@@ -309,87 +391,140 @@ export default function InspectionReportReviewPage() {
       </div>
 
       <div className="space-y-2">
-        {findings.map((f, idx) => (
-          <Card key={f.key} className={f.included ? "" : "opacity-60"}>
-            <Collapsible open={!!open[f.key]} onOpenChange={(v) => setOpen((o) => ({ ...o, [f.key]: v }))}>
-              <div className="flex flex-wrap items-center gap-2 p-3">
-                <CollapsibleTrigger asChild>
-                  <Button size="sm" variant="ghost" className="h-8 px-2">
-                    <ChevronDown className={`h-4 w-4 transition-transform ${open[f.key] ? "rotate-180" : ""}`} />
-                  </Button>
-                </CollapsibleTrigger>
-                <Badge variant="outline">{f.reference ? `Nr. ${f.reference}` : `Nr. ${idx + 1}`}</Badge>
-                <span className="min-w-[180px] flex-1 text-sm font-medium">{f.title || "Uten tittel"}</span>
-                <Badge variant={f.finding_type === "deviation" ? "destructive" : "secondary"}>
-                  {FINDING_TYPES.find((t) => t.value === f.finding_type)?.label}
-                </Badge>
-                {f.manual && <Badge variant="outline">Lagt til manuelt</Badge>}
-                <Button size="sm" variant={f.included ? "ghost" : "outline"} onClick={() => setFinding(f.key, { included: !f.included })}>
-                  {f.included ? <><Trash2 className="mr-1 h-3.5 w-3.5" /> Ta ikke med</> : "Ta med igjen"}
-                </Button>
-              </div>
-              <CollapsibleContent>
-                <CardContent className="grid gap-4 border-t pt-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <Label className="text-xs">Tittel</Label>
-                    <Input value={f.title} onChange={(e) => setFinding(f.key, { title: e.target.value })} />
+        {findings.map((f, idx) => {
+          const typeLabel = FINDING_TYPES.find((t) => t.value === f.finding_type)?.label;
+          const aiCategory = f.ai_suggestions?.internal_category ?? f.internal_category;
+          const findingIssues = issues.filter((i) => i.findingKey === f.key);
+          return (
+            <Card key={f.key} className={f.included ? "" : "opacity-60"}>
+              <Collapsible open={!!open[f.key]} onOpenChange={(v) => setOpen((o) => ({ ...o, [f.key]: v }))}>
+                <div className="space-y-3 p-3 sm:p-4">
+                  {/* Kompakt topplinje: nummer, klassifisering, tittel */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="font-mono">{f.reference ? `Nr. ${f.reference}` : `Nr. ${idx + 1}`}</Badge>
+                    <Badge variant={f.finding_type === "deviation" ? "destructive" : "secondary"}>{typeLabel}</Badge>
+                    <span className="min-w-[180px] flex-1 text-sm font-semibold">{f.title || "Uten tittel"}</span>
+                    {f.manual && <Badge variant="outline">Lagt til manuelt</Badge>}
+                    <Button size="sm" variant={f.included ? "ghost" : "outline"} onClick={() => setFinding(f.key, { included: !f.included })}>
+                      {f.included ? <><Trash2 className="mr-1 h-3.5 w-3.5" /> Ta ikke med</> : "Ta med igjen"}
+                    </Button>
                   </div>
-                  <div>
-                    <Label className="text-xs">Klassifisering</Label>
-                    <Select value={f.finding_type} onValueChange={(v) => setFinding(f.key, { finding_type: v as any })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{FINDING_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Nummer/referanse i rapporten</Label>
-                    <Input value={f.reference ?? ""} onChange={(e) => setFinding(f.key, { reference: e.target.value || null })} />
-                    <MissingHint value={f.reference} />
-                  </div>
-                  <div className="sm:col-span-2 rounded-md border-l-4 border-l-primary bg-muted/40 p-3">
+
+                  {/* Rapporten sier – original ordlyd, lesevisning */}
+                  <div className="rounded-md border-l-4 border-l-primary bg-muted/40 px-3 py-2">
                     <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Tekst fra rapporten – original ordlyd
+                      Rapporten sier – original ordlyd
                     </p>
-                    <Textarea
-                      rows={4}
-                      value={f.original_text ?? ""}
-                      onChange={(e) => setFinding(f.key, { original_text: e.target.value || null })}
-                      placeholder="Lim inn teksten slik den står i rapporten"
-                    />
-                    <MissingHint value={f.original_text} />
+                    {f.original_text ? (
+                      <p className="whitespace-pre-wrap text-sm">{f.original_text}</p>
+                    ) : (
+                      <p className="text-sm italic text-muted-foreground">{NOT_FOUND_LABEL}</p>
+                    )}
                   </div>
-                  <div>
-                    <Label className="text-xs">Krav / hjemmel / paragraf</Label>
-                    <Input value={f.legal_basis ?? ""} onChange={(e) => setFinding(f.key, { legal_basis: e.target.value || null })} />
-                    <MissingHint value={f.legal_basis} />
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="sm:col-span-2">
+                      <ReadValue label="Rapportens krav" value={f.authority_requirement} />
+                    </div>
+                    <ReadValue label="Hjemmel / paragraf" value={f.legal_basis} mono />
+                    <ReadValue label="Frist i rapporten" value={f.deadline ? formatDate(f.deadline) : null} />
                   </div>
-                  <div>
-                    <Label className="text-xs">Frist for dette funnet</Label>
-                    <Input type="date" value={f.deadline ?? ""} onChange={(e) => setFinding(f.key, { deadline: e.target.value || null })} />
-                    <MissingHint value={f.deadline} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Label className="text-xs">Hva kreves rettet eller dokumentert – rapportens ordlyd</Label>
-                    <Textarea rows={2} value={f.authority_requirement ?? ""}
-                      onChange={(e) => setFinding(f.key, { authority_requirement: e.target.value || null })} />
-                    <MissingHint value={f.authority_requirement} />
-                  </div>
-                  <div className="sm:col-span-2 rounded-md border border-dashed p-3">
-                    <p className="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      <Sparkles className="h-3 w-3" /> AI-forslag til intern kategorisering
+
+                  {aiCategory && (
+                    <p className="flex flex-wrap items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs text-muted-foreground">
+                      <Sparkles className="h-3 w-3" />
+                      <span className="font-medium uppercase tracking-wide">AI-kategorisering (intern vurdering)</span>
+                      <span>· {aiCategory}</span>
+                      <span className="text-[11px]">– ikke tekst fra tilsynsmyndigheten</span>
                     </p>
-                    <Input value={f.internal_category ?? ""}
-                      onChange={(e) => setFinding(f.key, { internal_category: e.target.value || null })}
-                      placeholder="Kort intern kategori" />
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Intern vurdering – ikke tekst fra tilsynsmyndigheten.
-                    </p>
-                  </div>
-                </CardContent>
-              </CollapsibleContent>
-            </Collapsible>
-          </Card>
-        ))}
+                  )}
+
+                  {findingIssues.length > 0 && (
+                    <ul className="space-y-1">
+                      {findingIssues.map((i, n) => (
+                        <li key={n} className={`flex items-start gap-1.5 text-xs ${i.severity === "error" ? "text-destructive" : "text-amber-600"}`}>
+                          <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                          {i.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <CollapsibleTrigger asChild>
+                    <Button size="sm" variant="ghost" className="h-8 px-2 text-xs">
+                      <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                      {open[f.key] ? "Skjul redigering" : "Rediger opplysninger"}
+                      <ChevronDown className={`ml-1 h-3.5 w-3.5 transition-transform ${open[f.key] ? "rotate-180" : ""}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+
+                <CollapsibleContent>
+                  <CardContent className="grid gap-4 border-t pt-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <Label className="text-xs">Tittel</Label>
+                      <Input value={f.title} onChange={(e) => setFinding(f.key, { title: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Klassifisering</Label>
+                      <Select value={f.finding_type} onValueChange={(v) => setFinding(f.key, { finding_type: v as any })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>{FINDING_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Nummer/referanse i rapporten</Label>
+                      <Input value={f.reference ?? ""} onChange={(e) => setFinding(f.key, { reference: e.target.value || null })} />
+                      <MissingHint value={f.reference} />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label className="text-xs">Originaltekst – rapportens ordlyd</Label>
+                      <Textarea
+                        rows={4}
+                        value={f.original_text ?? ""}
+                        onChange={(e) => setFinding(f.key, { original_text: e.target.value || null })}
+                        placeholder="Lim inn teksten slik den står i rapporten"
+                      />
+                      <MissingHint value={f.original_text} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Krav / hjemmel / paragraf</Label>
+                      <Input value={f.legal_basis ?? ""} onChange={(e) => setFinding(f.key, { legal_basis: e.target.value || null })} />
+                      <MissingHint value={f.legal_basis} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Frist for dette funnet</Label>
+                      <Input type="date" value={f.deadline ?? ""} onChange={(e) => setFinding(f.key, { deadline: e.target.value || null })} />
+                      <MissingHint value={f.deadline} />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label className="text-xs">Hva kreves rettet eller dokumentert – rapportens ordlyd</Label>
+                      <Textarea rows={2} value={f.authority_requirement ?? ""}
+                        onChange={(e) => setFinding(f.key, { authority_requirement: e.target.value || null })} />
+                      <MissingHint value={f.authority_requirement} />
+                    </div>
+                    <div className="sm:col-span-2 rounded-md border border-dashed p-3">
+                      <p className="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <Sparkles className="h-3 w-3" /> AI-kategorisering (intern vurdering)
+                      </p>
+                      <Input
+                        value={aiCategory ?? ""}
+                        onChange={(e) => setFinding(f.key, {
+                          internal_category: e.target.value || null,
+                          ai_suggestions: { ...(f.ai_suggestions ?? {}), internal_category: e.target.value || null },
+                        })}
+                        placeholder="Kort intern kategori"
+                      />
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Intern vurdering – ikke tekst fra tilsynsmyndigheten.
+                      </p>
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">
