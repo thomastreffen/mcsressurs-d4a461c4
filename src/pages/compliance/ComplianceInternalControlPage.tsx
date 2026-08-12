@@ -1,19 +1,20 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
-import { Plus, Pencil, Trash2, ListChecks } from "lucide-react";
+import { Plus, Pencil, Trash2, ListChecks, Sparkles, X } from "lucide-react";
 import {
   useComplianceAudits, useAuditMutations, useAuditActions, useComplianceEmployees,
   type ComplianceAudit,
 } from "@/hooks/useCompliance";
 import { AUDIT_STATUSES, formatDate } from "@/lib/compliance";
+import { clearInternalControlDraft, loadInternalControlDraft } from "@/lib/finding-workflow";
 
 const EMPTY: Partial<ComplianceAudit> = {
   title: "", audit_type: "internal_control", planned_date: null, performed_at: null,
@@ -27,8 +28,28 @@ export default function ComplianceInternalControlPage() {
   const actions = useAuditActions();
   const { save, remove, createAction } = useAuditMutations();
   const [editing, setEditing] = useState<Partial<ComplianceAudit> | null>(null);
+  /** Satt når skjemaet er forhåndsutfylt av AI fra et tilsynsfunn */
+  const [aiPrefilled, setAiPrefilled] = useState(false);
   const [actionFor, setActionFor] = useState<string | null>(null);
   const [actionForm, setActionForm] = useState({ title: "", description: "", due_date: "" });
+
+  /* Utkast forberedt fra et tilsynsfunn – aldri gjennomført uten brukerhandling */
+  useEffect(() => {
+    const d = loadInternalControlDraft();
+    if (!d) return;
+    clearInternalControlDraft();
+    setEditing({
+      ...EMPTY,
+      title: d.title,
+      areas: d.areas,
+      findings: d.findings,
+      deviations: d.deviations,
+      improvements: d.improvements,
+      status: "planned",
+      performed_at: null,
+    });
+    setAiPrefilled(true);
+  }, []);
 
   const nameOf = (id: string | null | undefined) =>
     (employees.data ?? []).find((p) => p.person_id === id)?.full_name ?? "–";
@@ -41,6 +62,7 @@ export default function ComplianceInternalControlPage() {
   }, [audits.data]);
 
   const set = (patch: Partial<ComplianceAudit>) => setEditing((e) => ({ ...(e ?? {}), ...patch }));
+  const closeEditor = () => { setEditing(null); setAiPrefilled(false); };
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
@@ -49,7 +71,7 @@ export default function ComplianceInternalControlPage() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Internkontroll</h1>
           <p className="text-sm text-muted-foreground">Dokumentert periodisk gjennomgang av internkontrollsystemet</p>
         </div>
-        <Button size="sm" onClick={() => setEditing({ ...EMPTY })}>
+        <Button size="sm" onClick={() => { setEditing({ ...EMPTY }); setAiPrefilled(false); }}>
           <Plus className="mr-1 h-3.5 w-3.5" /> Ny internrevisjon
         </Button>
       </div>
@@ -70,6 +92,92 @@ export default function ComplianceInternalControlPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Inline redigering – ingen modal */}
+      {editing && (
+        <Card className={aiPrefilled ? "border-primary/40" : undefined}>
+          <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
+            <div className="space-y-1">
+              <CardTitle className="text-base">{editing.id ? "Endre internrevisjon" : "Ny internrevisjon"}</CardTitle>
+              {aiPrefilled && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="border-primary/40 text-[10px] text-primary">
+                    <Sparkles className="mr-1 h-3 w-3" /> AI-forhåndsutfylt utkast
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Kontroller innholdet. Revisjonen er ikke gjennomført før du selv registrerer dato og status.
+                  </span>
+                </div>
+              )}
+            </div>
+            <Button size="sm" variant="ghost" onClick={closeEditor}><X className="h-3.5 w-3.5" /></Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Tittel</Label>
+              <Input value={editing.title ?? ""} onChange={(e) => set({ title: e.target.value })} placeholder="Årlig gjennomgang av internkontroll" />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label>Planlagt</Label>
+                <Input type="date" value={editing.planned_date ?? ""} onChange={(e) => set({ planned_date: e.target.value || null })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Gjennomført</Label>
+                <Input type="date" value={editing.performed_at ?? ""} onChange={(e) => set({ performed_at: e.target.value || null })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select value={editing.status ?? "planned"} onValueChange={(v) => set({ status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{AUDIT_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Ansvarlig</Label>
+                <Select value={editing.responsible_person_id ?? "none"} onValueChange={(v) => set({ responsible_person_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ikke satt</SelectItem>
+                    {(employees.data ?? []).map((p) => <SelectItem key={p.person_id} value={p.person_id}>{p.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Deltakere (kommaseparert)</Label>
+                <Input
+                  value={(editing.participants ?? []).join(", ")}
+                  onChange={(e) => set({ participants: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Områder gjennomgått (kommaseparert)</Label>
+              <Input
+                value={(editing.areas ?? []).join(", ")}
+                onChange={(e) => set({ areas: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                placeholder="Kompetanse, FSE, dokumentasjon, avvikshåndtering"
+              />
+            </div>
+            {(["findings", "deviations", "improvements", "conclusion"] as const).map((k) => (
+              <div key={k} className="space-y-1.5">
+                <Label>
+                  {k === "findings" ? "Funn / bakgrunn" : k === "deviations" ? "Avvik" : k === "improvements" ? "Forbedringspunkter" : "Konklusjon"}
+                </Label>
+                <Textarea rows={k === "findings" ? 4 : 2} value={(editing[k] as string) ?? ""} onChange={(e) => set({ [k]: e.target.value } as any)} />
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={!editing.title || save.isPending} onClick={async () => { await save.mutateAsync(editing); closeEditor(); }}>
+                {save.isPending ? "Lagrer…" : editing.performed_at ? "Lagre og registrer som gjennomført" : "Lagre"}
+              </Button>
+              <Button variant="ghost" onClick={closeEditor}>Avbryt</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {audits.isLoading ? (
         <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
@@ -92,14 +200,14 @@ export default function ComplianceInternalControlPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {statusMeta && <ComplianceStatusBadge label={statusMeta.label} tone={statusMeta.tone} />}
-                    <Button size="sm" variant="outline" className="h-8" onClick={() => setEditing(a)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button size="sm" variant="outline" className="h-8" onClick={() => { setEditing(a); setAiPrefilled(false); }}><Pencil className="h-3.5 w-3.5" /></Button>
                     <Button size="sm" variant="ghost" className="h-8 text-destructive" onClick={() => remove.mutate(a.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   {a.areas?.length > 0 && <p><span className="text-muted-foreground">Områder:</span> {a.areas.join(", ")}</p>}
                   {a.participants?.length > 0 && <p><span className="text-muted-foreground">Deltakere:</span> {a.participants.join(", ")}</p>}
-                  {a.findings && <p><span className="text-muted-foreground">Funn:</span> {a.findings}</p>}
+                  {a.findings && <p className="whitespace-pre-wrap"><span className="text-muted-foreground">Funn:</span> {a.findings}</p>}
                   {a.deviations && <p><span className="text-muted-foreground">Avvik:</span> {a.deviations}</p>}
                   {a.improvements && <p><span className="text-muted-foreground">Forbedringspunkter:</span> {a.improvements}</p>}
                   {a.conclusion && <p><span className="text-muted-foreground">Konklusjon:</span> {a.conclusion}</p>}
@@ -109,7 +217,8 @@ export default function ComplianceInternalControlPage() {
                       <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         <ListChecks className="h-3.5 w-3.5" /> Tiltak ({own.length})
                       </p>
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setActionFor(a.id); setActionForm({ title: "", description: "", due_date: "" }); }}>
+                      <Button size="sm" variant="outline" className="h-7 text-xs"
+                        onClick={() => { setActionFor(a.id); setActionForm({ title: "", description: "", due_date: "" }); }}>
                         <Plus className="mr-1 h-3 w-3" /> Nytt tiltak
                       </Button>
                     </div>
@@ -125,6 +234,35 @@ export default function ComplianceInternalControlPage() {
                         ))}
                       </ul>
                     )}
+                    {actionFor === a.id && (
+                      <div className="mt-3 space-y-2 rounded-md border p-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Tittel</Label>
+                          <Input value={actionForm.title} onChange={(e) => setActionForm({ ...actionForm, title: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Beskrivelse</Label>
+                          <Textarea rows={2} value={actionForm.description} onChange={(e) => setActionForm({ ...actionForm, description: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Frist</Label>
+                          <Input type="date" value={actionForm.due_date} onChange={(e) => setActionForm({ ...actionForm, due_date: e.target.value })} />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" disabled={!actionForm.title || createAction.isPending}
+                            onClick={async () => {
+                              await createAction.mutateAsync({
+                                audit_id: a.id,
+                                title: actionForm.title,
+                                description: actionForm.description || undefined,
+                                due_date: actionForm.due_date || null,
+                              });
+                              setActionFor(null);
+                            }}>Opprett tiltak</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setActionFor(null)}>Avbryt</Button>
+                        </div>
+                      </div>
+                    )}
                     <p className="mt-2 text-[11px] text-muted-foreground">Tiltak gjenbruker HMS-tiltakssystemet og følges opp der.</p>
                   </div>
                 </CardContent>
@@ -133,113 +271,6 @@ export default function ComplianceInternalControlPage() {
           })}
         </div>
       )}
-
-      {/* Revisjonsdialog */}
-      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing?.id ? "Endre internrevisjon" : "Ny internrevisjon"}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>Tittel</Label>
-              <Input value={editing?.title ?? ""} onChange={(e) => set({ title: e.target.value })} placeholder="Årlig gjennomgang av internkontroll" />
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Planlagt</Label>
-                <Input type="date" value={editing?.planned_date ?? ""} onChange={(e) => set({ planned_date: e.target.value || null })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Gjennomført</Label>
-                <Input type="date" value={editing?.performed_at ?? ""} onChange={(e) => set({ performed_at: e.target.value || null })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Status</Label>
-                <Select value={editing?.status ?? "planned"} onValueChange={(v) => set({ status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{AUDIT_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Ansvarlig</Label>
-              <Select value={editing?.responsible_person_id ?? "none"} onValueChange={(v) => set({ responsible_person_id: v === "none" ? null : v })}>
-                <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Ikke satt</SelectItem>
-                  {(employees.data ?? []).map((p) => <SelectItem key={p.person_id} value={p.person_id}>{p.full_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Deltakere (kommaseparert)</Label>
-              <Input
-                value={(editing?.participants ?? []).join(", ")}
-                onChange={(e) => set({ participants: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Områder gjennomgått (kommaseparert)</Label>
-              <Input
-                value={(editing?.areas ?? []).join(", ")}
-                onChange={(e) => set({ areas: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                placeholder="Kompetanse, FSE, dokumentasjon, avvikshåndtering"
-              />
-            </div>
-            {(["findings", "deviations", "improvements", "conclusion"] as const).map((k) => (
-              <div key={k} className="space-y-1.5">
-                <Label>
-                  {k === "findings" ? "Funn" : k === "deviations" ? "Avvik" : k === "improvements" ? "Forbedringspunkter" : "Konklusjon"}
-                </Label>
-                <Textarea rows={2} value={(editing?.[k] as string) ?? ""} onChange={(e) => set({ [k]: e.target.value } as any)} />
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Avbryt</Button>
-            <Button disabled={!editing?.title || save.isPending} onClick={async () => { await save.mutateAsync(editing!); setEditing(null); }}>
-              {save.isPending ? "Lagrer…" : "Lagre"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Tiltaksdialog */}
-      <Dialog open={!!actionFor} onOpenChange={(v) => !v && setActionFor(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Nytt tiltak</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>Tittel</Label>
-              <Input value={actionForm.title} onChange={(e) => setActionForm({ ...actionForm, title: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Beskrivelse</Label>
-              <Textarea rows={2} value={actionForm.description} onChange={(e) => setActionForm({ ...actionForm, description: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Frist</Label>
-              <Input type="date" value={actionForm.due_date} onChange={(e) => setActionForm({ ...actionForm, due_date: e.target.value })} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionFor(null)}>Avbryt</Button>
-            <Button
-              disabled={!actionForm.title || createAction.isPending}
-              onClick={async () => {
-                await createAction.mutateAsync({
-                  audit_id: actionFor!,
-                  title: actionForm.title,
-                  description: actionForm.description || undefined,
-                  due_date: actionForm.due_date || null,
-                });
-                setActionFor(null);
-              }}
-            >
-              Opprett
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

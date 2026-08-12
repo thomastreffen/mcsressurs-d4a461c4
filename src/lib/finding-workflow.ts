@@ -388,7 +388,7 @@ export function findingPreflight(
 
 
 /* ------------------------------------------------------------------ */
-/* AI-forslag – aldri operative data før godkjenning                   */
+/* AI-forslag – fylles inn som utkast, bekreftes bare ved handling     */
 /* ------------------------------------------------------------------ */
 
 export type AiSuggestionField =
@@ -408,7 +408,17 @@ export interface FindingAiSuggestions {
   related_systems?: string[] | null;
 }
 
-export type AiSuggestionState = Partial<Record<AiSuggestionField, "accepted" | "rejected" | "edited">>;
+/**
+ * «draft» = AI-forslaget er fylt inn i det operative feltet, men ikke bekreftet.
+ * «confirmed» = bruker har bekreftet/redigert teksten.
+ * «discarded» = bruker har forkastet forslaget.
+ * («accepted»/«edited»/«rejected» finnes i eldre data og behandles som bekreftet/forkastet.)
+ */
+export type AiSuggestionMark =
+  | "draft" | "confirmed" | "discarded"
+  | "accepted" | "edited" | "rejected";
+
+export type AiSuggestionState = Partial<Record<AiSuggestionField, AiSuggestionMark>>;
 
 export const AI_SUGGESTION_LABELS: Record<AiSuggestionField, string> = {
   internal_category: "Intern kategori",
@@ -417,3 +427,153 @@ export const AI_SUGGESTION_LABELS: Record<AiSuggestionField, string> = {
   proposed_solution: "Foreslått løsning/tiltak",
   needed_documentation: "Dokumentasjon som må fremskaffes",
 };
+
+/** Feltene som kan autofylles i «Intern behandling» */
+export const AI_DRAFT_FIELDS: Exclude<AiSuggestionField, "needed_documentation">[] = [
+  "internal_category", "priority", "internal_assessment", "proposed_solution",
+];
+
+export function isAiDraft(state: AiSuggestionState | null | undefined, field: AiSuggestionField): boolean {
+  return (state ?? {})[field] === "draft";
+}
+
+interface AiDraftTarget {
+  internal_category: string | null;
+  priority: string | null;
+  internal_assessment: string | null;
+  proposed_solution: string | null;
+  ai_suggestions?: FindingAiSuggestions | null;
+  ai_suggestion_state?: AiSuggestionState | null;
+}
+
+/**
+ * Fyller AI-forslag inn som utkast i de operative feltene. Kun tomme felter
+ * berøres, og bare felter brukeren ikke allerede har behandlet. Returnerer
+ * null når det ikke er noe å autofylle.
+ */
+export function aiDraftPatch(f: AiDraftTarget): Record<string, unknown> | null {
+  const sug = (f.ai_suggestions ?? {}) as Record<string, unknown>;
+  const state = { ...((f.ai_suggestion_state ?? {}) as AiSuggestionState) };
+  const patch: Record<string, unknown> = {};
+  let changed = false;
+
+  for (const field of AI_DRAFT_FIELDS) {
+    const raw = sug[field];
+    const value = typeof raw === "string" ? raw.trim() : null;
+    if (!value) continue;
+    if (state[field]) continue; // allerede utkast, bekreftet eller forkastet
+    const current = (f as any)[field];
+    const isEmpty = field === "priority" ? !current || current === "normal" : !current;
+    if (!isEmpty) continue;
+    patch[field] = value;
+    state[field] = "draft";
+    changed = true;
+  }
+
+  const docs = sug.needed_documentation;
+  if (Array.isArray(docs) && docs.length && !state.needed_documentation) {
+    state.needed_documentation = "draft";
+    changed = true;
+  }
+
+  if (!changed) return null;
+  return { ...patch, ai_suggestion_state: state };
+}
+
+/** Setter alle utkast-felter til bekreftet */
+export function confirmAiDrafts(state: AiSuggestionState | null | undefined): AiSuggestionState {
+  const next = { ...((state ?? {}) as AiSuggestionState) };
+  for (const k of Object.keys(next) as AiSuggestionField[]) {
+    if (next[k] === "draft") next[k] = "confirmed";
+  }
+  return next;
+}
+
+/** Tømmer utkast-felter og markerer forslagene som forkastet */
+export function discardAiDrafts(
+  state: AiSuggestionState | null | undefined,
+): { state: AiSuggestionState; cleared: Record<string, unknown> } {
+  const next = { ...((state ?? {}) as AiSuggestionState) };
+  const cleared: Record<string, unknown> = {};
+  for (const field of AI_DRAFT_FIELDS) {
+    if (next[field] !== "draft") continue;
+    cleared[field] = field === "priority" ? "normal" : null;
+    next[field] = "discarded";
+  }
+  if (next.needed_documentation === "draft") next.needed_documentation = "discarded";
+  return { state: next, cleared };
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Forhåndsutfylt internkontroll-utkast fra et funn                    */
+/* ------------------------------------------------------------------ */
+
+export interface InternalControlDraft {
+  title: string;
+  areas: string[];
+  findings: string;
+  improvements: string;
+  deviations: string;
+  source: { findingId: string; findingNumber: number; inspectionId: string };
+  createdAt: string;
+}
+
+const IC_DRAFT_KEY = "mcs.internal-control-draft";
+
+/**
+ * Bygger et utkast til internrevisjon basert på funnet, AI-forslagene og
+ * systemfakta. Utkastet er aldri gjennomført – bruker må selv registrere
+ * gjennomføring på Internkontroll-siden.
+ */
+export function buildInternalControlDraft(
+  finding: {
+    id: string; inspection_id: string; finding_number: number; title: string;
+    original_text: string | null; internal_assessment: string | null; proposed_solution: string | null;
+    internal_category: string | null; ai_suggestions?: FindingAiSuggestions | null;
+  },
+  systemFacts: string[] = [],
+  inspectionTitle?: string | null,
+): InternalControlDraft {
+  const sug = finding.ai_suggestions ?? {};
+  const areaSeed = [
+    finding.internal_category ?? sug.internal_category ?? null,
+    ...(sug.related_systems ?? []),
+    "Internkontroll og styringssystem",
+  ].filter(Boolean) as string[];
+
+  const background = [
+    inspectionTitle ? `Bakgrunn: tilsyn «${inspectionTitle}», funn #${finding.finding_number}.` : `Bakgrunn: funn #${finding.finding_number}.`,
+    finding.original_text ? `Rapporten sier: ${finding.original_text}` : null,
+    finding.internal_assessment ?? sug.internal_assessment ?? null,
+    systemFacts.length ? `Systemet viser: ${systemFacts.join(" ")}` : null,
+  ].filter(Boolean).join("\n\n");
+
+  return {
+    title: `Internkontroll etter tilsynsfunn #${finding.finding_number} – ${finding.title}`.slice(0, 160),
+    areas: Array.from(new Set(areaSeed)),
+    findings: background,
+    improvements: (finding.proposed_solution ?? sug.proposed_solution ?? "") || "",
+    deviations: finding.title,
+    source: { findingId: finding.id, findingNumber: finding.finding_number, inspectionId: finding.inspection_id },
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function saveInternalControlDraft(d: InternalControlDraft) {
+  sessionStorage.setItem(IC_DRAFT_KEY, JSON.stringify(d));
+}
+
+export function loadInternalControlDraft(): InternalControlDraft | null {
+  try {
+    const raw = sessionStorage.getItem(IC_DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as InternalControlDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearInternalControlDraft() {
+  sessionStorage.removeItem(IC_DRAFT_KEY);
+}
+

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,8 @@ import {
   findingStatusMeta, findingTypeMeta,
 } from "@/lib/inspections";
 import {
-  FINDING_PRIORITIES, INTERNAL_CATEGORY_SUGGESTIONS, findingPreflight, findingPriorityMeta,
+  FINDING_PRIORITIES, INTERNAL_CATEGORY_SUGGESTIONS, aiDraftPatch, buildInternalControlDraft,
+  confirmAiDrafts, findingPreflight, findingPriorityMeta, isAiDraft, saveInternalControlDraft,
 } from "@/lib/finding-workflow";
 import type { Finding, FindingEvidence, FindingRegulationLink, InspectionAction } from "@/hooks/useInspections";
 import { useFindingMutations, useFindingRegulationMutations, useInspectionActionMutations } from "@/hooks/useInspections";
@@ -55,13 +57,18 @@ export function FindingCard({
   const users = useAssignableUsers();
   const { checkFor } = useFindingSystemCheck();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [draft, setDraft] = useState<Partial<Finding>>({});
   const val = <K extends keyof Finding>(k: K): any => (draft[k] !== undefined ? draft[k] : finding[k]);
   const setVal = (k: keyof Finding, v: any) => setDraft((d) => ({ ...d, [k]: v }));
   const commit = (k: keyof Finding) => {
     if (draft[k] === undefined || draft[k] === finding[k]) return;
-    save.mutate({ id: finding.id, inspection_id: inspectionId, [k]: draft[k] } as any);
+    const state = confirmField(k);
+    save.mutate({
+      id: finding.id, inspection_id: inspectionId, [k]: draft[k],
+      ...(state ? { ai_suggestion_state: state } : {}),
+    } as any);
   };
 
   const [addReg, setAddReg] = useState(false);
@@ -88,6 +95,28 @@ export function FindingCard({
 
   const systemCheck = useMemo(() => (open ? checkFor(finding) : null), [open, finding, checkFor]);
   const blockingGaps = useMemo(() => (systemCheck?.gaps ?? []).filter((g) => g.blocking), [systemCheck]);
+
+  /* AI-forslag fylles automatisk inn som utkast i de operative feltene.
+     Ingen godkjenning kreves for å få dem inn – de er merket som utkast. */
+  const autofilled = useRef(false);
+  useEffect(() => {
+    if (!canEdit || autofilled.current) return;
+    const patch = aiDraftPatch(finding as any);
+    if (!patch) return;
+    autofilled.current = true;
+    save.mutate({ id: finding.id, inspection_id: inspectionId, ...patch } as any);
+  }, [canEdit, finding, inspectionId, save]);
+
+  /** Merker feltet som bekreftet når brukeren selv redigerer utkastet */
+  const confirmField = (k: keyof Finding) => {
+    if (!isAiDraft(finding.ai_suggestion_state, k as any)) return undefined;
+    return confirmAiDrafts({ ...(finding.ai_suggestion_state ?? {}), [k]: "draft" } as any);
+  };
+
+  const DraftBadge = ({ field }: { field: keyof Finding }) =>
+    isAiDraft(finding.ai_suggestion_state, field as any)
+      ? <Badge variant="outline" className="ml-1.5 border-primary/40 text-[9px] text-primary">AI-utkast</Badge>
+      : null;
 
   /** Forhåndsutfyller tiltaksskjemaet fra et godkjent løsningsforslag */
   const prefillAction = (solution: string) => {
@@ -193,7 +222,17 @@ export function FindingCard({
           </div>
 
           {/* ---------- B. SYSTEMET VISER (faktiske MCS-data) ---------- */}
-          {systemCheck && <FindingSystemCheck check={systemCheck} />}
+          {systemCheck && (
+            <FindingSystemCheck
+              check={systemCheck}
+              onGapAction={(g) => {
+                if (g.kind !== "internal_control") return;
+                saveInternalControlDraft(
+                  buildInternalControlDraft(finding as any, systemCheck.facts, inspectionTitle ?? null),
+                );
+              }}
+            />
+          )}
 
           {/* ---------- AI-forslag (må godkjennes) ---------- */}
           <FindingAiSuggestions
@@ -208,9 +247,9 @@ export function FindingCard({
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Intern behandling</p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <Label className="text-xs">Kategori</Label>
+                <Label className="text-xs">Kategori<DraftBadge field="internal_category" /></Label>
                 <Select value={val("internal_category") ?? "none"} disabled={!canEdit}
-                  onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, internal_category: v === "none" ? null : v })}>
+                  onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, internal_category: v === "none" ? null : v, ...(confirmField("internal_category") ? { ai_suggestion_state: confirmField("internal_category") } : {}) } as any)}>
                   <SelectTrigger><SelectValue placeholder="Velg kategori" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Ikke satt</SelectItem>
@@ -228,9 +267,9 @@ export function FindingCard({
                 )}
               </div>
               <div>
-                <Label className="text-xs">Prioritet</Label>
+                <Label className="text-xs">Prioritet<DraftBadge field="priority" /></Label>
                 <Select value={val("priority") ?? "normal"} disabled={!canEdit}
-                  onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, priority: v as any })}>
+                  onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, priority: v as any, ...(confirmField("priority") ? { ai_suggestion_state: confirmField("priority") } : {}) } as any)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{FINDING_PRIORITIES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
                 </Select>
@@ -281,13 +320,13 @@ export function FindingCard({
 
             <div className="grid gap-3 lg:grid-cols-2">
               <div>
-                <Label className="text-xs">Intern vurdering</Label>
+                <Label className="text-xs">Intern vurdering<DraftBadge field="internal_assessment" /></Label>
                 <Textarea rows={3} value={val("internal_assessment") ?? ""} disabled={!canEdit}
                   placeholder="Hva betyr funnet for oss?"
                   onChange={(e) => setVal("internal_assessment", e.target.value)} onBlur={() => commit("internal_assessment")} />
               </div>
               <div>
-                <Label className="text-xs">Foreslått løsning</Label>
+                <Label className="text-xs">Foreslått løsning<DraftBadge field="proposed_solution" /></Label>
                 <Textarea rows={3} value={val("proposed_solution") ?? ""} disabled={!canEdit}
                   placeholder="Hvordan lukker vi funnet?"
                   onChange={(e) => setVal("proposed_solution", e.target.value || null)} onBlur={() => commit("proposed_solution")} />

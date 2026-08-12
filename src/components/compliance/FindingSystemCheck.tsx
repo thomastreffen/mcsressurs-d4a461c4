@@ -13,7 +13,13 @@ import { Database, ExternalLink, ShieldAlert, Users } from "lucide-react";
 import { formatDate } from "@/lib/compliance";
 import type { SystemCheckResult } from "@/lib/finding-workflow";
 
-export function FindingSystemCheck({ check }: { check: SystemCheckResult }) {
+export function FindingSystemCheck({
+  check, onGapAction,
+}: {
+  check: SystemCheckResult;
+  /** Kalles før navigering – kan forberede et utkast på målsiden */
+  onGapAction?: (gap: SystemCheckResult["gaps"][number]) => void;
+}) {
   const navigate = useNavigate();
   const empty =
     !check.competence.length && !check.orgRoles.length && !check.orgRoleGap && !check.gaps.length &&
@@ -49,7 +55,7 @@ export function FindingSystemCheck({ check }: { check: SystemCheckResult }) {
                 <ShieldAlert className={"mt-0.5 h-3.5 w-3.5 shrink-0 " + (g.blocking ? "text-destructive" : "text-amber-600")} />
                 <span>{g.message}</span>
               </p>
-              <Button size="sm" variant={g.blocking ? "default" : "outline"} onClick={() => navigate(g.route)}>
+              <Button size="sm" variant={g.blocking ? "default" : "outline"} onClick={() => { onGapAction?.(g); navigate(g.route); }}>
                 {g.actionLabel} <ExternalLink className="ml-1.5 h-3 w-3" />
               </Button>
             </div>
