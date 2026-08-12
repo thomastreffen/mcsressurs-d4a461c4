@@ -90,7 +90,22 @@ Absolutte regler:
 - match_keywords skal være 1-4 korte nøkkelord som kan brukes til å finne relevant regelverk, kompetansetype,
   ansvarsrolle eller internkontroll i vårt system (f.eks. "FSE", "internkontroll", "NEK 400", "førstehjelp").
 - Datoer skal returneres som YYYY-MM-DD. Er datoen uklar utelates feltet.
-- Skriv all tekst på norsk. Ikke bruk sannsynlighet eller prosenter.`;
+- Skriv all tekst på norsk. Ikke bruk sannsynlighet eller prosenter.
+
+Fullstendighet og nummerering (kontrolleres av bruker etterpå):
+- Alle eksplisitte/nummererte funn, avvik, merknader og observasjoner i rapporten SKAL med – også de som
+  virker små eller allerede lukket. Ikke slå sammen to nummererte punkter til ett funn, og ikke splitt ett
+  punkt i flere.
+- reference skal gjengi rapportens egen nummerering ordrett (f.eks. "Avvik 3", "2.1"). Bruk aldri din egen
+  nummerering, og hopp aldri over et nummer.
+- original_text, legal_basis, authority_requirement og deadline skal alltid tilhøre NØYAKTIG det samme
+  nummererte punktet. Ikke flytt hjemmel, krav eller frist mellom funn, og ikke gjenbruk sakens generelle
+  svarfrist som frist på et enkelt funn.
+- Du skal ALDRI presentere din egen formulering som rapportens ordlyd. Finner du ikke ordrett tekst for et
+  punkt, utelat original_text framfor å skrive den om.
+- Gå gjennom rapporten en gang til før du svarer: kontroller at antall funn du returnerer stemmer med antallet
+  rapporten selv oppgir eller lister, at nummerserien er sammenhengende, og at hvert felt tilhører riktig funn.`;
+
 
 
 const TOOL = {
