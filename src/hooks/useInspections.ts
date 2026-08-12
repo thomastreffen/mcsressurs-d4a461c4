@@ -36,18 +36,33 @@ export interface Finding {
   finding_number: number;
   finding_type: FindingType;
   title: string;
+  /* --- A. Myndighetens data (ordrett fra rapporten) --- */
   original_text: string | null;
+  report_reference: string | null;
   legal_basis_text: string | null;
+  authority_requirement: string | null;
   authority_comment: string | null;
   deadline: string | null;
-  responsible_person_id: string | null;
-  status: FindingStatus;
+  match_keywords: string[];
+  /* --- C. Intern behandling --- */
+  internal_category: string | null;
+  priority: FindingPriority;
   internal_assessment: string | null;
+  proposed_solution: string | null;
+  responsible_person_id: string | null;
+  responsible_role_id: string | null;
+  internal_deadline: string | null;
+  status: FindingStatus;
   response_text: string | null;
+  response_approved_at: string | null;
+  response_approved_by: string | null;
   internal_notes: string | null;
   documentation_status: DocumentationStatus;
+  ai_suggestions: FindingAiSuggestions;
+  ai_suggestion_state: AiSuggestionState;
   created_at: string;
 }
+
 
 export interface FindingRegulationLink {
   id: string;
