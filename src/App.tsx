@@ -132,6 +132,11 @@ import HmsIncidentDetailPage from "./pages/hms/HmsIncidentDetailPage";
 import HmsPeoplePage from "./pages/hms/HmsPeoplePage";
 import HmsPersonDetailPage from "./pages/hms/HmsPersonDetailPage";
 import { HmsContextGate } from "@/components/hms/HmsContextGate";
+import ComplianceOverviewPage from "./pages/compliance/ComplianceOverviewPage";
+import ComplianceCompetencePage from "./pages/compliance/ComplianceCompetencePage";
+import ComplianceRegulationsPage from "./pages/compliance/ComplianceRegulationsPage";
+import ComplianceOrganisationPage from "./pages/compliance/ComplianceOrganisationPage";
+import ComplianceInternalControlPage from "./pages/compliance/ComplianceInternalControlPage";
 import { CompanyProvider, useCompanyContext } from "@/hooks/useCompanyContext";
 import { ActiveCompanyForPermissions } from "@/hooks/usePermissions";
 import { PreviewModeProvider } from "@/hooks/usePreviewMode";
@@ -558,6 +563,32 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              {/* Elsikkerhet & Compliance */}
+              <Route path="/compliance" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceOverviewPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/kompetanse" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceCompetencePage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/regelverk" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceRegulationsPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/organisasjon" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceOrganisationPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/internkontroll" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceInternalControlPage /></HmsPage>
+                </ProtectedRoute>
+              } />
               {/* HMS & HR module */}
               <Route path="/hms" element={
                 <ProtectedRoute requiredPermission="hms.view">

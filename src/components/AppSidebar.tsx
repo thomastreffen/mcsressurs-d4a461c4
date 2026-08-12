@@ -361,6 +361,36 @@ export function AppSidebar() {
                    </Collapsible>
                  </SidebarMenuItem>
                )}
+               {canAccessModule("hms", "module.hms") && (
+                 <SidebarMenuItem>
+                   <Collapsible defaultOpen={isActive("/compliance")}>
+                     <CollapsibleTrigger asChild>
+                       <SidebarMenuButton
+                         tooltip="Elsikkerhet & Compliance"
+                         className={cn(
+                           "rounded-xl h-10 transition-all duration-150",
+                           isActive("/compliance")
+                             ? "bg-primary/10 text-primary font-semibold shadow-sm"
+                             : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                         )}
+                       >
+                         <ShieldAlert className="h-[19px] w-[19px]" />
+                         <span className="text-[13px] flex-1">Elsikkerhet</span>
+                         {!collapsed && <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />}
+                       </SidebarMenuButton>
+                     </CollapsibleTrigger>
+                     <CollapsibleContent>
+                       <SidebarMenu className="ml-5 mt-1 space-y-0.5 border-l border-sidebar-border/40 pl-2">
+                         <NavItem item={{ title: "Oversikt", url: "/compliance", icon: Gauge }} isActive={(url) => location.pathname === "/compliance"} collapsed={collapsed} />
+                         <NavItem item={{ title: "Kompetanse", url: "/compliance/kompetanse", icon: ShieldCheck }} isActive={isActive} collapsed={collapsed} />
+                         <NavItem item={{ title: "Regelverk", url: "/compliance/regelverk", icon: BookOpen }} isActive={isActive} collapsed={collapsed} />
+                         <NavItem item={{ title: "Organisasjon & ansvar", url: "/compliance/organisasjon", icon: Users }} isActive={isActive} collapsed={collapsed} />
+                         <NavItem item={{ title: "Internkontroll", url: "/compliance/internkontroll", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+                       </SidebarMenu>
+                     </CollapsibleContent>
+                   </Collapsible>
+                 </SidebarMenuItem>
+               )}
                {canAccessModule("management" /* no moduleKey in module_settings yet */, "module.management") && (
                  <NavItem item={{ title: "Lederoversikt", url: "/management", icon: Gauge }} isActive={isActive} collapsed={collapsed} />
                )}
