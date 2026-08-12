@@ -147,24 +147,34 @@ export default function InspectionReportReviewPage() {
       let n = 0;
       for (const f of included) {
         n += 1;
-        const notes = [
-          f.reference ? `Referanse i rapport: ${f.reference}` : null,
-          f.internal_category ? `AI-forslag til intern kategorisering: ${f.internal_category}` : null,
-        ].filter(Boolean).join("\n");
         await findingMut.save.mutateAsync({
           inspection_id: inspection.id,
           finding_number: n,
           finding_type: f.finding_type,
+          // Kildedata – ordrett fra rapporten
           title: f.title.trim() || `Funn ${n}`,
+          report_reference: f.reference,
           original_text: f.original_text,
           legal_basis_text: f.legal_basis,
+          authority_requirement: f.authority_requirement,
           authority_comment: f.authority_requirement,
           deadline: f.deadline,
-          internal_notes: notes || null,
+          match_keywords: f.match_keywords ?? [],
+          // AI-forslag lagres som forslag – ingen operative felter fylles ut her
+          ai_suggestions: {
+            internal_category: f.ai_suggestions?.internal_category ?? f.internal_category ?? null,
+            priority: f.ai_suggestions?.priority ?? null,
+            internal_assessment: f.ai_suggestions?.internal_assessment ?? null,
+            proposed_solution: f.ai_suggestions?.proposed_solution ?? null,
+            needed_documentation: f.ai_suggestions?.needed_documentation ?? [],
+          },
+          ai_suggestion_state: {},
+          priority: "normal",
           status: "new",
           documentation_status: "none",
         } as any);
       }
+
 
       await logEvent({
         inspection_id: inspection.id,
