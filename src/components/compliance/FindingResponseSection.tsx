@@ -56,7 +56,7 @@ export function FindingResponseSection({
             internal_deadline: finding.internal_deadline,
           },
           actions: actions.map((a) => ({ title: a.title, status: a.status, due_date: a.due_date })),
-          evidence: evidence.map((e) => e.title ?? e.note ?? "Bevis"),
+          evidence: evidence.map((e) => e.label ?? e.note ?? "Bevis"),
           system_facts: systemFacts,
         },
       });
