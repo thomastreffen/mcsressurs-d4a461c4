@@ -2206,6 +2206,535 @@ export type Database = {
         }
         Relationships: []
       }
+      compliance_audits: {
+        Row: {
+          areas: string[]
+          audit_type: string
+          company_id: string
+          conclusion: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deviations: string | null
+          findings: string | null
+          id: string
+          improvements: string | null
+          participants: string[]
+          performed_at: string | null
+          planned_date: string | null
+          responsible_person_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          areas?: string[]
+          audit_type?: string
+          company_id: string
+          conclusion?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deviations?: string | null
+          findings?: string | null
+          id?: string
+          improvements?: string | null
+          participants?: string[]
+          performed_at?: string | null
+          planned_date?: string | null
+          responsible_person_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          areas?: string[]
+          audit_type?: string
+          company_id?: string
+          conclusion?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deviations?: string | null
+          findings?: string | null
+          id?: string
+          improvements?: string | null
+          participants?: string[]
+          performed_at?: string | null
+          planned_date?: string | null
+          responsible_person_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_audits_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_audits_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_audits_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_competence_types: {
+        Row: {
+          category: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          default_validity_months: number | null
+          description: string | null
+          id: string
+          is_active: boolean
+          key: string
+          name: string
+          required_for_all: boolean
+          requires_document: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          default_validity_months?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          key: string
+          name: string
+          required_for_all?: boolean
+          requires_document?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          default_validity_months?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          name?: string
+          required_for_all?: boolean
+          requires_document?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_competence_types_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_competences: {
+        Row: {
+          comment: string | null
+          company_id: string
+          competence_type_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          document_id: string | null
+          expires_at: string | null
+          id: string
+          issued_at: string | null
+          issuer: string | null
+          person_id: string
+          reference_number: string | null
+          type_label: string | null
+          updated_at: string
+          valid_from: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          comment?: string | null
+          company_id: string
+          competence_type_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          document_id?: string | null
+          expires_at?: string | null
+          id?: string
+          issued_at?: string | null
+          issuer?: string | null
+          person_id: string
+          reference_number?: string | null
+          type_label?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          comment?: string | null
+          company_id?: string
+          competence_type_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          document_id?: string | null
+          expires_at?: string | null
+          id?: string
+          issued_at?: string | null
+          issuer?: string | null
+          person_id?: string
+          reference_number?: string | null
+          type_label?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_competences_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_competences_competence_type_id_fkey"
+            columns: ["competence_type_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_competence_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_competences_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_competences_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_competences_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_notification_queue: {
+        Row: {
+          channel: string
+          company_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          error: string | null
+          id: string
+          payload: Json
+          recipient_email: string | null
+          recipient_person_id: string | null
+          sent_at: string | null
+          status: string
+          threshold_days: number | null
+        }
+        Insert: {
+          channel?: string
+          company_id: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          error?: string | null
+          id?: string
+          payload?: Json
+          recipient_email?: string | null
+          recipient_person_id?: string | null
+          sent_at?: string | null
+          status?: string
+          threshold_days?: number | null
+        }
+        Update: {
+          channel?: string
+          company_id?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          error?: string | null
+          id?: string
+          payload?: Json
+          recipient_email?: string | null
+          recipient_person_id?: string | null
+          sent_at?: string | null
+          status?: string
+          threshold_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_notification_queue_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_notification_queue_recipient_person_id_fkey"
+            columns: ["recipient_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_notification_queue_recipient_person_id_fkey"
+            columns: ["recipient_person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_org_roles: {
+        Row: {
+          authority: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          department_id: string | null
+          deputy_person_id: string | null
+          id: string
+          person_id: string | null
+          reports_to_id: string | null
+          responsibilities: string | null
+          role_type: string
+          sort_order: number
+          tasks: string | null
+          title: string
+          updated_at: string
+          valid_from: string | null
+          valid_to: string | null
+        }
+        Insert: {
+          authority?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          department_id?: string | null
+          deputy_person_id?: string | null
+          id?: string
+          person_id?: string | null
+          reports_to_id?: string | null
+          responsibilities?: string | null
+          role_type?: string
+          sort_order?: number
+          tasks?: string | null
+          title: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Update: {
+          authority?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          department_id?: string | null
+          deputy_person_id?: string | null
+          id?: string
+          person_id?: string | null
+          reports_to_id?: string | null
+          responsibilities?: string | null
+          role_type?: string
+          sort_order?: number
+          tasks?: string | null
+          title?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_org_roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_org_roles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_org_roles_deputy_person_id_fkey"
+            columns: ["deputy_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_org_roles_deputy_person_id_fkey"
+            columns: ["deputy_person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_org_roles_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_org_roles_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_org_roles_reports_to_id_fkey"
+            columns: ["reports_to_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_org_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_regulations: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          id: string
+          last_reviewed_at: string | null
+          name: string
+          next_review_at: string | null
+          notes: string | null
+          reg_type: string
+          relevance: string | null
+          responsible_person_id: string | null
+          responsible_role: string | null
+          review_interval_months: number | null
+          short_name: string | null
+          source_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          name: string
+          next_review_at?: string | null
+          notes?: string | null
+          reg_type?: string
+          relevance?: string | null
+          responsible_person_id?: string | null
+          responsible_role?: string | null
+          review_interval_months?: number | null
+          short_name?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          name?: string
+          next_review_at?: string | null
+          notes?: string | null
+          reg_type?: string
+          relevance?: string | null
+          responsible_person_id?: string | null
+          responsible_role?: string | null
+          review_interval_months?: number | null
+          short_name?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_regulations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_regulations_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_regulations_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       confirmation_learnings: {
         Row: {
           alias_hits: string[] | null
@@ -5312,6 +5841,7 @@ export type Database = {
           company_id: string
           completed_at: string | null
           completed_by: string | null
+          compliance_audit_id: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -5333,6 +5863,7 @@ export type Database = {
           company_id: string
           completed_at?: string | null
           completed_by?: string | null
+          compliance_audit_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -5354,6 +5885,7 @@ export type Database = {
           company_id?: string
           completed_at?: string | null
           completed_by?: string | null
+          compliance_audit_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -5375,6 +5907,13 @@ export type Database = {
             columns: ["alert_id"]
             isOneToOne: false
             referencedRelation: "worktime_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_action_items_compliance_audit_id_fkey"
+            columns: ["compliance_audit_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_audits"
             referencedColumns: ["id"]
           },
           {
@@ -13019,6 +13558,52 @@ export type Database = {
           },
         ]
       }
+      v_compliance_competence_status: {
+        Row: {
+          category: string | null
+          company_id: string | null
+          competence_type_id: string | null
+          days_to_expiry: number | null
+          expires_at: string | null
+          has_document: boolean | null
+          id: string | null
+          person_id: string | null
+          requires_document: boolean | null
+          status: string | null
+          type_name: string | null
+          verified_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_competences_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_competences_competence_type_id_fkey"
+            columns: ["competence_type_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_competence_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_competences_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_competences_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _notif_admin_user_ids: { Args: never; Returns: string[] }
@@ -13073,6 +13658,14 @@ export type Database = {
         Returns: Json
       }
       cleanup_empty_calculations: { Args: never; Returns: Json }
+      compliance_competence_status: {
+        Args: {
+          _expires_at: string
+          _has_document: boolean
+          _requires_document: boolean
+        }
+        Returns: string
+      }
       compute_submission_summary: {
         Args: { _submission_id: string }
         Returns: Json
