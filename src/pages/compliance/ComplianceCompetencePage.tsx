@@ -150,9 +150,9 @@ export default function ComplianceCompetencePage() {
                 <tr>
                   <th className="sticky left-0 z-10 bg-muted/40 px-4 py-2 text-left font-medium">Ansatt</th>
                   {filteredTypes.map((t) => (
-                    <th key={t.id} className="px-3 py-2 text-left font-medium whitespace-nowrap">{t.name}</th>
+                    <th key={t.id} className="max-w-[150px] truncate px-3 py-2 text-left font-medium whitespace-nowrap">{t.name}</th>
                   ))}
-                  <th className="px-3 py-2 text-right font-medium">Status</th>
+                  <th className="sticky right-0 z-10 bg-muted/40 px-3 py-2 text-right font-medium">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -176,7 +176,7 @@ export default function ComplianceCompetencePage() {
                         )}
                       </td>
                     ))}
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="sticky right-0 z-10 bg-background px-3 py-2.5 text-right">
                       {missingRequired ? (
                         <ComplianceStatusBadge label="Mangler krav" tone="alert" />
                       ) : rowStatus ? (
