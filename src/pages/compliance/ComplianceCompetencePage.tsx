@@ -161,9 +161,13 @@ export default function ComplianceCompetencePage() {
                   >
 
                     <td className="sticky left-0 z-10 bg-background px-4 py-2.5">
-                      <p className="font-medium">{p.full_name}</p>
+                      <p className="flex items-center gap-1 font-medium">
+                        {p.full_name}
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </p>
                       <p className="text-xs text-muted-foreground">{p.department_name ?? "Uten avdeling"}</p>
                     </td>
+
                     {cells.map((c) => (
                       <td key={c.type.id} className="px-3 py-2.5 whitespace-nowrap">
                         {c.status ? (
