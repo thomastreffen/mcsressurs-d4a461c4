@@ -63,10 +63,17 @@ export interface Finding {
   response_approved_by: string | null;
   internal_notes: string | null;
   documentation_status: DocumentationStatus;
+  /** Forholdet er bekreftet rettet – uavhengig av dokumentasjon */
+  condition_corrected_at: string | null;
+  condition_corrected_by: string | null;
+  /** Dokumentasjonen av rettingen er bekreftet komplett */
+  documentation_complete_at: string | null;
+  documentation_complete_by: string | null;
   ai_suggestions: FindingAiSuggestions;
   ai_suggestion_state: AiSuggestionState;
   created_at: string;
 }
+
 
 
 export interface FindingRegulationLink {
