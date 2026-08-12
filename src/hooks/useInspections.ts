@@ -404,6 +404,10 @@ function labelForEvent(ev: string, patch: any): string {
     case "priority_changed": return `Prioritet satt til ${findingPriorityMeta(patch.priority).label}`;
     case "assessment_changed": return "Intern vurdering oppdatert";
     case "ai_suggestion_reviewed": return "AI-forslag behandlet (godkjent/endret/avvist)";
+    case "condition_corrected": return "Forholdet bekreftet rettet";
+    case "condition_correction_reverted": return "Bekreftelse på retting opphevet";
+    case "documentation_confirmed": return "Dokumentasjon bekreftet komplett";
+    case "documentation_confirmation_reverted": return "Bekreftelse på komplett dokumentasjon opphevet";
     default: return "Funn oppdatert";
   }
 }
