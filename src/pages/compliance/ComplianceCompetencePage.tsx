@@ -194,78 +194,7 @@ export default function ComplianceCompetencePage() {
           )}
         </CardContent>
       </Card>
-
-      <Sheet open={!!openPerson} onOpenChange={(v) => !v && setOpenPerson(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{person?.full_name ?? "Ansatt"}</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4 space-y-3">
-            <Button size="sm" onClick={() => setDialog({ personId: openPerson!, competence: null })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Ny kompetanse
-            </Button>
-
-            {personItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Ingen kompetanseposter registrert.</p>
-            ) : (
-              personItems.map((c) => {
-                const meta = COMPETENCE_STATUS_META[c.status];
-                const doc = docs.data?.[c.id];
-                return (
-                  <Card key={c.id}>
-                    <CardContent className="space-y-2 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium">{c.typeName}</p>
-                          {c.description && <p className="text-xs text-muted-foreground">{c.description}</p>}
-                        </div>
-                        <ComplianceStatusBadge label={meta.label} tone={meta.tone} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                        <span>Utstedt: {formatDate(c.issued_at)}</span>
-                        <span>Utløper: {c.expires_at ? formatDate(c.expires_at) : "Ingen utløp"}</span>
-                        <span>Utsteder: {c.issuer || "–"}</span>
-                        <span>Verifisert: {c.verified_at ? formatDate(c.verified_at) : "Nei"}</span>
-                      </div>
-                      {c.comment && <p className="text-xs">{c.comment}</p>}
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        {doc?.public_url && (
-                          <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-                            <a href={doc.public_url} target="_blank" rel="noreferrer"><Paperclip className="mr-1 h-3 w-3" />{doc.file_name}</a>
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setDialog({ personId: c.person_id, competence: c })}>
-                          <Pencil className="mr-1 h-3 w-3" /> Endre
-                        </Button>
-                        {!c.verified_at && (
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => verify.mutate(c.id)}>
-                            <BadgeCheck className="mr-1 h-3 w-3" /> Verifiser
-                          </Button>
-                        )}
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => remove.mutate(c.id)}>
-                          <Trash2 className="mr-1 h-3 w-3" /> Fjern
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {dialog && (
-        <CompetenceDialog
-          open
-          onOpenChange={(v) => !v && setDialog(null)}
-          personId={dialog.personId}
-          personName={(employees.data ?? []).find((p) => p.person_id === dialog.personId)?.full_name}
-          types={typeList}
-          competence={dialog.competence}
-          defaultTypeId={dialog.typeId ?? null}
-        />
-      )}
     </div>
   );
 }
+
