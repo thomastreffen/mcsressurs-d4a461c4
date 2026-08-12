@@ -226,13 +226,28 @@ export default function HmsPersonDetailPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList>
+      <Tabs
+        value={params.get("tab") ?? "overview"}
+        onValueChange={(v) => {
+          const next = new URLSearchParams(params);
+          if (v === "overview") next.delete("tab"); else next.set("tab", v);
+          setParams(next, { replace: true });
+          if (v === "activity") loadAudit();
+        }}
+      >
+        <TabsList className="flex-wrap">
           <TabsTrigger value="overview"><User className="h-4 w-4 mr-1.5" />Oversikt</TabsTrigger>
+          <TabsTrigger value="competence"><GraduationCap className="h-4 w-4 mr-1.5" />Kompetanse</TabsTrigger>
           <TabsTrigger value="hms"><ClipboardCheck className="h-4 w-4 mr-1.5" />HMS / AML</TabsTrigger>
           {canViewSecurity && <TabsTrigger value="security"><Shield className="h-4 w-4 mr-1.5" />Sikkerhet</TabsTrigger>}
-          <TabsTrigger value="activity" onClick={loadAudit}><Activity className="h-4 w-4 mr-1.5" />Aktivitet</TabsTrigger>
+          <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-1.5" />Aktivitet</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="competence" className="mt-4">
+          <PersonCompetenceTab personId={person.id} personName={person.full_name} canManage={canManageHms} />
+        </TabsContent>
+
+
 
         <TabsContent value="overview" className="mt-4">
           <div className="rounded-lg border p-4 sm:p-6 space-y-4 max-w-3xl">
