@@ -17,6 +17,7 @@ import {
   Target,
   BookOpen,
   CalendarOff,
+  FileSearch,
   ClipboardList,
   Calculator,
   Briefcase,
