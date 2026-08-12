@@ -73,8 +73,12 @@ export function InspectionReportUpload() {
       const { data, error } = await supabase.functions.invoke("inspection-report-analyze", {
         body: { bucket: BUCKET, path, fileName: file.name, mime: file.type || "application/pdf" },
       });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message ?? "Kunne ikke analysere rapporten");
+      if (error || !data?.ok) {
+        const { title, detail } = await readFunctionError(error, data);
+        toast.error(title, { description: detail });
+        setBusy(null);
+        return;
+      }
 
       saveReportDraft({
         analysis: data.analysis as ReportAnalysis,
@@ -90,7 +94,9 @@ export function InspectionReportUpload() {
       });
       navigate("/compliance/tilsyn/ny/gjennomgang");
     } catch (e: any) {
-      toast.error(e?.message ?? "Opplasting eller analyse feilet");
+      toast.error("Opplastingen feilet", {
+        description: e?.message ?? "Prøv igjen, eller velg en annen fil.",
+      });
     } finally {
       setBusy(null);
     }
