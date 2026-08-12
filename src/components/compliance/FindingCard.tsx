@@ -27,6 +27,7 @@ import { useFindingMutations, useFindingRegulationMutations, useInspectionAction
 import { useRegulations, useComplianceEmployees, useOrgRoles } from "@/hooks/useCompliance";
 import { useAssignableUsers } from "@/hooks/useCompanyUsers";
 import { useFindingSystemCheck } from "@/hooks/useFindingSystemCheck";
+import { useAuth } from "@/hooks/useAuth";
 import type { DocumentationStatus } from "@/lib/inspections";
 
 export function FindingCard({
