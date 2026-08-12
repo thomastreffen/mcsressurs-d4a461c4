@@ -1,7 +1,7 @@
 // Sender svarpakke for en tilsynssak via Microsoft Graph.
 // Vedleggene hentes fra storage med service role og legges på e-posten med de
 // ryddige eksportnavnene som er lagret på pakken. Ingenting kopieres i storage.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {

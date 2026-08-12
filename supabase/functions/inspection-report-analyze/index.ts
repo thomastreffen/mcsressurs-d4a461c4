@@ -6,7 +6,7 @@
 //   3. Strukturert output via tool calling.
 // AI skal ALDRI dikte opp verdier: felter som ikke finnes i rapporten skal utelates.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
@@ -25,6 +25,23 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+/** Strukturert feilrespons slik at frontend kan vise forståelig norsk melding + feilkode. */
+type Stage =
+  | "auth" | "input" | "storage_download" | "text_extraction"
+  | "ai_request" | "ai_response" | "unknown";
+
+function fail(
+  rid: string,
+  status: number,
+  stage: Stage,
+  error_code: string,
+  message: string,
+  technical_details?: string,
+) {
+  console.error(`[inspection-report-analyze] rid=${rid} stage=${stage} code=${error_code} status=${status} ${technical_details ?? ""}`);
+  return json({ ok: false, requestId: rid, stage, error_code, message, technical_details: technical_details ?? null }, status);
 }
 
 function extractPdfText(arrayBuf: ArrayBuffer): string {
@@ -122,27 +139,34 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace("Bearer ", "").trim();
-    if (!token) return json({ ok: false, message: "Mangler autentisering" }, 401);
+    if (!token) return fail(rid, 401, "auth", "missing_token", "Du er ikke innlogget");
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const authClient = createClient(url, anon);
-    const { data: claims, error: claimsErr } = await authClient.auth.getClaims(token);
-    if (claimsErr || !claims?.claims?.sub) return json({ ok: false, message: "Ugyldig token" }, 401);
+    const { data: authData, error: authErr } = await authClient.auth.getUser(token);
+    if (authErr || !authData?.user?.id) {
+      return fail(rid, 401, "auth", "invalid_token", "Innloggingen er utløpt. Last siden på nytt og prøv igjen.", authErr?.message);
+    }
 
     const body = await req.json().catch(() => ({}));
     const bucket: string = body.bucket ?? "job-attachments";
     const path: string | undefined = body.path;
     const fileName: string = body.fileName ?? "rapport";
     const mime: string = body.mime ?? "application/pdf";
-    if (!path) return json({ ok: false, message: "Mangler filreferanse" }, 400);
+    if (!path) return fail(rid, 400, "input", "missing_path", "Filreferansen mangler");
 
     const admin = createClient(url, service);
     const { data: file, error: dlErr } = await admin.storage.from(bucket).download(path);
-    if (dlErr || !file) return json({ ok: false, message: "Kunne ikke laste ned rapporten" }, 400);
-    if (file.size > MAX_FILE_SIZE) return json({ ok: false, message: "Filen er for stor (maks 15 MB)" }, 400);
+    if (dlErr || !file) {
+      return fail(rid, 400, "storage_download", "download_failed",
+        "Fant ikke den opplastede rapporten", `${bucket}/${path}: ${dlErr?.message ?? "ingen fil"}`);
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return fail(rid, 400, "storage_download", "file_too_large", "Filen er for stor (maks 15 MB)");
+    }
 
     const buf = await file.arrayBuffer();
     const isPdf = mime.includes("pdf") || fileName.toLowerCase().endsWith(".pdf");
@@ -172,7 +196,7 @@ Deno.serve(async (req) => {
     }
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) return json({ ok: false, message: "AI er ikke konfigurert" }, 500);
+    if (!apiKey) return fail(rid, 500, "ai_request", "ai_not_configured", "AI er ikke konfigurert");
 
     console.info(`[inspection-report-analyze] rid=${rid} mode=${mode} size=${file.size}`);
 
@@ -191,22 +215,33 @@ Deno.serve(async (req) => {
     });
 
     if (!aiRes.ok) {
-      const text = await aiRes.text();
-      console.error(`[inspection-report-analyze] rid=${rid} ai error ${aiRes.status}: ${text}`);
-      if (aiRes.status === 429) return json({ ok: false, message: "AI er opptatt akkurat nå. Prøv igjen om litt." }, 429);
-      if (aiRes.status === 402) return json({ ok: false, message: "AI-kreditt er oppbrukt." }, 402);
-      return json({ ok: false, message: "AI klarte ikke å analysere rapporten" }, 502);
+      const text = (await aiRes.text()).slice(0, 500);
+      if (aiRes.status === 429) {
+        return fail(rid, 429, "ai_request", "ai_rate_limited", "AI er opptatt akkurat nå. Prøv igjen om litt.");
+      }
+      if (aiRes.status === 402) {
+        return fail(rid, 402, "ai_request", "ai_no_credits", "AI-kreditt er oppbrukt.");
+      }
+      return fail(rid, 502, "ai_request", `ai_http_${aiRes.status}`,
+        mode === "text"
+          ? "Dokumentanalysen feilet"
+          : "Rapporten inneholder ikke lesbar tekst og bildeanalysen kunne ikke gjennomføres.",
+        text);
     }
 
     const aiJson = await aiRes.json();
     const call = aiJson?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!call?.function?.arguments) return json({ ok: false, message: "Fant ingen strukturert analyse i svaret" }, 502);
+    if (!call?.function?.arguments) {
+      return fail(rid, 502, "ai_response", "no_tool_call", "AI fant ingen tilsynsopplysninger i rapporten",
+        JSON.stringify(aiJson?.choices?.[0]?.message ?? aiJson).slice(0, 500));
+    }
 
     let parsed: any;
     try {
       parsed = JSON.parse(call.function.arguments);
-    } catch {
-      return json({ ok: false, message: "Kunne ikke tolke AI-svaret" }, 502);
+    } catch (parseErr) {
+      return fail(rid, 502, "ai_response", "invalid_json", "Kunne ikke tolke analysen av rapporten",
+        (parseErr as Error).message);
     }
 
     const clean = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
@@ -241,6 +276,6 @@ Deno.serve(async (req) => {
     return json({ ok: true, requestId: rid, analysis });
   } catch (e) {
     console.error(`[inspection-report-analyze] rid=${rid} unhandled`, e);
-    return json({ ok: false, message: (e as Error).message ?? "Uventet feil" }, 500);
+    return fail(rid, 500, "unknown", "unhandled_error", "Uventet feil under analysen", (e as Error)?.message);
   }
 });
