@@ -63,10 +63,17 @@ export interface Finding {
   response_approved_by: string | null;
   internal_notes: string | null;
   documentation_status: DocumentationStatus;
+  /** Forholdet er bekreftet rettet – uavhengig av dokumentasjon */
+  condition_corrected_at: string | null;
+  condition_corrected_by: string | null;
+  /** Dokumentasjonen av rettingen er bekreftet komplett */
+  documentation_complete_at: string | null;
+  documentation_complete_by: string | null;
   ai_suggestions: FindingAiSuggestions;
   ai_suggestion_state: AiSuggestionState;
   created_at: string;
 }
+
 
 
 export interface FindingRegulationLink {
@@ -343,6 +350,8 @@ export function useFindingMutations(inspectionId?: string) {
         if (rest.priority !== undefined) events.push("priority_changed");
         if (rest.internal_assessment !== undefined) events.push("assessment_changed");
         if (rest.ai_suggestion_state !== undefined) events.push("ai_suggestion_reviewed");
+        if (rest.condition_corrected_at !== undefined) events.push(rest.condition_corrected_at ? "condition_corrected" : "condition_correction_reverted");
+        if (rest.documentation_complete_at !== undefined) events.push(rest.documentation_complete_at ? "documentation_confirmed" : "documentation_confirmation_reverted");
         for (const ev of events.length ? events : ["finding_updated"]) {
           await log({ inspection_id: insId, finding_id: id, event_type: ev, summary: labelForEvent(ev, rest), payload: { patch: Object.keys(rest) } });
         }
@@ -395,6 +404,10 @@ function labelForEvent(ev: string, patch: any): string {
     case "priority_changed": return `Prioritet satt til ${findingPriorityMeta(patch.priority).label}`;
     case "assessment_changed": return "Intern vurdering oppdatert";
     case "ai_suggestion_reviewed": return "AI-forslag behandlet (godkjent/endret/avvist)";
+    case "condition_corrected": return "Forholdet bekreftet rettet";
+    case "condition_correction_reverted": return "Bekreftelse på retting opphevet";
+    case "documentation_confirmed": return "Dokumentasjon bekreftet komplett";
+    case "documentation_confirmation_reverted": return "Bekreftelse på komplett dokumentasjon opphevet";
     default: return "Funn oppdatert";
   }
 }

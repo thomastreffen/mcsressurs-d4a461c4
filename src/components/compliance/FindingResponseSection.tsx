@@ -18,7 +18,7 @@ import { useFindingMutations, type Finding, type FindingEvidence, type Inspectio
 import { formatDate } from "@/lib/compliance";
 
 export function FindingResponseSection({
-  finding, inspectionId, inspectionTitle, authorityName, actions, evidence, systemFacts, canEdit,
+  finding, inspectionId, inspectionTitle, authorityName, actions, evidence, systemFacts, unresolvedGaps = [], canEdit,
 }: {
   finding: Finding;
   inspectionId: string;
@@ -27,6 +27,8 @@ export function FindingResponseSection({
   actions: InspectionAction[];
   evidence: FindingEvidence[];
   systemFacts: string[];
+  /** Forhold systemet fortsatt viser som ikke rettet – AI må ikke påstå at de er lukket */
+  unresolvedGaps?: string[];
   canEdit: boolean;
 }) {
   const { user } = useAuth();
@@ -54,10 +56,13 @@ export function FindingResponseSection({
             internal_assessment: finding.internal_assessment,
             proposed_solution: finding.proposed_solution,
             internal_deadline: finding.internal_deadline,
+            condition_corrected_at: finding.condition_corrected_at ?? null,
+            documentation_complete_at: finding.documentation_complete_at ?? null,
           },
-          actions: actions.map((a) => ({ title: a.title, status: a.status, due_date: a.due_date })),
+          actions: actions.map((a) => ({ title: a.title, status: a.status, due_date: a.due_date, description: a.description ?? null })),
           evidence: evidence.map((e) => e.label ?? e.note ?? "Bevis"),
           system_facts: systemFacts,
+          unresolved_gaps: unresolvedGaps,
         },
       });
       if (error) throw error;

@@ -30,9 +30,11 @@ const SYSTEM_PROMPT = `Du skriver svar til norske tilsynsmyndigheter (DLE, DSB, 
 
 Regler:
 - Svaret skal være saklig, kort og profesjonelt. Norsk bokmål. Ingen markedsføring, ingen unnskyldninger utover det saklige.
-- Bygg svaret KUN på informasjonen du får: funnets ordlyd, interne tiltak, systemfakta og koblede bevis.
+- Bygg svaret KUN på informasjonen du får: funnets ordlyd, intern vurdering, faktisk utførte tiltak, systemfakta og godkjente bevis.
 - Du skal ALDRI påstå at noe er dokumentert, utført eller lukket hvis det ikke fremgår av opplysningene du får.
+- Svaret skal beskrive hva virksomheten FAKTISK har gjort og hvilken dokumentasjon som vedlegges. Nevn kun vedlegg som står i listen over godkjente bevis.
 - Er tiltak ikke ferdigstilt skal svaret beskrive planlagt tiltak og frist, ikke at det er utført.
+- Er et forhold listet som «fortsatt ikke rettet» skal svaret ikke beskrive det som lukket; beskriv i stedet hva som gjenstår.
 - Ikke oppgi tall, datoer, navn eller dokumentnavn som ikke finnes i opplysningene.
 - Ikke bruk sannsynlighet eller prosenter.
 - 1-3 avsnitt: hva som er gjort/planlagt, hvordan det dokumenteres, og eventuell frist.`;
@@ -81,6 +83,8 @@ Deno.serve(async (req) => {
     const actions: any[] = Array.isArray(body.actions) ? body.actions : [];
     const evidence: string[] = Array.isArray(body.evidence) ? body.evidence : [];
     const systemFacts: string[] = Array.isArray(body.system_facts) ? body.system_facts : [];
+    const unresolvedGaps: string[] = Array.isArray(body.unresolved_gaps) ? body.unresolved_gaps : [];
+    const doneActions = actions.filter((a) => ["done", "closed", "completed"].includes(String(a.status)));
 
     const prompt = [
       `TILSYNSSAK: ${body.inspection_title ?? "Ukjent sak"}${body.authority_name ? ` (${body.authority_name})` : ""}`,
@@ -96,18 +100,33 @@ Deno.serve(async (req) => {
       finding.internal_assessment ? `Vurdering: ${finding.internal_assessment}` : "Vurdering: ikke registrert",
       finding.proposed_solution ? `Planlagt løsning: ${finding.proposed_solution}` : null,
       finding.internal_deadline ? `Intern frist: ${finding.internal_deadline}` : null,
+      finding.condition_corrected_at
+        ? `Forholdet er internt bekreftet rettet ${finding.condition_corrected_at}`
+        : "Forholdet er IKKE bekreftet rettet – ikke skriv at forholdet er utbedret.",
+      finding.documentation_complete_at
+        ? `Dokumentasjonen er bekreftet komplett ${finding.documentation_complete_at}`
+        : "Dokumentasjonen er IKKE bekreftet komplett.",
       "",
-      "TILTAK:",
-      actions.length
-        ? actions.map((a) => `- ${a.title} (status: ${a.status}${a.due_date ? `, frist ${a.due_date}` : ""})`).join("\n")
-        : "- Ingen tiltak registrert",
+      "FAKTISK UTFØRTE TILTAK (kun disse kan omtales som gjennomført):",
+      doneActions.length
+        ? doneActions.map((a) => `- ${a.title}${a.description ? `: ${a.description}` : ""}`).join("\n")
+        : "- Ingen tiltak er ferdigstilt",
+      "",
+      "TILTAK SOM PÅGÅR (omtales som planlagt, ikke utført):",
+      actions.filter((a) => !doneActions.includes(a)).length
+        ? actions.filter((a) => !doneActions.includes(a)).map((a) => `- ${a.title} (status: ${a.status}${a.due_date ? `, frist ${a.due_date}` : ""})`).join("\n")
+        : "- Ingen",
       "",
       "SYSTEMFAKTA FRA VÅRE EGNE REGISTRE:",
       systemFacts.length ? systemFacts.map((f) => `- ${f}`).join("\n") : "- Ingen",
       "",
-      "KOBLEDE BEVIS/DOKUMENTER:",
+      "FORHOLD SYSTEMET FORTSATT VISER SOM IKKE RETTET (må ikke omtales som lukket):",
+      unresolvedGaps.length ? unresolvedGaps.map((g) => `- ${g}`).join("\n") : "- Ingen",
+      "",
+      "GODKJENTE BEVIS/VEDLEGG (kun disse kan nevnes som vedlagt dokumentasjon):",
       evidence.length ? evidence.map((e) => `- ${e}`).join("\n") : "- Ingen",
     ].filter(Boolean).join("\n");
+
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return fail(rid, 500, "ai_request", "ai_not_configured", "AI er ikke konfigurert");

@@ -10,8 +10,9 @@ import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusB
 import { FindingEvidencePanel } from "@/components/compliance/FindingEvidencePanel";
 import { FindingSystemCheck } from "@/components/compliance/FindingSystemCheck";
 import { FindingAiSuggestions } from "@/components/compliance/FindingAiSuggestions";
+import { FindingDocumentationSuggestions } from "@/components/compliance/FindingDocumentationSuggestions";
 import { FindingResponseSection } from "@/components/compliance/FindingResponseSection";
-import { ChevronDown, ChevronRight, Plus, Trash2, BookOpen, X, ListChecks, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, BookOpen, X, ListChecks, FileText, AlertTriangle, CheckCircle2, Undo2, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { daysUntil, formatDate } from "@/lib/compliance";
 import {
@@ -26,6 +27,7 @@ import { useFindingMutations, useFindingRegulationMutations, useInspectionAction
 import { useRegulations, useComplianceEmployees, useOrgRoles } from "@/hooks/useCompliance";
 import { useAssignableUsers } from "@/hooks/useCompanyUsers";
 import { useFindingSystemCheck } from "@/hooks/useFindingSystemCheck";
+import { useAuth } from "@/hooks/useAuth";
 import type { DocumentationStatus } from "@/lib/inspections";
 
 export function FindingCard({
@@ -52,6 +54,7 @@ export function FindingCard({
   const orgRoles = useOrgRoles();
   const users = useAssignableUsers();
   const { checkFor } = useFindingSystemCheck();
+  const { user } = useAuth();
 
   const [draft, setDraft] = useState<Partial<Finding>>({});
   const val = <K extends keyof Finding>(k: K): any => (draft[k] !== undefined ? draft[k] : finding[k]);
@@ -69,6 +72,8 @@ export function FindingCard({
   const [aTitle, setATitle] = useState("");
   const [aAssignee, setAAssignee] = useState("");
   const [aDue, setADue] = useState("");
+  const [aDesc, setADesc] = useState("");
+  const [aPriority, setAPriority] = useState("medium");
 
   const typeMeta = findingTypeMeta(finding.finding_type);
   const statusMeta = findingStatusMeta(finding.status);
@@ -82,11 +87,26 @@ export function FindingCard({
     personName(finding.responsible_person_id) ?? roleTitle(finding.responsible_role_id) ?? "Ikke satt";
 
   const systemCheck = useMemo(() => (open ? checkFor(finding) : null), [open, finding, checkFor]);
+  const blockingGaps = useMemo(() => (systemCheck?.gaps ?? []).filter((g) => g.blocking), [systemCheck]);
+
+  /** Forhåndsutfyller tiltaksskjemaet fra et godkjent løsningsforslag */
+  const prefillAction = (solution: string) => {
+    const text = solution.trim();
+    const firstLine = text.split("\n")[0];
+    setATitle(firstLine.length > 120 ? `${firstLine.slice(0, 117)}…` : firstLine);
+    setADesc(text);
+    setADue(finding.internal_deadline ?? "");
+    setAPriority(finding.priority === "critical" || finding.priority === "high" ? "high" : finding.priority === "low" ? "low" : "medium");
+    const assignee = users.data?.find((u) => u.id === finding.responsible_person_id)?.id ?? "";
+    setAAssignee(assignee);
+    setAddAction(true);
+  };
 
   const preflight = useMemo(
-    () => findingPreflight(finding, actions, derivedDocStatus, evidence.length),
-    [finding, actions, derivedDocStatus, evidence.length],
+    () => findingPreflight(finding, actions, derivedDocStatus, evidence.length, systemCheck?.gaps ?? []),
+    [finding, actions, derivedDocStatus, evidence.length, systemCheck],
   );
+
 
   return (
     <div className="rounded-lg border bg-card">
@@ -176,7 +196,12 @@ export function FindingCard({
           {systemCheck && <FindingSystemCheck check={systemCheck} />}
 
           {/* ---------- AI-forslag (må godkjennes) ---------- */}
-          <FindingAiSuggestions finding={finding} inspectionId={inspectionId} canEdit={canEdit} />
+          <FindingAiSuggestions
+            finding={finding}
+            inspectionId={inspectionId}
+            canEdit={canEdit}
+            onCreateActionFromSolution={prefillAction}
+          />
 
           {/* ---------- C. INTERN BEHANDLING ---------- */}
           <div className="space-y-3 rounded-md border p-3">
@@ -356,40 +381,66 @@ export function FindingCard({
                   <Plus className="mr-1.5 h-3.5 w-3.5" /> Nytt tiltak
                 </Button>
                 {finding.proposed_solution && (
-                  <Button size="sm" variant="ghost"
-                    onClick={() => { setAddAction(true); setATitle(finding.proposed_solution!.slice(0, 120)); setADue(finding.internal_deadline ?? ""); }}>
+                  <Button size="sm" variant="ghost" onClick={() => prefillAction(finding.proposed_solution!)}>
                     Opprett tiltak fra foreslått løsning
                   </Button>
                 )}
               </div>
             )}
             {canEdit && addAction && (
-              <div className="flex flex-wrap items-end gap-2 rounded-md border p-3">
-                <div className="min-w-[220px] flex-1">
-                  <Label className="text-xs">Hva skal gjøres?</Label>
-                  <Input value={aTitle} onChange={(e) => setATitle(e.target.value)} />
+              <div className="space-y-2 rounded-md border p-3">
+                <p className="text-[11px] text-muted-foreground">
+                  Kontroller opplysningene før tiltaket opprettes. Tiltaket blir et ordinært tiltak i tiltakssystemet.
+                </p>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-[220px] flex-1">
+                    <Label className="text-xs">Hva skal gjøres?</Label>
+                    <Input value={aTitle} onChange={(e) => setATitle(e.target.value)} />
+                  </div>
+                  <div className="w-48">
+                    <Label className="text-xs">Ansvarlig</Label>
+                    <Select value={aAssignee} onValueChange={setAAssignee}>
+                      <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
+                      <SelectContent>{(users.data ?? []).map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-40">
+                    <Label className="text-xs">Frist</Label>
+                    <Input type="date" value={aDue} onChange={(e) => setADue(e.target.value)} />
+                  </div>
+                  <div className="w-40">
+                    <Label className="text-xs">Prioritet</Label>
+                    <Select value={aPriority} onValueChange={setAPriority}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="high">Høy</SelectItem>
+                        <SelectItem value="medium">Middels</SelectItem>
+                        <SelectItem value="low">Lav</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="w-48">
-                  <Label className="text-xs">Ansvarlig</Label>
-                  <Select value={aAssignee} onValueChange={setAAssignee}>
-                    <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
-                    <SelectContent>{(users.data ?? []).map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div>
+                  <Label className="text-xs">Beskrivelse</Label>
+                  <Textarea rows={2} value={aDesc} onChange={(e) => setADesc(e.target.value)} />
                 </div>
-                <div className="w-40">
-                  <Label className="text-xs">Frist</Label>
-                  <Input type="date" value={aDue} onChange={(e) => setADue(e.target.value)} />
+                <div className="flex gap-2">
+                  <Button size="sm" disabled={!aTitle.trim()}
+                    onClick={() => actionMut.create.mutate(
+                      {
+                        inspection_id: inspectionId, finding_id: finding.id, title: aTitle.trim(),
+                        description: aDesc.trim() || null, assignee_user_id: aAssignee || null,
+                        due_date: aDue || null, priority: aPriority,
+                      },
+                      { onSuccess: () => { setAddAction(false); setATitle(""); setAAssignee(""); setADue(""); setADesc(""); setAPriority("medium"); } },
+                    )}>Opprett tiltak</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setAddAction(false)}>Avbryt</Button>
                 </div>
-                <Button size="sm" disabled={!aTitle.trim()}
-                  onClick={() => actionMut.create.mutate(
-                    { inspection_id: inspectionId, finding_id: finding.id, title: aTitle.trim(), assignee_user_id: aAssignee || null, due_date: aDue || null },
-                    { onSuccess: () => { setAddAction(false); setATitle(""); setAAssignee(""); setADue(""); } },
-                  )}>Opprett</Button>
-                <Button size="sm" variant="ghost" onClick={() => setAddAction(false)}>Avbryt</Button>
               </div>
             )}
             <p className="text-[11px] text-muted-foreground">Tiltak lagres i det eksisterende tiltakssystemet og vises også i HMS-oversiktene.</p>
           </div>
+
 
           {/* ---------- Dokumentasjon og bevis ---------- */}
           <div className="space-y-2">
@@ -397,11 +448,79 @@ export function FindingCard({
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dokumentasjon og bevis</p>
               <ComplianceStatusBadge label={docMeta.label} tone={docMeta.tone} />
             </div>
+            <FindingDocumentationSuggestions
+              finding={finding}
+              inspectionId={inspectionId}
+              evidence={evidence}
+              canEdit={canEdit}
+            />
             <FindingEvidencePanel inspectionId={inspectionId} findingId={finding.id} evidence={evidence} canEdit={canEdit} />
             {derivedDocStatus === "gaps" && (
               <p className="text-xs text-destructive">Kravmotoren finner mangler – dokumentasjonen kan ikke markeres komplett.</p>
             )}
           </div>
+
+          {/* ---------- Lukking: forhold rettet vs dokumentasjon komplett ---------- */}
+          <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-sm font-medium">Forhold rettet</p>
+                <ComplianceStatusBadge
+                  label={finding.condition_corrected_at ? `Rettet ${formatDate(finding.condition_corrected_at)}` : "Ikke rettet"}
+                  tone={finding.condition_corrected_at ? "ok" : "warn"}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Bekrefter at det faktiske forholdet er utbedret i virksomheten.
+              </p>
+              {canEdit && (finding.condition_corrected_at ? (
+                <Button size="sm" variant="ghost"
+                  onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, condition_corrected_at: null, condition_corrected_by: null } as any)}>
+                  <Undo2 className="mr-1.5 h-3.5 w-3.5" /> Opphev
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" disabled={blockingGaps.length > 0}
+                  onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, condition_corrected_at: new Date().toISOString(), condition_corrected_by: user?.id ?? null } as any)}>
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Marker forholdet som rettet
+                </Button>
+              ))}
+              {blockingGaps.length > 0 && !finding.condition_corrected_at && (
+                <p className="text-[11px] text-destructive">
+                  Systemet viser fortsatt at forholdet ikke er rettet. Rett dataene først.
+                </p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-sm font-medium">Dokumentasjon komplett</p>
+                <ComplianceStatusBadge
+                  label={finding.documentation_complete_at ? `Bekreftet ${formatDate(finding.documentation_complete_at)}` : "Ikke bekreftet"}
+                  tone={finding.documentation_complete_at ? "ok" : "warn"}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Bekrefter at rettingen er dokumentert med bevis som kan vedlegges svarpakken.
+              </p>
+              {canEdit && (finding.documentation_complete_at ? (
+                <Button size="sm" variant="ghost"
+                  onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, documentation_complete_at: null, documentation_complete_by: null } as any)}>
+                  <Undo2 className="mr-1.5 h-3.5 w-3.5" /> Opphev
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" disabled={evidence.length === 0 || derivedDocStatus === "gaps"}
+                  onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, documentation_complete_at: new Date().toISOString(), documentation_complete_by: user?.id ?? null } as any)}>
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Marker dokumentasjonen komplett
+                </Button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground sm:col-span-2">
+              Et avvik er ikke klart for oversendelse bare fordi et tiltak er fullført – både forholdet og
+              dokumentasjonen må bekreftes.
+            </p>
+          </div>
+
 
           {/* ---------- Svar til myndigheten ---------- */}
           <FindingResponseSection
@@ -412,8 +531,10 @@ export function FindingCard({
             actions={actions}
             evidence={evidence}
             systemFacts={systemCheck?.facts ?? []}
+            unresolvedGaps={(systemCheck?.gaps ?? []).filter((g) => g.blocking).map((g) => g.message)}
             canEdit={canEdit}
           />
+
 
           {/* ---------- Pre-flight før oversendelse ---------- */}
           <div className={cn("space-y-1 rounded-md border p-3", preflight.ready ? "border-emerald-500/40 bg-emerald-500/5" : "border-amber-500/40 bg-amber-500/5")}>

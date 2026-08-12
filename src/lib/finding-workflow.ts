@@ -99,6 +99,21 @@ export interface SystemCheckSources {
   personName: (personId: string | null) => string | null;
 }
 
+/**
+ * Et konkret gap systemet kan bekrefte fra egne data, med henvisning til
+ * stedet i MCS hvor forholdet faktisk rettes. Tilsynsmodulen skal aldri
+ * lage en egen løsning for dette.
+ */
+export interface SystemGap {
+  id: string;
+  kind: "competence" | "requirement" | "org_role" | "internal_control" | "regulation" | "documentation";
+  message: string;
+  actionLabel: string;
+  route: string;
+  /** Blokkerer «Klar for oversendelse» fordi forholdet fortsatt ikke er rettet */
+  blocking: boolean;
+}
+
 export interface SystemCheckResult {
   competence: { typeId: string; typeKey: string; name: string; coverage: CoverageLike | null }[];
   orgRoles: { id: string; title: string; personName: string | null; deputyName: string | null; valid_from: string | null; valid_to: string | null }[];
@@ -111,7 +126,10 @@ export interface SystemCheckResult {
   /** Kvalifikasjonsvurdering – aldri en konklusjon om enkeltpersoner */
   qualificationNote: string | null;
   facts: string[];
+  /** Handlingsorienterte gap med lenke til riktig sted i systemet */
+  gaps: SystemGap[];
 }
+
 
 function roleIsActive(r: { valid_from: string | null; valid_to: string | null }): boolean {
   const today = new Date().toISOString().slice(0, 10);
@@ -127,6 +145,7 @@ function roleIsActive(r: { valid_from: string | null; valid_to: string | null })
 export function systemCheckForFinding(rawText: string, s: SystemCheckSources): SystemCheckResult {
   const text = (rawText ?? "").toLowerCase();
   const facts: string[] = [];
+  const gaps: SystemGap[] = [];
 
   /* Kompetanse */
   const competence = s.competenceTypes
@@ -137,12 +156,39 @@ export function systemCheckForFinding(rawText: string, s: SystemCheckSources): S
     const cov = c.coverage;
     if (!cov || cov.total === 0) {
       facts.push(`Ingen aktive ansatte er omfattet av et registrert krav om ${c.name}.`);
+      gaps.push({
+        id: `req-${c.typeId}`,
+        kind: "requirement",
+        message: `Ingen aktive ansatte er omfattet av et registrert krav om ${c.name}.`,
+        actionLabel: "Registrer kompetansekrav",
+        route: "/compliance/kompetansekrav",
+        blocking: false,
+      });
       continue;
     }
     const parts = [`${cov.total} aktive ansatte omfattes av kravet om ${c.name}`, `${cov.ok} har gyldig dokumentasjon`];
     if (cov.warn) parts.push(`${cov.warn} utløper snart`);
     if (cov.gaps) parts.push(`${cov.gaps} mangler gyldig dokumentasjon`);
     facts.push(`${parts.join(", ")}.`);
+    if (cov.gaps > 0) {
+      gaps.push({
+        id: `comp-${c.typeId}`,
+        kind: "competence",
+        message: `${cov.gaps} ${cov.gaps === 1 ? "ansatt" : "ansatte"} mangler gyldig dokumentert ${c.name}.`,
+        actionLabel: "Registrer kompetanse på ansatt",
+        route: `/compliance/kompetanse?type=${encodeURIComponent(c.typeKey)}&status=missing_document`,
+        blocking: true,
+      });
+    } else if (cov.warn > 0) {
+      gaps.push({
+        id: `comp-warn-${c.typeId}`,
+        kind: "competence",
+        message: `${cov.warn} ${cov.warn === 1 ? "ansatt" : "ansatte"} har ${c.name} som utløper snart.`,
+        actionLabel: "Åpne kompetansematrisen",
+        route: `/compliance/kompetanse?type=${encodeURIComponent(c.typeKey)}`,
+        blocking: false,
+      });
+    }
   }
 
   /* Organisasjon og ansvar */
@@ -159,8 +205,16 @@ export function systemCheckForFinding(rawText: string, s: SystemCheckSources): S
 
   let orgRoleGap: string | null = null;
   if (mentions(text, ORG_KEYWORDS) && activeRoles.length === 0) {
-    orgRoleGap = "Det er ikke registrert en aktiv rolle for faglig ansvarlig elektro i Organisasjon og ansvar.";
+    orgRoleGap = "Ingen aktiv faglig ansvarlig elektro er registrert i Organisasjon og ansvar.";
     facts.push(orgRoleGap);
+    gaps.push({
+      id: "org-role-missing",
+      kind: "org_role",
+      message: orgRoleGap,
+      actionLabel: "Registrer faglig ansvarlig",
+      route: "/compliance/organisasjon",
+      blocking: true,
+    });
   }
   for (const r of orgRoles) {
     facts.push(
@@ -168,6 +222,16 @@ export function systemCheckForFinding(rawText: string, s: SystemCheckSources): S
         ? `${r.title} er registrert: ${r.personName}${r.valid_from ? ` (gyldig fra ${r.valid_from})` : ""}${r.valid_to ? ` til ${r.valid_to}` : ""}.`
         : `${r.title} finnes som rolle, men ingen person er tilordnet.`,
     );
+    if (!r.personName) {
+      gaps.push({
+        id: `org-role-${r.id}`,
+        kind: "org_role",
+        message: `${r.title} finnes som rolle, men ingen person er tilordnet.`,
+        actionLabel: "Tilordne person til rollen",
+        route: "/compliance/organisasjon",
+        blocking: true,
+      });
+    }
   }
 
   /* Regelverk */
@@ -175,12 +239,34 @@ export function systemCheckForFinding(rawText: string, s: SystemCheckSources): S
     .filter((r) => hit(text, r.short_name) || hit(text, r.name))
     .map((r) => ({ id: r.id, label: r.short_name ? `${r.short_name} – ${r.name}` : r.name }));
 
+  if (regulations.length === 0 && /(§|forskrift|nek\s?400|\bfel\b|\bfek\b|\bfse\b)/.test(text)) {
+    const msg = "Funnet viser til regelverk som ikke er gjenkjent i regelverksregisteret.";
+    facts.push(msg);
+    gaps.push({
+      id: "regulation-missing",
+      kind: "regulation",
+      message: msg,
+      actionLabel: "Åpne regelverksregisteret",
+      route: "/compliance/regelverk",
+      blocking: false,
+    });
+  }
+
   /* Internkontroll */
   const audits = mentions(text, INTERNAL_CONTROL_KEYWORDS)
     ? s.audits.filter((a) => a.performed_at).slice(0, 3).map((a) => ({ id: a.id, title: a.title, performed_at: a.performed_at }))
     : s.audits.filter((a) => hit(text, a.title)).map((a) => ({ id: a.id, title: a.title, performed_at: a.performed_at }));
   if (mentions(text, INTERNAL_CONTROL_KEYWORDS) && audits.length === 0) {
-    facts.push("Det er ikke registrert gjennomført internkontroll som kan dokumentere dette punktet.");
+    const msg = "Det er ikke registrert gjennomført internkontroll som kan dokumentere dette punktet.";
+    facts.push(msg);
+    gaps.push({
+      id: "internal-control-missing",
+      kind: "internal_control",
+      message: msg,
+      actionLabel: "Registrer internkontroll",
+      route: "/compliance/internkontroll",
+      blocking: true,
+    });
   }
 
   /* Virksomhetsregistrering */
@@ -205,10 +291,21 @@ export function systemCheckForFinding(rawText: string, s: SystemCheckSources): S
         ? "Følgende dokumenterte kompetanser er relevante for vurderingen – alle registrerte kompetansekrav er dokumentert oppfylt."
         : "Det er ikke registrert kompetansekrav som kan brukes til å vurdere kvalifikasjonene.";
     facts.push(qualificationNote);
+    if (unverified.size) {
+      gaps.push({
+        id: "qualification-unverified",
+        kind: "competence",
+        message: qualificationNote,
+        actionLabel: "Åpne kompetansematrisen",
+        route: "/compliance/kompetanse?status=missing_document",
+        blocking: false,
+      });
+    }
   }
 
-  return { competence, orgRoles, orgRoleGap, regulations, audits, categoryHint, qualificationNote, facts };
+  return { competence, orgRoles, orgRoleGap, regulations, audits, categoryHint, qualificationNote, facts, gaps };
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Pre-flight før funn kan merkes «Klar for oversendelse»              */
@@ -222,6 +319,10 @@ export interface PreflightFinding {
   responsible_role_id: string | null;
   internal_deadline: string | null;
   status: string;
+  /** Forholdet er bekreftet rettet (uavhengig av dokumentasjon) */
+  condition_corrected_at?: string | null;
+  /** Dokumentasjonen av rettingen er bekreftet komplett */
+  documentation_complete_at?: string | null;
 }
 
 export interface PreflightAction {
@@ -235,6 +336,8 @@ export interface PreflightResult {
   ready: boolean;
   missing: string[];
   notes: string[];
+  /** Gap i virksomhetsdata som fortsatt ikke er rettet */
+  unresolvedGaps: SystemGap[];
 }
 
 /**
@@ -247,6 +350,7 @@ export function findingPreflight(
   actions: PreflightAction[],
   docStatus: DocumentationStatus,
   evidenceCount: number,
+  systemGaps: SystemGap[] = [],
 ): PreflightResult {
   const missing: string[] = [];
   const notes: string[] = [];
@@ -262,6 +366,15 @@ export function findingPreflight(
   else if (docStatus === "gaps") missing.push("Dokumentasjonen har mangler ifølge kravmotoren");
   else if (docStatus === "incomplete") notes.push("Dokumentasjonen er registrert som ufullstendig");
 
+  if (!finding.condition_corrected_at) missing.push("Forholdet er ikke bekreftet rettet");
+  if (!finding.documentation_complete_at) missing.push("Dokumentasjonen er ikke bekreftet komplett");
+
+  const unresolvedGaps = systemGaps.filter((g) => g.blocking);
+  for (const g of unresolvedGaps) {
+    missing.push(`Systemet viser fortsatt at forholdet ikke er rettet: ${g.message}`);
+  }
+  for (const g of systemGaps.filter((g) => !g.blocking)) notes.push(g.message);
+
   if (!finding.response_text?.trim()) missing.push("Svartekst til myndigheten mangler");
   else if (!finding.response_approved_at) missing.push("Svartekst er ikke godkjent");
 
@@ -270,8 +383,9 @@ export function findingPreflight(
     if (days < 0 && finding.status !== "approved") notes.push(`Intern frist er passert med ${Math.abs(days)} dager`);
   }
 
-  return { ready: missing.length === 0, missing, notes };
+  return { ready: missing.length === 0, missing, notes, unresolvedGaps };
 }
+
 
 /* ------------------------------------------------------------------ */
 /* AI-forslag – aldri operative data før godkjenning                   */
