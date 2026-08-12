@@ -142,6 +142,7 @@ import InspectionsPage from "./pages/compliance/InspectionsPage";
 import InspectionDetailPage from "./pages/compliance/InspectionDetailPage";
 import InspectionFormPage from "./pages/compliance/InspectionFormPage";
 import InspectionReportReviewPage from "./pages/compliance/InspectionReportReviewPage";
+import InspectionResponsePreviewPage from "./pages/compliance/InspectionResponsePreviewPage";
 
 import { CompanyProvider, useCompanyContext } from "@/hooks/useCompanyContext";
 import { ActiveCompanyForPermissions } from "@/hooks/usePermissions";
