@@ -162,3 +162,6 @@ verify_jwt = false
 [functions.calc-ai-analyze]
 verify_jwt = false
 
+
+[functions.inspection-response-send]
+verify_jwt = false
