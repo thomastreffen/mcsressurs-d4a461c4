@@ -153,7 +153,13 @@ export default function ComplianceCompetencePage() {
               </thead>
               <tbody className="divide-y">
                 {rows.map(({ person: p, cells, rowStatus, missingRequired }) => (
-                  <tr key={p.person_id} className="cursor-pointer hover:bg-muted/30" onClick={() => setOpenPerson(p.person_id)}>
+                  <tr
+                    key={p.person_id}
+                    className="cursor-pointer hover:bg-muted/30"
+                    onClick={() => navigate(`/hms/people/${p.person_id}?tab=competence`)}
+                    title="Åpne ansattkortet (HMS → Ansatte)"
+                  >
+
                     <td className="sticky left-0 z-10 bg-background px-4 py-2.5">
                       <p className="font-medium">{p.full_name}</p>
                       <p className="text-xs text-muted-foreground">{p.department_name ?? "Uten avdeling"}</p>
