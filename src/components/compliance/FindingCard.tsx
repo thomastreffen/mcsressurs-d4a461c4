@@ -398,11 +398,79 @@ export function FindingCard({
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dokumentasjon og bevis</p>
               <ComplianceStatusBadge label={docMeta.label} tone={docMeta.tone} />
             </div>
+            <FindingDocumentationSuggestions
+              finding={finding}
+              inspectionId={inspectionId}
+              evidence={evidence}
+              canEdit={canEdit}
+            />
             <FindingEvidencePanel inspectionId={inspectionId} findingId={finding.id} evidence={evidence} canEdit={canEdit} />
             {derivedDocStatus === "gaps" && (
               <p className="text-xs text-destructive">Kravmotoren finner mangler – dokumentasjonen kan ikke markeres komplett.</p>
             )}
           </div>
+
+          {/* ---------- Lukking: forhold rettet vs dokumentasjon komplett ---------- */}
+          <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-sm font-medium">Forhold rettet</p>
+                <ComplianceStatusBadge
+                  label={finding.condition_corrected_at ? `Rettet ${formatDate(finding.condition_corrected_at)}` : "Ikke rettet"}
+                  tone={finding.condition_corrected_at ? "ok" : "warn"}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Bekrefter at det faktiske forholdet er utbedret i virksomheten.
+              </p>
+              {canEdit && (finding.condition_corrected_at ? (
+                <Button size="sm" variant="ghost"
+                  onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, condition_corrected_at: null, condition_corrected_by: null } as any)}>
+                  <Undo2 className="mr-1.5 h-3.5 w-3.5" /> Opphev
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" disabled={blockingGaps.length > 0}
+                  onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, condition_corrected_at: new Date().toISOString(), condition_corrected_by: user?.id ?? null } as any)}>
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Marker forholdet som rettet
+                </Button>
+              ))}
+              {blockingGaps.length > 0 && !finding.condition_corrected_at && (
+                <p className="text-[11px] text-destructive">
+                  Systemet viser fortsatt at forholdet ikke er rettet. Rett dataene først.
+                </p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-sm font-medium">Dokumentasjon komplett</p>
+                <ComplianceStatusBadge
+                  label={finding.documentation_complete_at ? `Bekreftet ${formatDate(finding.documentation_complete_at)}` : "Ikke bekreftet"}
+                  tone={finding.documentation_complete_at ? "ok" : "warn"}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Bekrefter at rettingen er dokumentert med bevis som kan vedlegges svarpakken.
+              </p>
+              {canEdit && (finding.documentation_complete_at ? (
+                <Button size="sm" variant="ghost"
+                  onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, documentation_complete_at: null, documentation_complete_by: null } as any)}>
+                  <Undo2 className="mr-1.5 h-3.5 w-3.5" /> Opphev
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" disabled={evidence.length === 0 || derivedDocStatus === "gaps"}
+                  onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, documentation_complete_at: new Date().toISOString(), documentation_complete_by: user?.id ?? null } as any)}>
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Marker dokumentasjonen komplett
+                </Button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground sm:col-span-2">
+              Et avvik er ikke klart for oversendelse bare fordi et tiltak er fullført – både forholdet og
+              dokumentasjonen må bekreftes.
+            </p>
+          </div>
+
 
           {/* ---------- Svar til myndigheten ---------- */}
           <FindingResponseSection
