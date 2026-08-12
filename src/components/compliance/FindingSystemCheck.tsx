@@ -16,7 +16,7 @@ import type { SystemCheckResult } from "@/lib/finding-workflow";
 export function FindingSystemCheck({ check }: { check: SystemCheckResult }) {
   const navigate = useNavigate();
   const empty =
-    !check.competence.length && !check.orgRoles.length && !check.orgRoleGap &&
+    !check.competence.length && !check.orgRoles.length && !check.orgRoleGap && !check.gaps.length &&
     !check.regulations.length && !check.audits.length && !check.qualificationNote;
 
   return (
@@ -33,6 +33,33 @@ export function FindingSystemCheck({ check }: { check: SystemCheckResult }) {
           manuelt for å få kontrollberegning.
         </p>
       )}
+
+      {/* Handlingsorienterte gap – peker alltid til eksisterende sted i systemet */}
+      {check.gaps.length > 0 && (
+        <div className="space-y-2">
+          {check.gaps.map((g) => (
+            <div
+              key={g.id}
+              className={
+                "flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 " +
+                (g.blocking ? "border-destructive/40 bg-destructive/5" : "border-amber-500/40 bg-amber-500/5")
+              }
+            >
+              <p className="flex min-w-[200px] flex-1 items-start gap-1.5 text-xs">
+                <ShieldAlert className={"mt-0.5 h-3.5 w-3.5 shrink-0 " + (g.blocking ? "text-destructive" : "text-amber-600")} />
+                <span>{g.message}</span>
+              </p>
+              <Button size="sm" variant={g.blocking ? "default" : "outline"} onClick={() => navigate(g.route)}>
+                {g.actionLabel} <ExternalLink className="ml-1.5 h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+          <p className="text-[11px] text-muted-foreground">
+            Forholdet rettes der det hører hjemme i systemet – ikke inne i tilsynssaken.
+          </p>
+        </div>
+      )}
+
 
       {/* Kompetanse – tall fra kravmotoren */}
       {check.competence.map((c) => (
