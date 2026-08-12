@@ -323,74 +323,17 @@ export default function InspectionDetailPage() {
         </TabsContent>
 
         {/* Svarpakke */}
-        <TabsContent value="response" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Velg funn som skal inngå i svaret</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {(findings.data ?? []).length === 0 && <p className="text-sm text-muted-foreground">Ingen funn å svare på.</p>}
-              {(findings.data ?? []).map((f) => (
-                <label key={f.id} className="flex items-start gap-3 rounded-md border px-3 py-2 text-sm">
-                  <Checkbox className="mt-0.5" checked={!!selected[f.id]}
-                    onCheckedChange={(v) => setSelected((s) => ({ ...s, [f.id]: !!v }))} />
-                  <span className="flex-1">
-                    <span className="font-medium">Funn {f.finding_number} · {f.title}</span>
-                    <span className="mt-1 flex flex-wrap gap-2 text-xs">
-                      <ComplianceStatusBadge label={DOCUMENTATION_STATUSES[docStatusByFinding[f.id] ?? "none"].label} tone={DOCUMENTATION_STATUSES[docStatusByFinding[f.id] ?? "none"].tone} />
-                      {f.response_text?.trim()
-                        ? <span className="text-muted-foreground">Svartekst klar</span>
-                        : <span className="text-destructive">Mangler svartekst</span>}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </CardContent>
-          </Card>
-
-          {selectedFindings.length > 0 && (
-            <>
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-base">Kontroll før oversending</CardTitle></CardHeader>
-                <CardContent className="space-y-1 text-sm">
-                  {packageIssues.length === 0 ? (
-                    <p className="flex items-center gap-2 text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Alt er på plass for de valgte funnene.</p>
-                  ) : (
-                    packageIssues.map((msg) => (
-                      <p key={msg} className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-4 w-4" /> {msg}</p>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-base">Svarpakke – utkast</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {selectedFindings.map((f) => (
-                    <div key={f.id} className="space-y-2 border-b pb-4 last:border-0 last:pb-0">
-                      <p className="text-sm font-semibold">Funn {f.finding_number} · {f.title}</p>
-                      {f.original_text && (
-                        <p className="rounded-md bg-muted/30 p-2 text-xs text-muted-foreground whitespace-pre-wrap">{f.original_text}</p>
-                      )}
-                      <p className="text-sm whitespace-pre-wrap">{f.response_text?.trim() || "— mangler svartekst —"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Tiltak: {(actions.data ?? []).filter((a) => a.compliance_finding_id === f.id).map((a) => `${a.title} (${a.status})`).join("; ") || "ingen"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Dokumentasjon: {(evidence.data ?? []).filter((e) => e.finding_id === f.id).map((e) => e.label ?? e.source_kind).join("; ") || "ingen"}
-                      </p>
-                    </div>
-                  ))}
-                  {canEdit && (
-                    <div className="flex justify-end">
-                      <Button size="sm" disabled={packageIssues.length > 0}
-                        onClick={() => setStatus.mutate({ id: i.id, status: "submitted" })}>
-                        <Mail className="mr-1.5 h-3.5 w-3.5" /> Marker som oversendt
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </>
-          )}
+        <TabsContent value="response" className="mt-4">
+          <ResponsePackageTab
+            inspection={i}
+            findings={findings.data ?? []}
+            evidence={evidence.data ?? []}
+            actions={actions.data ?? []}
+            companyName={activeCompany?.name ?? null}
+            canEdit={canEdit}
+          />
         </TabsContent>
+
 
         {/* Korrespondanse */}
         <TabsContent value="correspondence" className="mt-4 space-y-3">
