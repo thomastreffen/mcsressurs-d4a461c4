@@ -2210,7 +2210,10 @@ export type Database = {
         Row: {
           areas: string[]
           audit_type: string
+          checkpoints: Json
           company_id: string
+          completed_at: string | null
+          completed_by: string | null
           conclusion: string | null
           created_at: string
           created_by: string | null
@@ -2223,15 +2226,23 @@ export type Database = {
           participants: string[]
           performed_at: string | null
           planned_date: string | null
+          report_document_id: string | null
+          report_markdown: string | null
           responsible_person_id: string | null
+          source_finding_id: string | null
+          source_inspection_id: string | null
           status: string
+          system_snapshot: Json | null
           title: string
           updated_at: string
         }
         Insert: {
           areas?: string[]
           audit_type?: string
+          checkpoints?: Json
           company_id: string
+          completed_at?: string | null
+          completed_by?: string | null
           conclusion?: string | null
           created_at?: string
           created_by?: string | null
@@ -2244,15 +2255,23 @@ export type Database = {
           participants?: string[]
           performed_at?: string | null
           planned_date?: string | null
+          report_document_id?: string | null
+          report_markdown?: string | null
           responsible_person_id?: string | null
+          source_finding_id?: string | null
+          source_inspection_id?: string | null
           status?: string
+          system_snapshot?: Json | null
           title: string
           updated_at?: string
         }
         Update: {
           areas?: string[]
           audit_type?: string
+          checkpoints?: Json
           company_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
           conclusion?: string | null
           created_at?: string
           created_by?: string | null
@@ -2265,8 +2284,13 @@ export type Database = {
           participants?: string[]
           performed_at?: string | null
           planned_date?: string | null
+          report_document_id?: string | null
+          report_markdown?: string | null
           responsible_person_id?: string | null
+          source_finding_id?: string | null
+          source_inspection_id?: string | null
           status?: string
+          system_snapshot?: Json | null
           title?: string
           updated_at?: string
         }
@@ -2276,6 +2300,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_audits_report_document_id_fkey"
+            columns: ["report_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
           {
@@ -2290,6 +2321,20 @@ export type Database = {
             columns: ["responsible_person_id"]
             isOneToOne: false
             referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_audits_source_finding_id_fkey"
+            columns: ["source_finding_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_audits_source_inspection_id_fkey"
+            columns: ["source_inspection_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_inspections"
             referencedColumns: ["id"]
           },
         ]

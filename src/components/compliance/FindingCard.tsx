@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
 import { FindingEvidencePanel } from "@/components/compliance/FindingEvidencePanel";
 import { FindingSystemCheck } from "@/components/compliance/FindingSystemCheck";
+import { FindingInternalControl } from "@/components/compliance/FindingInternalControl";
 import { FindingAiSuggestions } from "@/components/compliance/FindingAiSuggestions";
 import { FindingDocumentationSuggestions } from "@/components/compliance/FindingDocumentationSuggestions";
 import { FindingResponseSection } from "@/components/compliance/FindingResponseSection";
@@ -233,6 +234,14 @@ export function FindingCard({
               }}
             />
           )}
+
+          {/* ---------- Internkontroll startet fra funnet ---------- */}
+          <FindingInternalControl
+            inspectionId={inspectionId}
+            findingId={finding.id}
+            evidence={evidence}
+            canEdit={canEdit}
+          />
 
           {/* ---------- AI-forslag (må godkjennes) ---------- */}
           <FindingAiSuggestions
