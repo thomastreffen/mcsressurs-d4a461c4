@@ -138,6 +138,9 @@ import ComplianceRequirementsPage from "./pages/compliance/ComplianceRequirement
 import ComplianceRegulationsPage from "./pages/compliance/ComplianceRegulationsPage";
 import ComplianceOrganisationPage from "./pages/compliance/ComplianceOrganisationPage";
 import ComplianceInternalControlPage from "./pages/compliance/ComplianceInternalControlPage";
+import InspectionsPage from "./pages/compliance/InspectionsPage";
+import InspectionDetailPage from "./pages/compliance/InspectionDetailPage";
+import InspectionFormPage from "./pages/compliance/InspectionFormPage";
 import { CompanyProvider, useCompanyContext } from "@/hooks/useCompanyContext";
 import { ActiveCompanyForPermissions } from "@/hooks/usePermissions";
 import { PreviewModeProvider } from "@/hooks/usePreviewMode";
@@ -593,6 +596,26 @@ const App = () => (
               <Route path="/compliance/internkontroll" element={
                 <ProtectedRoute requiredPermission="hms.view">
                   <HmsPage><ComplianceInternalControlPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/tilsyn" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><InspectionsPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/tilsyn/ny" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><InspectionFormPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/tilsyn/:id" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><InspectionDetailPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/tilsyn/:id/rediger" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><InspectionFormPage /></HmsPage>
                 </ProtectedRoute>
               } />
               {/* HMS & HR module */}
