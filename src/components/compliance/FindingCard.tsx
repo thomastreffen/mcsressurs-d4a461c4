@@ -54,6 +54,7 @@ export function FindingCard({
   const orgRoles = useOrgRoles();
   const users = useAssignableUsers();
   const { checkFor } = useFindingSystemCheck();
+  const { user } = useAuth();
 
   const [draft, setDraft] = useState<Partial<Finding>>({});
   const val = <K extends keyof Finding>(k: K): any => (draft[k] !== undefined ? draft[k] : finding[k]);
