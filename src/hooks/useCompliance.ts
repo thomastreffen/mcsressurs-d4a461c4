@@ -94,7 +94,17 @@ export interface ComplianceAudit {
   improvements: string | null;
   conclusion: string | null;
   status: string;
+  /** Systemstøttet gjennomgang */
+  source_inspection_id?: string | null;
+  source_finding_id?: string | null;
+  checkpoints?: any;
+  system_snapshot?: any;
+  report_markdown?: string | null;
+  report_document_id?: string | null;
+  completed_at?: string | null;
+  completed_by?: string | null;
 }
+
 
 function useCid() {
   const { activeCompanyId } = useCompanyContext();
@@ -468,14 +478,17 @@ export function useAuditMutations() {
   const save = useMutation({
     mutationFn: async (payload: Partial<ComplianceAudit>) => {
       if (payload.id) {
-        const { error } = await sb.from("compliance_audits").update(payload).eq("id", payload.id);
+        const { data, error } = await sb.from("compliance_audits").update(payload).eq("id", payload.id).select().single();
         if (error) throw error;
-      } else {
-        const { error } = await sb
-          .from("compliance_audits")
-          .insert({ ...payload, company_id: cid, created_by: user?.id ?? null });
-        if (error) throw error;
+        return data as ComplianceAudit;
       }
+      const { data, error } = await sb
+        .from("compliance_audits")
+        .insert({ ...payload, company_id: cid, created_by: user?.id ?? null })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as ComplianceAudit;
     },
     onSuccess: () => done("Internrevisjon lagret"),
     onError: (e: any) => toast.error(e.message ?? "Kunne ikke lagre"),
@@ -496,7 +509,7 @@ export function useAuditMutations() {
   /** Avvik/tiltak gjenbruker eksisterende HMS-tiltakssystem */
   const createAction = useMutation({
     mutationFn: async (input: { audit_id: string; title: string; description?: string; due_date?: string | null; priority?: string }) => {
-      const { error } = await sb.from("hms_action_items").insert({
+      const { data, error } = await sb.from("hms_action_items").insert({
         company_id: cid,
         compliance_audit_id: input.audit_id,
         title: input.title,
@@ -505,8 +518,9 @@ export function useAuditMutations() {
         priority: input.priority ?? "medium",
         status: "open",
         created_by: user?.id ?? null,
-      });
+      }).select("id").single();
       if (error) throw error;
+      return data?.id as string;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["compliance-audit-actions"] });
