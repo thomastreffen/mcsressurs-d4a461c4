@@ -2739,11 +2739,15 @@ export type Database = {
           authority_comment: string | null
           authority_requirement: string | null
           company_id: string
+          condition_corrected_at: string | null
+          condition_corrected_by: string | null
           created_at: string
           created_by: string | null
           deadline: string | null
           deleted_at: string | null
           deleted_by: string | null
+          documentation_complete_at: string | null
+          documentation_complete_by: string | null
           documentation_status: string
           finding_number: number
           finding_type: string
@@ -2774,11 +2778,15 @@ export type Database = {
           authority_comment?: string | null
           authority_requirement?: string | null
           company_id: string
+          condition_corrected_at?: string | null
+          condition_corrected_by?: string | null
           created_at?: string
           created_by?: string | null
           deadline?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          documentation_complete_at?: string | null
+          documentation_complete_by?: string | null
           documentation_status?: string
           finding_number?: number
           finding_type?: string
@@ -2809,11 +2817,15 @@ export type Database = {
           authority_comment?: string | null
           authority_requirement?: string | null
           company_id?: string
+          condition_corrected_at?: string | null
+          condition_corrected_by?: string | null
           created_at?: string
           created_by?: string | null
           deadline?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          documentation_complete_at?: string | null
+          documentation_complete_by?: string | null
           documentation_status?: string
           finding_number?: number
           finding_type?: string
