@@ -1,18 +1,18 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
 import { Info, ShieldCheck } from "lucide-react";
 import { useCompetenceTypes } from "@/hooks/useCompliance";
 import {
-  useRequirementStatus, useJobRoles, usePersonJobRole, useSetPersonJobRole,
+  useRequirementStatus, useJobRoles, usePersonJobRole,
 } from "@/hooks/useComplianceRequirements";
 import {
   REQUIREMENT_STATUS_META, formatDate, requirementOverallTone, scopeSourceLabel,
 } from "@/lib/compliance";
+
 
 /**
  * «Gjeldende kompetansekrav» på ansattkortet.
@@ -23,8 +23,14 @@ export function PersonRequirementsSection({ personId, canManage }: { personId: s
   const types = useCompetenceTypes();
   const jobRoles = useJobRoles();
   const profile = usePersonJobRole(personId);
-  const setRole = useSetPersonJobRole();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const goToEmployment = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("tab");
+    setSearchParams(next, { replace: false });
+  };
   const [expanded, setExpanded] = useState<string | null>(null);
+
 
   const typeById = useMemo(() => new Map((types.data ?? []).map((t) => [t.id, t])), [types.data]);
 
