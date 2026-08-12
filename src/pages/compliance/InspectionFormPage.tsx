@@ -10,6 +10,8 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useComplianceEmployees } from "@/hooks/useCompliance";
 import { useInspection, useInspectionMutations, type Inspection } from "@/hooks/useInspections";
 import { INSPECTION_STATUSES, INSPECTION_TYPES } from "@/lib/inspections";
+import { InspectionReportUpload } from "@/components/compliance/InspectionReportUpload";
+
 
 const EMPTY: Partial<Inspection> = {
   title: "", inspection_type: "dle", authority_name: "", contact_name: "", contact_email: "",
