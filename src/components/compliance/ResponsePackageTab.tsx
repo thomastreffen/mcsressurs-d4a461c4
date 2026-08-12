@@ -49,7 +49,7 @@ export function ResponsePackageTab({ inspection, findings, evidence, actions, co
       setSelectedFindings(new Set(saved.finding_ids));
       setSelectedAttachments(new Set(saved.attachment_keys));
     } else {
-      const open = findings.filter((f) => f.status !== "closed").map((f) => f.id);
+      const open = findings.filter((f) => f.status !== "approved").map((f) => f.id);
       setSelectedFindings(new Set(open));
       setSelectedAttachments(new Set(candidates.filter((c) => open.includes(c.finding_id ?? "")).map((c) => c.key)));
     }
