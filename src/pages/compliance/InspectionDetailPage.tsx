@@ -162,6 +162,9 @@ export default function InspectionDetailPage() {
               { label: "Avvik", value: (findings.data ?? []).filter((f) => f.finding_type === "deviation").length },
               { label: "Åpne tiltak", value: openActions.length },
               { label: "Funn uten svartekst", value: (findings.data ?? []).filter((f) => !f.response_text?.trim()).length },
+              { label: "Under arbeid", value: (findings.data ?? []).filter((f) => !["submitted", "approved"].includes(f.status)).length },
+              { label: "Oversendt", value: (findings.data ?? []).filter((f) => f.status === "submitted").length },
+              { label: "Lukket", value: (findings.data ?? []).filter((f) => f.status === "approved").length },
             ].map((k) => (
               <Card key={k.label}><CardContent className="p-4">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{k.label}</p>
