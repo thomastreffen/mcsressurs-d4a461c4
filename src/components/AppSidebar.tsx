@@ -389,6 +389,7 @@ export function AppSidebar() {
                          <NavItem item={{ title: "Regelverk", url: "/compliance/regelverk", icon: BookOpen }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Organisasjon & ansvar", url: "/compliance/organisasjon", icon: Users }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Internkontroll", url: "/compliance/internkontroll", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+                         <NavItem item={{ title: "Tilsyn & revisjoner", url: "/compliance/tilsyn", icon: FileSearch }} isActive={isActive} collapsed={collapsed} />
                        </SidebarMenu>
                      </CollapsibleContent>
                    </Collapsible>
