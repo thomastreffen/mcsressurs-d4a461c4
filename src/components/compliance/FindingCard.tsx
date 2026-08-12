@@ -413,8 +413,10 @@ export function FindingCard({
             actions={actions}
             evidence={evidence}
             systemFacts={systemCheck?.facts ?? []}
+            unresolvedGaps={(systemCheck?.gaps ?? []).filter((g) => g.blocking).map((g) => g.message)}
             canEdit={canEdit}
           />
+
 
           {/* ---------- Pre-flight før oversendelse ---------- */}
           <div className={cn("space-y-1 rounded-md border p-3", preflight.ready ? "border-emerald-500/40 bg-emerald-500/5" : "border-amber-500/40 bg-amber-500/5")}>
