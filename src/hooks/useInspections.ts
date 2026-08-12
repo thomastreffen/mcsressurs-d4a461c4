@@ -3,10 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { findingStatusMeta } from "@/lib/inspections";
 import type {
   DocumentationStatus, EvidenceSourceKind, FindingStatus, FindingType, InspectionStatus, InspectionType,
 } from "@/lib/inspections";
+import { findingPriorityMeta } from "@/lib/finding-workflow";
 import type { AiSuggestionState, FindingAiSuggestions, FindingPriority } from "@/lib/finding-workflow";
+
 
 
 const sb = supabase as any;
