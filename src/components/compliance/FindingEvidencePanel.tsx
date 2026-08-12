@@ -158,7 +158,7 @@ export function FindingEvidencePanel({
     } else if (kind === "document") {
       if (!refId) return;
       payload.document_id = refId;
-      payload.label = label || documents.data?.find((d) => d.id === refId)?.label ?? "Dokument";
+      payload.label = label || (documents.data?.find((d) => d.id === refId)?.label ?? "Dokument");
     } else if (kind !== "other") {
       if (!refId) return;
       payload.ref_id = refId;
