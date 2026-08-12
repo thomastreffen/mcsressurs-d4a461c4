@@ -85,6 +85,12 @@ export default function ComplianceOverviewPage() {
     const within = (min: number, max: number) =>
       rows.filter((r) => r.days !== null && r.days >= min && r.days <= max).length;
 
+    const missingRequiredCount = people.filter((p) =>
+      requiredTypes.some(
+        (t) => !(byPerson.get(p.person_id) ?? []).some((r) => r.competence_type_id === t.id && r.status === "valid"),
+      ),
+    ).length;
+
     const expired = rows.filter((r) => r.status === "expired").length;
     const missingDocs = rows.filter((r) => r.status === "missing_document").length;
 
@@ -102,6 +108,7 @@ export default function ComplianceOverviewPage() {
       rows,
       people,
       complete,
+      missingRequiredCount,
       fse: typeCoverage("fse"),
       firstAid: typeCoverage("forstehjelp"),
       d90: within(31, 90),
@@ -119,7 +126,7 @@ export default function ComplianceOverviewPage() {
     };
   }, [types.data, competences.data, employees.data, regulations.data, audits.data]);
 
-  const overall: { tone: ComplianceTone; label: string } = model.expired > 0 || model.missingDocs > 0 || (hms.data?.overdueActions ?? 0) > 0
+  const overall: { tone: ComplianceTone; label: string } = model.expired > 0 || model.missingDocs > 0 || model.missingRequiredCount > 0 || (hms.data?.overdueActions ?? 0) > 0
     ? { tone: "alert", label: "Avvik / mangler" }
     : model.d90 + model.d30 > 0 || model.regsDue.length > 0
       ? { tone: "warn", label: "Krever oppfølging" }
