@@ -1,18 +1,18 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
 import { Info, ShieldCheck } from "lucide-react";
 import { useCompetenceTypes } from "@/hooks/useCompliance";
 import {
-  useRequirementStatus, useJobRoles, usePersonJobRole, useSetPersonJobRole,
+  useRequirementStatus, useJobRoles, usePersonJobRole,
 } from "@/hooks/useComplianceRequirements";
 import {
   REQUIREMENT_STATUS_META, formatDate, requirementOverallTone, scopeSourceLabel,
 } from "@/lib/compliance";
+
 
 /**
  * «Gjeldende kompetansekrav» på ansattkortet.
@@ -23,8 +23,14 @@ export function PersonRequirementsSection({ personId, canManage }: { personId: s
   const types = useCompetenceTypes();
   const jobRoles = useJobRoles();
   const profile = usePersonJobRole(personId);
-  const setRole = useSetPersonJobRole();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const goToEmployment = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("tab");
+    setSearchParams(next, { replace: false });
+  };
   const [expanded, setExpanded] = useState<string | null>(null);
+
 
   const typeById = useMemo(() => new Map((types.data ?? []).map((t) => [t.id, t])), [types.data]);
 
@@ -57,32 +63,35 @@ export function PersonRequirementsSection({ personId, canManage }: { personId: s
           />
         </div>
 
-        {canManage && (
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs">Stilling (styrer hvilke krav som gjelder)</Label>
-              <Select
-                value={profile.data?.job_role_id ?? "none"}
-                onValueChange={(v) =>
-                  profile.data && setRole.mutate({ profileId: profile.data.profile_id, jobRoleId: v === "none" ? null : v })
-                }
-                disabled={!profile.data}
-              >
-                <SelectTrigger className="h-8 w-[220px] text-xs"><SelectValue placeholder="Ingen stilling valgt" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Ingen stilling</SelectItem>
-                  {(jobRoles.data ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+        {(() => {
+          const roleName = (jobRoles.data ?? []).find((r) => r.id === profile.data?.job_role_id)?.name ?? null;
+          return (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-2.5">
+              <span className="text-sm">
+                <span className="text-muted-foreground">Stilling: </span>
+                <span className="font-medium">{roleName ?? "Ikke registrert"}</span>
+              </span>
+              {canManage && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={goToEmployment}>
+                  Rediger ansettelsesforhold
+                </Button>
+              )}
+              {!roleName && (
+                <p className="w-full text-xs text-amber-600">
+                  Stilling ikke registrert. Stillingsspesifikke kompetansekrav kan ikke vurderes. Krav for virksomhet
+                  og avdeling vurderes fortsatt.
+                </p>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Ingen kompetansekrav gjelder for denne ansatte ennå. Krav settes opp under Elsikkerhet → Kompetansekrav.
           </p>
         ) : (
+
           <div className="divide-y rounded-lg border">
             {rows.map((r) => {
               const meta = REQUIREMENT_STATUS_META[r.status];

@@ -11,6 +11,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { PersonSecurityTab } from "@/components/security/PersonSecurityTab";
 import { PersonCompetenceTab } from "@/components/compliance/PersonCompetenceTab";
+import { EmploymentDetailsSection } from "@/components/hms/EmploymentDetailsSection";
+
 
 
 interface PersonRow {
@@ -250,13 +252,14 @@ export default function HmsPersonDetailPage() {
 
 
         <TabsContent value="overview" className="mt-4">
-          <div className="rounded-lg border p-4 sm:p-6 space-y-4 max-w-3xl">
+          <div className="max-w-3xl space-y-4">
+            <EmploymentDetailsSection personId={person.id} companyName={companyName} canManage={canManageHms} />
+          <div className="rounded-lg border p-4 sm:p-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <Field label="E-post" value={person.email} />
               <Field label="Telefon" value={person.phone} />
-              <Field label="Firma" value={companyName} />
-              <Field label="Avdeling" value={departmentName} />
               <Field label="Planleggbar ressurs" value={emp?.is_plannable_resource ? "Ja" : "Nei"} />
+
               <Field label="HMS-kortnummer" value={emp?.hms_card_number} mono />
               <Field label="HMS-kort gyldig til" value={emp?.hms_card_expires_at} />
               <Field label="Fagbrev" value={emp?.trade_certificate_type} />
@@ -278,6 +281,8 @@ export default function HmsPersonDetailPage() {
               </>
             )}
           </div>
+          </div>
+
         </TabsContent>
 
         <TabsContent value="hms" className="mt-4">
