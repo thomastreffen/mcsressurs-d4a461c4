@@ -18,7 +18,7 @@ import { useFindingMutations, type Finding, type FindingEvidence, type Inspectio
 import { formatDate } from "@/lib/compliance";
 
 export function FindingResponseSection({
-  finding, inspectionId, inspectionTitle, authorityName, actions, evidence, systemFacts, canEdit,
+  finding, inspectionId, inspectionTitle, authorityName, actions, evidence, systemFacts, unresolvedGaps = [], canEdit,
 }: {
   finding: Finding;
   inspectionId: string;
@@ -27,6 +27,8 @@ export function FindingResponseSection({
   actions: InspectionAction[];
   evidence: FindingEvidence[];
   systemFacts: string[];
+  /** Forhold systemet fortsatt viser som ikke rettet – AI må ikke påstå at de er lukket */
+  unresolvedGaps?: string[];
   canEdit: boolean;
 }) {
   const { user } = useAuth();
