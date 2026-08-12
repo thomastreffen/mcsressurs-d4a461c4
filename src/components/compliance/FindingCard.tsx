@@ -10,8 +10,9 @@ import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusB
 import { FindingEvidencePanel } from "@/components/compliance/FindingEvidencePanel";
 import { FindingSystemCheck } from "@/components/compliance/FindingSystemCheck";
 import { FindingAiSuggestions } from "@/components/compliance/FindingAiSuggestions";
+import { FindingDocumentationSuggestions } from "@/components/compliance/FindingDocumentationSuggestions";
 import { FindingResponseSection } from "@/components/compliance/FindingResponseSection";
-import { ChevronDown, ChevronRight, Plus, Trash2, BookOpen, X, ListChecks, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, BookOpen, X, ListChecks, FileText, AlertTriangle, CheckCircle2, Undo2, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { daysUntil, formatDate } from "@/lib/compliance";
 import {
