@@ -157,6 +157,9 @@ export default function InspectionsPage() {
                     <ComplianceStatusBadge label={deadlineLabel(days)} tone={deadlineTone(days)} />
                     <span className="text-muted-foreground">{s?.findings ?? 0} funn</span>
                     <span className="text-muted-foreground">{s?.openActions ?? 0} åpne tiltak</span>
+                    {!!s?.inProgressFindings && <ComplianceStatusBadge label={`${s.inProgressFindings} under arbeid`} tone="warn" />}
+                    {!!s?.submittedFindings && <ComplianceStatusBadge label={`${s.submittedFindings} oversendt`} tone="neutral" />}
+                    {!!s?.closedFindings && <ComplianceStatusBadge label={`${s.closedFindings} lukket`} tone="ok" />}
                     <ComplianceStatusBadge label={docMeta.label} tone={docMeta.tone} />
                   </div>
                 </div>
