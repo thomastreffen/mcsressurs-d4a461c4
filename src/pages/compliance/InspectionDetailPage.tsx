@@ -18,6 +18,7 @@ import { ResponsePackageTab } from "@/components/compliance/ResponsePackageTab";
 
 import { ArrowLeft, Pencil, Plus, ListChecks, Mail, History, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useComplianceEmployees } from "@/hooks/useCompliance";
 import { useAssignableUsers } from "@/hooks/useCompanyUsers";
@@ -43,6 +44,7 @@ export default function InspectionDetailPage() {
 
   const { hasPermission } = usePermissions();
   const { isSuperAdmin, isAdmin } = useAuth();
+  const { activeCompany } = useCompanyContext();
   const canEdit = isSuperAdmin || isAdmin || hasPermission("hms.manage");
 
   const inspection = useInspection(id);
