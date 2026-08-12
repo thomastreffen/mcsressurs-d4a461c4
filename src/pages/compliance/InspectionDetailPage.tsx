@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,9 +13,11 @@ import { FindingCard } from "@/components/compliance/FindingCard";
 import { FindingEvidencePanel } from "@/components/compliance/FindingEvidencePanel";
 import { FindingLinkSuggestions } from "@/components/compliance/FindingLinkSuggestions";
 import { InspectionReportCard } from "@/components/compliance/InspectionReportCard";
+import { ResponsePackageTab } from "@/components/compliance/ResponsePackageTab";
 
-import { ArrowLeft, Pencil, Plus, ListChecks, Mail, History, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, ListChecks, Mail, History, Trash2 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useComplianceEmployees } from "@/hooks/useCompliance";
 import { useAssignableUsers } from "@/hooks/useCompanyUsers";
@@ -42,6 +43,7 @@ export default function InspectionDetailPage() {
 
   const { hasPermission } = usePermissions();
   const { isSuperAdmin, isAdmin } = useAuth();
+  const { activeCompany } = useCompanyContext();
   const canEdit = isSuperAdmin || isAdmin || hasPermission("hms.manage");
 
   const inspection = useInspection(id);
@@ -159,6 +161,9 @@ export default function InspectionDetailPage() {
               { label: "Avvik", value: (findings.data ?? []).filter((f) => f.finding_type === "deviation").length },
               { label: "Åpne tiltak", value: openActions.length },
               { label: "Funn uten svartekst", value: (findings.data ?? []).filter((f) => !f.response_text?.trim()).length },
+              { label: "Under arbeid", value: (findings.data ?? []).filter((f) => !["submitted", "approved"].includes(f.status)).length },
+              { label: "Oversendt", value: (findings.data ?? []).filter((f) => f.status === "submitted").length },
+              { label: "Lukket", value: (findings.data ?? []).filter((f) => f.status === "approved").length },
             ].map((k) => (
               <Card key={k.label}><CardContent className="p-4">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{k.label}</p>
@@ -323,74 +328,17 @@ export default function InspectionDetailPage() {
         </TabsContent>
 
         {/* Svarpakke */}
-        <TabsContent value="response" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Velg funn som skal inngå i svaret</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {(findings.data ?? []).length === 0 && <p className="text-sm text-muted-foreground">Ingen funn å svare på.</p>}
-              {(findings.data ?? []).map((f) => (
-                <label key={f.id} className="flex items-start gap-3 rounded-md border px-3 py-2 text-sm">
-                  <Checkbox className="mt-0.5" checked={!!selected[f.id]}
-                    onCheckedChange={(v) => setSelected((s) => ({ ...s, [f.id]: !!v }))} />
-                  <span className="flex-1">
-                    <span className="font-medium">Funn {f.finding_number} · {f.title}</span>
-                    <span className="mt-1 flex flex-wrap gap-2 text-xs">
-                      <ComplianceStatusBadge label={DOCUMENTATION_STATUSES[docStatusByFinding[f.id] ?? "none"].label} tone={DOCUMENTATION_STATUSES[docStatusByFinding[f.id] ?? "none"].tone} />
-                      {f.response_text?.trim()
-                        ? <span className="text-muted-foreground">Svartekst klar</span>
-                        : <span className="text-destructive">Mangler svartekst</span>}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </CardContent>
-          </Card>
-
-          {selectedFindings.length > 0 && (
-            <>
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-base">Kontroll før oversending</CardTitle></CardHeader>
-                <CardContent className="space-y-1 text-sm">
-                  {packageIssues.length === 0 ? (
-                    <p className="flex items-center gap-2 text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Alt er på plass for de valgte funnene.</p>
-                  ) : (
-                    packageIssues.map((msg) => (
-                      <p key={msg} className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-4 w-4" /> {msg}</p>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-base">Svarpakke – utkast</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {selectedFindings.map((f) => (
-                    <div key={f.id} className="space-y-2 border-b pb-4 last:border-0 last:pb-0">
-                      <p className="text-sm font-semibold">Funn {f.finding_number} · {f.title}</p>
-                      {f.original_text && (
-                        <p className="rounded-md bg-muted/30 p-2 text-xs text-muted-foreground whitespace-pre-wrap">{f.original_text}</p>
-                      )}
-                      <p className="text-sm whitespace-pre-wrap">{f.response_text?.trim() || "— mangler svartekst —"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Tiltak: {(actions.data ?? []).filter((a) => a.compliance_finding_id === f.id).map((a) => `${a.title} (${a.status})`).join("; ") || "ingen"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Dokumentasjon: {(evidence.data ?? []).filter((e) => e.finding_id === f.id).map((e) => e.label ?? e.source_kind).join("; ") || "ingen"}
-                      </p>
-                    </div>
-                  ))}
-                  {canEdit && (
-                    <div className="flex justify-end">
-                      <Button size="sm" disabled={packageIssues.length > 0}
-                        onClick={() => setStatus.mutate({ id: i.id, status: "submitted" })}>
-                        <Mail className="mr-1.5 h-3.5 w-3.5" /> Marker som oversendt
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </>
-          )}
+        <TabsContent value="response" className="mt-4">
+          <ResponsePackageTab
+            inspection={i}
+            findings={findings.data ?? []}
+            evidence={evidence.data ?? []}
+            actions={actions.data ?? []}
+            companyName={activeCompany?.name ?? null}
+            canEdit={canEdit}
+          />
         </TabsContent>
+
 
         {/* Korrespondanse */}
         <TabsContent value="correspondence" className="mt-4 space-y-3">

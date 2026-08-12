@@ -163,7 +163,7 @@ export function useInspections() {
 /** Nøkkeltall per sak: antall funn, åpne tiltak og samlet dokumentasjonsstatus */
 export function useInspectionSummaries() {
   const cid = useCid();
-  return useQuery<Record<string, { findings: number; openActions: number; docStatuses: DocumentationStatus[]; closedFindings: number }>>({
+  return useQuery<Record<string, { findings: number; openActions: number; docStatuses: DocumentationStatus[]; closedFindings: number; submittedFindings: number; inProgressFindings: number }>>({
     queryKey: ["inspection-summaries", cid],
     enabled: !!cid,
     queryFn: async () => {
@@ -173,13 +173,15 @@ export function useInspectionSummaries() {
       ]);
       if (fErr) throw fErr;
       if (aErr) throw aErr;
-      const map: Record<string, { findings: number; openActions: number; docStatuses: DocumentationStatus[]; closedFindings: number }> = {};
-      const ensure = (id: string) => (map[id] ??= { findings: 0, openActions: 0, docStatuses: [], closedFindings: 0 });
+      const map: Record<string, { findings: number; openActions: number; docStatuses: DocumentationStatus[]; closedFindings: number; submittedFindings: number; inProgressFindings: number }> = {};
+      const ensure = (id: string) => (map[id] ??= { findings: 0, openActions: 0, docStatuses: [], closedFindings: 0, submittedFindings: 0, inProgressFindings: 0 });
       for (const f of findings ?? []) {
         const e = ensure(f.inspection_id);
         e.findings += 1;
         e.docStatuses.push(f.documentation_status);
         if (f.status === "approved") e.closedFindings += 1;
+        else if (f.status === "submitted") e.submittedFindings += 1;
+        else e.inProgressFindings += 1;
       }
       for (const a of actions ?? []) {
         const e = ensure(a.compliance_inspection_id);

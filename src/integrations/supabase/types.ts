@@ -3301,6 +3301,225 @@ export type Database = {
           },
         ]
       }
+      compliance_response_package_attachments: {
+        Row: {
+          company_id: string
+          created_at: string
+          document_created_at: string | null
+          document_id: string | null
+          evidence_id: string | null
+          export_name: string
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          finding_id: string | null
+          id: string
+          mime_type: string | null
+          package_id: string
+          sort_order: number
+          source_kind: string | null
+          source_label: string | null
+          storage_bucket: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          document_created_at?: string | null
+          document_id?: string | null
+          evidence_id?: string | null
+          export_name: string
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          finding_id?: string | null
+          id?: string
+          mime_type?: string | null
+          package_id: string
+          sort_order?: number
+          source_kind?: string | null
+          source_label?: string | null
+          storage_bucket?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          document_created_at?: string | null
+          document_id?: string | null
+          evidence_id?: string | null
+          export_name?: string
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          finding_id?: string | null
+          id?: string
+          mime_type?: string | null
+          package_id?: string
+          sort_order?: number
+          source_kind?: string | null
+          source_label?: string | null
+          storage_bucket?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_response_package_attachments_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_response_package_attachments_finding_id_fkey"
+            columns: ["finding_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_response_package_attachments_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_response_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_response_package_findings: {
+        Row: {
+          actions_snapshot: Json
+          company_id: string
+          created_at: string
+          finding_id: string | null
+          finding_number: number | null
+          finding_title: string | null
+          finding_type: string | null
+          id: string
+          original_text_snapshot: string | null
+          package_id: string
+          response_text_snapshot: string | null
+          sort_order: number
+        }
+        Insert: {
+          actions_snapshot?: Json
+          company_id: string
+          created_at?: string
+          finding_id?: string | null
+          finding_number?: number | null
+          finding_title?: string | null
+          finding_type?: string | null
+          id?: string
+          original_text_snapshot?: string | null
+          package_id: string
+          response_text_snapshot?: string | null
+          sort_order?: number
+        }
+        Update: {
+          actions_snapshot?: Json
+          company_id?: string
+          created_at?: string
+          finding_id?: string | null
+          finding_number?: number | null
+          finding_title?: string | null
+          finding_type?: string | null
+          id?: string
+          original_text_snapshot?: string | null
+          package_id?: string
+          response_text_snapshot?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_response_package_findings_finding_id_fkey"
+            columns: ["finding_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_response_package_findings_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_response_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_response_packages: {
+        Row: {
+          cc_emails: string[]
+          closing_text: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          email_body_snapshot: string | null
+          exported_at: string | null
+          id: string
+          inspection_id: string
+          intro_text: string | null
+          manifest: Json
+          package_number: number
+          recipient_email: string | null
+          recipient_name: string | null
+          send_error: string | null
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          cc_emails?: string[]
+          closing_text?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          email_body_snapshot?: string | null
+          exported_at?: string | null
+          id?: string
+          inspection_id: string
+          intro_text?: string | null
+          manifest?: Json
+          package_number?: number
+          recipient_email?: string | null
+          recipient_name?: string | null
+          send_error?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cc_emails?: string[]
+          closing_text?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          email_body_snapshot?: string | null
+          exported_at?: string | null
+          id?: string
+          inspection_id?: string
+          intro_text?: string | null
+          manifest?: Json
+          package_number?: number
+          recipient_email?: string | null
+          recipient_name?: string | null
+          send_error?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_response_packages_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       confirmation_learnings: {
         Row: {
           alias_hits: string[] | null
