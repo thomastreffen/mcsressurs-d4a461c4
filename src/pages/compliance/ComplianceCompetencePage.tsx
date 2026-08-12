@@ -46,7 +46,7 @@ export default function ComplianceCompetencePage() {
     });
   }, [competences.data, typeList]);
 
-  const docs = useCompetenceDocuments(enriched.map((c) => c.id));
+  
 
   const departments = useMemo(() => {
     const map = new Map<string, string>();
@@ -80,8 +80,6 @@ export default function ComplianceCompetencePage() {
       });
   }, [employees.data, enriched, filteredTypes, dept, search, statusFilter]);
 
-  const person = (employees.data ?? []).find((p) => p.person_id === openPerson);
-  const personItems = enriched.filter((c) => c.person_id === openPerson);
 
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -96,8 +94,11 @@ export default function ComplianceCompetencePage() {
     <div className="p-4 sm:p-6 space-y-5">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Kompetanse</h1>
-        <p className="text-sm text-muted-foreground">Kompetansematrise med automatisk beregnet status per ansatt</p>
+        <p className="text-sm text-muted-foreground">
+          Kontrollvisning med automatisk beregnet status. Registrering og dokumentasjon vedlikeholdes på ansattkortet under HMS → Ansatte.
+        </p>
       </div>
+
 
       <div className="flex flex-wrap gap-2">
         <div className="relative min-w-[200px] flex-1">
