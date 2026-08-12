@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Activity, Shield, User, Loader2, ExternalLink, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, Activity, Shield, User, Loader2, ExternalLink, ClipboardCheck, GraduationCap } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { PersonSecurityTab } from "@/components/security/PersonSecurityTab";
+import { PersonCompetenceTab } from "@/components/compliance/PersonCompetenceTab";
+
 
 interface PersonRow {
   id: string;
