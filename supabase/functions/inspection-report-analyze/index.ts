@@ -79,10 +79,19 @@ Absolutte regler:
 - authority_requirement skal være rapportens egen formulering av hva som kreves rettet eller dokumentert.
 - internal_category er DIN korte interne kategorisering (maks 6 ord) og er tydelig merket som forslag – den skal aldri
   blandes inn i originalteksten.
+- priority, internal_assessment, proposed_solution og needed_documentation er DINE FORSLAG til intern behandling.
+  De skal være tydelig atskilt fra rapportens ordlyd, skrives med egne ord og er alltid utkast som et menneske
+  skal godkjenne. Skriv kort og operativt. Ikke gjenta originalteksten.
+  * priority: critical når det er umiddelbar fare for liv/helse eller kort frist, high ved formelt avvik med frist,
+    normal ved merknad, low ved observasjon.
+  * internal_assessment: 1-3 setninger om hva funnet faktisk betyr for virksomheten.
+  * proposed_solution: konkrete steg for å lukke funnet.
+  * needed_documentation: liste over dokumentasjon/bevis som må fremskaffes.
 - match_keywords skal være 1-4 korte nøkkelord som kan brukes til å finne relevant regelverk, kompetansetype,
   ansvarsrolle eller internkontroll i vårt system (f.eks. "FSE", "internkontroll", "NEK 400", "førstehjelp").
 - Datoer skal returneres som YYYY-MM-DD. Er datoen uklar utelates feltet.
 - Skriv all tekst på norsk. Ikke bruk sannsynlighet eller prosenter.`;
+
 
 const TOOL = {
   type: "function",
