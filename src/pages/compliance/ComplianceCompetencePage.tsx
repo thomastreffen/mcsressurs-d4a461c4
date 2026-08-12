@@ -2,51 +2,46 @@ import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
-import { Search, ChevronRight } from "lucide-react";
+import { Search, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { useComplianceEmployees, useCompetenceTypes } from "@/hooks/useCompliance";
+import { useRequirementStatus } from "@/hooks/useComplianceRequirements";
 import {
-  useComplianceEmployees, useCompetences, useCompetenceTypes,
-} from "@/hooks/useCompliance";
-import {
-  COMPETENCE_STATUS_META, competenceStatus, formatDate, TONE_DOT, worstStatus,
-  type ComplianceStatus,
+  REQUIREMENT_STATUS_META, formatDate, requirementOverallTone, TONE_DOT,
+  type RequirementStatus,
 } from "@/lib/compliance";
 import { cn } from "@/lib/utils";
 
+/**
+ * Elsikkerhet → Kompetanse: ren kontrollvisning basert på kravmotoren.
+ * Registrering skjer på ansattkortet (HMS → Ansatte).
+ */
 export default function ComplianceCompetencePage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const employees = useComplianceEmployees();
   const types = useCompetenceTypes();
-  const competences = useCompetences();
+  const statuses = useRequirementStatus();
 
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState("all");
   const [typeFilter, setTypeFilter] = useState(params.get("type") ?? "all");
   const [statusFilter, setStatusFilter] = useState(params.get("status") ?? "all");
 
-
   const typeList = types.data ?? [];
-  const enriched = useMemo(() => {
-    const typeById = new Map(typeList.map((t) => [t.id, t]));
-    return (competences.data ?? []).map((c) => {
-      const t = c.competence_type_id ? typeById.get(c.competence_type_id) : undefined;
-      return {
-        ...c,
-        typeKey: t?.key ?? null,
-        typeName: t?.name ?? c.type_label ?? "Annet",
-        status: competenceStatus({
-          expires_at: c.expires_at,
-          has_document: !!c.document_id,
-          requires_document: t?.requires_document ?? true,
-        }) as ComplianceStatus,
-      };
-    });
-  }, [competences.data, typeList]);
 
-  
+  const byPerson = useMemo(() => {
+    const map = new Map<string, Map<string, (typeof statuses.data)[number]>>();
+    for (const r of statuses.data ?? []) {
+      const inner = map.get(r.person_id) ?? new Map();
+      inner.set(r.competence_type_id, r);
+      map.set(r.person_id, inner);
+    }
+    return map;
+  }, [statuses.data]);
 
   const departments = useMemo(() => {
     const map = new Map<string, string>();
@@ -61,25 +56,13 @@ export default function ComplianceCompetencePage() {
       .filter((p) => (dept === "all" ? true : p.department_id === dept))
       .filter((p) => (search ? p.full_name.toLowerCase().includes(search.toLowerCase()) : true))
       .map((p) => {
-        const own = enriched.filter((c) => c.person_id === p.person_id);
-        const cells = filteredTypes.map((t) => {
-          const items = own.filter((c) => c.competence_type_id === t.id);
-          const status = worstStatus(items.map((i) => i.status));
-          return { type: t, items, status };
-        });
-        const rowStatus = worstStatus(cells.flatMap((c) => c.items.map((i) => i.status)));
-        const missingRequired = filteredTypes.some(
-          (t) => t.required_for_all && !own.some((c) => c.competence_type_id === t.id),
-        );
-        return { person: p, own, cells, rowStatus, missingRequired };
+        const own = byPerson.get(p.person_id);
+        const cells = filteredTypes.map((t) => ({ type: t, req: own?.get(t.id) ?? null }));
+        const all = Array.from(own?.values() ?? []).map((r) => r.status as RequirementStatus);
+        return { person: p, cells, tone: requirementOverallTone(all), all };
       })
-      .filter((r) => {
-        if (statusFilter === "all") return true;
-        if (statusFilter === "missing") return r.missingRequired;
-        return r.own.some((c) => c.status === statusFilter);
-      });
-  }, [employees.data, enriched, filteredTypes, dept, search, statusFilter]);
-
+      .filter((r) => (statusFilter === "all" ? true : r.all.includes(statusFilter as RequirementStatus)));
+  }, [employees.data, byPerson, filteredTypes, dept, search, statusFilter]);
 
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -88,17 +71,22 @@ export default function ComplianceCompetencePage() {
     setParams(next, { replace: true });
   };
 
-  const loading = employees.isLoading || types.isLoading || competences.isLoading;
+  const loading = employees.isLoading || types.isLoading || statuses.isLoading;
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Kompetanse</h1>
-        <p className="text-sm text-muted-foreground">
-          Kontrollvisning med automatisk beregnet status. Registrering og dokumentasjon vedlikeholdes på ansattkortet under HMS → Ansatte.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Kompetanse</h1>
+          <p className="max-w-3xl text-sm text-muted-foreground">
+            Statusen beregnes automatisk ut fra gjeldende kompetansekrav, registrert kompetanse, dokumentasjon og
+            gyldighetsdato. Registrering skjer på ansattkortet under HMS → Ansatte.
+          </p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => navigate("/compliance/kompetansekrav")}>
+          <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Kompetansekrav
+        </Button>
       </div>
-
 
       <div className="flex flex-wrap gap-2">
         <div className="relative min-w-[200px] flex-1">
@@ -120,14 +108,15 @@ export default function ComplianceCompetencePage() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}>
-          <SelectTrigger className="w-[190px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle statuser</SelectItem>
-            <SelectItem value="valid">Gyldig</SelectItem>
-            <SelectItem value="expiring_soon">Utløper snart</SelectItem>
-            <SelectItem value="expired">Utløpt</SelectItem>
+            <SelectItem value="missing">Mangler kompetanse</SelectItem>
             <SelectItem value="missing_document">Mangler dokumentasjon</SelectItem>
-            <SelectItem value="missing">Mangler kompetansepost</SelectItem>
+            <SelectItem value="expired">Utløpt</SelectItem>
+            <SelectItem value="expiring_soon">Utløper snart</SelectItem>
+            <SelectItem value="fulfilled">Oppfylt</SelectItem>
+            <SelectItem value="not_required">Ikke påkrevd</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -148,18 +137,17 @@ export default function ComplianceCompetencePage() {
                   {filteredTypes.map((t) => (
                     <th key={t.id} className="max-w-[150px] truncate px-3 py-2 text-left font-medium whitespace-nowrap">{t.name}</th>
                   ))}
-                  <th className="sticky right-0 z-10 bg-muted/40 px-3 py-2 text-right font-medium">Status</th>
+                  <th className="sticky right-0 z-10 bg-muted/40 px-3 py-2 text-right font-medium">Samlet</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {rows.map(({ person: p, cells, rowStatus, missingRequired }) => (
+                {rows.map(({ person: p, cells, tone }) => (
                   <tr
                     key={p.person_id}
                     className="cursor-pointer hover:bg-muted/30"
                     onClick={() => navigate(`/hms/people/${p.person_id}?tab=competence`)}
                     title="Åpne ansattkortet (HMS → Ansatte)"
                   >
-
                     <td className="sticky left-0 z-10 bg-background px-4 py-2.5">
                       <p className="flex items-center gap-1 font-medium">
                         {p.full_name}
@@ -168,28 +156,35 @@ export default function ComplianceCompetencePage() {
                       <p className="text-xs text-muted-foreground">{p.department_name ?? "Uten avdeling"}</p>
                     </td>
 
-                    {cells.map((c) => (
-                      <td key={c.type.id} className="px-3 py-2.5 whitespace-nowrap">
-                        {c.status ? (
+                    {cells.map(({ type, req }) => {
+                      if (!req) {
+                        return (
+                          <td key={type.id} className="px-3 py-2.5 whitespace-nowrap">
+                            <span className="text-xs text-muted-foreground/60">Ingen krav</span>
+                          </td>
+                        );
+                      }
+                      const meta = REQUIREMENT_STATUS_META[req.status];
+                      return (
+                        <td key={type.id} className="px-3 py-2.5 whitespace-nowrap">
                           <span className="inline-flex items-center gap-1.5">
-                            <span className={cn("h-2 w-2 rounded-full", TONE_DOT[COMPETENCE_STATUS_META[c.status].tone])} />
-                            <span className="text-xs text-muted-foreground">
-                              {c.items[0]?.expires_at ? formatDate(c.items[0].expires_at) : "Uten utløp"}
-                            </span>
+                            <span className={cn("h-2 w-2 rounded-full", TONE_DOT[meta.tone])} />
+                            <span className="text-xs">{meta.short}</span>
                           </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground/60">{c.type.required_for_all ? "Mangler" : "–"}</span>
-                        )}
-                      </td>
-                    ))}
+                          {(req.status === "fulfilled" || req.status === "expiring_soon" || req.status === "expired") && (
+                            <p className="text-[11px] text-muted-foreground">
+                              {req.expires_at ? formatDate(req.expires_at) : "Uten utløp"}
+                            </p>
+                          )}
+                        </td>
+                      );
+                    })}
+
                     <td className="sticky right-0 z-10 bg-background px-3 py-2.5 text-right">
-                      {missingRequired ? (
-                        <ComplianceStatusBadge label="Mangler krav" tone="alert" />
-                      ) : rowStatus ? (
-                        <ComplianceStatusBadge label={COMPETENCE_STATUS_META[rowStatus].label} tone={COMPETENCE_STATUS_META[rowStatus].tone} />
-                      ) : (
-                        <ComplianceStatusBadge label="Ingen registrert" tone="neutral" />
-                      )}
+                      <ComplianceStatusBadge
+                        label={tone === "alert" ? "Mangler" : tone === "warn" ? "Følg opp" : tone === "ok" ? "Oppfylt" : "Ingen krav"}
+                        tone={tone}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -201,4 +196,3 @@ export default function ComplianceCompetencePage() {
     </div>
   );
 }
-

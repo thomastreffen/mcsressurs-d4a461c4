@@ -21,6 +21,8 @@ import {
   Calculator,
   Briefcase,
   ShieldCheck,
+  SlidersHorizontal,
+
   AlertTriangle,
   Clock,
   ShieldAlert,
@@ -383,6 +385,7 @@ export function AppSidebar() {
                        <SidebarMenu className="ml-5 mt-1 space-y-0.5 border-l border-sidebar-border/40 pl-2">
                          <NavItem item={{ title: "Oversikt", url: "/compliance", icon: Gauge }} isActive={(url) => location.pathname === "/compliance"} collapsed={collapsed} />
                          <NavItem item={{ title: "Kompetanse", url: "/compliance/kompetanse", icon: ShieldCheck }} isActive={isActive} collapsed={collapsed} />
+                         <NavItem item={{ title: "Kompetansekrav", url: "/compliance/kompetansekrav", icon: SlidersHorizontal }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Regelverk", url: "/compliance/regelverk", icon: BookOpen }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Organisasjon & ansvar", url: "/compliance/organisasjon", icon: Users }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Internkontroll", url: "/compliance/internkontroll", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />

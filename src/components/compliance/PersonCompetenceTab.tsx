@@ -14,6 +14,8 @@ import {
   type Competence, type CompetenceType,
 } from "@/hooks/useCompliance";
 import { COMPETENCE_STATUS_META, competenceStatus, formatDate, type ComplianceStatus } from "@/lib/compliance";
+import { PersonRequirementsSection } from "@/components/compliance/PersonRequirementsSection";
+
 
 /**
  * Kompetanse-fane på ansattkortet – masterflate for kompetanse og dokumentasjon.
@@ -44,17 +46,14 @@ export function PersonCompetenceTab({ personId, personName, canManage }: { perso
 
   const docs = useCompetenceDocuments(enriched.map((c) => c.id));
 
-  const missingRequired = useMemo(
-    () => typeList.filter((t) => t.required_for_all && !(competences.data ?? []).some((c) => c.competence_type_id === t.id)),
-    [typeList, competences.data],
-  );
-
   if (types.isLoading || competences.isLoading) {
     return <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16" />)}</div>;
   }
 
   return (
     <div className="space-y-4 max-w-3xl">
+      <PersonRequirementsSection personId={personId} canManage={canManage} />
+
       {canManage && !editing && (
         <Button size="sm" onClick={() => setEditing({ competence: null })}>
           <Plus className="mr-1 h-3.5 w-3.5" /> Legg til kompetanse
@@ -71,12 +70,6 @@ export function PersonCompetenceTab({ personId, personName, canManage }: { perso
         />
       )}
 
-      {missingRequired.length > 0 && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-          <p className="text-sm font-medium text-destructive">Mangler påkrevd kompetanse</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{missingRequired.map((t) => t.name).join(", ")}</p>
-        </div>
-      )}
 
       {enriched.length === 0 ? (
         <p className="text-sm text-muted-foreground">Ingen kompetanseposter registrert.</p>
