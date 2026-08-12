@@ -15,6 +15,33 @@ import { ACCEPTED_REPORT_TYPES, saveReportDraft, type ReportAnalysis } from "@/l
 
 const BUCKET = "job-attachments";
 
+/** Leser strukturert feilrespons fra edge-funksjonen, også når HTTP-status er non-2xx. */
+async function readFunctionError(error: unknown, data: any): Promise<{ title: string; detail: string }> {
+  let payload: any = data && data.ok === false ? data : null;
+  const ctx = (error as any)?.context;
+  if (!payload && ctx && typeof ctx.json === "function") {
+    payload = await ctx.json().catch(() => null);
+  }
+  const stage: string | undefined = payload?.stage;
+  const code: string | undefined = payload?.error_code;
+  const title =
+    stage === "ai_request" || stage === "ai_response"
+      ? payload?.message?.includes("bildeanalysen")
+        ? "Kunne ikke lese PDF-en"
+        : "Kunne ikke analysere rapporten"
+      : stage === "storage_download"
+        ? "Fant ikke rapporten"
+        : stage === "auth"
+          ? "Du må logge inn på nytt"
+          : "Kunne ikke analysere rapporten";
+  const base =
+    payload?.message ??
+    (error as any)?.message ??
+    "PDF-en ble lastet opp, men dokumentanalysen feilet. Prøv igjen.";
+  const ref = [code, payload?.requestId].filter(Boolean).join(" · ");
+  return { title, detail: ref ? `${base} (feilkode: ${ref})` : base };
+}
+
 export function InspectionReportUpload() {
   const navigate = useNavigate();
   const { activeCompanyId } = useCompanyContext();
