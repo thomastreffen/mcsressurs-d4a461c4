@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,24 +8,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
 import { FindingEvidencePanel } from "@/components/compliance/FindingEvidencePanel";
-import { ChevronDown, ChevronRight, Plus, Trash2, BookOpen, X, ListChecks } from "lucide-react";
+import { FindingSystemCheck } from "@/components/compliance/FindingSystemCheck";
+import { FindingAiSuggestions } from "@/components/compliance/FindingAiSuggestions";
+import { FindingResponseSection } from "@/components/compliance/FindingResponseSection";
+import { ChevronDown, ChevronRight, Plus, Trash2, BookOpen, X, ListChecks, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { daysUntil, formatDate } from "@/lib/compliance";
 import {
   DOCUMENTATION_STATUSES, FINDING_STATUSES, FINDING_TYPES, deadlineLabel, deadlineTone,
   findingStatusMeta, findingTypeMeta,
 } from "@/lib/inspections";
+import {
+  FINDING_PRIORITIES, INTERNAL_CATEGORY_SUGGESTIONS, findingPreflight, findingPriorityMeta,
+} from "@/lib/finding-workflow";
 import type { Finding, FindingEvidence, FindingRegulationLink, InspectionAction } from "@/hooks/useInspections";
 import { useFindingMutations, useFindingRegulationMutations, useInspectionActionMutations } from "@/hooks/useInspections";
-import { useRegulations, useComplianceEmployees } from "@/hooks/useCompliance";
+import { useRegulations, useComplianceEmployees, useOrgRoles } from "@/hooks/useCompliance";
 import { useAssignableUsers } from "@/hooks/useCompanyUsers";
+import { useFindingSystemCheck } from "@/hooks/useFindingSystemCheck";
 import type { DocumentationStatus } from "@/lib/inspections";
 
 export function FindingCard({
-  finding, inspectionId, evidence, regulationLinks, actions, derivedDocStatus, canEdit, defaultOpen = false,
+  finding, inspectionId, inspectionTitle, authorityName, evidence, regulationLinks, actions,
+  derivedDocStatus, canEdit, defaultOpen = false,
 }: {
   finding: Finding;
   inspectionId: string;
+  inspectionTitle?: string | null;
+  authorityName?: string | null;
   evidence: FindingEvidence[];
   regulationLinks: FindingRegulationLink[];
   actions: InspectionAction[];
@@ -38,7 +49,9 @@ export function FindingCard({
   const actionMut = useInspectionActionMutations();
   const regulations = useRegulations();
   const employees = useComplianceEmployees();
+  const orgRoles = useOrgRoles();
   const users = useAssignableUsers();
+  const { checkFor } = useFindingSystemCheck();
 
   const [draft, setDraft] = useState<Partial<Finding>>({});
   const val = <K extends keyof Finding>(k: K): any => (draft[k] !== undefined ? draft[k] : finding[k]);
@@ -59,10 +72,21 @@ export function FindingCard({
 
   const typeMeta = findingTypeMeta(finding.finding_type);
   const statusMeta = findingStatusMeta(finding.status);
+  const prioMeta = findingPriorityMeta(finding.priority ?? "normal");
   const docMeta = DOCUMENTATION_STATUSES[derivedDocStatus];
   const days = daysUntil(finding.deadline);
   const openActions = actions.filter((a) => ["open", "in_progress"].includes(a.status)).length;
-  const personName = (id: string | null) => employees.data?.find((e) => e.person_id === id)?.full_name ?? "Ikke satt";
+  const personName = (id: string | null) => employees.data?.find((e) => e.person_id === id)?.full_name ?? null;
+  const roleTitle = (id: string | null) => orgRoles.data?.find((r) => r.id === id)?.title ?? null;
+  const responsibleLabel =
+    personName(finding.responsible_person_id) ?? roleTitle(finding.responsible_role_id) ?? "Ikke satt";
+
+  const systemCheck = useMemo(() => (open ? checkFor(finding) : null), [open, finding, checkFor]);
+
+  const preflight = useMemo(
+    () => findingPreflight(finding, actions, derivedDocStatus, evidence.length),
+    [finding, actions, derivedDocStatus, evidence.length],
+  );
 
   return (
     <div className="rounded-lg border bg-card">
@@ -74,104 +98,184 @@ export function FindingCard({
         {open ? <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold">#{finding.finding_number}</span>
+            <span className="text-sm font-semibold">
+              #{finding.finding_number}{finding.report_reference ? ` · ${finding.report_reference}` : ""}
+            </span>
             <ComplianceStatusBadge label={typeMeta.label} tone={typeMeta.tone} />
+            <ComplianceStatusBadge label={prioMeta.label} tone={prioMeta.tone} />
             <span className="truncate text-sm font-medium">{finding.title}</span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <ComplianceStatusBadge label={statusMeta.label} tone={statusMeta.tone} />
             <ComplianceStatusBadge label={docMeta.label} tone={docMeta.tone} />
             {finding.deadline && <ComplianceStatusBadge label={deadlineLabel(days)} tone={deadlineTone(days)} />}
-            <span>Ansvarlig: {personName(finding.responsible_person_id)}</span>
+            <span>Ansvarlig: {responsibleLabel}</span>
             {openActions > 0 && <span>{openActions} åpne tiltak</span>}
+            {finding.internal_category && <span>{finding.internal_category}</span>}
           </div>
         </div>
       </button>
 
       {open && (
         <div className="space-y-5 border-t px-4 py-4">
-          {/* Nøkkelfelter */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <Label className="text-xs">Type</Label>
-              <Select value={val("finding_type")} onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, finding_type: v as any })} disabled={!canEdit}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{FINDING_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-              </Select>
+          {/* ---------- A. FRA TILSYNSRAPPORTEN (kildedata – aldri omskrevet av AI) ---------- */}
+          <div className="space-y-3 rounded-md border border-dashed bg-muted/20 p-3">
+            <div className="flex items-center gap-2">
+              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rapporten sier</p>
+              <Badge variant="outline" className="text-[10px]">Kildedata</Badge>
             </div>
-            <div>
-              <Label className="text-xs">Status</Label>
-              <Select value={val("status")} onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, status: v as any })} disabled={!canEdit}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{FINDING_STATUSES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Frist</Label>
-              <Input type="date" value={val("deadline") ?? ""} disabled={!canEdit}
-                onChange={(e) => setVal("deadline", e.target.value || null)} onBlur={() => commit("deadline")} />
-            </div>
-            <div>
-              <Label className="text-xs">Intern ansvarlig</Label>
-              <Select value={val("responsible_person_id") ?? "none"} disabled={!canEdit}
-                onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, responsible_person_id: v === "none" ? null : v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Ikke satt</SelectItem>
-                  {(employees.data ?? []).map((e) => <SelectItem key={e.person_id} value={e.person_id}>{e.full_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            {/* Originaltekst fra myndigheten – holdes atskilt fra MCS sine tekster */}
-            <div className="space-y-3 rounded-md border border-dashed bg-muted/20 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fra tilsynsmyndigheten</p>
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label className="text-xs">Tittel i rapporten</Label>
                 <Input value={val("title") ?? ""} disabled={!canEdit} onChange={(e) => setVal("title", e.target.value)} onBlur={() => commit("title")} />
               </div>
               <div>
-                <Label className="text-xs">Originaltekst</Label>
-                <Textarea rows={4} value={val("original_text") ?? ""} disabled={!canEdit}
-                  onChange={(e) => setVal("original_text", e.target.value)} onBlur={() => commit("original_text")} />
+                <Label className="text-xs">Referanse i rapporten</Label>
+                <Input value={val("report_reference") ?? ""} disabled={!canEdit} placeholder="f.eks. Avvik 3 / pkt 2.1"
+                  onChange={(e) => setVal("report_reference", e.target.value || null)} onBlur={() => commit("report_reference")} />
               </div>
               <div>
-                <Label className="text-xs">Krav / hjemmel (fritekst)</Label>
+                <Label className="text-xs">Type i rapporten</Label>
+                <Select value={val("finding_type")} onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, finding_type: v as any })} disabled={!canEdit}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{FINDING_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Myndighetens frist</Label>
+                <Input type="date" value={val("deadline") ?? ""} disabled={!canEdit}
+                  onChange={(e) => setVal("deadline", e.target.value || null)} onBlur={() => commit("deadline")} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Ordlyd fra rapporten</Label>
+              <Textarea rows={4} value={val("original_text") ?? ""} disabled={!canEdit}
+                onChange={(e) => setVal("original_text", e.target.value)} onBlur={() => commit("original_text")} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs">Hjemmel / krav (fritekst)</Label>
                 <Input value={val("legal_basis_text") ?? ""} disabled={!canEdit} placeholder="f.eks. FSE § 7"
                   onChange={(e) => setVal("legal_basis_text", e.target.value)} onBlur={() => commit("legal_basis_text")} />
               </div>
               <div>
-                <Label className="text-xs">Kommentar fra tilsynsmyndigheten</Label>
-                <Textarea rows={2} value={val("authority_comment") ?? ""} disabled={!canEdit}
-                  onChange={(e) => setVal("authority_comment", e.target.value)} onBlur={() => commit("authority_comment")} />
+                <Label className="text-xs">Hva myndigheten krever</Label>
+                <Input value={val("authority_requirement") ?? ""} disabled={!canEdit}
+                  onChange={(e) => setVal("authority_requirement", e.target.value || null)} onBlur={() => commit("authority_requirement")} />
               </div>
             </div>
-
-            {/* MCS sine tekster */}
-            <div className="space-y-3 rounded-md border p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">MCS sin behandling</p>
-              <div>
-                <Label className="text-xs">Intern vurdering</Label>
-                <Textarea rows={3} value={val("internal_assessment") ?? ""} disabled={!canEdit}
-                  onChange={(e) => setVal("internal_assessment", e.target.value)} onBlur={() => commit("internal_assessment")} />
-              </div>
-              <div>
-                <Label className="text-xs">Svar til tilsynsmyndigheten</Label>
-                <Textarea rows={4} value={val("response_text") ?? ""} disabled={!canEdit}
-                  placeholder="Teksten som skal brukes i svarpakken"
-                  onChange={(e) => setVal("response_text", e.target.value)} onBlur={() => commit("response_text")} />
-              </div>
-              <div>
-                <Label className="text-xs">Interne notater</Label>
-                <Textarea rows={2} value={val("internal_notes") ?? ""} disabled={!canEdit}
-                  onChange={(e) => setVal("internal_notes", e.target.value)} onBlur={() => commit("internal_notes")} />
-              </div>
+            <div>
+              <Label className="text-xs">Kommentar fra tilsynsmyndigheten</Label>
+              <Textarea rows={2} value={val("authority_comment") ?? ""} disabled={!canEdit}
+                onChange={(e) => setVal("authority_comment", e.target.value)} onBlur={() => commit("authority_comment")} />
             </div>
           </div>
 
-          {/* Regelverk */}
+          {/* ---------- B. SYSTEMET VISER (faktiske MCS-data) ---------- */}
+          {systemCheck && <FindingSystemCheck check={systemCheck} />}
+
+          {/* ---------- AI-forslag (må godkjennes) ---------- */}
+          <FindingAiSuggestions finding={finding} inspectionId={inspectionId} canEdit={canEdit} />
+
+          {/* ---------- C. INTERN BEHANDLING ---------- */}
+          <div className="space-y-3 rounded-md border p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Intern behandling</p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <Label className="text-xs">Kategori</Label>
+                <Select value={val("internal_category") ?? "none"} disabled={!canEdit}
+                  onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, internal_category: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Velg kategori" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ikke satt</SelectItem>
+                    {INTERNAL_CATEGORY_SUGGESTIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    {finding.internal_category && !INTERNAL_CATEGORY_SUGGESTIONS.includes(finding.internal_category) && (
+                      <SelectItem value={finding.internal_category}>{finding.internal_category}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {systemCheck?.categoryHint && systemCheck.categoryHint !== finding.internal_category && canEdit && (
+                  <button type="button" className="mt-1 text-[11px] text-primary underline"
+                    onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, internal_category: systemCheck.categoryHint })}>
+                    Bruk «{systemCheck.categoryHint}» (fra regelverksområdet)
+                  </button>
+                )}
+              </div>
+              <div>
+                <Label className="text-xs">Prioritet</Label>
+                <Select value={val("priority") ?? "normal"} disabled={!canEdit}
+                  onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, priority: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{FINDING_PRIORITIES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Status</Label>
+                <Select value={val("status")} disabled={!canEdit}
+                  onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, status: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FINDING_STATUSES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}
+                        disabled={t.value === "documentation_ready" && !preflight.ready && finding.status !== "documentation_ready"}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Intern frist</Label>
+                <Input type="date" value={val("internal_deadline") ?? ""} disabled={!canEdit}
+                  onChange={(e) => setVal("internal_deadline", e.target.value || null)} onBlur={() => commit("internal_deadline")} />
+              </div>
+              <div>
+                <Label className="text-xs">Ansvarlig person</Label>
+                <Select value={val("responsible_person_id") ?? "none"} disabled={!canEdit}
+                  onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, responsible_person_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ikke satt</SelectItem>
+                    {(employees.data ?? []).map((e) => <SelectItem key={e.person_id} value={e.person_id}>{e.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Ansvarlig rolle</Label>
+                <Select value={val("responsible_role_id") ?? "none"} disabled={!canEdit}
+                  onValueChange={(v) => save.mutate({ id: finding.id, inspection_id: inspectionId, responsible_role_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Velg rolle" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ikke satt</SelectItem>
+                    {(orgRoles.data ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div>
+                <Label className="text-xs">Intern vurdering</Label>
+                <Textarea rows={3} value={val("internal_assessment") ?? ""} disabled={!canEdit}
+                  placeholder="Hva betyr funnet for oss?"
+                  onChange={(e) => setVal("internal_assessment", e.target.value)} onBlur={() => commit("internal_assessment")} />
+              </div>
+              <div>
+                <Label className="text-xs">Foreslått løsning</Label>
+                <Textarea rows={3} value={val("proposed_solution") ?? ""} disabled={!canEdit}
+                  placeholder="Hvordan lukker vi funnet?"
+                  onChange={(e) => setVal("proposed_solution", e.target.value || null)} onBlur={() => commit("proposed_solution")} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Interne notater</Label>
+              <Textarea rows={2} value={val("internal_notes") ?? ""} disabled={!canEdit}
+                onChange={(e) => setVal("internal_notes", e.target.value)} onBlur={() => commit("internal_notes")} />
+            </div>
+          </div>
+
+          {/* ---------- Regelverk ---------- */}
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Regelverk</p>
             {regulationLinks.length === 0 && <p className="text-xs text-muted-foreground">Ingen regelverksreferanse.</p>}
@@ -222,7 +326,7 @@ export function FindingCard({
             )}
           </div>
 
-          {/* Tiltak */}
+          {/* ---------- Tiltak ---------- */}
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tiltak</p>
             {actions.length === 0 && <p className="text-xs text-muted-foreground">Ingen tiltak knyttet til funnet.</p>}
@@ -247,9 +351,17 @@ export function FindingCard({
               </div>
             ))}
             {canEdit && !addAction && (
-              <Button size="sm" variant="outline" onClick={() => setAddAction(true)}>
-                <Plus className="mr-1.5 h-3.5 w-3.5" /> Nytt tiltak
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setAddAction(true)}>
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Nytt tiltak
+                </Button>
+                {finding.proposed_solution && (
+                  <Button size="sm" variant="ghost"
+                    onClick={() => { setAddAction(true); setATitle(finding.proposed_solution!.slice(0, 120)); setADue(finding.internal_deadline ?? ""); }}>
+                    Opprett tiltak fra foreslått løsning
+                  </Button>
+                )}
+              </div>
             )}
             {canEdit && addAction && (
               <div className="flex flex-wrap items-end gap-2 rounded-md border p-3">
@@ -279,7 +391,7 @@ export function FindingCard({
             <p className="text-[11px] text-muted-foreground">Tiltak lagres i det eksisterende tiltakssystemet og vises også i HMS-oversiktene.</p>
           </div>
 
-          {/* Dokumentasjon */}
+          {/* ---------- Dokumentasjon og bevis ---------- */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dokumentasjon og bevis</p>
@@ -288,6 +400,46 @@ export function FindingCard({
             <FindingEvidencePanel inspectionId={inspectionId} findingId={finding.id} evidence={evidence} canEdit={canEdit} />
             {derivedDocStatus === "gaps" && (
               <p className="text-xs text-destructive">Kravmotoren finner mangler – dokumentasjonen kan ikke markeres komplett.</p>
+            )}
+          </div>
+
+          {/* ---------- Svar til myndigheten ---------- */}
+          <FindingResponseSection
+            finding={finding}
+            inspectionId={inspectionId}
+            inspectionTitle={inspectionTitle ?? null}
+            authorityName={authorityName ?? null}
+            actions={actions}
+            evidence={evidence}
+            systemFacts={systemCheck?.facts ?? []}
+            canEdit={canEdit}
+          />
+
+          {/* ---------- Pre-flight før oversendelse ---------- */}
+          <div className={cn("space-y-1 rounded-md border p-3", preflight.ready ? "border-emerald-500/40 bg-emerald-500/5" : "border-amber-500/40 bg-amber-500/5")}>
+            <div className="flex items-center gap-2">
+              {preflight.ready
+                ? <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                : <AlertTriangle className="h-4 w-4 text-amber-600" />}
+              <p className="text-sm font-medium">
+                {preflight.ready ? "Funnet er klart for oversendelse" : "Mangler før funnet kan sendes"}
+              </p>
+            </div>
+            {preflight.missing.length > 0 && (
+              <ul className="ml-6 list-disc text-xs text-muted-foreground">
+                {preflight.missing.map((m) => <li key={m}>{m}</li>)}
+              </ul>
+            )}
+            {preflight.notes.length > 0 && (
+              <ul className="ml-6 list-disc text-xs text-muted-foreground">
+                {preflight.notes.map((m) => <li key={m}>{m}</li>)}
+              </ul>
+            )}
+            {canEdit && preflight.ready && finding.status !== "documentation_ready" && finding.status !== "submitted" && (
+              <Button size="sm" className="mt-2"
+                onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, status: "documentation_ready" as any })}>
+                Sett som klar for oversendelse
+              </Button>
             )}
           </div>
 
