@@ -279,7 +279,16 @@ export default function InspectionDetailPage() {
 
         {/* Dokumentasjon */}
         <TabsContent value="documentation" className="mt-4 space-y-4">
+          <InspectionReportCard inspectionId={i.id} />
+          <FindingLinkSuggestions
+            inspectionId={i.id}
+            findings={findings.data ?? []}
+            evidence={evidence.data ?? []}
+            regulationLinks={regulationLinks.data ?? []}
+            canEdit={canEdit}
+          />
           <Card>
+
             <CardHeader className="pb-2"><CardTitle className="text-base">Dokumentasjon på saksnivå</CardTitle></CardHeader>
             <CardContent>
               <p className="mb-3 text-xs text-muted-foreground">
