@@ -99,6 +99,21 @@ export interface SystemCheckSources {
   personName: (personId: string | null) => string | null;
 }
 
+/**
+ * Et konkret gap systemet kan bekrefte fra egne data, med henvisning til
+ * stedet i MCS hvor forholdet faktisk rettes. Tilsynsmodulen skal aldri
+ * lage en egen løsning for dette.
+ */
+export interface SystemGap {
+  id: string;
+  kind: "competence" | "requirement" | "org_role" | "internal_control" | "regulation" | "documentation";
+  message: string;
+  actionLabel: string;
+  route: string;
+  /** Blokkerer «Klar for oversendelse» fordi forholdet fortsatt ikke er rettet */
+  blocking: boolean;
+}
+
 export interface SystemCheckResult {
   competence: { typeId: string; typeKey: string; name: string; coverage: CoverageLike | null }[];
   orgRoles: { id: string; title: string; personName: string | null; deputyName: string | null; valid_from: string | null; valid_to: string | null }[];
@@ -111,7 +126,10 @@ export interface SystemCheckResult {
   /** Kvalifikasjonsvurdering – aldri en konklusjon om enkeltpersoner */
   qualificationNote: string | null;
   facts: string[];
+  /** Handlingsorienterte gap med lenke til riktig sted i systemet */
+  gaps: SystemGap[];
 }
+
 
 function roleIsActive(r: { valid_from: string | null; valid_to: string | null }): boolean {
   const today = new Date().toISOString().slice(0, 10);
