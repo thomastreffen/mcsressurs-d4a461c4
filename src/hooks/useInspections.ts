@@ -334,10 +334,16 @@ export function useFindingMutations(inspectionId?: string) {
         const events: string[] = [];
         if (rest.status) events.push("finding_status_changed");
         if (rest.response_text !== undefined) events.push("response_text_changed");
+        if (rest.response_approved_at) events.push("response_approved");
         if (rest.documentation_status === "complete") events.push("documentation_marked_complete");
+        if (rest.responsible_person_id !== undefined || rest.responsible_role_id !== undefined) events.push("responsible_changed");
+        if (rest.priority !== undefined) events.push("priority_changed");
+        if (rest.internal_assessment !== undefined) events.push("assessment_changed");
+        if (rest.ai_suggestion_state !== undefined) events.push("ai_suggestion_reviewed");
         for (const ev of events.length ? events : ["finding_updated"]) {
-          await log({ inspection_id: insId, finding_id: id, event_type: ev, summary: labelForEvent(ev, rest) });
+          await log({ inspection_id: insId, finding_id: id, event_type: ev, summary: labelForEvent(ev, rest), payload: { patch: Object.keys(rest) } });
         }
+
         return id as string;
       }
       const { data, error } = await sb
