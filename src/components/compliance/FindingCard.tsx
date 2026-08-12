@@ -70,6 +70,8 @@ export function FindingCard({
   const [aTitle, setATitle] = useState("");
   const [aAssignee, setAAssignee] = useState("");
   const [aDue, setADue] = useState("");
+  const [aDesc, setADesc] = useState("");
+  const [aPriority, setAPriority] = useState("medium");
 
   const typeMeta = findingTypeMeta(finding.finding_type);
   const statusMeta = findingStatusMeta(finding.status);
@@ -83,11 +85,26 @@ export function FindingCard({
     personName(finding.responsible_person_id) ?? roleTitle(finding.responsible_role_id) ?? "Ikke satt";
 
   const systemCheck = useMemo(() => (open ? checkFor(finding) : null), [open, finding, checkFor]);
+  const blockingGaps = useMemo(() => (systemCheck?.gaps ?? []).filter((g) => g.blocking), [systemCheck]);
+
+  /** Forhåndsutfyller tiltaksskjemaet fra et godkjent løsningsforslag */
+  const prefillAction = (solution: string) => {
+    const text = solution.trim();
+    const firstLine = text.split("\n")[0];
+    setATitle(firstLine.length > 120 ? `${firstLine.slice(0, 117)}…` : firstLine);
+    setADesc(text);
+    setADue(finding.internal_deadline ?? "");
+    setAPriority(finding.priority === "critical" || finding.priority === "high" ? "high" : finding.priority === "low" ? "low" : "medium");
+    const assignee = users.data?.find((u) => u.id === finding.responsible_person_id)?.id ?? "";
+    setAAssignee(assignee);
+    setAddAction(true);
+  };
 
   const preflight = useMemo(
-    () => findingPreflight(finding, actions, derivedDocStatus, evidence.length),
-    [finding, actions, derivedDocStatus, evidence.length],
+    () => findingPreflight(finding, actions, derivedDocStatus, evidence.length, systemCheck?.gaps ?? []),
+    [finding, actions, derivedDocStatus, evidence.length, systemCheck],
   );
+
 
   return (
     <div className="rounded-lg border bg-card">
