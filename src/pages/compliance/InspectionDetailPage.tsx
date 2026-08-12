@@ -236,12 +236,15 @@ export default function InspectionDetailPage() {
                 key={f.id}
                 finding={f}
                 inspectionId={i.id}
+                inspectionTitle={i.title}
+                authorityName={i.authority_name}
                 evidence={(evidence.data ?? []).filter((e) => e.finding_id === f.id)}
                 regulationLinks={(regulationLinks.data ?? []).filter((r) => r.finding_id === f.id)}
                 actions={(actions.data ?? []).filter((a) => a.compliance_finding_id === f.id)}
                 derivedDocStatus={docStatusByFinding[f.id] ?? "none"}
                 canEdit={canEdit}
               />
+
             ))
           )}
         </TabsContent>

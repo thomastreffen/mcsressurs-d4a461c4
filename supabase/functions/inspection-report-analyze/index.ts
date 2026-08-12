@@ -79,10 +79,19 @@ Absolutte regler:
 - authority_requirement skal være rapportens egen formulering av hva som kreves rettet eller dokumentert.
 - internal_category er DIN korte interne kategorisering (maks 6 ord) og er tydelig merket som forslag – den skal aldri
   blandes inn i originalteksten.
+- priority, internal_assessment, proposed_solution og needed_documentation er DINE FORSLAG til intern behandling.
+  De skal være tydelig atskilt fra rapportens ordlyd, skrives med egne ord og er alltid utkast som et menneske
+  skal godkjenne. Skriv kort og operativt. Ikke gjenta originalteksten.
+  * priority: critical når det er umiddelbar fare for liv/helse eller kort frist, high ved formelt avvik med frist,
+    normal ved merknad, low ved observasjon.
+  * internal_assessment: 1-3 setninger om hva funnet faktisk betyr for virksomheten.
+  * proposed_solution: konkrete steg for å lukke funnet.
+  * needed_documentation: liste over dokumentasjon/bevis som må fremskaffes.
 - match_keywords skal være 1-4 korte nøkkelord som kan brukes til å finne relevant regelverk, kompetansetype,
   ansvarsrolle eller internkontroll i vårt system (f.eks. "FSE", "internkontroll", "NEK 400", "førstehjelp").
 - Datoer skal returneres som YYYY-MM-DD. Er datoen uklar utelates feltet.
 - Skriv all tekst på norsk. Ikke bruk sannsynlighet eller prosenter.`;
+
 
 const TOOL = {
   type: "function",
@@ -119,11 +128,30 @@ const TOOL = {
               authority_requirement: { type: "string", description: "Hva myndigheten krever rettet eller dokumentert" },
               deadline: { type: "string", description: "Frist for dette funnet, YYYY-MM-DD" },
               internal_category: { type: "string", description: "Kort intern kategorisering (AI-forslag)" },
+              priority: {
+                type: "string",
+                enum: ["critical", "high", "normal", "low"],
+                description: "Foreslått intern prioritet ut fra alvorlighet og frist (AI-forslag)",
+              },
+              internal_assessment: {
+                type: "string",
+                description: "Kort intern vurdering på 1-3 setninger: hva funnet betyr for virksomheten (AI-forslag, aldri ordrett rapporttekst)",
+              },
+              proposed_solution: {
+                type: "string",
+                description: "Konkret forslag til hvordan funnet kan lukkes (AI-forslag)",
+              },
+              needed_documentation: {
+                type: "array",
+                items: { type: "string" },
+                description: "Dokumentasjon/bevis som må fremskaffes for å lukke funnet, f.eks. 'FSE-kursbevis for alle montører'",
+              },
               match_keywords: { type: "array", items: { type: "string" } },
             },
             required: ["finding_type", "title", "original_text"],
             additionalProperties: false,
           },
+
         },
       },
       required: ["title", "inspection_type", "findings"],
@@ -268,7 +296,17 @@ Deno.serve(async (req) => {
         internal_category: clean(f.internal_category),
         match_keywords: (Array.isArray(f.match_keywords) ? f.match_keywords : [])
           .map((k: any) => clean(k)).filter(Boolean).slice(0, 4),
+        // AI-forslag til intern behandling – lagres som forslag, aldri som operative data
+        ai_suggestions: {
+          internal_category: clean(f.internal_category),
+          priority: ["critical", "high", "normal", "low"].includes(f.priority) ? f.priority : null,
+          internal_assessment: clean(f.internal_assessment),
+          proposed_solution: clean(f.proposed_solution),
+          needed_documentation: (Array.isArray(f.needed_documentation) ? f.needed_documentation : [])
+            .map((k: any) => clean(k)).filter(Boolean).slice(0, 8),
+        },
       })),
+
       analysis_mode: mode,
       source_file_name: fileName,
     };

@@ -2734,7 +2734,10 @@ export type Database = {
       }
       compliance_findings: {
         Row: {
+          ai_suggestion_state: Json
+          ai_suggestions: Json
           authority_comment: string | null
+          authority_requirement: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -2747,17 +2750,29 @@ export type Database = {
           id: string
           inspection_id: string
           internal_assessment: string | null
+          internal_category: string | null
+          internal_deadline: string | null
           internal_notes: string | null
           legal_basis_text: string | null
+          match_keywords: string[]
           original_text: string | null
+          priority: string
+          proposed_solution: string | null
+          report_reference: string | null
+          response_approved_at: string | null
+          response_approved_by: string | null
           response_text: string | null
           responsible_person_id: string | null
+          responsible_role_id: string | null
           status: string
           title: string
           updated_at: string
         }
         Insert: {
+          ai_suggestion_state?: Json
+          ai_suggestions?: Json
           authority_comment?: string | null
+          authority_requirement?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -2770,17 +2785,29 @@ export type Database = {
           id?: string
           inspection_id: string
           internal_assessment?: string | null
+          internal_category?: string | null
+          internal_deadline?: string | null
           internal_notes?: string | null
           legal_basis_text?: string | null
+          match_keywords?: string[]
           original_text?: string | null
+          priority?: string
+          proposed_solution?: string | null
+          report_reference?: string | null
+          response_approved_at?: string | null
+          response_approved_by?: string | null
           response_text?: string | null
           responsible_person_id?: string | null
+          responsible_role_id?: string | null
           status?: string
           title: string
           updated_at?: string
         }
         Update: {
+          ai_suggestion_state?: Json
+          ai_suggestions?: Json
           authority_comment?: string | null
+          authority_requirement?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -2793,11 +2820,20 @@ export type Database = {
           id?: string
           inspection_id?: string
           internal_assessment?: string | null
+          internal_category?: string | null
+          internal_deadline?: string | null
           internal_notes?: string | null
           legal_basis_text?: string | null
+          match_keywords?: string[]
           original_text?: string | null
+          priority?: string
+          proposed_solution?: string | null
+          report_reference?: string | null
+          response_approved_at?: string | null
+          response_approved_by?: string | null
           response_text?: string | null
           responsible_person_id?: string | null
+          responsible_role_id?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -2829,6 +2865,13 @@ export type Database = {
             columns: ["responsible_person_id"]
             isOneToOne: false
             referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_findings_responsible_role_id_fkey"
+            columns: ["responsible_role_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_org_roles"
             referencedColumns: ["id"]
           },
         ]

@@ -15,7 +15,16 @@ export interface AnalyzedFinding {
   deadline: string | null;
   internal_category: string | null;
   match_keywords: string[];
+  /** AI-forslag til intern behandling – aldri operative data før godkjenning */
+  ai_suggestions?: {
+    internal_category?: string | null;
+    priority?: "critical" | "high" | "normal" | "low" | null;
+    internal_assessment?: string | null;
+    proposed_solution?: string | null;
+    needed_documentation?: string[] | null;
+  };
 }
+
 
 export interface ReportAnalysis {
   title: string | null;

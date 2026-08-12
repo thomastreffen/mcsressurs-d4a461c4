@@ -3,9 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { findingStatusMeta } from "@/lib/inspections";
 import type {
   DocumentationStatus, EvidenceSourceKind, FindingStatus, FindingType, InspectionStatus, InspectionType,
 } from "@/lib/inspections";
+import { findingPriorityMeta } from "@/lib/finding-workflow";
+import type { AiSuggestionState, FindingAiSuggestions, FindingPriority } from "@/lib/finding-workflow";
+
+
 
 const sb = supabase as any;
 
@@ -36,18 +41,33 @@ export interface Finding {
   finding_number: number;
   finding_type: FindingType;
   title: string;
+  /* --- A. Myndighetens data (ordrett fra rapporten) --- */
   original_text: string | null;
+  report_reference: string | null;
   legal_basis_text: string | null;
+  authority_requirement: string | null;
   authority_comment: string | null;
   deadline: string | null;
-  responsible_person_id: string | null;
-  status: FindingStatus;
+  match_keywords: string[];
+  /* --- C. Intern behandling --- */
+  internal_category: string | null;
+  priority: FindingPriority;
   internal_assessment: string | null;
+  proposed_solution: string | null;
+  responsible_person_id: string | null;
+  responsible_role_id: string | null;
+  internal_deadline: string | null;
+  status: FindingStatus;
   response_text: string | null;
+  response_approved_at: string | null;
+  response_approved_by: string | null;
   internal_notes: string | null;
   documentation_status: DocumentationStatus;
+  ai_suggestions: FindingAiSuggestions;
+  ai_suggestion_state: AiSuggestionState;
   created_at: string;
 }
+
 
 export interface FindingRegulationLink {
   id: string;
@@ -317,10 +337,16 @@ export function useFindingMutations(inspectionId?: string) {
         const events: string[] = [];
         if (rest.status) events.push("finding_status_changed");
         if (rest.response_text !== undefined) events.push("response_text_changed");
+        if (rest.response_approved_at) events.push("response_approved");
         if (rest.documentation_status === "complete") events.push("documentation_marked_complete");
+        if (rest.responsible_person_id !== undefined || rest.responsible_role_id !== undefined) events.push("responsible_changed");
+        if (rest.priority !== undefined) events.push("priority_changed");
+        if (rest.internal_assessment !== undefined) events.push("assessment_changed");
+        if (rest.ai_suggestion_state !== undefined) events.push("ai_suggestion_reviewed");
         for (const ev of events.length ? events : ["finding_updated"]) {
-          await log({ inspection_id: insId, finding_id: id, event_type: ev, summary: labelForEvent(ev, rest) });
+          await log({ inspection_id: insId, finding_id: id, event_type: ev, summary: labelForEvent(ev, rest), payload: { patch: Object.keys(rest) } });
         }
+
         return id as string;
       }
       const { data, error } = await sb
@@ -361,12 +387,18 @@ export function useFindingMutations(inspectionId?: string) {
 
 function labelForEvent(ev: string, patch: any): string {
   switch (ev) {
-    case "finding_status_changed": return `Status på funn endret til ${patch.status}`;
+    case "finding_status_changed": return `Status på funn endret til ${findingStatusMeta(patch.status).label}`;
     case "response_text_changed": return "Svartekst til tilsynsmyndigheten endret";
+    case "response_approved": return "Svartekst godkjent for oversendelse";
     case "documentation_marked_complete": return "Dokumentasjon markert komplett";
+    case "responsible_changed": return "Ansvarlig for funnet endret";
+    case "priority_changed": return `Prioritet satt til ${findingPriorityMeta(patch.priority).label}`;
+    case "assessment_changed": return "Intern vurdering oppdatert";
+    case "ai_suggestion_reviewed": return "AI-forslag behandlet (godkjent/endret/avvist)";
     default: return "Funn oppdatert";
   }
 }
+
 
 /* ---------------- Regelverksreferanser ---------------- */
 
