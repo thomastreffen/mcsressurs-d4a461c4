@@ -296,7 +296,17 @@ Deno.serve(async (req) => {
         internal_category: clean(f.internal_category),
         match_keywords: (Array.isArray(f.match_keywords) ? f.match_keywords : [])
           .map((k: any) => clean(k)).filter(Boolean).slice(0, 4),
+        // AI-forslag til intern behandling – lagres som forslag, aldri som operative data
+        ai_suggestions: {
+          internal_category: clean(f.internal_category),
+          priority: ["critical", "high", "normal", "low"].includes(f.priority) ? f.priority : null,
+          internal_assessment: clean(f.internal_assessment),
+          proposed_solution: clean(f.proposed_solution),
+          needed_documentation: (Array.isArray(f.needed_documentation) ? f.needed_documentation : [])
+            .map((k: any) => clean(k)).filter(Boolean).slice(0, 8),
+        },
       })),
+
       analysis_mode: mode,
       source_file_name: fileName,
     };
