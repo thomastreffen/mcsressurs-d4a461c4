@@ -14,6 +14,7 @@ import { FindingCard } from "@/components/compliance/FindingCard";
 import { FindingEvidencePanel } from "@/components/compliance/FindingEvidencePanel";
 import { FindingLinkSuggestions } from "@/components/compliance/FindingLinkSuggestions";
 import { InspectionReportCard } from "@/components/compliance/InspectionReportCard";
+import { ResponsePackageTab } from "@/components/compliance/ResponsePackageTab";
 
 import { ArrowLeft, Pencil, Plus, ListChecks, Mail, History, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
