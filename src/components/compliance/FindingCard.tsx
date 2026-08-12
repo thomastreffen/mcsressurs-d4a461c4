@@ -177,7 +177,12 @@ export function FindingCard({
           {systemCheck && <FindingSystemCheck check={systemCheck} />}
 
           {/* ---------- AI-forslag (må godkjennes) ---------- */}
-          <FindingAiSuggestions finding={finding} inspectionId={inspectionId} canEdit={canEdit} />
+          <FindingAiSuggestions
+            finding={finding}
+            inspectionId={inspectionId}
+            canEdit={canEdit}
+            onCreateActionFromSolution={prefillAction}
+          />
 
           {/* ---------- C. INTERN BEHANDLING ---------- */}
           <div className="space-y-3 rounded-md border p-3">
