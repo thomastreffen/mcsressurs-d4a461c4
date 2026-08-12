@@ -72,15 +72,20 @@ export const FINDING_TYPES: { value: FindingType; label: string; tone: Complianc
   { value: "observation", label: "Observasjon", tone: "neutral" },
 ];
 
+/**
+ * Statusmodellen er den samme som før – kun etikettene er justert til den
+ * operative flyten (ingen konkurrerende statusfelter er innført).
+ */
 export const FINDING_STATUSES: { value: FindingStatus; label: string; tone: ComplianceTone }[] = [
   { value: "new", label: "Ny", tone: "neutral" },
   { value: "under_review", label: "Under vurdering", tone: "warn" },
   { value: "actions_in_progress", label: "Tiltak pågår", tone: "warn" },
-  { value: "documentation_ready", label: "Dokumentasjon klar", tone: "ok" },
+  { value: "documentation_ready", label: "Klar for oversendelse", tone: "ok" },
   { value: "submitted", label: "Oversendt", tone: "ok" },
-  { value: "approved", label: "Godkjent / lukket", tone: "ok" },
-  { value: "disputed", label: "Bestrides / avventer avklaring", tone: "warn" },
+  { value: "disputed", label: "Avventer myndighet", tone: "warn" },
+  { value: "approved", label: "Lukket", tone: "ok" },
 ];
+
 
 export const DOCUMENTATION_STATUSES: Record<DocumentationStatus, { label: string; tone: ComplianceTone }> = {
   none: { label: "Ingen dokumentasjon valgt", tone: "neutral" },
