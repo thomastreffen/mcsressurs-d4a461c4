@@ -350,6 +350,8 @@ export function useFindingMutations(inspectionId?: string) {
         if (rest.priority !== undefined) events.push("priority_changed");
         if (rest.internal_assessment !== undefined) events.push("assessment_changed");
         if (rest.ai_suggestion_state !== undefined) events.push("ai_suggestion_reviewed");
+        if (rest.condition_corrected_at !== undefined) events.push(rest.condition_corrected_at ? "condition_corrected" : "condition_correction_reverted");
+        if (rest.documentation_complete_at !== undefined) events.push(rest.documentation_complete_at ? "documentation_confirmed" : "documentation_confirmation_reverted");
         for (const ev of events.length ? events : ["finding_updated"]) {
           await log({ inspection_id: insId, finding_id: id, event_type: ev, summary: labelForEvent(ev, rest), payload: { patch: Object.keys(rest) } });
         }
