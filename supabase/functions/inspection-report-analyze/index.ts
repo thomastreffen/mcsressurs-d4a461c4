@@ -119,11 +119,30 @@ const TOOL = {
               authority_requirement: { type: "string", description: "Hva myndigheten krever rettet eller dokumentert" },
               deadline: { type: "string", description: "Frist for dette funnet, YYYY-MM-DD" },
               internal_category: { type: "string", description: "Kort intern kategorisering (AI-forslag)" },
+              priority: {
+                type: "string",
+                enum: ["critical", "high", "normal", "low"],
+                description: "Foreslått intern prioritet ut fra alvorlighet og frist (AI-forslag)",
+              },
+              internal_assessment: {
+                type: "string",
+                description: "Kort intern vurdering på 1-3 setninger: hva funnet betyr for virksomheten (AI-forslag, aldri ordrett rapporttekst)",
+              },
+              proposed_solution: {
+                type: "string",
+                description: "Konkret forslag til hvordan funnet kan lukkes (AI-forslag)",
+              },
+              needed_documentation: {
+                type: "array",
+                items: { type: "string" },
+                description: "Dokumentasjon/bevis som må fremskaffes for å lukke funnet, f.eks. 'FSE-kursbevis for alle montører'",
+              },
               match_keywords: { type: "array", items: { type: "string" } },
             },
             required: ["finding_type", "title", "original_text"],
             additionalProperties: false,
           },
+
         },
       },
       required: ["title", "inspection_type", "findings"],
