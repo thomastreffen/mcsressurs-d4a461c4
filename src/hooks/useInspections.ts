@@ -384,12 +384,18 @@ export function useFindingMutations(inspectionId?: string) {
 
 function labelForEvent(ev: string, patch: any): string {
   switch (ev) {
-    case "finding_status_changed": return `Status på funn endret til ${patch.status}`;
+    case "finding_status_changed": return `Status på funn endret til ${findingStatusMeta(patch.status).label}`;
     case "response_text_changed": return "Svartekst til tilsynsmyndigheten endret";
+    case "response_approved": return "Svartekst godkjent for oversendelse";
     case "documentation_marked_complete": return "Dokumentasjon markert komplett";
+    case "responsible_changed": return "Ansvarlig for funnet endret";
+    case "priority_changed": return `Prioritet satt til ${findingPriorityMeta(patch.priority).label}`;
+    case "assessment_changed": return "Intern vurdering oppdatert";
+    case "ai_suggestion_reviewed": return "AI-forslag behandlet (godkjent/endret/avvist)";
     default: return "Funn oppdatert";
   }
 }
+
 
 /* ---------------- Regelverksreferanser ---------------- */
 
