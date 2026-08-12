@@ -35,9 +35,11 @@ interface EmploymentRow {
 export default function HmsPersonDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const { hasPermission } = usePermissions();
   const { isSuperAdmin, isAdmin } = useAuth();
   const { activeCompanyId, allowedCompanyIds } = useCompanyContext();
+
 
   const canViewSecurity = isSuperAdmin || isAdmin || hasPermission("security.view") || hasPermission("security.manage");
   const canViewAudit = isSuperAdmin || hasPermission("security.audit.view");
