@@ -357,40 +357,66 @@ export function FindingCard({
                   <Plus className="mr-1.5 h-3.5 w-3.5" /> Nytt tiltak
                 </Button>
                 {finding.proposed_solution && (
-                  <Button size="sm" variant="ghost"
-                    onClick={() => { setAddAction(true); setATitle(finding.proposed_solution!.slice(0, 120)); setADue(finding.internal_deadline ?? ""); }}>
+                  <Button size="sm" variant="ghost" onClick={() => prefillAction(finding.proposed_solution!)}>
                     Opprett tiltak fra foreslått løsning
                   </Button>
                 )}
               </div>
             )}
             {canEdit && addAction && (
-              <div className="flex flex-wrap items-end gap-2 rounded-md border p-3">
-                <div className="min-w-[220px] flex-1">
-                  <Label className="text-xs">Hva skal gjøres?</Label>
-                  <Input value={aTitle} onChange={(e) => setATitle(e.target.value)} />
+              <div className="space-y-2 rounded-md border p-3">
+                <p className="text-[11px] text-muted-foreground">
+                  Kontroller opplysningene før tiltaket opprettes. Tiltaket blir et ordinært tiltak i tiltakssystemet.
+                </p>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-[220px] flex-1">
+                    <Label className="text-xs">Hva skal gjøres?</Label>
+                    <Input value={aTitle} onChange={(e) => setATitle(e.target.value)} />
+                  </div>
+                  <div className="w-48">
+                    <Label className="text-xs">Ansvarlig</Label>
+                    <Select value={aAssignee} onValueChange={setAAssignee}>
+                      <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
+                      <SelectContent>{(users.data ?? []).map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-40">
+                    <Label className="text-xs">Frist</Label>
+                    <Input type="date" value={aDue} onChange={(e) => setADue(e.target.value)} />
+                  </div>
+                  <div className="w-40">
+                    <Label className="text-xs">Prioritet</Label>
+                    <Select value={aPriority} onValueChange={setAPriority}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="high">Høy</SelectItem>
+                        <SelectItem value="medium">Middels</SelectItem>
+                        <SelectItem value="low">Lav</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="w-48">
-                  <Label className="text-xs">Ansvarlig</Label>
-                  <Select value={aAssignee} onValueChange={setAAssignee}>
-                    <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
-                    <SelectContent>{(users.data ?? []).map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div>
+                  <Label className="text-xs">Beskrivelse</Label>
+                  <Textarea rows={2} value={aDesc} onChange={(e) => setADesc(e.target.value)} />
                 </div>
-                <div className="w-40">
-                  <Label className="text-xs">Frist</Label>
-                  <Input type="date" value={aDue} onChange={(e) => setADue(e.target.value)} />
+                <div className="flex gap-2">
+                  <Button size="sm" disabled={!aTitle.trim()}
+                    onClick={() => actionMut.create.mutate(
+                      {
+                        inspection_id: inspectionId, finding_id: finding.id, title: aTitle.trim(),
+                        description: aDesc.trim() || null, assignee_user_id: aAssignee || null,
+                        due_date: aDue || null, priority: aPriority,
+                      },
+                      { onSuccess: () => { setAddAction(false); setATitle(""); setAAssignee(""); setADue(""); setADesc(""); setAPriority("medium"); } },
+                    )}>Opprett tiltak</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setAddAction(false)}>Avbryt</Button>
                 </div>
-                <Button size="sm" disabled={!aTitle.trim()}
-                  onClick={() => actionMut.create.mutate(
-                    { inspection_id: inspectionId, finding_id: finding.id, title: aTitle.trim(), assignee_user_id: aAssignee || null, due_date: aDue || null },
-                    { onSuccess: () => { setAddAction(false); setATitle(""); setAAssignee(""); setADue(""); } },
-                  )}>Opprett</Button>
-                <Button size="sm" variant="ghost" onClick={() => setAddAction(false)}>Avbryt</Button>
               </div>
             )}
             <p className="text-[11px] text-muted-foreground">Tiltak lagres i det eksisterende tiltakssystemet og vises også i HMS-oversiktene.</p>
           </div>
+
 
           {/* ---------- Dokumentasjon og bevis ---------- */}
           <div className="space-y-2">
