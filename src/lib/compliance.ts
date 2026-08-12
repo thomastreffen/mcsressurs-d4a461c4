@@ -117,3 +117,57 @@ export function formatDate(d: string | null | undefined): string {
   if (!d) return "–";
   return new Date(d).toLocaleDateString("nb-NO", { day: "2-digit", month: "short", year: "numeric" });
 }
+
+/* ============================================================
+ * Kompetansekrav – status, arv og kilder
+ * ============================================================ */
+
+export type RequirementStatus =
+  | "fulfilled"
+  | "missing"
+  | "missing_document"
+  | "expiring_soon"
+  | "expired"
+  | "not_required";
+
+export const REQUIREMENT_STATUS_META: Record<RequirementStatus, { label: string; short: string; tone: ComplianceTone }> = {
+  fulfilled: { label: "Oppfylt", short: "Oppfylt", tone: "ok" },
+  missing: { label: "Mangler kompetanse", short: "Mangler", tone: "alert" },
+  missing_document: { label: "Mangler dokumentasjon", short: "Mangler dok.", tone: "alert" },
+  expiring_soon: { label: "Utløper snart", short: "Utløper snart", tone: "warn" },
+  expired: { label: "Utløpt", short: "Utløpt", tone: "alert" },
+  not_required: { label: "Ikke påkrevd", short: "Ikke påkrevd", tone: "neutral" },
+};
+
+const REQ_SEVERITY: Record<RequirementStatus, number> = {
+  not_required: 0,
+  fulfilled: 1,
+  expiring_soon: 2,
+  missing_document: 3,
+  expired: 3,
+  missing: 4,
+};
+
+export function worstRequirementStatus(list: RequirementStatus[]): RequirementStatus | null {
+  if (!list.length) return null;
+  return list.reduce((a, b) => (REQ_SEVERITY[b] > REQ_SEVERITY[a] ? b : a));
+}
+
+/** 🔴 / 🟡 / 🟢 for en ansatt basert på gjeldende krav */
+export function requirementOverallTone(list: RequirementStatus[]): ComplianceTone {
+  if (list.some((s) => s === "missing" || s === "missing_document" || s === "expired")) return "alert";
+  if (list.some((s) => s === "expiring_soon")) return "warn";
+  if (list.some((s) => s === "fulfilled")) return "ok";
+  return "neutral";
+}
+
+export const REQUIREMENT_SCOPES: { value: "company" | "department" | "role" | "person"; label: string; sourceLabel: string }[] = [
+  { value: "company", label: "Hele virksomheten", sourceLabel: "Virksomhet" },
+  { value: "department", label: "Avdeling", sourceLabel: "Avdeling" },
+  { value: "role", label: "Stilling / rolle", sourceLabel: "Rolle" },
+  { value: "person", label: "Enkeltperson", sourceLabel: "Person" },
+];
+
+export function scopeSourceLabel(scope: string): string {
+  return REQUIREMENT_SCOPES.find((s) => s.value === scope)?.sourceLabel ?? "Virksomhet";
+}

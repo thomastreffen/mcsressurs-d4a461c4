@@ -134,6 +134,7 @@ import HmsPersonDetailPage from "./pages/hms/HmsPersonDetailPage";
 import { HmsContextGate } from "@/components/hms/HmsContextGate";
 import ComplianceOverviewPage from "./pages/compliance/ComplianceOverviewPage";
 import ComplianceCompetencePage from "./pages/compliance/ComplianceCompetencePage";
+import ComplianceRequirementsPage from "./pages/compliance/ComplianceRequirementsPage";
 import ComplianceRegulationsPage from "./pages/compliance/ComplianceRegulationsPage";
 import ComplianceOrganisationPage from "./pages/compliance/ComplianceOrganisationPage";
 import ComplianceInternalControlPage from "./pages/compliance/ComplianceInternalControlPage";
@@ -572,6 +573,11 @@ const App = () => (
               <Route path="/compliance/kompetanse" element={
                 <ProtectedRoute requiredPermission="hms.view">
                   <HmsPage><ComplianceCompetencePage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/compliance/kompetansekrav" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><ComplianceRequirementsPage /></HmsPage>
                 </ProtectedRoute>
               } />
               <Route path="/compliance/regelverk" element={

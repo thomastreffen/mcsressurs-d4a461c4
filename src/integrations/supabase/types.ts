@@ -2294,6 +2294,74 @@ export type Database = {
           },
         ]
       }
+      compliance_competence_requirements: {
+        Row: {
+          active: boolean
+          company_id: string
+          competence_type_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          document_required: boolean
+          id: string
+          reason: string | null
+          required: boolean
+          scope_id: string | null
+          scope_type: string
+          updated_at: string
+          valid_from: string | null
+          valid_to: string | null
+          validity_months: number | null
+          warning_days: number | null
+        }
+        Insert: {
+          active?: boolean
+          company_id: string
+          competence_type_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          document_required?: boolean
+          id?: string
+          reason?: string | null
+          required?: boolean
+          scope_id?: string | null
+          scope_type: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+          validity_months?: number | null
+          warning_days?: number | null
+        }
+        Update: {
+          active?: boolean
+          company_id?: string
+          competence_type_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          document_required?: boolean
+          id?: string
+          reason?: string | null
+          required?: boolean
+          scope_id?: string | null
+          scope_type?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+          validity_months?: number | null
+          warning_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_competence_requirements_competence_type_id_fkey"
+            columns: ["competence_type_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_competence_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compliance_competence_types: {
         Row: {
           category: string
@@ -2457,6 +2525,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      compliance_job_roles: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          is_field_role: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_field_role?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_field_role?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       compliance_notification_queue: {
         Row: {
@@ -4795,6 +4902,7 @@ export type Database = {
           id: string
           include_in_hms_people: boolean
           is_plannable_resource: boolean
+          job_role_id: string | null
           notes: string | null
           person_id: string
           relationship_type: string
@@ -4814,6 +4922,7 @@ export type Database = {
           id?: string
           include_in_hms_people?: boolean
           is_plannable_resource?: boolean
+          job_role_id?: string | null
           notes?: string | null
           person_id: string
           relationship_type?: string
@@ -4833,6 +4942,7 @@ export type Database = {
           id?: string
           include_in_hms_people?: boolean
           is_plannable_resource?: boolean
+          job_role_id?: string | null
           notes?: string | null
           person_id?: string
           relationship_type?: string
@@ -4851,6 +4961,13 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employment_profiles_job_role_id_fkey"
+            columns: ["job_role_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_job_roles"
             referencedColumns: ["id"]
           },
           {
@@ -13665,6 +13782,48 @@ export type Database = {
           _requires_document: boolean
         }
         Returns: string
+      }
+      compliance_effective_requirements: {
+        Args: { _company_id: string; _person_id?: string }
+        Returns: {
+          competence_type_id: string
+          document_required: boolean
+          person_id: string
+          reason: string
+          required: boolean
+          requirement_id: string
+          source_label: string
+          source_scope: string
+          validity_months: number
+          warning_days: number
+        }[]
+      }
+      compliance_requirement_impact: {
+        Args: { _company_id: string }
+        Returns: {
+          affected_people: number
+          requirement_id: string
+        }[]
+      }
+      compliance_requirement_status: {
+        Args: { _company_id: string; _person_id?: string }
+        Returns: {
+          competence_id: string
+          competence_type_id: string
+          days_until: number
+          document_required: boolean
+          expires_at: string
+          has_document: boolean
+          person_id: string
+          reason: string
+          required: boolean
+          requirement_id: string
+          source_label: string
+          source_scope: string
+          status: string
+          validity_months: number
+          warning_days: number
+        }[]
       }
       compute_submission_summary: {
         Args: { _submission_id: string }
