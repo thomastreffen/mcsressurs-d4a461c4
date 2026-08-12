@@ -13,7 +13,7 @@ import { useInspections, useInspectionSummaries } from "@/hooks/useInspections";
 import { useComplianceEmployees } from "@/hooks/useCompliance";
 import { daysUntil, formatDate } from "@/lib/compliance";
 import {
-  DOCUMENTATION_STATUSES, INSPECTION_STATUSES, INSPECTION_TYPES,
+  DOCUMENTATION_STATUSES, INSPECTION_TYPES,
   aggregateDocumentationStatus, deadlineLabel, deadlineTone,
   inspectionStatusMeta, inspectionTypeLabel,
 } from "@/lib/inspections";
@@ -166,9 +166,6 @@ export default function InspectionsPage() {
           })}
         </div>
       )}
-      <p className="text-[11px] text-muted-foreground">
-        {INSPECTION_STATUSES.map((s) => s.label).join(" · ")}
-      </p>
     </div>
   );
 }
