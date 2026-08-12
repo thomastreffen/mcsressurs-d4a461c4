@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import type {
   DocumentationStatus, EvidenceSourceKind, FindingStatus, FindingType, InspectionStatus, InspectionType,
 } from "@/lib/inspections";
+import type { AiSuggestionState, FindingAiSuggestions, FindingPriority } from "@/lib/finding-workflow";
+
 
 const sb = supabase as any;
 
