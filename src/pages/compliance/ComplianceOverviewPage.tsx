@@ -9,13 +9,14 @@ import {
   CalendarClock, FileWarning, Network,
 } from "lucide-react";
 import {
-  useComplianceEmployees, useCompetences, useCompetenceTypes, useRegulations,
+  useComplianceEmployees, useCompetenceTypes, useRegulations,
   useComplianceAudits, useOpenHmsCounts, useOrgRoles,
 } from "@/hooks/useCompliance";
 import {
-  competenceStatus, daysUntil, formatDate, worstStatus,
+  daysUntil, formatDate, REQUIREMENT_STATUS_META,
   type ComplianceTone, TONE_CLASS, TONE_DOT,
 } from "@/lib/compliance";
+import { useRequirementStatus } from "@/hooks/useComplianceRequirements";
 import { cn } from "@/lib/utils";
 
 interface Kpi {
@@ -185,7 +186,7 @@ export default function ComplianceOverviewPage() {
           </CardHeader>
           <CardContent className="p-0">
             {model.soonest.length === 0 ? (
-              <p className="px-6 pb-5 text-sm text-muted-foreground">Ingen utløpte eller snarlig utløpende kompetanser.</p>
+              <p className="px-6 pb-5 text-sm text-muted-foreground">Alle påkrevde kompetansekrav er oppfylt.</p>
             ) : (
               <ul className="divide-y">
                 {model.soonest.map((r) => {
@@ -200,8 +201,12 @@ export default function ComplianceOverviewPage() {
                         </p>
                       </div>
                       <ComplianceStatusBadge
-                        label={r.status === "expired" ? `Utløpt ${Math.abs(r.days ?? 0)} d` : `${r.days} d igjen`}
-                        tone={r.status === "expired" ? "alert" : "warn"}
+                        label={
+                          r.status === "expiring_soon" && r.days !== null
+                            ? `${r.days} d igjen`
+                            : REQUIREMENT_STATUS_META[r.status].label
+                        }
+                        tone={REQUIREMENT_STATUS_META[r.status].tone}
                       />
                     </li>
                   );
