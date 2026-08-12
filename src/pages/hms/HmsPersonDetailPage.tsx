@@ -11,6 +11,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { PersonSecurityTab } from "@/components/security/PersonSecurityTab";
 import { PersonCompetenceTab } from "@/components/compliance/PersonCompetenceTab";
+import { EmploymentDetailsSection } from "@/components/hms/EmploymentDetailsSection";
+
 
 
 interface PersonRow {
@@ -279,6 +281,8 @@ export default function HmsPersonDetailPage() {
               </>
             )}
           </div>
+          </div>
+
         </TabsContent>
 
         <TabsContent value="hms" className="mt-4">
