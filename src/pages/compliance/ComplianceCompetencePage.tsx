@@ -1,17 +1,13 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
-import { CompetenceDialog } from "@/components/compliance/CompetenceDialog";
-import { Plus, Search, Paperclip, BadgeCheck, Trash2, Pencil } from "lucide-react";
+import { Search, ChevronRight } from "lucide-react";
 import {
-  useComplianceEmployees, useCompetences, useCompetenceTypes, useCompetenceMutations,
-  useCompetenceDocuments, type Competence,
+  useComplianceEmployees, useCompetences, useCompetenceTypes,
 } from "@/hooks/useCompliance";
 import {
   COMPETENCE_STATUS_META, competenceStatus, formatDate, TONE_DOT, worstStatus,
@@ -21,17 +17,16 @@ import { cn } from "@/lib/utils";
 
 export default function ComplianceCompetencePage() {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const employees = useComplianceEmployees();
   const types = useCompetenceTypes();
   const competences = useCompetences();
-  const { remove, verify } = useCompetenceMutations();
 
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState("all");
   const [typeFilter, setTypeFilter] = useState(params.get("type") ?? "all");
   const [statusFilter, setStatusFilter] = useState(params.get("status") ?? "all");
-  const [openPerson, setOpenPerson] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<{ personId: string; competence?: Competence | null; typeId?: string | null } | null>(null);
+
 
   const typeList = types.data ?? [];
   const enriched = useMemo(() => {
