@@ -2526,6 +2526,465 @@ export type Database = {
           },
         ]
       }
+      compliance_correspondence: {
+        Row: {
+          company_id: string
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          direction: string
+          document_id: string | null
+          id: string
+          inspection_id: string
+          notes: string | null
+          occurred_at: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          document_id?: string | null
+          id?: string
+          inspection_id: string
+          notes?: string | null
+          occurred_at?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          document_id?: string | null
+          id?: string
+          inspection_id?: string
+          notes?: string | null
+          occurred_at?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_correspondence_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_correspondence_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_correspondence_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_finding_evidence: {
+        Row: {
+          company_id: string
+          competence_type_id: string | null
+          created_at: string
+          created_by: string | null
+          document_id: string | null
+          finding_id: string | null
+          id: string
+          inspection_id: string
+          label: string | null
+          note: string | null
+          ref_id: string | null
+          source_kind: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          competence_type_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          finding_id?: string | null
+          id?: string
+          inspection_id: string
+          label?: string | null
+          note?: string | null
+          ref_id?: string | null
+          source_kind: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          competence_type_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          finding_id?: string | null
+          id?: string
+          inspection_id?: string
+          label?: string | null
+          note?: string | null
+          ref_id?: string | null
+          source_kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_finding_evidence_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_finding_evidence_competence_type_id_fkey"
+            columns: ["competence_type_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_competence_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_finding_evidence_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_finding_evidence_finding_id_fkey"
+            columns: ["finding_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_finding_evidence_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_finding_regulations: {
+        Row: {
+          clause: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          finding_id: string
+          id: string
+          note: string | null
+          regulation_id: string | null
+        }
+        Insert: {
+          clause?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          finding_id: string
+          id?: string
+          note?: string | null
+          regulation_id?: string | null
+        }
+        Update: {
+          clause?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          finding_id?: string
+          id?: string
+          note?: string | null
+          regulation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_finding_regulations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_finding_regulations_finding_id_fkey"
+            columns: ["finding_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_finding_regulations_regulation_id_fkey"
+            columns: ["regulation_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_regulations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_findings: {
+        Row: {
+          authority_comment: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          documentation_status: string
+          finding_number: number
+          finding_type: string
+          id: string
+          inspection_id: string
+          internal_assessment: string | null
+          internal_notes: string | null
+          legal_basis_text: string | null
+          original_text: string | null
+          response_text: string | null
+          responsible_person_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          authority_comment?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          documentation_status?: string
+          finding_number?: number
+          finding_type?: string
+          id?: string
+          inspection_id: string
+          internal_assessment?: string | null
+          internal_notes?: string | null
+          legal_basis_text?: string | null
+          original_text?: string | null
+          response_text?: string | null
+          responsible_person_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          authority_comment?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          documentation_status?: string
+          finding_number?: number
+          finding_type?: string
+          id?: string
+          inspection_id?: string
+          internal_assessment?: string | null
+          internal_notes?: string | null
+          legal_basis_text?: string | null
+          original_text?: string | null
+          response_text?: string | null
+          responsible_person_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_findings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_findings_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_inspections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_findings_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_findings_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_inspection_events: {
+        Row: {
+          actor_user_id: string | null
+          company_id: string
+          created_at: string
+          event_type: string
+          finding_id: string | null
+          id: string
+          inspection_id: string
+          payload: Json
+          summary: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          company_id: string
+          created_at?: string
+          event_type: string
+          finding_id?: string | null
+          id?: string
+          inspection_id: string
+          payload?: Json
+          summary?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          company_id?: string
+          created_at?: string
+          event_type?: string
+          finding_id?: string | null
+          id?: string
+          inspection_id?: string
+          payload?: Json
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_inspection_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_inspection_events_finding_id_fkey"
+            columns: ["finding_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_inspection_events_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_inspections: {
+        Row: {
+          authority_name: string | null
+          case_number: string | null
+          closed_at: string | null
+          company_id: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          id: string
+          inspection_date: string | null
+          inspection_type: string
+          response_deadline: string | null
+          responsible_person_id: string | null
+          status: string
+          submitted_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          authority_name?: string | null
+          case_number?: string | null
+          closed_at?: string | null
+          company_id: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          id?: string
+          inspection_date?: string | null
+          inspection_type?: string
+          response_deadline?: string | null
+          responsible_person_id?: string | null
+          status?: string
+          submitted_at?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          authority_name?: string | null
+          case_number?: string | null
+          closed_at?: string | null
+          company_id?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          id?: string
+          inspection_date?: string | null
+          inspection_type?: string
+          response_deadline?: string | null
+          responsible_person_id?: string | null
+          status?: string
+          submitted_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_inspections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_inspections_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_inspections_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compliance_job_roles: {
         Row: {
           company_id: string
@@ -5959,6 +6418,8 @@ export type Database = {
           completed_at: string | null
           completed_by: string | null
           compliance_audit_id: string | null
+          compliance_finding_id: string | null
+          compliance_inspection_id: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -5981,6 +6442,8 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           compliance_audit_id?: string | null
+          compliance_finding_id?: string | null
+          compliance_inspection_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -6003,6 +6466,8 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           compliance_audit_id?: string | null
+          compliance_finding_id?: string | null
+          compliance_inspection_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -6031,6 +6496,20 @@ export type Database = {
             columns: ["compliance_audit_id"]
             isOneToOne: false
             referencedRelation: "compliance_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_action_items_compliance_finding_id_fkey"
+            columns: ["compliance_finding_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_action_items_compliance_inspection_id_fkey"
+            columns: ["compliance_inspection_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_inspections"
             referencedColumns: ["id"]
           },
           {
