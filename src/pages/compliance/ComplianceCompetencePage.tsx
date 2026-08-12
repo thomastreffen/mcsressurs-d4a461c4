@@ -1,17 +1,13 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
-import { CompetenceDialog } from "@/components/compliance/CompetenceDialog";
-import { Plus, Search, Paperclip, BadgeCheck, Trash2, Pencil } from "lucide-react";
+import { Search, ChevronRight } from "lucide-react";
 import {
-  useComplianceEmployees, useCompetences, useCompetenceTypes, useCompetenceMutations,
-  useCompetenceDocuments, type Competence,
+  useComplianceEmployees, useCompetences, useCompetenceTypes,
 } from "@/hooks/useCompliance";
 import {
   COMPETENCE_STATUS_META, competenceStatus, formatDate, TONE_DOT, worstStatus,
@@ -21,17 +17,16 @@ import { cn } from "@/lib/utils";
 
 export default function ComplianceCompetencePage() {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const employees = useComplianceEmployees();
   const types = useCompetenceTypes();
   const competences = useCompetences();
-  const { remove, verify } = useCompetenceMutations();
 
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState("all");
   const [typeFilter, setTypeFilter] = useState(params.get("type") ?? "all");
   const [statusFilter, setStatusFilter] = useState(params.get("status") ?? "all");
-  const [openPerson, setOpenPerson] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<{ personId: string; competence?: Competence | null; typeId?: string | null } | null>(null);
+
 
   const typeList = types.data ?? [];
   const enriched = useMemo(() => {
@@ -51,7 +46,7 @@ export default function ComplianceCompetencePage() {
     });
   }, [competences.data, typeList]);
 
-  const docs = useCompetenceDocuments(enriched.map((c) => c.id));
+  
 
   const departments = useMemo(() => {
     const map = new Map<string, string>();
@@ -85,8 +80,6 @@ export default function ComplianceCompetencePage() {
       });
   }, [employees.data, enriched, filteredTypes, dept, search, statusFilter]);
 
-  const person = (employees.data ?? []).find((p) => p.person_id === openPerson);
-  const personItems = enriched.filter((c) => c.person_id === openPerson);
 
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -101,8 +94,11 @@ export default function ComplianceCompetencePage() {
     <div className="p-4 sm:p-6 space-y-5">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Kompetanse</h1>
-        <p className="text-sm text-muted-foreground">Kompetansematrise med automatisk beregnet status per ansatt</p>
+        <p className="text-sm text-muted-foreground">
+          Kontrollvisning med automatisk beregnet status. Registrering og dokumentasjon vedlikeholdes på ansattkortet under HMS → Ansatte.
+        </p>
       </div>
+
 
       <div className="flex flex-wrap gap-2">
         <div className="relative min-w-[200px] flex-1">
@@ -157,11 +153,21 @@ export default function ComplianceCompetencePage() {
               </thead>
               <tbody className="divide-y">
                 {rows.map(({ person: p, cells, rowStatus, missingRequired }) => (
-                  <tr key={p.person_id} className="cursor-pointer hover:bg-muted/30" onClick={() => setOpenPerson(p.person_id)}>
+                  <tr
+                    key={p.person_id}
+                    className="cursor-pointer hover:bg-muted/30"
+                    onClick={() => navigate(`/hms/people/${p.person_id}?tab=competence`)}
+                    title="Åpne ansattkortet (HMS → Ansatte)"
+                  >
+
                     <td className="sticky left-0 z-10 bg-background px-4 py-2.5">
-                      <p className="font-medium">{p.full_name}</p>
+                      <p className="flex items-center gap-1 font-medium">
+                        {p.full_name}
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </p>
                       <p className="text-xs text-muted-foreground">{p.department_name ?? "Uten avdeling"}</p>
                     </td>
+
                     {cells.map((c) => (
                       <td key={c.type.id} className="px-3 py-2.5 whitespace-nowrap">
                         {c.status ? (
@@ -192,78 +198,7 @@ export default function ComplianceCompetencePage() {
           )}
         </CardContent>
       </Card>
-
-      <Sheet open={!!openPerson} onOpenChange={(v) => !v && setOpenPerson(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{person?.full_name ?? "Ansatt"}</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4 space-y-3">
-            <Button size="sm" onClick={() => setDialog({ personId: openPerson!, competence: null })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Ny kompetanse
-            </Button>
-
-            {personItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Ingen kompetanseposter registrert.</p>
-            ) : (
-              personItems.map((c) => {
-                const meta = COMPETENCE_STATUS_META[c.status];
-                const doc = docs.data?.[c.id];
-                return (
-                  <Card key={c.id}>
-                    <CardContent className="space-y-2 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium">{c.typeName}</p>
-                          {c.description && <p className="text-xs text-muted-foreground">{c.description}</p>}
-                        </div>
-                        <ComplianceStatusBadge label={meta.label} tone={meta.tone} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                        <span>Utstedt: {formatDate(c.issued_at)}</span>
-                        <span>Utløper: {c.expires_at ? formatDate(c.expires_at) : "Ingen utløp"}</span>
-                        <span>Utsteder: {c.issuer || "–"}</span>
-                        <span>Verifisert: {c.verified_at ? formatDate(c.verified_at) : "Nei"}</span>
-                      </div>
-                      {c.comment && <p className="text-xs">{c.comment}</p>}
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        {doc?.public_url && (
-                          <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-                            <a href={doc.public_url} target="_blank" rel="noreferrer"><Paperclip className="mr-1 h-3 w-3" />{doc.file_name}</a>
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setDialog({ personId: c.person_id, competence: c })}>
-                          <Pencil className="mr-1 h-3 w-3" /> Endre
-                        </Button>
-                        {!c.verified_at && (
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => verify.mutate(c.id)}>
-                            <BadgeCheck className="mr-1 h-3 w-3" /> Verifiser
-                          </Button>
-                        )}
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => remove.mutate(c.id)}>
-                          <Trash2 className="mr-1 h-3 w-3" /> Fjern
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {dialog && (
-        <CompetenceDialog
-          open
-          onOpenChange={(v) => !v && setDialog(null)}
-          personId={dialog.personId}
-          personName={(employees.data ?? []).find((p) => p.person_id === dialog.personId)?.full_name}
-          types={typeList}
-          competence={dialog.competence}
-          defaultTypeId={dialog.typeId ?? null}
-        />
-      )}
     </div>
   );
 }
+
