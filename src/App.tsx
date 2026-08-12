@@ -621,11 +621,17 @@ const App = () => (
                   <HmsPage><InspectionDetailPage /></HmsPage>
                 </ProtectedRoute>
               } />
+              <Route path="/compliance/tilsyn/:id/svarpakke" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><InspectionResponsePreviewPage /></HmsPage>
+                </ProtectedRoute>
+              } />
               <Route path="/compliance/tilsyn/:id/rediger" element={
                 <ProtectedRoute requiredPermission="hms.manage">
                   <HmsPage><InspectionFormPage /></HmsPage>
                 </ProtectedRoute>
               } />
+
               {/* HMS & HR module */}
               <Route path="/hms" element={
                 <ProtectedRoute requiredPermission="hms.view">
