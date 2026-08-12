@@ -319,6 +319,10 @@ export interface PreflightFinding {
   responsible_role_id: string | null;
   internal_deadline: string | null;
   status: string;
+  /** Forholdet er bekreftet rettet (uavhengig av dokumentasjon) */
+  condition_corrected_at?: string | null;
+  /** Dokumentasjonen av rettingen er bekreftet komplett */
+  documentation_complete_at?: string | null;
 }
 
 export interface PreflightAction {
@@ -332,6 +336,8 @@ export interface PreflightResult {
   ready: boolean;
   missing: string[];
   notes: string[];
+  /** Gap i virksomhetsdata som fortsatt ikke er rettet */
+  unresolvedGaps: SystemGap[];
 }
 
 /**
@@ -344,6 +350,7 @@ export function findingPreflight(
   actions: PreflightAction[],
   docStatus: DocumentationStatus,
   evidenceCount: number,
+  systemGaps: SystemGap[] = [],
 ): PreflightResult {
   const missing: string[] = [];
   const notes: string[] = [];
@@ -359,6 +366,15 @@ export function findingPreflight(
   else if (docStatus === "gaps") missing.push("Dokumentasjonen har mangler ifølge kravmotoren");
   else if (docStatus === "incomplete") notes.push("Dokumentasjonen er registrert som ufullstendig");
 
+  if (!finding.condition_corrected_at) missing.push("Forholdet er ikke bekreftet rettet");
+  if (!finding.documentation_complete_at) missing.push("Dokumentasjonen er ikke bekreftet komplett");
+
+  const unresolvedGaps = systemGaps.filter((g) => g.blocking);
+  for (const g of unresolvedGaps) {
+    missing.push(`Systemet viser fortsatt at forholdet ikke er rettet: ${g.message}`);
+  }
+  for (const g of systemGaps.filter((g) => !g.blocking)) notes.push(g.message);
+
   if (!finding.response_text?.trim()) missing.push("Svartekst til myndigheten mangler");
   else if (!finding.response_approved_at) missing.push("Svartekst er ikke godkjent");
 
@@ -367,8 +383,9 @@ export function findingPreflight(
     if (days < 0 && finding.status !== "approved") notes.push(`Intern frist er passert med ${Math.abs(days)} dager`);
   }
 
-  return { ready: missing.length === 0, missing, notes };
+  return { ready: missing.length === 0, missing, notes, unresolvedGaps };
 }
+
 
 /* ------------------------------------------------------------------ */
 /* AI-forslag – aldri operative data før godkjenning                   */
