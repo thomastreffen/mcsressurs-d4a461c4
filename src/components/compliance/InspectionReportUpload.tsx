@@ -1,0 +1,131 @@
+/**
+ * Opplastingsområde på «Nytt tilsyn»: last opp mottatt tilsynsrapport,
+ * lagre den i storage og la AI foreslå saksopplysninger og funn.
+ * Ingen modaler – alt skjer inline, og resultatet vises på en egen kontrollside.
+ */
+import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { FileUp, Loader2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useCompanyContext } from "@/hooks/useCompanyContext";
+import { ACCEPTED_REPORT_TYPES, saveReportDraft, type ReportAnalysis } from "@/lib/inspection-report";
+
+const BUCKET = "job-attachments";
+
+export function InspectionReportUpload() {
+  const navigate = useNavigate();
+  const { activeCompanyId } = useCompanyContext();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState<null | "upload" | "analyze">(null);
+  const [dragging, setDragging] = useState(false);
+
+  const handleFile = async (file: File) => {
+    if (!activeCompanyId) {
+      toast.error("Mangler aktivt selskap");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Filen er for stor (maks 15 MB)");
+      return;
+    }
+    try {
+      setBusy("upload");
+      const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+      const path = `tilsyn/${activeCompanyId}/${crypto.randomUUID()}-${safeName}`;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+
+      setBusy("analyze");
+      const { data, error } = await supabase.functions.invoke("inspection-report-analyze", {
+        body: { bucket: BUCKET, path, fileName: file.name, mime: file.type || "application/pdf" },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.message ?? "Kunne ikke analysere rapporten");
+
+      saveReportDraft({
+        analysis: data.analysis as ReportAnalysis,
+        file: {
+          bucket: BUCKET,
+          path,
+          name: file.name,
+          size: file.size,
+          mime: file.type || "application/octet-stream",
+          publicUrl: pub?.publicUrl ?? null,
+        },
+        createdAt: new Date().toISOString(),
+      });
+      navigate("/compliance/tilsyn/ny/gjennomgang");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Opplasting eller analyse feilet");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Card className="border-dashed">
+      <CardContent className="p-4 sm:p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-semibold">Last opp tilsynsrapport</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Last opp rapporten, så forsøker systemet å fylle ut saken og identifisere funn og avvik automatisk.
+        </p>
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            const f = e.dataTransfer.files?.[0];
+            if (f && !busy) handleFile(f);
+          }}
+          className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors ${
+            dragging ? "border-primary bg-primary/5" : "border-muted"
+          }`}
+        >
+          {busy ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <p className="text-sm font-medium">
+                {busy === "upload" ? "Laster opp rapporten…" : "Leser rapporten og identifiserer funn…"}
+              </p>
+              <p className="text-xs text-muted-foreground">Store rapporter kan ta et halvt minutt.</p>
+            </>
+          ) : (
+            <>
+              <FileUp className="h-5 w-5 text-muted-foreground" />
+              <p className="text-sm">Dra rapporten hit, eller velg fil</p>
+              <p className="text-xs text-muted-foreground">PDF, Word, tekst, e-post eller bilde av rapporten</p>
+              <Button size="sm" className="mt-2" onClick={() => inputRef.current?.click()}>
+                Velg rapport
+              </Button>
+            </>
+          )}
+          <input
+            ref={inputRef}
+            type="file"
+            accept={ACCEPTED_REPORT_TYPES}
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) handleFile(f);
+            }}
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Rapporten lagres som originaldokument på saken. Ingenting opprettes før du har gått gjennom og godkjent forslaget.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}

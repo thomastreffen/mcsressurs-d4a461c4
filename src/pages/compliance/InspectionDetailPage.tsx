@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
 import { FindingCard } from "@/components/compliance/FindingCard";
 import { FindingEvidencePanel } from "@/components/compliance/FindingEvidencePanel";
+import { FindingLinkSuggestions } from "@/components/compliance/FindingLinkSuggestions";
+import { InspectionReportCard } from "@/components/compliance/InspectionReportCard";
+
 import { ArrowLeft, Pencil, Plus, ListChecks, Mail, History, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/hooks/useAuth";
@@ -279,7 +282,16 @@ export default function InspectionDetailPage() {
 
         {/* Dokumentasjon */}
         <TabsContent value="documentation" className="mt-4 space-y-4">
+          <InspectionReportCard inspectionId={i.id} />
+          <FindingLinkSuggestions
+            inspectionId={i.id}
+            findings={findings.data ?? []}
+            evidence={evidence.data ?? []}
+            regulationLinks={regulationLinks.data ?? []}
+            canEdit={canEdit}
+          />
           <Card>
+
             <CardHeader className="pb-2"><CardTitle className="text-base">Dokumentasjon på saksnivå</CardTitle></CardHeader>
             <CardContent>
               <p className="mb-3 text-xs text-muted-foreground">

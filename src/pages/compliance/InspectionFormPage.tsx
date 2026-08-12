@@ -10,6 +10,8 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useComplianceEmployees } from "@/hooks/useCompliance";
 import { useInspection, useInspectionMutations, type Inspection } from "@/hooks/useInspections";
 import { INSPECTION_STATUSES, INSPECTION_TYPES } from "@/lib/inspections";
+import { InspectionReportUpload } from "@/components/compliance/InspectionReportUpload";
+
 
 const EMPTY: Partial<Inspection> = {
   title: "", inspection_type: "dle", authority_name: "", contact_name: "", contact_email: "",
@@ -53,8 +55,23 @@ export default function InspectionFormPage() {
       </div>
       <div>
         <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{editing ? "Rediger tilsynssak" : "Nytt tilsyn"}</h1>
-        <p className="text-sm text-muted-foreground">Registrer saken først – funn, tiltak og dokumentasjon legges inn i saken etterpå.</p>
+        <p className="text-sm text-muted-foreground">
+          {editing
+            ? "Endre saksopplysningene. Funn, tiltak og dokumentasjon ligger inne i saken."
+            : "Last opp rapporten og fyll ut automatisk, eller opprett saken manuelt nedenfor."}
+        </p>
       </div>
+
+      {!editing && <InspectionReportUpload />}
+
+      {!editing && (
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">eller opprett manuelt</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+      )}
+
 
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Om saken</CardTitle></CardHeader>

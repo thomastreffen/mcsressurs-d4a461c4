@@ -141,6 +141,8 @@ import ComplianceInternalControlPage from "./pages/compliance/ComplianceInternal
 import InspectionsPage from "./pages/compliance/InspectionsPage";
 import InspectionDetailPage from "./pages/compliance/InspectionDetailPage";
 import InspectionFormPage from "./pages/compliance/InspectionFormPage";
+import InspectionReportReviewPage from "./pages/compliance/InspectionReportReviewPage";
+
 import { CompanyProvider, useCompanyContext } from "@/hooks/useCompanyContext";
 import { ActiveCompanyForPermissions } from "@/hooks/usePermissions";
 import { PreviewModeProvider } from "@/hooks/usePreviewMode";
@@ -608,6 +610,12 @@ const App = () => (
                   <HmsPage><InspectionFormPage /></HmsPage>
                 </ProtectedRoute>
               } />
+              <Route path="/compliance/tilsyn/ny/gjennomgang" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><InspectionReportReviewPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+
               <Route path="/compliance/tilsyn/:id" element={
                 <ProtectedRoute requiredPermission="hms.view">
                   <HmsPage><InspectionDetailPage /></HmsPage>
