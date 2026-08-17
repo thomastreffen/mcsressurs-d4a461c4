@@ -26,6 +26,7 @@ export const FIELD_ICONS: Record<OrderFormFieldType, React.ElementType> = {
   yes_no: CheckSquare,
   checkbox_list: ListChecks,
   radio: CircleDot,
+  pricing_model: BadgeDollarSign,
   file_upload: Upload,
   image_upload: Image,
   customer_lookup: UserSearch,
