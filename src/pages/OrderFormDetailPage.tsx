@@ -2434,6 +2434,7 @@ function AttachmentRow({
 }
 
 function renderFieldValue(val: any, type: string): string {
+  if (type === "pricing_model") return formatPricingModel(val);
   if (val == null) return "–";
   if (typeof val === "boolean") return val ? "Ja" : "Nei";
   if (Array.isArray(val)) return val.join(", ");
