@@ -958,6 +958,8 @@ export function EventDrawer({
     setFiles([]);
     setPendingSave(null);
     toast.success("Hendelse oppdatert", { description: sendNotifications ? "Viktige endringer er lagret og varsling er klargjort." : "Endringer lagret uten varsling." });
+    // Refresh approval status + timeline so the drawer never shows the previous technician's answer
+    refreshApprovalData();
     onSaved?.(editEvent.id);
   };
 

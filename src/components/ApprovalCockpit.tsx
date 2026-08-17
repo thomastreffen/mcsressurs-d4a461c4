@@ -77,19 +77,25 @@ export function ApprovalCockpit({ jobId, eventStart, summary, approvals, onRefre
       }
     }
 
-    // Fetch reminder logs from event_logs
+    // Fetch reminder + assignment/notification logs from event_logs
+    const REMINDER_ACTIONS = ["reminder_sent", "manual_reminder", "reminders_paused", "reminders_resumed", "marked_followed_up", "profile_changed"];
+    const ASSIGNMENT_ACTIONS = [
+      "technician_added", "technician_removed", "technician_assigned",
+      "technician_assignment_changed", "technician_unplanned",
+      "approval_reset", "notifications_sent", "time_changed",
+    ];
     const { data: logs } = await supabase
       .from("event_logs")
       .select("timestamp, action_type, change_summary")
       .eq("event_id", jobId)
-      .in("action_type", ["reminder_sent", "manual_reminder", "reminders_paused", "reminders_resumed", "marked_followed_up", "profile_changed"])
+      .in("action_type", [...REMINDER_ACTIONS, ...ASSIGNMENT_ACTIONS])
       .order("timestamp", { ascending: true });
 
     for (const log of logs || []) {
       entries.push({
         timestamp: log.timestamp,
         label: log.change_summary || log.action_type,
-        type: "reminder",
+        type: REMINDER_ACTIONS.includes(log.action_type) ? "reminder" : "action",
       });
     }
 
