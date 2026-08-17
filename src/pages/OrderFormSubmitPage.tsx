@@ -144,8 +144,13 @@ export default function OrderFormSubmitPage() {
       section.fields.forEach((field: any) => {
         if (!isFieldVisible(field)) return;
         const req = isFieldRequired(field);
+        const val = formData[field.field_key];
+        if (field.field_type === "pricing_model") {
+          const err = validatePricingModel(val, { required: req, label: field.label });
+          if (err) newErrors[field.field_key] = err;
+          return;
+        }
         if (req) {
-          const val = formData[field.field_key];
           if (val == null || val === "" || (Array.isArray(val) && val.length === 0)) {
             newErrors[field.field_key] = `${field.label} er påkrevd`;
           }
