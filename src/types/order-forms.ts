@@ -41,6 +41,7 @@ export const ORDER_FIELD_TYPE_LABELS: Record<OrderFormFieldType, string> = {
   yes_no: "Ja / Nei",
   checkbox_list: "Sjekkliste",
   radio: "Radioknapper",
+  pricing_model: "Prismodell (fastpris / timebasert)",
   file_upload: "Filopplasting",
   image_upload: "Bildeopplasting",
   customer_lookup: "Kundeoppslag",
