@@ -146,6 +146,8 @@ function FieldPreviewInline({ field }: { field: any }) {
             ))}
           </RadioGroup>
         );
+      case "pricing_model":
+        return <PricingModelPreview compact />;
       case "yes_no":
         return (
           <RadioGroup disabled className="flex gap-4">
