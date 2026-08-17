@@ -591,8 +591,7 @@ export function EventDrawer({
       const filePath = `${eventId}/${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage.from("job-attachments").upload(filePath, file);
       if (uploadError) {
-        toast.error(`Kunne ikke laste opp ${file.name}`);
-        continue;
+        throw new Error(`Kunne ikke laste opp ${file.name}: ${uploadError.message}`);
       }
       const { data: urlData } = supabase.storage.from("job-attachments").getPublicUrl(filePath);
       uploaded.push({ name: file.name, url: urlData.publicUrl, size: file.size });
@@ -613,7 +612,7 @@ export function EventDrawer({
     const userName = session?.session?.user?.user_metadata?.full_name || session?.session?.user?.email || "Ukjent";
     const techNameMap = new Map(allTechnicians.map((t: any) => [t.id, t.name]));
 
-    await supabase.from("events")
+    const { error: eventUpdateError } = await supabase.from("events")
       .update({
         start_time: startISO,
         end_time: endISO,
@@ -632,15 +631,17 @@ export function EventDrawer({
         customer_practical_info: customerPracticalInfo || null,
       } as any)
       .eq("id", editEvent.id);
+    if (eventUpdateError) throw new Error(`Kunne ikke lagre oppdraget: ${eventUpdateError.message}`);
 
     // Keep the schedule_blocks snapshot title in sync so resource plan cards
     // never keep showing an outdated (often generic) title.
     if (title) {
-      await (supabase as any)
+      const { error: blockTitleError } = await (supabase as any)
         .from("schedule_blocks")
         .update({ title })
         .or(`project_id.eq.${editEvent.id},job_id.eq.${editEvent.id}`)
         .is("deleted_at", null);
+      if (blockTitleError) throw new Error(`Kunne ikke oppdatere kalenderkortene: ${blockTitleError.message}`);
     }
 
 
@@ -679,9 +680,10 @@ export function EventDrawer({
     }
 
     if (toAdd.length > 0) {
-      await supabase.from("event_technicians").insert(
+      const { error: addTechnicianError } = await supabase.from("event_technicians").insert(
         toAdd.map((tid) => ({ event_id: editEvent.id, technician_id: tid })),
       );
+      if (addTechnicianError) throw new Error(`Kunne ikke tildele ny montør: ${addTechnicianError.message}`);
     }
 
     const timeChanged =
@@ -785,7 +787,7 @@ export function EventDrawer({
     }
 
     if (requiresApproval && techIds.length > 0) {
-      await supabase.functions.invoke("create-approval", {
+      const { data: approvalResult, error: approvalError } = await supabase.functions.invoke("create-approval", {
         body: {
           job_id: editEvent.id,
           reminder_profile: reminderConfig.profile,
@@ -798,6 +800,9 @@ export function EventDrawer({
             : [],
         },
       });
+      if (approvalError || approvalResult?.error) {
+        throw new Error(approvalResult?.error || `Montørbyttet ble lagret, men godkjenningsforespørselen feilet: ${approvalError?.message}`);
+      }
     }
 
     // Send info-varsel KUN når det ikke er noen approval-flyt (ellers håndteres alt
@@ -875,7 +880,8 @@ export function EventDrawer({
       const newUploads = await uploadFiles(editEvent.id, files);
       uploadedNames = newUploads.map((attachment) => attachment.name);
       const allAttachments = [...existingAttachments, ...newUploads];
-      await supabase.from("events").update({ attachments: allAttachments as any }).eq("id", editEvent.id);
+      const { error: attachmentUpdateError } = await supabase.from("events").update({ attachments: allAttachments as any }).eq("id", editEvent.id);
+      if (attachmentUpdateError) throw new Error(`Vedlegget ble lastet opp, men kunne ikke kobles til oppdraget: ${attachmentUpdateError.message}`);
       setExistingAttachments(allAttachments);
       if (uploadedNames.length > 0) {
         logEntries.push({
@@ -888,7 +894,8 @@ export function EventDrawer({
         });
       }
     } else {
-      await supabase.from("events").update({ attachments: existingAttachments as any }).eq("id", editEvent.id);
+      const { error: attachmentUpdateError } = await supabase.from("events").update({ attachments: existingAttachments as any }).eq("id", editEvent.id);
+      if (attachmentUpdateError) throw new Error(`Kunne ikke lagre vedleggslisten: ${attachmentUpdateError.message}`);
     }
 
     if (sendNotifications) {
