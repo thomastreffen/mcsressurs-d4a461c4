@@ -148,10 +148,10 @@ function FieldPreviewInline({ field }: { field: any }) {
         );
       case "yes_no":
         return (
-          <div className="flex gap-4">
+          <RadioGroup disabled className="flex gap-4">
             <div className="flex items-center gap-1.5"><RadioGroupItem value="ja" disabled className="h-3.5 w-3.5" /><span className="text-[11px]">Ja</span></div>
             <div className="flex items-center gap-1.5"><RadioGroupItem value="nei" disabled className="h-3.5 w-3.5" /><span className="text-[11px]">Nei</span></div>
-          </div>
+          </RadioGroup>
         );
       case "checkbox_list": case "multi_select":
         return (
