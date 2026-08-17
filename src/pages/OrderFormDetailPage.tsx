@@ -76,6 +76,7 @@ import { FlowTrail } from "@/components/flow/FlowTrail";
 import { useFlowChain } from "@/components/flow/useFlowChain";
 import { OrderMaterialSection } from "@/components/orders/OrderMaterialSection";
 import { buildEntries, findValueIn, findValuesIn } from "@/lib/order-field-resolver";
+import { formatPricingModel } from "@/lib/pricing-model";
 
 export default function OrderFormDetailPage() {
   const { id } = useParams<{ id: string }>();
