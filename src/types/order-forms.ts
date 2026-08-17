@@ -16,6 +16,7 @@ export type OrderFormFieldType =
   | "yes_no"
   | "checkbox_list"
   | "radio"
+  | "pricing_model"
   | "file_upload"
   | "image_upload"
   | "customer_lookup"
