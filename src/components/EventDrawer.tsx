@@ -2367,12 +2367,21 @@ export function EventDrawer({
                       updateOutlook: false,
                       changeSet: pendingSave.allChanges,
                     });
+                  } catch (err: any) {
+                    console.error("[EventDrawer] save without notifications failed", err);
+                    toast.error("Feil ved lagring", {
+                      description: err?.message || "Ukjent feil. Prøv igjen.",
+                    });
                   } finally {
                     setSaving(false);
                   }
                 }}
               >
-                Lagre uten varsling
+                {saving ? (
+                  <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Lagrer...</span>
+                ) : (
+                  "Lagre uten varsling"
+                )}
               </Button>
               <AlertDialogAction
                 disabled={saving}
@@ -2386,12 +2395,21 @@ export function EventDrawer({
                       updateOutlook: pendingSave.updateOutlook,
                       changeSet: pendingSave.allChanges,
                     });
+                  } catch (err: any) {
+                    console.error("[EventDrawer] save with notifications failed", err);
+                    toast.error("Feil ved lagring", {
+                      description: err?.message || "Ukjent feil. Prøv igjen.",
+                    });
                   } finally {
                     setSaving(false);
                   }
                 }}
               >
-                Fortsett og oppdater
+                {saving ? (
+                  <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Oppdaterer...</span>
+                ) : (
+                  "Fortsett og oppdater"
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
