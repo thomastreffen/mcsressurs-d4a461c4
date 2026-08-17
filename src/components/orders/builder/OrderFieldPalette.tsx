@@ -69,6 +69,7 @@ const BUSINESS_PRESETS: BusinessPreset[] = [
   { id: "arbeidsbeskrivelse", label: "Arbeidsbeskrivelse", icon: ClipboardList, fieldType: "long_text", fieldKey: "arbeidsbeskrivelse", helpText: "Beskriv hva som skal utføres så detaljert som mulig", isRequired: true },
   { id: "materialansvar", label: "Materialansvar", icon: Package, fieldType: "radio", fieldKey: "materialansvar", helpText: "Angi hvem som skaffer materiell", options: ["Service skaffer alt", "Bestiller leverer alt", "Deles mellom partene"], isRequired: true },
   { id: "oensket_dato", label: "Ønsket utført dato", icon: Calendar, fieldType: "date", fieldKey: "oensket_dato", helpText: "Når ønsker du at arbeidet skal utføres?", fieldWidth: "half" },
+  { id: "prismodell", label: "Prismodell (fastpris / timebasert)", icon: BadgeDollarSign, fieldType: "pricing_model", fieldKey: "prismodell", helpText: "Velg om jobben skal utføres til fastpris eller timebasert. Ved fastpris må avtalt pris oppgis.", isRequired: true },
 ];
 
 export function getPresetById(presetId: string): BusinessPreset | undefined {
