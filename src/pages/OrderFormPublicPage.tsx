@@ -530,6 +530,15 @@ function PublicFieldRenderer({ field, value, onChange, error, required, onFileAd
             ))}
           </RadioGroup>
         );
+      case "pricing_model":
+        return (
+          <PricingModelField
+            fieldKey={field.field_key}
+            value={value}
+            onChange={onChange}
+            pricePlaceholder={field.placeholder || undefined}
+          />
+        );
       case "yes_no":
         return (
           <RadioGroup value={value === true ? "ja" : value === false ? "nei" : ""} onValueChange={(v) => onChange(v === "ja")} className="flex gap-4">
