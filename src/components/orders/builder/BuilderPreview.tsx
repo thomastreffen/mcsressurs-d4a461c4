@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Info } from "lucide-react";
 import type { OrderFormFieldType } from "@/types/order-forms";
+import { PricingModelPreview } from "@/components/orders/fields/PricingModelField";
 
 interface BuilderPreviewProps {
   sections: any[];
