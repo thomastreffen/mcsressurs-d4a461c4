@@ -652,6 +652,15 @@ export function EventDrawer({
     const toAdd = techIds.filter((id) => !existingIds.has(id));
     const toRemove = (existing || []).filter((e) => !newIds.has(e.technician_id));
 
+    // VIKTIG: nye montører legges til FØR gamle fjernes, ellers tolker
+    // avplanleggingen det som «siste montør fjernet» og soft-sletter oppgaven.
+    if (toAdd.length > 0) {
+      const { error: addTechnicianError } = await supabase.from("event_technicians").insert(
+        toAdd.map((tid) => ({ event_id: editEvent.id, technician_id: tid })),
+      );
+      if (addTechnicianError) throw new Error(`Kunne ikke tildele ny montør: ${addTechnicianError.message}`);
+    }
+
     if (toRemove.length > 0) {
       const removedTechIds = toRemove.map((r) => r.technician_id);
       for (const technicianId of removedTechIds) {
@@ -679,11 +688,55 @@ export function EventDrawer({
       }
     }
 
-    if (toAdd.length > 0) {
-      const { error: addTechnicianError } = await supabase.from("event_technicians").insert(
-        toAdd.map((tid) => ({ event_id: editEvent.id, technician_id: tid })),
-      );
-      if (addTechnicianError) throw new Error(`Kunne ikke tildele ny montør: ${addTechnicianError.message}`);
+    // Sikkerhetsnett: oppgaven skal aldri bli borte når det finnes montører igjen.
+    if (techIds.length > 0) {
+      const { data: eventState } = await supabase
+        .from("events")
+        .select("id, company_id, status, deleted_at")
+        .eq("id", editEvent.id)
+        .maybeSingle();
+
+      if ((eventState as any)?.deleted_at || (eventState as any)?.status === "cancelled") {
+        await supabase
+          .from("events")
+          .update({
+            deleted_at: null,
+            deleted_by: null,
+            ...((eventState as any)?.status === "cancelled" ? { status: "scheduled" as any } : {}),
+          } as any)
+          .eq("id", editEvent.id);
+      }
+
+      // Gjenopprett/opprett kalenderblokker for montørene som skal ha oppdraget
+      const { data: liveBlocks } = await (supabase as any)
+        .from("schedule_blocks")
+        .select("id, technician_id, deleted_at")
+        .or(`project_id.eq.${editEvent.id},job_id.eq.${editEvent.id}`);
+
+      for (const techId of techIds) {
+        const rows = (liveBlocks || []).filter((b: any) => b.technician_id === techId);
+        const active = rows.find((b: any) => !b.deleted_at);
+        if (active) continue;
+        if (rows.length > 0) {
+          await (supabase as any)
+            .from("schedule_blocks")
+            .update({ deleted_at: null, deleted_by: null, start_at: startISO, end_at: endISO, title })
+            .eq("id", rows[0].id);
+        } else {
+          await (supabase as any).from("schedule_blocks").insert({
+            company_id: (eventState as any)?.company_id ?? null,
+            technician_id: techId,
+            project_id: editEvent.id,
+            source: "manual",
+            start_at: startISO,
+            end_at: endISO,
+            title,
+            match_state: "manual",
+            match_confidence: 100,
+            match_reason: "Montør tildelt fra oppdragsdialog",
+          });
+        }
+      }
     }
 
     const timeChanged =
