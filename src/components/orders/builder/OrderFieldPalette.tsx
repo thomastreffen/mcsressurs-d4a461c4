@@ -3,7 +3,7 @@ import {
   Type, AlignLeft, Hash, Calendar, Clock, Mail, Phone, MapPin, Building2,
   ChevronDown, CircleDot, CheckSquare, ListChecks, Upload, Image, Search,
   Users, FolderSearch, UserSearch, Info, Heading, Timer, Package, FileCheck,
-  Blocks, User, FileText, Receipt, ClipboardList,
+  Blocks, User, FileText, Receipt, ClipboardList, BadgeDollarSign,
   Star, Columns2, Columns3, LayoutGrid,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
