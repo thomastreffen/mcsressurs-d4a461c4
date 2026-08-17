@@ -209,6 +209,7 @@ const GENERIC_FIELDS: GenericFieldDef[] = [
   { type: "dropdown", label: "Nedtrekksliste", description: "Velg ett alternativ", icon: ChevronDown },
   { type: "radio", label: "Radioknapper", description: "Velg ett synlig valg", icon: CircleDot },
   { type: "yes_no", label: "Ja / Nei", description: "Enkelt ja/nei", icon: CheckSquare },
+  { type: "pricing_model", label: "Prismodell", description: "Fastpris / timebasert – pris kreves ved fastpris", icon: BadgeDollarSign },
   { type: "checkbox_list", label: "Sjekkliste", description: "Huk av flere", icon: ListChecks },
   { type: "multi_select", label: "Flervalg", description: "Velg flere fra liste", icon: ListChecks },
   { type: "file_upload", label: "Filopplasting", description: "PDF, XLSX m.m.", icon: Upload },
