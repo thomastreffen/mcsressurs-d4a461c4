@@ -25,6 +25,8 @@ import { sanitizeStorageFileName } from "@/lib/storage-path";
 import { computeQualityScore } from "@/lib/order-quality";
 import { QualityIssuesPanel } from "@/components/orders/QualityIssuesPanel";
 import { normalizeJsonValue, hasSubmissionValue } from "@/lib/json-value";
+import { PricingModelField } from "@/components/orders/fields/PricingModelField";
+import { validatePricingModel } from "@/lib/pricing-model";
 
 export default function OrderFormSubmitPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -144,8 +146,13 @@ export default function OrderFormSubmitPage() {
       section.fields.forEach((field: any) => {
         if (!isFieldVisible(field)) return;
         const req = isFieldRequired(field);
+        const val = formData[field.field_key];
+        if (field.field_type === "pricing_model") {
+          const err = validatePricingModel(val, { required: req, label: field.label });
+          if (err) newErrors[field.field_key] = err;
+          return;
+        }
         if (req) {
-          const val = formData[field.field_key];
           if (val == null || val === "" || (Array.isArray(val) && val.length === 0)) {
             newErrors[field.field_key] = `${field.label} er påkrevd`;
           }
@@ -554,6 +561,16 @@ function FieldRenderer({ field, value, onChange, error, required, onFileAdd, onF
               </div>
             ))}
           </RadioGroup>
+        );
+
+      case "pricing_model":
+        return (
+          <PricingModelField
+            fieldKey={field.field_key}
+            value={value}
+            onChange={onChange}
+            pricePlaceholder={field.placeholder || undefined}
+          />
         );
 
       case "yes_no":

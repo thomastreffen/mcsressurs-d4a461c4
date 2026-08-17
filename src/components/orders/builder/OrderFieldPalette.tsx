@@ -3,7 +3,7 @@ import {
   Type, AlignLeft, Hash, Calendar, Clock, Mail, Phone, MapPin, Building2,
   ChevronDown, CircleDot, CheckSquare, ListChecks, Upload, Image, Search,
   Users, FolderSearch, UserSearch, Info, Heading, Timer, Package, FileCheck,
-  Blocks, User, FileText, Receipt, ClipboardList,
+  Blocks, User, FileText, Receipt, ClipboardList, BadgeDollarSign,
   Star, Columns2, Columns3, LayoutGrid,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ export const FIELD_ICONS: Record<OrderFormFieldType, React.ElementType> = {
   yes_no: CheckSquare,
   checkbox_list: ListChecks,
   radio: CircleDot,
+  pricing_model: BadgeDollarSign,
   file_upload: Upload,
   image_upload: Image,
   customer_lookup: UserSearch,
@@ -68,6 +69,7 @@ const BUSINESS_PRESETS: BusinessPreset[] = [
   { id: "arbeidsbeskrivelse", label: "Arbeidsbeskrivelse", icon: ClipboardList, fieldType: "long_text", fieldKey: "arbeidsbeskrivelse", helpText: "Beskriv hva som skal utføres så detaljert som mulig", isRequired: true },
   { id: "materialansvar", label: "Materialansvar", icon: Package, fieldType: "radio", fieldKey: "materialansvar", helpText: "Angi hvem som skaffer materiell", options: ["Service skaffer alt", "Bestiller leverer alt", "Deles mellom partene"], isRequired: true },
   { id: "oensket_dato", label: "Ønsket utført dato", icon: Calendar, fieldType: "date", fieldKey: "oensket_dato", helpText: "Når ønsker du at arbeidet skal utføres?", fieldWidth: "half" },
+  { id: "prismodell", label: "Prismodell (fastpris / timebasert)", icon: BadgeDollarSign, fieldType: "pricing_model", fieldKey: "prismodell", helpText: "Velg om jobben skal utføres til fastpris eller timebasert. Ved fastpris må avtalt pris oppgis.", isRequired: true },
 ];
 
 export function getPresetById(presetId: string): BusinessPreset | undefined {
@@ -208,6 +210,7 @@ const GENERIC_FIELDS: GenericFieldDef[] = [
   { type: "dropdown", label: "Nedtrekksliste", description: "Velg ett alternativ", icon: ChevronDown },
   { type: "radio", label: "Radioknapper", description: "Velg ett synlig valg", icon: CircleDot },
   { type: "yes_no", label: "Ja / Nei", description: "Enkelt ja/nei", icon: CheckSquare },
+  { type: "pricing_model", label: "Prismodell", description: "Fastpris / timebasert – pris kreves ved fastpris", icon: BadgeDollarSign },
   { type: "checkbox_list", label: "Sjekkliste", description: "Huk av flere", icon: ListChecks },
   { type: "multi_select", label: "Flervalg", description: "Velg flere fra liste", icon: ListChecks },
   { type: "file_upload", label: "Filopplasting", description: "PDF, XLSX m.m.", icon: Upload },

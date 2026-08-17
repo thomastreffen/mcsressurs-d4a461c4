@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Info } from "lucide-react";
 import { type OrderFormFieldType } from "@/types/order-forms";
+import { PricingModelPreview } from "@/components/orders/fields/PricingModelField";
 
 interface PresetData {
   label: string;
@@ -146,6 +147,8 @@ function FieldPreviewInline({ field }: { field: any }) {
             ))}
           </RadioGroup>
         );
+      case "pricing_model":
+        return <PricingModelPreview compact />;
       case "yes_no":
         return (
           <RadioGroup disabled className="flex gap-4">

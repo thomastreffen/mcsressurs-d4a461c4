@@ -17,6 +17,8 @@ import { ModernDatePicker, ModernTimePicker } from "@/components/ui/modern-date-
 import type { ConditionalLogic } from "@/types/order-forms";
 import { sanitizeStorageFileName } from "@/lib/storage-path";
 import { normalizeJsonValue, hasSubmissionValue } from "@/lib/json-value";
+import { PricingModelField } from "@/components/orders/fields/PricingModelField";
+import { validatePricingModel } from "@/lib/pricing-model";
 
 export default function OrderFormPublicPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -165,8 +167,16 @@ export default function OrderFormPublicPage() {
       if (!isSectionVisible(section)) return;
       section.fields.forEach((field: any) => {
         if (!isFieldVisible(field)) return;
+        const val = formData[field.field_key];
+        if (field.field_type === "pricing_model") {
+          const err = validatePricingModel(val, {
+            required: isFieldRequired(field),
+            label: field.label,
+          });
+          if (err) newErrors[field.field_key] = err;
+          return;
+        }
         if (isFieldRequired(field)) {
-          const val = formData[field.field_key];
           if (val == null || val === "" || (Array.isArray(val) && val.length === 0)) {
             newErrors[field.field_key] = `${field.label} er påkrevd`;
           }
@@ -529,6 +539,15 @@ function PublicFieldRenderer({ field, value, onChange, error, required, onFileAd
               </div>
             ))}
           </RadioGroup>
+        );
+      case "pricing_model":
+        return (
+          <PricingModelField
+            fieldKey={field.field_key}
+            value={value}
+            onChange={onChange}
+            pricePlaceholder={field.placeholder || undefined}
+          />
         );
       case "yes_no":
         return (
