@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Wrench, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-
-const AZURE_CLIENT_ID = "f5605c08-b986-4626-9dec-e1446fd13702";
-const AZURE_TENANT_ID = "e1b96c2a-c273-40b9-bb46-a2a7b570e133";
+import { lovable } from "@/integrations/lovable";
+import { toast } from "sonner";
 
 export default function Login() {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   // If already logged in, redirect
   useEffect(() => {
@@ -18,21 +18,32 @@ export default function Login() {
     }
   }, [session, authLoading, navigate]);
 
-  const handleLogin = () => {
-    const redirectUri = `${window.location.origin}/auth/callback`;
-    const scope = encodeURIComponent(
-      "openid profile email User.Read Calendars.ReadWrite User.Read.All Mail.ReadWrite offline_access"
-    );
-    const authUrl =
-      `https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/authorize` +
-      `?client_id=${AZURE_CLIENT_ID}` +
-      `&response_type=code` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&scope=${scope}` +
-      `&response_mode=query`;
+  const handleLogin = async () => {
+    if (isSigningIn) return;
+    setIsSigningIn(true);
 
-    // Always use redirect flow (popup doesn't work reliably in iframes)
-    window.location.href = authUrl;
+    try {
+      const result = await lovable.auth.signInWithOAuth("microsoft", {
+        redirect_uri: window.location.origin,
+      });
+
+      if (result.error) {
+        toast.error("Innlogging feilet", {
+          description: result.error.message || "Kunne ikke koble til Microsoft.",
+        });
+        setIsSigningIn(false);
+        return;
+      }
+
+      if (!result.redirected) {
+        navigate("/", { replace: true });
+      }
+    } catch (error) {
+      toast.error("Innlogging feilet", {
+        description: error instanceof Error ? error.message : "Kunne ikke koble til Microsoft.",
+      });
+      setIsSigningIn(false);
+    }
   };
 
   if (authLoading) {
@@ -59,14 +70,18 @@ export default function Login() {
           </div>
         </div>
 
-        <Button onClick={handleLogin} className="w-full gap-2" size="lg">
+        <Button onClick={handleLogin} className="w-full gap-2" size="lg" disabled={isSigningIn}>
+          {isSigningIn ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
           <svg viewBox="0 0 21 21" className="h-5 w-5" fill="none">
             <rect x="1" y="1" width="9" height="9" fill="hsl(var(--destructive))" />
             <rect x="11" y="1" width="9" height="9" fill="hsl(var(--status-accepted))" />
             <rect x="1" y="11" width="9" height="9" fill="hsl(var(--primary))" />
             <rect x="11" y="11" width="9" height="9" fill="hsl(var(--status-pending))" />
           </svg>
-          Logg inn med Microsoft
+          )}
+          {isSigningIn ? "Åpner Microsoft..." : "Logg inn med Microsoft"}
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">
