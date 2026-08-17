@@ -143,6 +143,8 @@ function PreviewField({ field }: { field: any }) {
             ))}
           </RadioGroup>
         );
+      case "pricing_model":
+        return <PricingModelPreview />;
       case "yes_no":
         return (
           <RadioGroup disabled className="flex gap-3">
