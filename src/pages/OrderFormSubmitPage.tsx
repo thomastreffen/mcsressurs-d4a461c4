@@ -25,6 +25,8 @@ import { sanitizeStorageFileName } from "@/lib/storage-path";
 import { computeQualityScore } from "@/lib/order-quality";
 import { QualityIssuesPanel } from "@/components/orders/QualityIssuesPanel";
 import { normalizeJsonValue, hasSubmissionValue } from "@/lib/json-value";
+import { PricingModelField } from "@/components/orders/fields/PricingModelField";
+import { validatePricingModel } from "@/lib/pricing-model";
 
 export default function OrderFormSubmitPage() {
   const { slug } = useParams<{ slug: string }>();
