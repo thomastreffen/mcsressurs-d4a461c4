@@ -658,7 +658,19 @@ export function EventDrawer({
           body: { action: "remove_assignment", event_id: editEvent.id, technician_id: technicianId },
         });
         if (unplanError || unplanResult?.error) {
-          throw new Error(unplanResult?.error || unplanError?.message || "Kunne ikke avplanlegge montør");
+          let serverMessage: string | null = unplanResult?.error ?? null;
+          if (!serverMessage) {
+            try {
+              const body = await (unplanError as any)?.context?.json?.();
+              serverMessage = body?.error ?? null;
+            } catch {
+              serverMessage = null;
+            }
+          }
+          throw new Error(
+            serverMessage ||
+              `Kunne ikke fjerne montøren fra planen (${techNameMap.get(technicianId) || "montør"}): ${unplanError?.message || "ukjent feil"}`,
+          );
         }
         if (unplanResult?.warnings?.length) {
           toast.warning(`Montøren er fjernet, men Outlook-sletting er satt i kø for ${unplanResult.warnings[0].technician_name || "montør"}`);
