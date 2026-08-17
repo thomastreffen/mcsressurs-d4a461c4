@@ -451,12 +451,19 @@ export default function OrderFormDetailPage() {
       label: f.label,
       field_type: f.field_type,
       is_required: f.is_required,
+      created_at: f.created_at ?? null,
     })));
   }, [sections]);
 
   const qualityResult: QualityResult = useMemo(() => {
-    return computeQualityScore(valuesMap, attachments as any, allTemplateFields);
-  }, [valuesMap, attachments, allTemplateFields]);
+    return computeQualityScore(
+      valuesMap,
+      attachments as any,
+      allTemplateFields,
+      (submission as any)?.submitted_at || (submission as any)?.created_at || null,
+    );
+  }, [valuesMap, attachments, allTemplateFields, submission]);
+
 
   const updateStatus = useMutation({
     mutationFn: async (newStatus: string) => {

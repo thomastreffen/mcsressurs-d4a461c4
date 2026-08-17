@@ -30,26 +30,40 @@ interface FieldDescriptor {
   label: string;
   field_type: string;
   is_required: boolean;
+  /** Når feltet ble lagt til malen – brukes for å ikke straffe eldre innsendelser */
+  created_at?: string | null;
 }
 
 /**
  * Compute quality score dynamically based on actual template fields and submitted values.
- * 
+ *
  * @param values - Record<field_key, value> of submitted answers
  * @param attachments - Array of attachment metadata
  * @param templateFields - Optional array of field descriptors from the template
+ * @param submittedAt - When the submission was created; required fields added later are ignored
  */
 export function computeQualityScore(
   values: Record<string, any>,
   attachments: { category?: string; file_name?: string }[] = [],
-  templateFields?: FieldDescriptor[]
+  templateFields?: FieldDescriptor[],
+  submittedAt?: string | Date | null
 ): QualityResult {
   const issues: QualityIssue[] = [];
+
+  const submittedTime = submittedAt ? new Date(submittedAt).getTime() : NaN;
+  const existedAtSubmission = (field: FieldDescriptor) => {
+    if (!Number.isFinite(submittedTime) || !field.created_at) return true;
+    const added = new Date(field.created_at).getTime();
+    if (!Number.isFinite(added)) return true;
+    // 1 min slingringsmonn for felt opprettet rett før innsending
+    return added <= submittedTime + 60_000;
+  };
 
   if (templateFields && templateFields.length > 0) {
     // Dynamic mode: check required fields from the template definition
     for (const field of templateFields) {
       if (!field.is_required) continue;
+      if (!existedAtSubmission(field)) continue;
       const val = values[field.field_key];
       if (val == null || val === "" || (Array.isArray(val) && val.length === 0)) {
         issues.push({
@@ -59,6 +73,7 @@ export function computeQualityScore(
         });
       }
     }
+
   } else {
     // Fallback: try to detect common field patterns by key prefix matching
     const fieldKeys = Object.keys(values);
@@ -87,6 +102,8 @@ export function computeQualityScore(
     // Only flag required file fields that are missing attachments
     for (const ff of fileFields) {
       if (!ff.is_required) continue;
+      if (!existedAtSubmission(ff)) continue;
+
       const hasAttachment = attachments.some(a => 
         a.file_name || a.category
       );
