@@ -18,7 +18,7 @@ import type { ConditionalLogic } from "@/types/order-forms";
 import { sanitizeStorageFileName } from "@/lib/storage-path";
 import { normalizeJsonValue, hasSubmissionValue } from "@/lib/json-value";
 import { PricingModelField } from "@/components/orders/fields/PricingModelField";
-import { validatePricingModel, hasPricingModelValue } from "@/lib/pricing-model";
+import { validatePricingModel } from "@/lib/pricing-model";
 
 export default function OrderFormPublicPage() {
   const { slug } = useParams<{ slug: string }>();
