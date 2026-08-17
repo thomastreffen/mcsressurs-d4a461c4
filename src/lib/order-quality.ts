@@ -102,6 +102,8 @@ export function computeQualityScore(
     // Only flag required file fields that are missing attachments
     for (const ff of fileFields) {
       if (!ff.is_required) continue;
+      if (!existedAtSubmission(ff)) continue;
+
       const hasAttachment = attachments.some(a => 
         a.file_name || a.category
       );
