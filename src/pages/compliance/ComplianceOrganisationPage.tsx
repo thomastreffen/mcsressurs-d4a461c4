@@ -131,7 +131,14 @@ export default function ComplianceOrganisationPage() {
           <Button size="sm" variant="outline" onClick={() => setTab("oversikt")}>
             <FileText className="mr-1 h-3.5 w-3.5" /> Generer organisasjonsoversikt
           </Button>
-          <Button size="sm" variant="outline" onClick={() => window.print()}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setTab("oversikt");
+              setTimeout(() => window.print(), 150);
+            }}
+          >
             <Printer className="mr-1 h-3.5 w-3.5" /> Skriv ut oversikt
           </Button>
           <Button size="sm" onClick={() => { setAiDraft(false); setEditing({ ...EMPTY } as any); }}>
@@ -194,7 +201,7 @@ export default function ComplianceOrganisationPage() {
         </TabsContent>
 
         <TabsContent value="oversikt" className="space-y-4">
-          <Card>
+          <Card className="org-print-root">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{activeCompany?.name ?? "Virksomheten"} – organisasjon, ansvar og myndighet</CardTitle>
               <p className="text-xs text-muted-foreground">

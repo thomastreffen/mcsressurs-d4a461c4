@@ -72,6 +72,9 @@ export interface OrgRole {
   person_id: string | null;
   department_id: string | null;
   deputy_person_id: string | null;
+  reports_to_id: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   responsibilities: string | null;
   tasks: string | null;
   authority: string | null;

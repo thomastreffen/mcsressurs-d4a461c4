@@ -450,3 +450,35 @@
   body.pwa-standalone .pwa-safe-auto-top { padding-top: env(safe-area-inset-top); }
   body.pwa-standalone .pwa-safe-auto-bottom { padding-bottom: env(safe-area-inset-bottom); }
 }
+
+/* --- Utskrift: organisasjonsoversikt (Elsikkerhet & Compliance) --- */
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  body:has(.org-print-root) aside,
+  body:has(.org-print-root) nav,
+  body:has(.org-print-root) header,
+  body:has(.org-print-root) [data-sidebar],
+  body:has(.org-print-root) [role="dialog"],
+  body:has(.org-print-root) [data-radix-popper-content-wrapper] {
+    display: none !important;
+  }
+  body:has(.org-print-root) main { padding: 0 !important; }
+  .org-print-root {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  .org-print-root, .org-print-root * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .org-print-root table { width: 100% !important; border-collapse: collapse !important; }
+  .org-print-root table th, .org-print-root table td {
+    border: 1px solid #999 !important;
+    padding: 4px 6px !important;
+    font-size: 9pt !important;
+    vertical-align: top;
+  }
+  .org-print-root tr, .org-print-root .org-print-avoid-break { break-inside: avoid; page-break-inside: avoid; }
+  .org-print-root h3 { break-after: avoid; margin-top: 10pt !important; }
+}
