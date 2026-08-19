@@ -194,7 +194,7 @@ export default function ComplianceOrganisationPage() {
         </TabsContent>
 
         <TabsContent value="oversikt" className="space-y-4">
-          <Card>
+          <Card className="org-print-root">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{activeCompany?.name ?? "Virksomheten"} – organisasjon, ansvar og myndighet</CardTitle>
               <p className="text-xs text-muted-foreground">
