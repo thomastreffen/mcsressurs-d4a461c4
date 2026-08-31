@@ -649,7 +649,7 @@ export function EventDrawer({
 
 
     const { data: existing } = await supabase
-      .from("event_technicians").select("id, technician_id").eq("event_id", editEvent.id);
+      .from("event_technicians").select("id, technician_id, start_at, end_at").eq("event_id", editEvent.id);
     const existingIds = new Set((existing || []).map((e) => e.technician_id));
     const newIds = new Set(techIds);
     const toAdd = techIds.filter((id) => !existingIds.has(id));
@@ -723,9 +723,14 @@ export function EventDrawer({
           // The resource plan renders schedule_blocks as its source of truth.
           // Keep an existing internal block aligned when the work visit moves.
           if (timeChanged && ["manual", "system"].includes(active.source)) {
+            const assignment = (existing || []).find((row) => row.technician_id === techId);
             const { error: activeBlockError } = await (supabase as any)
               .from("schedule_blocks")
-              .update({ start_at: startISO, end_at: endISO, title })
+              .update({
+                start_at: assignment?.start_at || startISO,
+                end_at: assignment?.end_at || endISO,
+                title,
+              })
               .eq("id", active.id);
             if (activeBlockError) {
               throw new Error(`Kunne ikke flytte kalenderkortet: ${activeBlockError.message}`);
