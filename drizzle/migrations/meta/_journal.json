@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788172972481,
+      "tag": "0000_shift_resource_assignments_with_event_time",
+      "breakpoints": true
+    }
+  ]
+}
