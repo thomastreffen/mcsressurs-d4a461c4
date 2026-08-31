@@ -607,6 +607,9 @@ export function EventDrawer({
     if (!isEditing || !editEvent) return;
 
     const { startISO, endISO } = normalizeOvernightDates(date, startTime, endDate, endTime);
+    const timeChanged =
+      editEvent.start.getTime() !== new Date(startISO).getTime() ||
+      editEvent.end.getTime() !== new Date(endISO).getTime();
     const { data: session } = await supabase.auth.getSession();
     const userId = session?.session?.user?.id;
     const userName = session?.session?.user?.user_metadata?.full_name || session?.session?.user?.email || "Ukjent";
@@ -710,20 +713,36 @@ export function EventDrawer({
       // Gjenopprett/opprett kalenderblokker for montørene som skal ha oppdraget
       const { data: liveBlocks } = await (supabase as any)
         .from("schedule_blocks")
-        .select("id, technician_id, deleted_at")
+        .select("id, technician_id, deleted_at, source")
         .or(`project_id.eq.${editEvent.id},job_id.eq.${editEvent.id}`);
 
       for (const techId of techIds) {
         const rows = (liveBlocks || []).filter((b: any) => b.technician_id === techId);
         const active = rows.find((b: any) => !b.deleted_at);
-        if (active) continue;
+        if (active) {
+          // The resource plan renders schedule_blocks as its source of truth.
+          // Keep an existing internal block aligned when the work visit moves.
+          if (timeChanged && ["manual", "system"].includes(active.source)) {
+            const { error: activeBlockError } = await (supabase as any)
+              .from("schedule_blocks")
+              .update({ start_at: startISO, end_at: endISO, title })
+              .eq("id", active.id);
+            if (activeBlockError) {
+              throw new Error(`Kunne ikke flytte kalenderkortet: ${activeBlockError.message}`);
+            }
+          }
+          continue;
+        }
         if (rows.length > 0) {
-          await (supabase as any)
+          const { error: restoreBlockError } = await (supabase as any)
             .from("schedule_blocks")
             .update({ deleted_at: null, deleted_by: null, start_at: startISO, end_at: endISO, title })
             .eq("id", rows[0].id);
+          if (restoreBlockError) {
+            throw new Error(`Kunne ikke gjenopprette kalenderkortet: ${restoreBlockError.message}`);
+          }
         } else {
-          await (supabase as any).from("schedule_blocks").insert({
+          const { error: createBlockError } = await (supabase as any).from("schedule_blocks").insert({
             company_id: (eventState as any)?.company_id ?? null,
             technician_id: techId,
             project_id: editEvent.id,
@@ -735,13 +754,13 @@ export function EventDrawer({
             match_confidence: 100,
             match_reason: "Montør tildelt fra oppdragsdialog",
           });
+          if (createBlockError) {
+            throw new Error(`Kunne ikke opprette kalenderkortet: ${createBlockError.message}`);
+          }
         }
       }
     }
 
-    const timeChanged =
-      editEvent.start.getTime() !== new Date(startISO).getTime() ||
-      editEvent.end.getTime() !== new Date(endISO).getTime();
     const remainingTechIds = techIds.filter((id) => existingIds.has(id));
 
     // GODKJENNING kreves KUN ved tid/dato-endring eller nye tildelinger.
