@@ -276,6 +276,11 @@ export function EventDrawer({
     prevOpenRef.current = true;
     if (!justOpened) return;
 
+    // Varselstatus gjelder kun denne økten/oppgaven – nullstill så en tidligere
+    // lagring på en annen oppgave ikke viser feil montørnavn her.
+    setDeliveryStatus({ notifiedAt: null, notifiedNames: [], syncedAt: null, syncedCount: 0, failedCount: 0 });
+
+
     if (editEvent) {
       setTitle(editEvent.title);
       setCustomer(editEvent.customer || "");
