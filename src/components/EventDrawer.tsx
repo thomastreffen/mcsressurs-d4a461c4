@@ -241,7 +241,13 @@ export function EventDrawer({
     }
   }, [initialTab, open]);
 
+  // Nullstill varselstatus når dialogen bytter oppgave
+  useEffect(() => {
+    setDeliveryStatus({ notifiedAt: null, notifiedNames: [], syncedAt: null, syncedCount: 0, failedCount: 0 });
+  }, [editEvent?.id]);
+
   // Thread unread tracking
+
   const { unreadCount: threadUnreadCount } = useTaskThreadReads(editEvent?.id);
 
   // Per-technician approval statuses
