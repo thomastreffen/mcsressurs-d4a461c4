@@ -57,6 +57,13 @@
       "when": 1788430627750,
       "tag": "0007_scope_customer_contact_tags_to_company",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788431630468,
+      "tag": "0008_handbook_ack_scope_idempotent",
+      "breakpoints": true
     }
   ]
 }

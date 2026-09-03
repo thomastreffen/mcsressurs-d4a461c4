@@ -7413,9 +7413,11 @@ export type Database = {
       }
       hms_handbook_acknowledgements: {
         Row: {
+          ack_scope: string | null
           acknowledged_at: string
           company_id: string
           confirmation_text: string | null
+          confirmed_via: string | null
           handbook_id: string
           id: string
           ip_address: string | null
@@ -7429,9 +7431,11 @@ export type Database = {
           version_id: string
         }
         Insert: {
+          ack_scope?: string | null
           acknowledged_at?: string
           company_id: string
           confirmation_text?: string | null
+          confirmed_via?: string | null
           handbook_id: string
           id?: string
           ip_address?: string | null
@@ -7445,9 +7449,11 @@ export type Database = {
           version_id: string
         }
         Update: {
+          ack_scope?: string | null
           acknowledged_at?: string
           company_id?: string
           confirmation_text?: string | null
+          confirmed_via?: string | null
           handbook_id?: string
           id?: string
           ip_address?: string | null
@@ -15856,6 +15862,15 @@ export type Database = {
           p_section_id?: string
           p_token: string
           p_user_agent?: string
+        }
+        Returns: Json
+      }
+      hms_handbook_ack_internal: {
+        Args: {
+          p_confirmation_text?: string
+          p_section_id?: string
+          p_user_agent?: string
+          p_version_id: string
         }
         Returns: Json
       }

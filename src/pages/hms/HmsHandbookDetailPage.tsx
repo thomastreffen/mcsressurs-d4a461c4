@@ -27,6 +27,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import { logHmsAudit } from "@/lib/hms/audit";
+import { invalidateAckQueries, confirmedViaLabel } from "@/lib/hms/handbookAck";
 import { usePermissions } from "@/hooks/usePermissions";
 import { HandbookDistributionStatus } from "@/components/hms/HandbookDistributionStatus";
 import { HandbookResourceLinks } from "@/components/hms/HandbookResourceLinks";
@@ -120,7 +121,7 @@ export default function HmsHandbookDetailPage() {
     if (sections.length && !activeChapterId) setActiveChapterId(sections[0].id);
   }, [sections, activeChapterId]);
 
-  // Load my acknowledgement
+  // Load my acknowledgement (samlet bekreftelse for hele håndboken)
   const { data: myAck } = useQuery({
     queryKey: ["hms-handbook-my-ack", publishedVersion?.id, user?.id],
     enabled: !!publishedVersion && !!user?.id,
@@ -131,33 +132,96 @@ export default function HmsHandbookDetailPage() {
         .select("id, user_id, version_id, acknowledged_at")
         .eq("version_id", publishedVersion!.id)
         .eq("user_id", user!.id)
+        .is("section_id", null)
+        .order("acknowledged_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       return data as Ack | null;
     },
   });
 
-  // Admin: company employees + acks for current published version
+  // Admin: alle aktive ansatte + bekreftelser (interne og fra utsending) for publisert versjon
   const { data: ackOverview } = useQuery({
     queryKey: ["hms-handbook-ack-overview", publishedVersion?.id, activeCompanyId],
     enabled: !!publishedVersion && !!activeCompanyId && canManage,
     queryFn: async () => {
       const sb = supabase as any;
-      const [{ data: members }, { data: acks }] = await Promise.all([
-        sb.from("user_memberships")
-          .select("user_id, user_accounts!inner(person_id, is_active, people:person_id(full_name, primary_email))")
-          .eq("company_id", activeCompanyId).eq("is_active", true),
+      const [{ data: emps }, { data: accounts }, { data: acks }, { data: recips }] = await Promise.all([
+        sb.from("employment_profiles")
+          .select("person_id, archived_at, people(full_name, email, is_active)")
+          .eq("company_id", activeCompanyId),
+        sb.from("user_accounts").select("person_id, auth_user_id").eq("company_id", activeCompanyId),
         sb.from("hms_handbook_acknowledgements")
-          .select("user_id, acknowledged_at")
+          .select("user_id, person_id, recipient_id, section_id, acknowledged_at, confirmed_via")
+          .eq("version_id", publishedVersion!.id)
+          .is("section_id", null),
+        sb.from("hms_handbook_recipients")
+          .select("id, person_id, user_id, full_name, email, sent_at, acknowledged_at, section_ids")
+          .eq("company_id", activeCompanyId)
           .eq("version_id", publishedVersion!.id),
       ]);
-      const ackMap = new Map<string, string>((acks ?? []).map((a: any) => [a.user_id, a.acknowledged_at]));
-      const rows = (members ?? []).map((m: any) => ({
-        user_id: m.user_id,
-        full_name: m.user_accounts?.people?.full_name ?? null,
-        email: m.user_accounts?.people?.primary_email ?? null,
-        acknowledged_at: ackMap.get(m.user_id) ?? null,
-      }));
-      return rows;
+
+      const personToUser = new Map<string, string>((accounts ?? []).map((a: any) => [a.person_id, a.auth_user_id]));
+      const userToPerson = new Map<string, string>((accounts ?? []).map((a: any) => [a.auth_user_id, a.person_id]));
+
+      type Row = {
+        key: string; person_id: string | null; user_id: string | null;
+        full_name: string | null; email: string | null;
+        acknowledged_at: string | null; confirmed_via: string | null;
+        sent_at: string | null; is_employee: boolean;
+      };
+
+      const rows: Row[] = [];
+      const byPerson = new Map<string, Row>();
+
+      for (const e of (emps ?? []) as any[]) {
+        if (!e.person_id || e.archived_at || e.people?.is_active === false) continue;
+        if (byPerson.has(e.person_id)) continue;
+        const row: Row = {
+          key: e.person_id,
+          person_id: e.person_id,
+          user_id: personToUser.get(e.person_id) ?? null,
+          full_name: e.people?.full_name ?? null,
+          email: e.people?.email ?? null,
+          acknowledged_at: null, confirmed_via: null, sent_at: null, is_employee: true,
+        };
+        byPerson.set(e.person_id, row);
+        rows.push(row);
+      }
+
+      // Mottakere som ikke er aktive ansatte tas med, slik at utsendinger alltid synes
+      const recipientRows = new Map<string, Row>();
+      for (const r of (recips ?? []) as any[]) {
+        const pid = r.person_id ?? (r.user_id ? userToPerson.get(r.user_id) ?? null : null);
+        const target = pid ? byPerson.get(pid) : null;
+        if (target) {
+          if (r.sent_at && (!target.sent_at || r.sent_at > target.sent_at)) target.sent_at = r.sent_at;
+          continue;
+        }
+        const key = `recipient:${r.id}`;
+        const row: Row = {
+          key, person_id: pid, user_id: r.user_id ?? null,
+          full_name: r.full_name ?? null, email: r.email ?? null,
+          acknowledged_at: r.acknowledged_at ?? null,
+          confirmed_via: r.acknowledged_at ? "token" : null,
+          sent_at: r.sent_at ?? null, is_employee: false,
+        };
+        recipientRows.set(r.id, row);
+        rows.push(row);
+      }
+
+      for (const a of (acks ?? []) as any[]) {
+        const pid = a.person_id ?? (a.user_id ? userToPerson.get(a.user_id) ?? null : null);
+        let row = pid ? byPerson.get(pid) : undefined;
+        if (!row && a.recipient_id) row = recipientRows.get(a.recipient_id);
+        if (!row) continue;
+        if (!row.acknowledged_at || (a.acknowledged_at && a.acknowledged_at < row.acknowledged_at)) {
+          row.acknowledged_at = a.acknowledged_at;
+          row.confirmed_via = a.confirmed_via ?? "internal";
+        }
+      }
+
+      return rows.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "nb"));
     },
   });
 
@@ -303,23 +367,19 @@ export default function HmsHandbookDetailPage() {
     mutationFn: async () => {
       if (!handbook || !publishedVersion || !user?.id) throw new Error("Mangler kontekst");
       const sb = supabase as any;
-      const { error } = await sb.from("hms_handbook_acknowledgements").insert({
-        handbook_id: handbook.id, version_id: publishedVersion.id, company_id: handbook.company_id,
-        user_id: user.id, confirmation_text: CONFIRMATION_TEXT,
-        user_agent: navigator.userAgent.slice(0, 250),
+      const { data, error } = await sb.rpc("hms_handbook_ack_internal", {
+        p_version_id: publishedVersion.id,
+        p_section_id: null,
+        p_user_agent: navigator.userAgent.slice(0, 250),
+        p_confirmation_text: CONFIRMATION_TEXT,
       });
       if (error) throw error;
-      await logHmsAudit({
-        company_id: handbook.company_id, entity_type: "hms_handbook", entity_id: handbook.id,
-        action: "acknowledgement.recorded",
-        payload: { version_id: publishedVersion.id, version_number: publishedVersion.version_number },
-      });
+      if ((data as any)?.error) throw new Error(String((data as any).error));
     },
     onSuccess: () => {
       toast({ title: "Bekreftelse registrert" });
       setConfirmOpen(false);
-      qc.invalidateQueries({ queryKey: ["hms-handbook-my-ack"] });
-      qc.invalidateQueries({ queryKey: ["hms-handbook-ack-overview"] });
+      invalidateAckQueries(qc);
     },
     onError: (e: any) => toast({ title: "Feil", description: String(e.message || e), variant: "destructive" }),
   });
@@ -327,17 +387,20 @@ export default function HmsHandbookDetailPage() {
   const exportCsv = () => {
     if (!ackOverview) return;
     const lines = [
-      ["Navn", "E-post", "Status", "Bekreftet"].join(","),
+      ["Navn", "E-post", "Grunnlag", "Sendt", "Status", "Bekreftet via", "Bekreftet"].join(","),
       ...ackOverview.map((r: any) => [
         JSON.stringify(r.full_name ?? ""), JSON.stringify(r.email ?? ""),
+        r.is_employee ? "ansatt" : "mottaker",
+        r.sent_at ? format(new Date(r.sent_at), "yyyy-MM-dd HH:mm") : "",
         r.acknowledged_at ? "bekreftet" : "mangler",
+        r.acknowledged_at ? (r.confirmed_via === "token" ? "utsending" : "internt") : "",
         r.acknowledged_at ? format(new Date(r.acknowledged_at), "yyyy-MM-dd HH:mm") : "",
       ].join(",")),
     ].join("\n");
     const blob = new Blob([lines], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `lesebekreftelser-${handbook?.title ?? "handbok"}.csv`; a.click();
+    a.href = url; a.download = `bekreftelser-${handbook?.title ?? "handbok"}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -397,7 +460,9 @@ export default function HmsHandbookDetailPage() {
   }
 
   const ackedCount = ackOverview?.filter((r: any) => r.acknowledged_at).length ?? 0;
-  const totalEmployees = ackOverview?.length ?? 0;
+  const totalPeople = ackOverview?.length ?? 0;
+  const employeeCount = ackOverview?.filter((r: any) => r.is_employee).length ?? 0;
+  const sentCount = ackOverview?.filter((r: any) => r.sent_at).length ?? 0;
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
@@ -516,7 +581,7 @@ export default function HmsHandbookDetailPage() {
       <Tabs defaultValue="content">
         <TabsList>
           <TabsTrigger value="content">Innhold</TabsTrigger>
-          {canManage && <TabsTrigger value="status">Lesebekreftelser{totalEmployees > 0 && ` (${ackedCount}/${totalEmployees})`}</TabsTrigger>}
+          {canManage && <TabsTrigger value="status">Bekreftelser{totalPeople > 0 && ` (${ackedCount}/${totalPeople})`}</TabsTrigger>}
           {canManage && <TabsTrigger value="distribution">Utsending</TabsTrigger>}
           {canManage && <TabsTrigger value="coverage">Dekning</TabsTrigger>}
           <TabsTrigger value="versions">Versjoner</TabsTrigger>
@@ -643,7 +708,7 @@ export default function HmsHandbookDetailPage() {
             <Card>
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <FileCheck2 className="h-4 w-4" /> Lesebekreftelser {publishedVersion && `– v${publishedVersion.version_number}`}
+                  <FileCheck2 className="h-4 w-4" /> Alle ansattbekreftelser {publishedVersion && `– v${publishedVersion.version_number}`}
                 </CardTitle>
                 <Button size="sm" variant="outline" onClick={exportCsv} disabled={!ackOverview?.length}>
                   <Download className="h-4 w-4 mr-1.5" /> Eksporter CSV
@@ -652,21 +717,40 @@ export default function HmsHandbookDetailPage() {
               <CardContent>
                 {!publishedVersion && <p className="text-sm text-muted-foreground">Ingen publisert versjon enda.</p>}
                 {publishedVersion && (
-                  <div className="text-xs text-muted-foreground mb-3">{ackedCount} av {totalEmployees} ansatte har bekreftet.</div>
+                  <div className="mb-3 space-y-1">
+                    {totalPeople === 0 ? (
+                      <p className="text-sm text-muted-foreground">Ingen aktive ansatte eller utsendinger er registrert enda.</p>
+                    ) : (
+                      <p className="text-sm">
+                        <span className="font-medium">{ackedCount} av {totalPeople}</span>{" "}
+                        {employeeCount > 0 ? "ansatte" : "mottakere"} har bekreftet v{publishedVersion.version_number}.
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Grunnlaget er alle aktive ansatte. Bekreftelser teller uansett om de er gjort internt i systemet eller via personlig utsendingslenke.
+                      {sentCount === 0 ? " Ingen utsendinger er sendt ennå." : ` ${sentCount} har fått håndboken tilsendt.`}
+                    </p>
+                  </div>
                 )}
                 <div className="divide-y">
                   {(ackOverview ?? []).map((r: any) => (
-                    <div key={r.user_id} className="py-2 flex items-center justify-between text-sm">
-                      <div>
-                        <div className="font-medium">{r.full_name ?? r.email ?? r.user_id.slice(0, 8)}</div>
-                        {r.email && <div className="text-xs text-muted-foreground">{r.email}</div>}
+                    <div key={r.key} className="py-2 flex items-center justify-between gap-3 text-sm">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{r.full_name ?? r.email ?? "Ukjent"}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {r.email ?? "Ingen e-post"}
+                          {!r.is_employee && " · kun mottaker"}
+                          {r.is_employee && !r.sent_at && " · ikke tilsendt"}
+                        </div>
                       </div>
                       {r.acknowledged_at ? (
-                        <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50">
-                          Bekreftet {format(new Date(r.acknowledged_at), "d. MMM yyyy", { locale: nb })}
+                        <Badge variant="outline" className="shrink-0 text-emerald-700 border-emerald-300 bg-emerald-50">
+                          {confirmedViaLabel(r.confirmed_via)} {format(new Date(r.acknowledged_at), "d. MMM yyyy", { locale: nb })}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50">Mangler</Badge>
+                        <Badge variant="outline" className="shrink-0 text-amber-700 border-amber-300 bg-amber-50">
+                          {r.sent_at ? "Sendt, ikke bekreftet" : "Mangler bekreftelse"}
+                        </Badge>
                       )}
                     </div>
                   ))}
