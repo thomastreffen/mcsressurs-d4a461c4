@@ -351,6 +351,9 @@ export function AppSidebar() {
                          <NavItem item={{ title: "Min HMS-håndbok", url: "/hms/handbok", icon: BookOpen }} isActive={(url) => location.pathname.startsWith("/hms/handbok") && !location.pathname.startsWith("/hms/handbooks")} collapsed={collapsed} />
                         <NavItem item={{ title: "Håndbøker", url: "/hms/handbooks", icon: BookOpen }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Avvik / RUH", url: "/hms/incidents", icon: ShieldAlert }} isActive={isActive} collapsed={collapsed} />
+                         <NavItem item={{ title: "Stoffkartotek / kjemikalier", url: "/hms/kjemikalier", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+                         <NavItem item={{ title: "Mine kjemikalier", url: "/hms/mine-kjemikalier", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+
                          <NavItem item={{ title: "AML-status", url: "/hms/aml", icon: AlertTriangle }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Regelsett", url: "/hms/rulesets", icon: Settings }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Overtid", url: "/hms/overtime", icon: Clock }} isActive={isActive} collapsed={collapsed} />

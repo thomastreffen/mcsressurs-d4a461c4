@@ -132,6 +132,11 @@ import HmsIncidentDetailPage from "./pages/hms/HmsIncidentDetailPage";
 import HmsPeoplePage from "./pages/hms/HmsPeoplePage";
 import HmsMyHandbookPage from "./pages/hms/HmsMyHandbookPage";
 import HmsMyHandbookReaderPage from "./pages/hms/HmsMyHandbookReaderPage";
+import HmsChemicalsPage from "./pages/hms/HmsChemicalsPage";
+import HmsChemicalDetailPage from "./pages/hms/HmsChemicalDetailPage";
+import HmsMyChemicalsPage from "./pages/hms/HmsMyChemicalsPage";
+import ChemicalPublicPage from "./pages/hms/ChemicalPublicPage";
+
 import HandbookPublicPage from "./pages/hms/HandbookPublicPage";
 import HmsPersonDetailPage from "./pages/hms/HmsPersonDetailPage";
 import { HmsContextGate } from "@/components/hms/HmsContextGate";
@@ -217,6 +222,8 @@ const App = () => (
             <Route path="/orders/:id/pickliste" element={<MaterialPickListPrintPage />} />
             <Route path="/m/:token" element={<SharedMaterialListPage />} />
             <Route path="/hb/:token" element={<HandbookPublicPage />} />
+            <Route path="/kj/:token" element={<ChemicalPublicPage />} />
+
             <Route path="/invite/thread/:token" element={<ThreadInviteAcceptPage />} />
             <Route path="/activate" element={<ActivatePage />} />
             <Route path="/bestilling" element={<OrderFormsCatalogPage />} />
@@ -663,6 +670,22 @@ const App = () => (
                   <HmsPage><HmsHandbookDetailPage /></HmsPage>
                 </ProtectedRoute>
               } />
+              <Route path="/hms/kjemikalier" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><HmsChemicalsPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/kjemikalier/:id" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><HmsChemicalDetailPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/mine-kjemikalier" element={
+                <ProtectedRoute>
+                  <HmsPage><HmsMyChemicalsPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+
               <Route path="/hms/aml" element={
                 <ProtectedRoute requiredPermission="hms.view">
                   <HmsPage><HmsAmlPage /></HmsPage>

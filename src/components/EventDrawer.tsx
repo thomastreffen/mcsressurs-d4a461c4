@@ -8,6 +8,8 @@ import { TaskThreadPanel } from "@/components/task-thread";
 import { EventHistoryTab } from "@/components/EventHistoryTab";
 import { ReminderProfileSelect, type ReminderConfig } from "@/components/ReminderProfileSelect";
 import { ApprovalCockpit } from "@/components/ApprovalCockpit";
+import { ChemicalRiskAlert } from "@/components/hms/ChemicalRiskAlert";
+
 import { TechReplacementSuggestion } from "@/components/TechReplacementSuggestion";
 import { useTechnicianInsights } from "@/hooks/useTechnicianInsights";
 import { useTechnicians } from "@/hooks/useTechnicians";
@@ -1837,7 +1839,17 @@ export function EventDrawer({
                 />
               </div>
 
+              {/* ═══ KJEMIKALIERISIKO ═══ */}
+              <ChemicalRiskAlert
+                riskText={`${title} ${description}`}
+                technicians={techIds.map((id) => {
+                  const t = allTechnicians.find((tech: any) => tech.id === id);
+                  return { full_name: t?.name ?? null, email: t?.email ?? null };
+                })}
+              />
+
               {/* ═══ APPROVAL COCKPIT ═══ */}
+
               {approvalSummary && approvalSummary.total > 0 && editEvent && (
                 <ApprovalCockpit
                   jobId={editEvent.id}

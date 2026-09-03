@@ -12,6 +12,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useChemicals } from "@/hooks/useChemicals";
+import { CHEMICAL_ISSUE_TYPES } from "@/lib/hms/chemicals";
+
 import { useToast } from "@/hooks/use-toast";
 import { logHmsAudit } from "@/lib/hms/audit";
 import { cn } from "@/lib/utils";
@@ -62,6 +65,10 @@ export default function HmsIncidentReportPage() {
   const [proposedAction, setProposedAction] = useState("");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [chemicalId, setChemicalId] = useState<string | null>(null);
+  const [chemicalIssueType, setChemicalIssueType] = useState<string | null>(null);
+  const { data: chemicals = [] } = useChemicals();
+
   const [submitted, setSubmitted] = useState<{ id: string } | null>(null);
 
   // Optional projects for selection
@@ -99,6 +106,9 @@ export default function HmsIncidentReportPage() {
           location: location.trim() || null,
           proposed_action: proposedAction.trim() || null,
           project_id: projectId,
+          chemical_id: chemicalId,
+          chemical_issue_type: chemicalId ? chemicalIssueType : null,
+
           reported_by: user.id,
           occurred_at: new Date().toISOString(),
           status: "open",
@@ -315,6 +325,42 @@ export default function HmsIncidentReportPage() {
             </select>
           </div>
         )}
+
+        {/* Kjemikalie */}
+        {chemicals.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-sm">Gjelder et kjemikalie? (valgfritt)</Label>
+            <select
+              value={chemicalId ?? ""}
+              onChange={(e) => setChemicalId(e.target.value || null)}
+              className="w-full h-12 rounded-md border border-input bg-background px-3 text-base"
+            >
+              <option value="">Ingen kjemikaliekobling</option>
+              {chemicals.map((c) => (
+                <option key={c.id} value={c.id}>{c.product_name}</option>
+              ))}
+            </select>
+            {chemicalId && (
+              <>
+                <select
+                  value={chemicalIssueType ?? ""}
+                  onChange={(e) => setChemicalIssueType(e.target.value || null)}
+                  className="w-full h-12 rounded-md border border-input bg-background px-3 text-base"
+                >
+                  <option value="">Hva gjelder det?</option>
+                  {CHEMICAL_ISSUE_TYPES.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Sikkerhetsdatablad og HMS-rutine for produktet vises automatisk i saken.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
 
         {/* Proposed action */}
         <div className="space-y-2">

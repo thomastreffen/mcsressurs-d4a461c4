@@ -39,6 +39,7 @@ export function ChemicalRiskAlert({ riskText, technicians }: Props) {
       if (r.acknowledged_at) {
         if (r.person_id) s.add(`${r.chemical_id}:p:${r.person_id}`);
         if (r.user_id) s.add(`${r.chemical_id}:u:${r.user_id}`);
+        if (r.email) s.add(`${r.chemical_id}:e:${r.email.toLowerCase()}`);
       }
     }
     return s;
@@ -50,12 +51,14 @@ export function ChemicalRiskAlert({ riskText, technicians }: Props) {
       for (const t of technicians) {
         const ok =
           (t.person_id && ackedKeys.has(`${c.id}:p:${t.person_id}`)) ||
-          (t.user_id && ackedKeys.has(`${c.id}:u:${t.user_id}`));
+          (t.user_id && ackedKeys.has(`${c.id}:u:${t.user_id}`)) ||
+          (t.email && ackedKeys.has(`${c.id}:e:${t.email.toLowerCase()}`));
         if (!ok) out.push({ chemical: c, tech: t });
       }
     }
     return out;
   }, [relevant, technicians, ackedKeys]);
+
 
   if (relevant.length === 0 || gaps.length === 0 || sent) return null;
 
