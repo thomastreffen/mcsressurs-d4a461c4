@@ -104,7 +104,8 @@ export function useSaveChemical() {
     mutationFn: async (input: Partial<ChemicalRow> & { id?: string }) => {
       const { data: u } = await supabase.auth.getUser();
       const payload: Record<string, unknown> = { ...input, updated_by: u.user?.id, updated_at: new Date().toISOString() };
-      delete (payload as any).updated_at;
+      delete (payload as any).id;
+
       if (input.id) {
         const { error } = await sb.from("hms_chemicals").update(payload).eq("id", input.id);
         if (error) throw error;
