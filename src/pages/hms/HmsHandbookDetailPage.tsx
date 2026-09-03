@@ -724,28 +724,27 @@ export default function HmsHandbookDetailPage() {
                 {publishedVersion && (
                   <div className="mb-3 space-y-1">
                     {totalPeople === 0 ? (
-                      <p className="text-sm text-muted-foreground">Ingen aktive ansatte eller utsendinger er registrert enda.</p>
+                      <p className="text-sm text-muted-foreground">Ingen aktive ansatte i valgt firma er registrert enda.</p>
                     ) : (
                       <p className="text-sm">
                         <span className="font-medium">{ackedCount} av {totalPeople}</span>{" "}
-                        {employeeCount > 0 ? "ansatte" : "mottakere"} har bekreftet v{publishedVersion.version_number}.
+                        aktive ansatte i valgt firma har bekreftet v{publishedVersion.version_number}.
                       </p>
                     )}
                     <p className="text-[11px] text-muted-foreground">
-                      Grunnlaget er alle aktive ansatte. Bekreftelser teller uansett om de er gjort internt i systemet eller via personlig utsendingslenke.
+                      {EMPLOYEE_BASIS_LABEL}. Ansatte i andre selskaper er ikke med i tellingen. Bekreftelser teller uansett om de er gjort internt i systemet eller via personlig utsendingslenke.
                       {sentCount === 0 ? " Ingen utsendinger er sendt ennå." : ` ${sentCount} har fått håndboken tilsendt.`}
                     </p>
                   </div>
                 )}
                 <div className="divide-y">
-                  {(ackOverview ?? []).map((r: any) => (
+                  {employeeRows.map((r: any) => (
                     <div key={r.key} className="py-2 flex items-center justify-between gap-3 text-sm">
                       <div className="min-w-0">
                         <div className="font-medium truncate">{r.full_name ?? r.email ?? "Ukjent"}</div>
                         <div className="text-xs text-muted-foreground truncate">
                           {r.email ?? "Ingen e-post"}
-                          {!r.is_employee && " · kun mottaker"}
-                          {r.is_employee && !r.sent_at && " · ikke tilsendt"}
+                          {!r.sent_at && " · ikke tilsendt"}
                         </div>
                       </div>
                       {r.acknowledged_at ? (
@@ -760,6 +759,36 @@ export default function HmsHandbookDetailPage() {
                     </div>
                   ))}
                 </div>
+                {externalRows.length > 0 && (
+                  <div className="mt-5">
+                    <p className="text-xs font-medium">Eksterne mottakere / andre mottakere ({externalRows.length})</p>
+                    <p className="text-[11px] text-muted-foreground mb-1">
+                      Har fått HMS-pakken tilsendt, men er ikke aktive ansatte i valgt firma. Telles ikke i statusen over.
+                    </p>
+                    <div className="divide-y">
+                      {externalRows.map((r: any) => (
+                        <div key={r.key} className="py-2 flex items-center justify-between gap-3 text-sm">
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{r.full_name ?? r.email ?? "Ukjent"}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {r.email ?? "Ingen e-post"} · ekstern mottaker
+                            </div>
+                          </div>
+                          {r.acknowledged_at ? (
+                            <Badge variant="outline" className="shrink-0 text-emerald-700 border-emerald-300 bg-emerald-50">
+                              {confirmedViaLabel(r.confirmed_via)} {format(new Date(r.acknowledged_at), "d. MMM yyyy", { locale: nb })}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="shrink-0 text-amber-700 border-amber-300 bg-amber-50">
+                              {r.sent_at ? "Sendt, ikke bekreftet" : "Mangler bekreftelse"}
+                            </Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               </CardContent>
             </Card>
           </TabsContent>
