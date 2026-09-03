@@ -461,10 +461,13 @@ export default function HmsHandbookDetailPage() {
     );
   }
 
-  const ackedCount = ackOverview?.filter((r: any) => r.acknowledged_at).length ?? 0;
-  const totalPeople = ackOverview?.length ?? 0;
-  const employeeCount = ackOverview?.filter((r: any) => r.is_employee).length ?? 0;
-  const sentCount = ackOverview?.filter((r: any) => r.sent_at).length ?? 0;
+  const employeeRows = (ackOverview ?? []).filter((r: any) => r.is_employee);
+  const externalRows = (ackOverview ?? []).filter((r: any) => !r.is_employee);
+  const ackedCount = employeeRows.filter((r: any) => r.acknowledged_at).length;
+  const totalPeople = employeeRows.length;
+  const employeeCount = totalPeople;
+  const sentCount = (ackOverview ?? []).filter((r: any) => r.sent_at).length;
+
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
