@@ -346,8 +346,9 @@ export default function HmsIncidentReportPage() {
                 >
                   <option value="">Hva gjelder det?</option>
                   {CHEMICAL_ISSUE_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                    <option key={t} value={t}>{t}</option>
                   ))}
+
                 </select>
                 <p className="text-xs text-muted-foreground">
                   Sikkerhetsdatablad og HMS-rutine for produktet vises automatisk i saken.
