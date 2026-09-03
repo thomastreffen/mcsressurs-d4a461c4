@@ -581,7 +581,7 @@ export default function HmsHandbookDetailPage() {
       <Tabs defaultValue="content">
         <TabsList>
           <TabsTrigger value="content">Innhold</TabsTrigger>
-          {canManage && <TabsTrigger value="status">Lesebekreftelser{totalEmployees > 0 && ` (${ackedCount}/${totalEmployees})`}</TabsTrigger>}
+          {canManage && <TabsTrigger value="status">Bekreftelser{totalPeople > 0 && ` (${ackedCount}/${totalPeople})`}</TabsTrigger>}
           {canManage && <TabsTrigger value="distribution">Utsending</TabsTrigger>}
           {canManage && <TabsTrigger value="coverage">Dekning</TabsTrigger>}
           <TabsTrigger value="versions">Versjoner</TabsTrigger>
