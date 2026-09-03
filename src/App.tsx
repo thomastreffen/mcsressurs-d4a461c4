@@ -130,6 +130,9 @@ import HmsIncidentReportPage from "./pages/hms/HmsIncidentReportPage";
 import HmsIncidentsListPage from "./pages/hms/HmsIncidentsListPage";
 import HmsIncidentDetailPage from "./pages/hms/HmsIncidentDetailPage";
 import HmsPeoplePage from "./pages/hms/HmsPeoplePage";
+import HmsMyHandbookPage from "./pages/hms/HmsMyHandbookPage";
+import HmsMyHandbookReaderPage from "./pages/hms/HmsMyHandbookReaderPage";
+import HandbookPublicPage from "./pages/hms/HandbookPublicPage";
 import HmsPersonDetailPage from "./pages/hms/HmsPersonDetailPage";
 import { HmsContextGate } from "@/components/hms/HmsContextGate";
 import ComplianceOverviewPage from "./pages/compliance/ComplianceOverviewPage";
@@ -213,6 +216,7 @@ const App = () => (
             <Route path="/projects/:id/pickliste" element={<MaterialPickListPrintPage />} />
             <Route path="/orders/:id/pickliste" element={<MaterialPickListPrintPage />} />
             <Route path="/m/:token" element={<SharedMaterialListPage />} />
+            <Route path="/hb/:token" element={<HandbookPublicPage />} />
             <Route path="/invite/thread/:token" element={<ThreadInviteAcceptPage />} />
             <Route path="/activate" element={<ActivatePage />} />
             <Route path="/bestilling" element={<OrderFormsCatalogPage />} />
@@ -637,6 +641,16 @@ const App = () => (
               <Route path="/hms" element={
                 <ProtectedRoute requiredPermission="hms.view">
                   <HmsPage><HmsOverviewPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/handbok" element={
+                <ProtectedRoute>
+                  <HmsPage><HmsMyHandbookPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/handbok/:id" element={
+                <ProtectedRoute>
+                  <HmsPage><HmsMyHandbookReaderPage /></HmsPage>
                 </ProtectedRoute>
               } />
               <Route path="/hms/handbooks" element={
