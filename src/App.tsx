@@ -670,6 +670,22 @@ const App = () => (
                   <HmsPage><HmsHandbookDetailPage /></HmsPage>
                 </ProtectedRoute>
               } />
+              <Route path="/hms/kjemikalier" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><HmsChemicalsPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/kjemikalier/:id" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><HmsChemicalDetailPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/mine-kjemikalier" element={
+                <ProtectedRoute>
+                  <HmsPage><HmsMyChemicalsPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+
               <Route path="/hms/aml" element={
                 <ProtectedRoute requiredPermission="hms.view">
                   <HmsPage><HmsAmlPage /></HmsPage>
