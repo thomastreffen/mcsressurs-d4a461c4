@@ -1837,7 +1837,17 @@ export function EventDrawer({
                 />
               </div>
 
+              {/* ═══ KJEMIKALIERISIKO ═══ */}
+              <ChemicalRiskAlert
+                riskText={`${title} ${description}`}
+                technicians={techIds.map((id) => {
+                  const t = allTechnicians.find((tech: any) => tech.id === id);
+                  return { full_name: t?.name ?? null, email: t?.email ?? null };
+                })}
+              />
+
               {/* ═══ APPROVAL COCKPIT ═══ */}
+
               {approvalSummary && approvalSummary.total > 0 && editEvent && (
                 <ApprovalCockpit
                   jobId={editEvent.id}
