@@ -85,14 +85,22 @@ Deno.serve(async (req) => {
       return json({ error: "Ugyldig versjon" }, 400);
     }
 
-    const sectionIds = (body.section_ids ?? []).filter(Boolean);
+    const requestedIds = (body.section_ids ?? []).filter(Boolean);
+    let sectionIds: string[] = [];
     let sectionTitles: string[] = [];
-    if (sectionIds.length > 0) {
+    if (requestedIds.length > 0) {
+      // Kun kapitler som faktisk hører til denne utgaven
       const { data: secs } = await admin
         .from("hms_handbook_sections")
-        .select("heading")
-        .in("id", sectionIds);
+        .select("id, heading, ordering")
+        .eq("version_id", version.id)
+        .in("id", requestedIds)
+        .order("ordering", { ascending: true });
+      sectionIds = (secs ?? []).map((s: any) => s.id);
       sectionTitles = (secs ?? []).map((s: any) => s.heading);
+      if (sectionIds.length === 0) {
+        return json({ error: "Ingen gyldige kapitler valgt for denne utgaven" }, 400);
+      }
     }
 
     const channels = (body.channels ?? ["email"]).filter((c) => c === "email" || c === "sms");
