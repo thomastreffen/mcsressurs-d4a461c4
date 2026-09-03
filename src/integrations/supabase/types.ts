@@ -7293,6 +7293,7 @@ export type Database = {
       }
       hms_chemicals: {
         Row: {
+          audience_tags: string[]
           category: string | null
           company_id: string
           created_at: string
@@ -7311,6 +7312,7 @@ export type Database = {
           pictograms: string[]
           ppe_requirements: string | null
           product_name: string
+          relevant_for_all: boolean
           requires_acknowledgement: boolean
           requires_sja: boolean
           requires_special_ppe: boolean
@@ -7330,6 +7332,7 @@ export type Database = {
           waste_handling: string | null
         }
         Insert: {
+          audience_tags?: string[]
           category?: string | null
           company_id: string
           created_at?: string
@@ -7348,6 +7351,7 @@ export type Database = {
           pictograms?: string[]
           ppe_requirements?: string | null
           product_name: string
+          relevant_for_all?: boolean
           requires_acknowledgement?: boolean
           requires_sja?: boolean
           requires_special_ppe?: boolean
@@ -7367,6 +7371,7 @@ export type Database = {
           waste_handling?: string | null
         }
         Update: {
+          audience_tags?: string[]
           category?: string | null
           company_id?: string
           created_at?: string
@@ -7385,6 +7390,7 @@ export type Database = {
           pictograms?: string[]
           ppe_requirements?: string | null
           product_name?: string
+          relevant_for_all?: boolean
           requires_acknowledgement?: boolean
           requires_sja?: boolean
           requires_special_ppe?: boolean
@@ -7416,6 +7422,7 @@ export type Database = {
           method: string
           person_id: string | null
           recipient_id: string | null
+          resource_snapshot: Json | null
           section_id: string | null
           user_agent: string | null
           user_id: string | null
@@ -7431,6 +7438,7 @@ export type Database = {
           method?: string
           person_id?: string | null
           recipient_id?: string | null
+          resource_snapshot?: Json | null
           section_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -7446,6 +7454,7 @@ export type Database = {
           method?: string
           person_id?: string | null
           recipient_id?: string | null
+          resource_snapshot?: Json | null
           section_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -7499,10 +7508,13 @@ export type Database = {
       hms_handbook_distributions: {
         Row: {
           channels: string[]
+          chemical_ids: string[]
+          chemical_snapshot: Json
           company_id: string
           created_at: string
           handbook_id: string
           id: string
+          included_resources: Json
           kind: string
           message: string | null
           recipient_count: number
@@ -7517,10 +7529,13 @@ export type Database = {
         }
         Insert: {
           channels?: string[]
+          chemical_ids?: string[]
+          chemical_snapshot?: Json
           company_id: string
           created_at?: string
           handbook_id: string
           id?: string
+          included_resources?: Json
           kind?: string
           message?: string | null
           recipient_count?: number
@@ -7535,10 +7550,13 @@ export type Database = {
         }
         Update: {
           channels?: string[]
+          chemical_ids?: string[]
+          chemical_snapshot?: Json
           company_id?: string
           created_at?: string
           handbook_id?: string
           id?: string
+          included_resources?: Json
           kind?: string
           message?: string | null
           recipient_count?: number
@@ -7573,6 +7591,8 @@ export type Database = {
           ack_method: string | null
           acknowledged_at: string | null
           channel: string
+          chemical_ids: string[]
+          chemical_snapshot: Json
           company_id: string
           created_at: string
           delivery_error: string | null
@@ -7584,6 +7604,7 @@ export type Database = {
           full_name: string | null
           handbook_id: string
           id: string
+          included_resources: Json
           last_opened_at: string | null
           last_reminder_at: string | null
           open_count: number
@@ -7601,6 +7622,8 @@ export type Database = {
           ack_method?: string | null
           acknowledged_at?: string | null
           channel?: string
+          chemical_ids?: string[]
+          chemical_snapshot?: Json
           company_id: string
           created_at?: string
           delivery_error?: string | null
@@ -7612,6 +7635,7 @@ export type Database = {
           full_name?: string | null
           handbook_id: string
           id?: string
+          included_resources?: Json
           last_opened_at?: string | null
           last_reminder_at?: string | null
           open_count?: number
@@ -7629,6 +7653,8 @@ export type Database = {
           ack_method?: string | null
           acknowledged_at?: string | null
           channel?: string
+          chemical_ids?: string[]
+          chemical_snapshot?: Json
           company_id?: string
           created_at?: string
           delivery_error?: string | null
@@ -7640,6 +7666,7 @@ export type Database = {
           full_name?: string | null
           handbook_id?: string
           id?: string
+          included_resources?: Json
           last_opened_at?: string | null
           last_reminder_at?: string | null
           open_count?: number
@@ -7694,6 +7721,8 @@ export type Database = {
       hms_handbook_sections: {
         Row: {
           body: string | null
+          chemical_ids: string[]
+          coverage_areas: string[]
           created_at: string
           heading: string
           hms_areas: string[]
@@ -7701,11 +7730,14 @@ export type Database = {
           is_mandatory: boolean
           ordering: number
           parent_id: string | null
+          resource_links: Json
           updated_at: string
           version_id: string
         }
         Insert: {
           body?: string | null
+          chemical_ids?: string[]
+          coverage_areas?: string[]
           created_at?: string
           heading: string
           hms_areas?: string[]
@@ -7713,11 +7745,14 @@ export type Database = {
           is_mandatory?: boolean
           ordering?: number
           parent_id?: string | null
+          resource_links?: Json
           updated_at?: string
           version_id: string
         }
         Update: {
           body?: string | null
+          chemical_ids?: string[]
+          coverage_areas?: string[]
           created_at?: string
           heading?: string
           hms_areas?: string[]
@@ -7725,6 +7760,7 @@ export type Database = {
           is_mandatory?: boolean
           ordering?: number
           parent_id?: string | null
+          resource_links?: Json
           updated_at?: string
           version_id?: string
         }
