@@ -19,6 +19,15 @@ interface RecipientInput {
   phone?: string | null;
 }
 
+interface ResourceLink {
+  type: string;
+  label: string;
+  url?: string | null;
+  note?: string | null;
+  section_id?: string | null;
+  section_heading?: string | null;
+}
+
 interface Body {
   handbook_id: string;
   version_id: string;
@@ -29,7 +38,14 @@ interface Body {
   kind?: "distribution" | "reminder";
   base_url: string;
   recipients: RecipientInput[];
+  /** Hvilke kjemikalier som skal følge med pakken. */
+  chemical_mode?: "all_relevant" | "audience" | "specific" | "none";
+  chemical_ids?: string[];
+  audience_tags?: string[];
+  /** Ekstra lenker admin har lagt til for denne utsendingen. */
+  extra_resources?: ResourceLink[];
 }
+
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
