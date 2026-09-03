@@ -13,6 +13,7 @@ import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HandbookAckStatusCard } from "@/components/hms/HandbookAckStatusCard";
 import { ChemicalStatusCard } from "@/components/hms/ChemicalStatusCard";
+import { WorkReadinessCard } from "@/components/hms/WorkReadinessCard";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -336,6 +337,8 @@ export default function HmsOverviewPage() {
       <HandbookAckStatusCard />
 
       <ChemicalStatusCard />
+
+      <WorkReadinessCard />
 
 
       {/* ---- Topp ansatte med åpne AML-varsler ---- */}

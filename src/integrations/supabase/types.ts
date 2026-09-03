@@ -5915,6 +5915,7 @@ export type Database = {
           project_type: string
           proposed_end: string | null
           proposed_start: string | null
+          risk_tags: string[]
           sharepoint_connected_at: string | null
           sharepoint_drive_id: string | null
           sharepoint_folder_id: string | null
@@ -6001,6 +6002,7 @@ export type Database = {
           project_type?: string
           proposed_end?: string | null
           proposed_start?: string | null
+          risk_tags?: string[]
           sharepoint_connected_at?: string | null
           sharepoint_drive_id?: string | null
           sharepoint_folder_id?: string | null
@@ -6087,6 +6089,7 @@ export type Database = {
           project_type?: string
           proposed_end?: string | null
           proposed_start?: string | null
+          risk_tags?: string[]
           sharepoint_connected_at?: string | null
           sharepoint_drive_id?: string | null
           sharepoint_folder_id?: string | null
@@ -8018,6 +8021,62 @@ export type Database = {
             columns: ["chemical_id"]
             isOneToOne: false
             referencedRelation: "hms_chemicals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hms_readiness_overrides: {
+        Row: {
+          comment: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          decision: string
+          event_id: string
+          id: string
+          person_id: string | null
+          requirement_key: string
+          requirement_label: string | null
+          risk_tags: string[]
+          technician_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          decision?: string
+          event_id: string
+          id?: string
+          person_id?: string | null
+          requirement_key: string
+          requirement_label?: string | null
+          risk_tags?: string[]
+          technician_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          decision?: string
+          event_id?: string
+          id?: string
+          person_id?: string | null
+          requirement_key?: string
+          requirement_label?: string | null
+          risk_tags?: string[]
+          technician_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hms_readiness_overrides_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]

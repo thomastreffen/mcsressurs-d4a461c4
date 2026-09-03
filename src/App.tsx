@@ -135,6 +135,7 @@ import HmsMyHandbookReaderPage from "./pages/hms/HmsMyHandbookReaderPage";
 import HmsChemicalsPage from "./pages/hms/HmsChemicalsPage";
 import HmsChemicalDetailPage from "./pages/hms/HmsChemicalDetailPage";
 import HmsMyChemicalsPage from "./pages/hms/HmsMyChemicalsPage";
+import HmsMyReadinessPage from "./pages/hms/HmsMyReadinessPage";
 import ChemicalPublicPage from "./pages/hms/ChemicalPublicPage";
 
 import HandbookPublicPage from "./pages/hms/HandbookPublicPage";
@@ -683,6 +684,12 @@ const App = () => (
               <Route path="/hms/mine-kjemikalier" element={
                 <ProtectedRoute>
                   <HmsPage><HmsMyChemicalsPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/hms/klar-for-arbeid" element={
+                <ProtectedRoute>
+                  <HmsPage><HmsMyReadinessPage /></HmsPage>
                 </ProtectedRoute>
               } />
 

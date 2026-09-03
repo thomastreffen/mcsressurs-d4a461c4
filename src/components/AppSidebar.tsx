@@ -353,6 +353,7 @@ export function AppSidebar() {
                          <NavItem item={{ title: "Avvik / RUH", url: "/hms/incidents", icon: ShieldAlert }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Stoffkartotek / kjemikalier", url: "/hms/kjemikalier", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Mine kjemikalier", url: "/hms/mine-kjemikalier", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+                         <NavItem item={{ title: "Klar for arbeid", url: "/hms/klar-for-arbeid", icon: ShieldAlert }} isActive={isActive} collapsed={collapsed} />
 
                          <NavItem item={{ title: "AML-status", url: "/hms/aml", icon: AlertTriangle }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Regelsett", url: "/hms/rulesets", icon: Settings }} isActive={isActive} collapsed={collapsed} />

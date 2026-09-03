@@ -9,6 +9,8 @@ import { EventHistoryTab } from "@/components/EventHistoryTab";
 import { ReminderProfileSelect, type ReminderConfig } from "@/components/ReminderProfileSelect";
 import { ApprovalCockpit } from "@/components/ApprovalCockpit";
 import { ChemicalRiskAlert } from "@/components/hms/ChemicalRiskAlert";
+import { RiskTagPicker } from "@/components/hms/RiskTagPicker";
+import { WorkReadinessPanel } from "@/components/hms/WorkReadinessPanel";
 
 import { TechReplacementSuggestion } from "@/components/TechReplacementSuggestion";
 import { useTechnicianInsights } from "@/hooks/useTechnicianInsights";
@@ -1847,6 +1849,21 @@ export function EventDrawer({
                   return { full_name: t?.name ?? null, email: t?.email ?? null };
                 })}
               />
+
+              {/* ═══ KLAR FOR ARBEID ═══ */}
+              {editEvent?.id && (
+                <div className="space-y-3">
+                  <RiskTagPicker eventId={editEvent.id} suggestFrom={`${title} ${description}`} />
+                  <WorkReadinessPanel
+                    eventId={editEvent.id}
+                    jobTitle={title}
+                    technicians={techIds.map((id) => {
+                      const t = allTechnicians.find((tech: any) => tech.id === id);
+                      return { user_id: id, full_name: t?.name ?? null, email: t?.email ?? null };
+                    })}
+                  />
+                </div>
+              )}
 
               {/* ═══ APPROVAL COCKPIT ═══ */}
 

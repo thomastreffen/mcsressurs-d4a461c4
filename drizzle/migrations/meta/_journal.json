@@ -36,6 +36,13 @@
       "when": 1788426689767,
       "tag": "0004_hms_chemicals",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788428113402,
+      "tag": "0005_hms_work_readiness",
+      "breakpoints": true
     }
   ]
 }
