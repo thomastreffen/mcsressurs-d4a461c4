@@ -106,6 +106,9 @@ export default function HmsIncidentReportPage() {
           location: location.trim() || null,
           proposed_action: proposedAction.trim() || null,
           project_id: projectId,
+          chemical_id: chemicalId,
+          chemical_issue_type: chemicalId ? chemicalIssueType : null,
+
           reported_by: user.id,
           occurred_at: new Date().toISOString(),
           status: "open",
