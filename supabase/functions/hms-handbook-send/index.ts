@@ -285,6 +285,8 @@ Deno.serve(async (req) => {
               scopeText,
               message: body.message ?? "",
               link,
+              resourceCount: includedResources.length,
+              chemicalCount: snapshot.length,
             }),
           });
           if (res.error) {
@@ -333,6 +335,10 @@ Deno.serve(async (req) => {
         section_titles: sectionTitles,
         scope: sectionIds.length > 0 ? "chapters" : "full",
         channels,
+        included_resources: includedResources,
+        chemical_ids: chemicalIds,
+        chemical_snapshot: snapshot,
+        chemical_mode: chemMode,
         recipient_count: results.length,
         failed: results.filter((r) => r.status === "failed").length,
       },
@@ -351,12 +357,17 @@ function esc(s: string) {
 
 function buildHtml(p: {
   name: string; title: string; versionNumber: number; scopeText: string; message: string; link: string;
+  resourceCount?: number; chemicalCount?: number;
 }) {
+  const pkg: string[] = [];
+  if (p.chemicalCount) pkg.push(`${p.chemicalCount} kjemikalier med sikkerhetsdatablad`);
+  if (p.resourceCount) pkg.push(`${p.resourceCount} viktige vedlegg og lenker`);
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:8px;">
   <h2 style="font-size:18px;color:#111827;margin:0 0 4px;">${esc(p.title)}</h2>
   <p style="margin:0 0 16px;color:#6B7280;font-size:13px;">Utgave ${p.versionNumber} · ${esc(p.scopeText)}</p>
   <p style="font-size:15px;color:#374151;">Hei${p.name ? " " + esc(p.name) : ""},</p>
   <p style="font-size:15px;color:#374151;">${p.message ? esc(p.message) : "Du har fått tilsendt HMS-informasjon som du skal lese og bekrefte."}</p>
+  ${pkg.length ? `<p style="font-size:14px;color:#374151;background:#F3F4F6;border-radius:8px;padding:12px;">Pakken inneholder også:<br/>${pkg.map((x) => "&bull; " + esc(x)).join("<br/>")}</p>` : ""}
   <p style="margin:24px 0;">
     <a href="${p.link}" style="background:#111827;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:8px;font-size:15px;display:inline-block;">Åpne, les og bekreft</a>
   </p>
