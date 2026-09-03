@@ -9,6 +9,7 @@ import { Loader2, Search, Users, ShieldAlert, ShieldCheck, ShieldQuestion } from
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
+import { EMPLOYEE_BASIS_LABEL } from "@/lib/hms/employeeBasis";
 
 interface Row {
   id: string;
@@ -247,7 +248,15 @@ export default function HmsPeoplePage() {
       <div className="flex items-center gap-2">
         <Users className="h-5 w-5 text-muted-foreground" />
         <h1 className="text-xl font-semibold">Ansatte</h1>
+        <span className="text-[11px] text-muted-foreground hidden sm:inline">{EMPLOYEE_BASIS_LABEL}</span>
         <span className="ml-auto text-xs text-muted-foreground">{filtered.length} av {rows.length}</span>
+        <button
+          type="button"
+          onClick={() => navigate("/hms/people/kontroll")}
+          className="text-xs text-primary underline"
+        >
+          Kontroller ansattgrunnlag
+        </button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
