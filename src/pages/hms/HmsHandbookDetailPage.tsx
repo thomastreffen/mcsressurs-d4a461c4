@@ -497,6 +497,7 @@ export default function HmsHandbookDetailPage() {
         <TabsList>
           <TabsTrigger value="content">Innhold</TabsTrigger>
           {canManage && <TabsTrigger value="status">Lesebekreftelser{totalEmployees > 0 && ` (${ackedCount}/${totalEmployees})`}</TabsTrigger>}
+          {canManage && <TabsTrigger value="distribution">Utsending</TabsTrigger>}
           <TabsTrigger value="versions">Versjoner</TabsTrigger>
         </TabsList>
 
@@ -632,6 +633,19 @@ export default function HmsHandbookDetailPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
+
+        {canManage && (
+          <TabsContent value="distribution" className="mt-4">
+            <HandbookDistributionStatus
+              handbookId={handbook.id}
+              handbookTitle={handbook.title}
+              versionId={publishedVersion?.id ?? null}
+              versionNumber={publishedVersion?.version_number ?? null}
+              chapters={sections.map((s) => ({ id: s.id, heading: s.heading, is_mandatory: s.is_mandatory }))}
+              canManage={canManage}
+            />
           </TabsContent>
         )}
 
