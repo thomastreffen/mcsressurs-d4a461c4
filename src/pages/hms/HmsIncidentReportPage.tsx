@@ -62,6 +62,10 @@ export default function HmsIncidentReportPage() {
   const [proposedAction, setProposedAction] = useState("");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [chemicalId, setChemicalId] = useState<string | null>(null);
+  const [chemicalIssueType, setChemicalIssueType] = useState<string | null>(null);
+  const { data: chemicals = [] } = useChemicals();
+
   const [submitted, setSubmitted] = useState<{ id: string } | null>(null);
 
   // Optional projects for selection
