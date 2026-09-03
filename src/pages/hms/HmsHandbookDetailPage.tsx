@@ -561,6 +561,16 @@ export default function HmsHandbookDetailPage() {
                 {activeChapter && editMode && (
                   <>
                     <Input value={heading} onChange={(e) => setEditedSections((p) => ({ ...p, [activeChapter.id]: { heading: e.target.value, body } }))} className="text-lg font-semibold" />
+                    <div className="flex items-center justify-between rounded-md border p-3">
+                      <div>
+                        <div className="text-sm font-medium">Obligatorisk kapittel</div>
+                        <div className="text-xs text-muted-foreground">Krever egen lesebekreftelse fra alle ansatte, også ved ny utgave.</div>
+                      </div>
+                      <Switch
+                        checked={!!activeChapter.is_mandatory}
+                        onCheckedChange={(v) => toggleMandatory.mutate({ sid: activeChapter.id, value: v })}
+                      />
+                    </div>
                     <Textarea value={body} onChange={(e) => setEditedSections((p) => ({ ...p, [activeChapter.id]: { heading, body: e.target.value } }))} rows={24} className="font-mono text-xs" />
                     <div className="flex justify-between items-center gap-2 flex-wrap">
                       <DropdownMenu>
