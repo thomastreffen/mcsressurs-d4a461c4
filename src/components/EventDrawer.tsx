@@ -8,6 +8,8 @@ import { TaskThreadPanel } from "@/components/task-thread";
 import { EventHistoryTab } from "@/components/EventHistoryTab";
 import { ReminderProfileSelect, type ReminderConfig } from "@/components/ReminderProfileSelect";
 import { ApprovalCockpit } from "@/components/ApprovalCockpit";
+import { ChemicalRiskAlert } from "@/components/hms/ChemicalRiskAlert";
+
 import { TechReplacementSuggestion } from "@/components/TechReplacementSuggestion";
 import { useTechnicianInsights } from "@/hooks/useTechnicianInsights";
 import { useTechnicians } from "@/hooks/useTechnicians";
