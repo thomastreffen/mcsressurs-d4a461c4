@@ -132,6 +132,10 @@ Deno.serve(async (req) => {
     }
 
     let chemicalIds: string[] = [];
+    let snapshot: {
+      id: string; product_name: string; supplier: string | null; is_high_risk: boolean;
+      sds_version: string | null; sds_revision_date: string | null; has_sds: boolean;
+    }[] = [];
     if (chemMode !== "none") {
       const { data: chems } = await admin
         .from("hms_chemicals")
@@ -150,7 +154,7 @@ Deno.serve(async (req) => {
         return false;
       });
       chemicalIds = pick.map((c) => c.id);
-      var chemicalSnapshot = pick.map((c) => ({
+      snapshot = pick.map((c) => ({
         id: c.id,
         product_name: c.product_name,
         supplier: c.supplier,
@@ -160,7 +164,6 @@ Deno.serve(async (req) => {
         has_sds: !!c.sds_path,
       }));
     }
-    const snapshot: any[] = (typeof chemicalSnapshot !== "undefined" ? chemicalSnapshot : []) as any[];
 
     const resources: ResourceLink[] = [];
     for (const s of includedSecs as any[]) {
