@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Copy, Loader2, Send, Users } from "lucide-react";
+import { Copy, FlaskConical, Loader2, Package, Send, Users } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -12,8 +12,17 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import {
-  useSendableEmployees, useSendHandbook, type SendResultRecipient,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  useSendableEmployees, useSendHandbook, useHandbookSectionResources, type SendResultRecipient,
 } from "@/hooks/useHandbookDistribution";
+import { useChemicals } from "@/hooks/useChemicals";
+import { sdsState, SDS_STATE_LABELS } from "@/lib/hms/chemicals";
+import {
+  CHEMICAL_AUDIENCE_TAGS, CHEMICAL_MODE_LABELS, RESOURCE_TYPE_LABELS,
+  type ChemicalInclusionMode, type HandbookResourceType,
+} from "@/lib/hms/handbookPackage";
 
 interface ChapterOption { id: string; heading: string; is_mandatory?: boolean }
 
@@ -37,6 +46,8 @@ export function HandbookDistributeDialog({
   preselectedChapterId?: string | null;
 }) {
   const { data: employees = [], isLoading } = useSendableEmployees();
+  const { data: sectionResources = [] } = useHandbookSectionResources(versionId);
+  const { data: chemicals = [] } = useChemicals();
   const sendMut = useSendHandbook();
 
   const [scope, setScope] = useState<"full" | "chapters">(preselectedChapterId ? "chapters" : "full");
@@ -47,6 +58,9 @@ export function HandbookDistributeDialog({
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [results, setResults] = useState<SendResultRecipient[] | null>(null);
+  const [chemMode, setChemMode] = useState<ChemicalInclusionMode>("all_relevant");
+  const [audience, setAudience] = useState<string[]>([]);
+  const [specificChemicals, setSpecificChemicals] = useState<string[]>([]);
 
   const selected = useMemo(
     () => employees.filter((e) => selectedPeople.includes(e.person_id)),
@@ -55,6 +69,31 @@ export function HandbookDistributeDialog({
 
   const toggle = (arr: string[], id: string) =>
     arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id];
+
+  /** Forhåndsvisning av pakken – samme regler som i utsendingsfunksjonen. */
+  const pkg = useMemo(() => {
+    const includedSections =
+      scope === "chapters" ? sectionResources.filter((s) => selectedChapters.includes(s.id)) : sectionResources;
+    const sectionChemIds = new Set(includedSections.flatMap((s) => s.chemical_ids));
+    const chosenChemicals = chemicals.filter((c) => {
+      if (sectionChemIds.has(c.id)) return true;
+      if (chemMode === "none") return false;
+      if (chemMode === "specific") return specificChemicals.includes(c.id);
+      if (c.status === "expired") return false;
+      if (chemMode === "all_relevant") return c.relevant_for_all || c.is_high_risk;
+      return c.relevant_for_all || (c.audience_tags ?? []).some((t) => audience.includes(t));
+    });
+    const resources = includedSections.flatMap((s) =>
+      s.resource_links.map((l) => ({ ...l, section_heading: s.heading })),
+    );
+    return {
+      sections: includedSections,
+      chemicals: chosenChemicals,
+      resources,
+      mandatory: includedSections.filter((s) => s.is_mandatory),
+      missingSds: chosenChemicals.filter((c) => sdsState(c) !== "ok"),
+    };
+  }, [scope, selectedChapters, sectionResources, chemicals, chemMode, specificChemicals, audience]);
 
   const send = async () => {
     if (!versionId) {
@@ -81,6 +120,9 @@ export function HandbookDistributeDialog({
         channels: [useEmail ? "email" : null, useSms ? "sms" : null].filter(Boolean) as string[],
         subject: subject || undefined,
         message: message || undefined,
+        chemical_mode: chemMode,
+        chemical_ids: chemMode === "specific" ? specificChemicals : undefined,
+        audience_tags: chemMode === "audience" ? audience : undefined,
         recipients: selected.map((e) => ({
           person_id: e.person_id, user_id: e.user_id, full_name: e.full_name, email: e.email, phone: e.phone,
         })),
@@ -229,7 +271,94 @@ export function HandbookDistributeDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">3. Kanal</Label>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <FlaskConical className="h-3.5 w-3.5" /> 3. Stoffkartotek og kjemikalier
+              </Label>
+              <Select value={chemMode} onValueChange={(v) => setChemMode(v as ChemicalInclusionMode)}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(CHEMICAL_MODE_LABELS) as ChemicalInclusionMode[]).map((m) => (
+                    <SelectItem key={m} value={m}>{CHEMICAL_MODE_LABELS[m]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Kjemikalier som er koblet til kapitlene følger alltid med.
+              </p>
+              {chemMode === "audience" && (
+                <div className="flex flex-wrap gap-1.5">
+                  {CHEMICAL_AUDIENCE_TAGS.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setAudience((p) => toggle(p, t))}
+                      className={`rounded-full border px-2.5 py-1 text-[11px] ${
+                        audience.includes(t) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {chemMode === "specific" && (
+                <ScrollArea className="h-36 rounded-md border p-2">
+                  <div className="space-y-1">
+                    {chemicals.map((c) => (
+                      <label key={c.id} className="flex items-center gap-2 text-sm py-0.5">
+                        <Checkbox
+                          checked={specificChemicals.includes(c.id)}
+                          onCheckedChange={() => setSpecificChemicals((p) => toggle(p, c.id))}
+                        />
+                        <span className="flex-1 truncate">{c.product_name}</span>
+                        {c.is_high_risk && <Badge variant="outline" className="text-[10px]">Høyrisiko</Badge>}
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center gap-1.5 text-sm font-medium">
+                <Package className="h-4 w-4" /> Dette sendes til ansatte
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>
+                  <span className="text-foreground font-medium">{handbookTitle}</span>
+                  {versionNumber ? ` – utgave ${versionNumber}` : ""} ·{" "}
+                  {scope === "full" ? "hele håndboken" : "valgte kapitler"}
+                </li>
+                <li>{pkg.sections.length} kapitler, hvorav {pkg.mandatory.length} obligatoriske med egen bekreftelse</li>
+                <li>
+                  {pkg.chemicals.length} kjemikalier med sikkerhetsdatablad
+                  {pkg.missingSds.length > 0 && (
+                    <span className="text-amber-700"> · {pkg.missingSds.length} uten gyldig SDS</span>
+                  )}
+                </li>
+                <li>{pkg.resources.length} koblede ressurser og lenker</li>
+              </ul>
+              {pkg.resources.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {pkg.resources.slice(0, 8).map((r, i) => (
+                    <Badge key={`${r.label}-${i}`} variant="outline" className="text-[10px]">
+                      {RESOURCE_TYPE_LABELS[r.type as HandbookResourceType] ?? r.type}: {r.label}
+                    </Badge>
+                  ))}
+                  {pkg.resources.length > 8 && (
+                    <span className="text-[10px] text-muted-foreground">+{pkg.resources.length - 8} flere</span>
+                  )}
+                </div>
+              )}
+              {pkg.missingSds.length > 0 && (
+                <p className="text-[11px] text-amber-700">
+                  {pkg.missingSds.map((c) => `${c.product_name} (${SDS_STATE_LABELS[sdsState(c)]})`).join(", ")}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">4. Kanal</Label>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 text-sm">
                   <Checkbox checked={useEmail} onCheckedChange={(v) => setUseEmail(!!v)} /> E-post
