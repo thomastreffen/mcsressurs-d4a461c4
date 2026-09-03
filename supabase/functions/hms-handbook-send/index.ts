@@ -102,22 +102,98 @@ Deno.serve(async (req) => {
     }
 
     const requestedIds = (body.section_ids ?? []).filter(Boolean);
+
+    // Alle kapitler i utgaven – trengs både for validering og for koblede ressurser
+    const { data: allSecs } = await admin
+      .from("hms_handbook_sections")
+      .select("id, heading, ordering, resource_links, chemical_ids")
+      .eq("version_id", version.id)
+      .order("ordering", { ascending: true });
+
     let sectionIds: string[] = [];
     let sectionTitles: string[] = [];
+    let includedSecs = allSecs ?? [];
     if (requestedIds.length > 0) {
-      // Kun kapitler som faktisk hører til denne utgaven
-      const { data: secs } = await admin
-        .from("hms_handbook_sections")
-        .select("id, heading, ordering")
-        .eq("version_id", version.id)
-        .in("id", requestedIds)
-        .order("ordering", { ascending: true });
-      sectionIds = (secs ?? []).map((s: any) => s.id);
-      sectionTitles = (secs ?? []).map((s: any) => s.heading);
+      includedSecs = (allSecs ?? []).filter((s: any) => requestedIds.includes(s.id));
+      sectionIds = includedSecs.map((s: any) => s.id);
+      sectionTitles = includedSecs.map((s: any) => s.heading);
       if (sectionIds.length === 0) {
         return json({ error: "Ingen gyldige kapitler valgt for denne utgaven" }, 400);
       }
     }
+
+    // ---- Bygg HMS-pakken: koblede ressurser + relevante kjemikalier/SDS ----
+    const chemMode = body.chemical_mode ?? "all_relevant";
+    const audienceTags = (body.audience_tags ?? []).filter(Boolean);
+
+    const sectionChemIds = new Set<string>();
+    for (const s of includedSecs as any[]) {
+      for (const cid of (s.chemical_ids ?? []) as string[]) sectionChemIds.add(cid);
+    }
+
+    let chemicalIds: string[] = [];
+    if (chemMode !== "none") {
+      const { data: chems } = await admin
+        .from("hms_chemicals")
+        .select("id, product_name, supplier, is_high_risk, relevant_for_all, audience_tags, status, sds_version, sds_revision_date, sds_path")
+        .eq("company_id", handbook.company_id)
+        .is("deleted_at", null);
+      const all = (chems ?? []) as any[];
+      const pick = all.filter((c) => {
+        if (sectionChemIds.has(c.id)) return true;
+        if (chemMode === "specific") return (body.chemical_ids ?? []).includes(c.id);
+        if (c.status === "expired") return false;
+        if (chemMode === "all_relevant") return c.relevant_for_all || c.is_high_risk;
+        if (chemMode === "audience") {
+          return c.relevant_for_all || (c.audience_tags ?? []).some((t: string) => audienceTags.includes(t));
+        }
+        return false;
+      });
+      chemicalIds = pick.map((c) => c.id);
+      var chemicalSnapshot = pick.map((c) => ({
+        id: c.id,
+        product_name: c.product_name,
+        supplier: c.supplier,
+        is_high_risk: c.is_high_risk,
+        sds_version: c.sds_version,
+        sds_revision_date: c.sds_revision_date,
+        has_sds: !!c.sds_path,
+      }));
+    }
+    const snapshot: any[] = (typeof chemicalSnapshot !== "undefined" ? chemicalSnapshot : []) as any[];
+
+    const resources: ResourceLink[] = [];
+    for (const s of includedSecs as any[]) {
+      for (const l of ((s.resource_links ?? []) as ResourceLink[])) {
+        if (!l?.label) continue;
+        resources.push({
+          type: l.type ?? "vedlegg",
+          label: l.label,
+          url: l.url ?? null,
+          note: l.note ?? null,
+          section_id: s.id,
+          section_heading: s.heading,
+        });
+      }
+    }
+    for (const l of body.extra_resources ?? []) {
+      if (l?.label) resources.push({ type: l.type ?? "vedlegg", label: l.label, url: l.url ?? null, note: l.note ?? null });
+    }
+    if (snapshot.length > 0) {
+      resources.unshift({
+        type: "stoffkartotek",
+        label: "Stoffkartotek – kjemikalier for ditt arbeid",
+        note: "Produktene med sikkerhetsdatablad ligger nederst i pakken.",
+      });
+    }
+    // Dedupliser
+    const seenRes = new Set<string>();
+    const includedResources = resources.filter((r) => {
+      const key = `${r.type}|${r.label.toLowerCase()}|${r.url ?? ""}`;
+      if (seenRes.has(key)) return false;
+      seenRes.add(key);
+      return true;
+    });
 
     const channels = (body.channels ?? ["email"]).filter((c) => c === "email" || c === "sms");
     const wantsEmail = channels.includes("email");
@@ -139,6 +215,9 @@ Deno.serve(async (req) => {
         kind: body.kind ?? "distribution",
         recipient_count: body.recipients.length,
         sent_by: authUser.id,
+        included_resources: includedResources,
+        chemical_ids: chemicalIds,
+        chemical_snapshot: snapshot,
       })
       .select("id")
       .single();
@@ -151,6 +230,9 @@ Deno.serve(async (req) => {
       version_id: version.id,
       section_ids: sectionIds,
       section_titles: sectionTitles,
+      included_resources: includedResources,
+      chemical_ids: chemicalIds,
+      chemical_snapshot: snapshot,
       person_id: r.person_id ?? null,
       user_id: r.user_id ?? null,
       full_name: r.full_name ?? null,
@@ -164,6 +246,7 @@ Deno.serve(async (req) => {
       .insert(rows)
       .select("id, full_name, email, phone, share_token, channel");
     if (recErr) return json({ error: recErr.message }, 500);
+
 
     const scopeText = sectionTitles.length > 0
       ? `kapittel: ${sectionTitles.join(", ")}`
