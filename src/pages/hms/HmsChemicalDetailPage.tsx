@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { CHEMICAL_AUDIENCE_TAGS } from "@/lib/hms/handbookPackage";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, Download, FileWarning, Loader2, Save, Send, Trash2, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
