@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
+import type { ChemicalInclusionMode, HandbookResourceLink } from "@/lib/hms/handbookPackage";
 
 const sb = supabase as any;
 
@@ -29,6 +30,16 @@ export interface HandbookRecipientRow {
   reminder_count: number;
 }
 
+export interface HandbookSectionResourceRow {
+  id: string;
+  heading: string;
+  ordering: number;
+  is_mandatory: boolean;
+  resource_links: HandbookResourceLink[];
+  chemical_ids: string[];
+  coverage_areas: string[];
+}
+
 export interface HandbookDistributionRow {
   id: string;
   handbook_id: string;
@@ -41,6 +52,8 @@ export interface HandbookDistributionRow {
   subject: string | null;
   message: string | null;
   kind: string;
+  included_resources: HandbookResourceLink[] | null;
+  chemical_ids: string[] | null;
   recipient_count: number;
   sent_by: string | null;
   sent_at: string;
@@ -105,7 +118,7 @@ export function useHandbookDistributions(handbookId?: string) {
     queryFn: async () => {
       let q = sb
         .from("hms_handbook_distributions")
-        .select("id, handbook_id, version_id, version_number, section_ids, section_titles, scope, channels, subject, message, kind, recipient_count, sent_by, sent_at")
+        .select("id, handbook_id, version_id, version_number, section_ids, section_titles, scope, channels, subject, message, kind, recipient_count, sent_by, sent_at, included_resources, chemical_ids")
         .eq("company_id", cid)
         .order("sent_at", { ascending: false })
         .limit(200);
@@ -192,3 +205,49 @@ export const RECIPIENT_STATE_LABEL: Record<RecipientState, string> = {
   sent: "Sendt",
   failed: "Ikke levert",
 };
+
+
+/** Kapitler med koblede ressurser, kjemikalier og dekningsområder for en utgave. */
+export function useHandbookSectionResources(versionId?: string | null) {
+  return useQuery<HandbookSectionResourceRow[]>({
+    queryKey: ["handbook-section-resources", versionId ?? "none"],
+    enabled: !!versionId,
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("hms_handbook_sections")
+        .select("id, heading, ordering, is_mandatory, resource_links, chemical_ids, coverage_areas")
+        .eq("version_id", versionId)
+        .order("ordering", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((s: any) => ({
+        ...s,
+        resource_links: Array.isArray(s.resource_links) ? s.resource_links : [],
+        chemical_ids: s.chemical_ids ?? [],
+        coverage_areas: s.coverage_areas ?? [],
+      })) as HandbookSectionResourceRow[];
+    },
+  });
+}
+
+export function useSaveSectionResources() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      section_id: string;
+      version_id: string;
+      resource_links?: HandbookResourceLink[];
+      chemical_ids?: string[];
+      coverage_areas?: string[];
+    }) => {
+      const patch: Record<string, unknown> = {};
+      if (input.resource_links) patch.resource_links = input.resource_links;
+      if (input.chemical_ids) patch.chemical_ids = input.chemical_ids;
+      if (input.coverage_areas) patch.coverage_areas = input.coverage_areas;
+      const { error } = await sb.from("hms_handbook_sections").update(patch).eq("id", input.section_id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["handbook-section-resources", v.version_id] });
+    },
+  });
+}
