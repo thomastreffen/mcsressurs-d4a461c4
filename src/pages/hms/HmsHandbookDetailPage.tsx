@@ -706,7 +706,7 @@ export default function HmsHandbookDetailPage() {
             <Card>
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <FileCheck2 className="h-4 w-4" /> Lesebekreftelser {publishedVersion && `– v${publishedVersion.version_number}`}
+                  <FileCheck2 className="h-4 w-4" /> Alle ansattbekreftelser {publishedVersion && `– v${publishedVersion.version_number}`}
                 </CardTitle>
                 <Button size="sm" variant="outline" onClick={exportCsv} disabled={!ackOverview?.length}>
                   <Download className="h-4 w-4 mr-1.5" /> Eksporter CSV
@@ -715,21 +715,40 @@ export default function HmsHandbookDetailPage() {
               <CardContent>
                 {!publishedVersion && <p className="text-sm text-muted-foreground">Ingen publisert versjon enda.</p>}
                 {publishedVersion && (
-                  <div className="text-xs text-muted-foreground mb-3">{ackedCount} av {totalEmployees} ansatte har bekreftet.</div>
+                  <div className="mb-3 space-y-1">
+                    {totalPeople === 0 ? (
+                      <p className="text-sm text-muted-foreground">Ingen aktive ansatte eller utsendinger er registrert enda.</p>
+                    ) : (
+                      <p className="text-sm">
+                        <span className="font-medium">{ackedCount} av {totalPeople}</span>{" "}
+                        {employeeCount > 0 ? "ansatte" : "mottakere"} har bekreftet v{publishedVersion.version_number}.
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Grunnlaget er alle aktive ansatte. Bekreftelser teller uansett om de er gjort internt i systemet eller via personlig utsendingslenke.
+                      {sentCount === 0 ? " Ingen utsendinger er sendt ennå." : ` ${sentCount} har fått håndboken tilsendt.`}
+                    </p>
+                  </div>
                 )}
                 <div className="divide-y">
                   {(ackOverview ?? []).map((r: any) => (
-                    <div key={r.user_id} className="py-2 flex items-center justify-between text-sm">
-                      <div>
-                        <div className="font-medium">{r.full_name ?? r.email ?? r.user_id.slice(0, 8)}</div>
-                        {r.email && <div className="text-xs text-muted-foreground">{r.email}</div>}
+                    <div key={r.key} className="py-2 flex items-center justify-between gap-3 text-sm">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{r.full_name ?? r.email ?? "Ukjent"}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {r.email ?? "Ingen e-post"}
+                          {!r.is_employee && " · kun mottaker"}
+                          {r.is_employee && !r.sent_at && " · ikke tilsendt"}
+                        </div>
                       </div>
                       {r.acknowledged_at ? (
-                        <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50">
-                          Bekreftet {format(new Date(r.acknowledged_at), "d. MMM yyyy", { locale: nb })}
+                        <Badge variant="outline" className="shrink-0 text-emerald-700 border-emerald-300 bg-emerald-50">
+                          {confirmedViaLabel(r.confirmed_via)} {format(new Date(r.acknowledged_at), "d. MMM yyyy", { locale: nb })}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50">Mangler</Badge>
+                        <Badge variant="outline" className="shrink-0 text-amber-700 border-amber-300 bg-amber-50">
+                          {r.sent_at ? "Sendt, ikke bekreftet" : "Mangler bekreftelse"}
+                        </Badge>
                       )}
                     </div>
                   ))}
