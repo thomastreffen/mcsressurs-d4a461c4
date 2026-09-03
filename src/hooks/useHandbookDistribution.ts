@@ -145,8 +145,13 @@ export interface SendPayload {
   subject?: string;
   message?: string;
   kind?: "distribution" | "reminder";
+  chemical_mode?: ChemicalInclusionMode;
+  chemical_ids?: string[];
+  audience_tags?: string[];
+  extra_resources?: HandbookResourceLink[];
   recipients: { person_id?: string | null; user_id?: string | null; full_name?: string | null; email?: string | null; phone?: string | null }[];
 }
+
 
 export interface SendResultRecipient {
   id: string; full_name: string | null; email: string | null; phone: string | null;
