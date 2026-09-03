@@ -6993,8 +6993,12 @@ export type Database = {
           handbook_id: string
           id: string
           ip_address: string | null
+          method: string
+          person_id: string | null
+          recipient_id: string | null
+          section_id: string | null
           user_agent: string | null
-          user_id: string
+          user_id: string | null
           version_id: string
         }
         Insert: {
@@ -7004,8 +7008,12 @@ export type Database = {
           handbook_id: string
           id?: string
           ip_address?: string | null
+          method?: string
+          person_id?: string | null
+          recipient_id?: string | null
+          section_id?: string | null
           user_agent?: string | null
-          user_id: string
+          user_id?: string | null
           version_id: string
         }
         Update: {
@@ -7015,8 +7023,12 @@ export type Database = {
           handbook_id?: string
           id?: string
           ip_address?: string | null
+          method?: string
+          person_id?: string | null
+          recipient_id?: string | null
+          section_id?: string | null
           user_agent?: string | null
-          user_id?: string
+          user_id?: string | null
           version_id?: string
         }
         Relationships: [
@@ -7028,7 +7040,221 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "hms_handbook_acknowledgements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_handbook_acknowledgements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_handbook_acknowledgements_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "hms_handbook_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_handbook_acknowledgements_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "hms_handbook_sections"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "hms_handbook_acknowledgements_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "hms_handbook_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hms_handbook_distributions: {
+        Row: {
+          channels: string[]
+          company_id: string
+          created_at: string
+          handbook_id: string
+          id: string
+          kind: string
+          message: string | null
+          recipient_count: number
+          scope: string
+          section_ids: string[]
+          sent_at: string
+          sent_by: string | null
+          subject: string | null
+          version_id: string
+          version_number: number | null
+        }
+        Insert: {
+          channels?: string[]
+          company_id: string
+          created_at?: string
+          handbook_id: string
+          id?: string
+          kind?: string
+          message?: string | null
+          recipient_count?: number
+          scope?: string
+          section_ids?: string[]
+          sent_at?: string
+          sent_by?: string | null
+          subject?: string | null
+          version_id: string
+          version_number?: number | null
+        }
+        Update: {
+          channels?: string[]
+          company_id?: string
+          created_at?: string
+          handbook_id?: string
+          id?: string
+          kind?: string
+          message?: string | null
+          recipient_count?: number
+          scope?: string
+          section_ids?: string[]
+          sent_at?: string
+          sent_by?: string | null
+          subject?: string | null
+          version_id?: string
+          version_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hms_handbook_distributions_handbook_id_fkey"
+            columns: ["handbook_id"]
+            isOneToOne: false
+            referencedRelation: "hms_handbooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_handbook_distributions_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "hms_handbook_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hms_handbook_recipients: {
+        Row: {
+          ack_method: string | null
+          acknowledged_at: string | null
+          channel: string
+          company_id: string
+          created_at: string
+          delivery_error: string | null
+          delivery_status: string
+          distribution_id: string
+          email: string | null
+          expires_at: string
+          first_opened_at: string | null
+          full_name: string | null
+          handbook_id: string
+          id: string
+          last_opened_at: string | null
+          last_reminder_at: string | null
+          open_count: number
+          person_id: string | null
+          phone: string | null
+          reminder_count: number
+          sent_at: string | null
+          share_token: string
+          user_id: string | null
+          version_id: string
+        }
+        Insert: {
+          ack_method?: string | null
+          acknowledged_at?: string | null
+          channel?: string
+          company_id: string
+          created_at?: string
+          delivery_error?: string | null
+          delivery_status?: string
+          distribution_id: string
+          email?: string | null
+          expires_at?: string
+          first_opened_at?: string | null
+          full_name?: string | null
+          handbook_id: string
+          id?: string
+          last_opened_at?: string | null
+          last_reminder_at?: string | null
+          open_count?: number
+          person_id?: string | null
+          phone?: string | null
+          reminder_count?: number
+          sent_at?: string | null
+          share_token?: string
+          user_id?: string | null
+          version_id: string
+        }
+        Update: {
+          ack_method?: string | null
+          acknowledged_at?: string | null
+          channel?: string
+          company_id?: string
+          created_at?: string
+          delivery_error?: string | null
+          delivery_status?: string
+          distribution_id?: string
+          email?: string | null
+          expires_at?: string
+          first_opened_at?: string | null
+          full_name?: string | null
+          handbook_id?: string
+          id?: string
+          last_opened_at?: string | null
+          last_reminder_at?: string | null
+          open_count?: number
+          person_id?: string | null
+          phone?: string | null
+          reminder_count?: number
+          sent_at?: string | null
+          share_token?: string
+          user_id?: string | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hms_handbook_recipients_distribution_id_fkey"
+            columns: ["distribution_id"]
+            isOneToOne: false
+            referencedRelation: "hms_handbook_distributions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_handbook_recipients_handbook_id_fkey"
+            columns: ["handbook_id"]
+            isOneToOne: false
+            referencedRelation: "hms_handbooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_handbook_recipients_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_handbook_recipients_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_handbook_recipients_version_id_fkey"
             columns: ["version_id"]
             isOneToOne: false
             referencedRelation: "hms_handbook_versions"
@@ -7043,6 +7269,7 @@ export type Database = {
           heading: string
           hms_areas: string[]
           id: string
+          is_mandatory: boolean
           ordering: number
           parent_id: string | null
           updated_at: string
@@ -7054,6 +7281,7 @@ export type Database = {
           heading: string
           hms_areas?: string[]
           id?: string
+          is_mandatory?: boolean
           ordering?: number
           parent_id?: string | null
           updated_at?: string
@@ -7065,6 +7293,7 @@ export type Database = {
           heading?: string
           hms_areas?: string[]
           id?: string
+          is_mandatory?: boolean
           ordering?: number
           parent_id?: string | null
           updated_at?: string
@@ -15077,6 +15306,16 @@ export type Database = {
         Args: { _auth_user_id: string; _thread_id: string }
         Returns: boolean
       }
+      hms_handbook_ack_by_token: {
+        Args: {
+          p_confirmation_text?: string
+          p_section_id?: string
+          p_token: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
+      hms_handbook_open_by_token: { Args: { p_token: string }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
       is_company_member: {
         Args: { _auth_user_id: string; _company_id: string }
