@@ -248,6 +248,20 @@ export default function HmsHandbookDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hms-handbook-sections", viewVersion?.id] }),
   });
 
+  const toggleMandatory = useMutation({
+    mutationFn: async ({ sid, value }: { sid: string; value: boolean }) => {
+      const sb = supabase as any;
+      const { error } = await sb.from("hms_handbook_sections").update({ is_mandatory: value }).eq("id", sid);
+      if (error) throw error;
+      await logHmsAudit({
+        company_id: handbook?.company_id, entity_type: "hms_handbook", entity_id: handbook?.id,
+        action: "section.mandatory_changed", payload: { section_id: sid, is_mandatory: value },
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hms-handbook-sections", viewVersion?.id] }),
+    onError: (e: any) => toast({ title: "Feil", description: String(e.message || e), variant: "destructive" }),
+  });
+
   const publishMut = useMutation({
     mutationFn: async () => {
       if (!handbook || !draftVersion) throw new Error("Mangler utkast");
