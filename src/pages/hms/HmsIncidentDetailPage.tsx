@@ -321,6 +321,11 @@ export default function HmsIncidentDetailPage() {
             </CardContent>
           </Card>
 
+          {i.chemical_id && (
+            <IncidentChemicalPanel chemicalId={i.chemical_id} issueType={i.chemical_issue_type} />
+          )}
+
+
           {/* Tiltak */}
           <Card>
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
