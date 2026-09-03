@@ -12,6 +12,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useChemicals } from "@/hooks/useChemicals";
+import { CHEMICAL_ISSUE_TYPES } from "@/lib/hms/chemicals";
+
 import { useToast } from "@/hooks/use-toast";
 import { logHmsAudit } from "@/lib/hms/audit";
 import { cn } from "@/lib/utils";
