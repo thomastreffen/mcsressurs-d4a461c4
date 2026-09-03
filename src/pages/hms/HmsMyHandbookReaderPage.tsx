@@ -55,22 +55,18 @@ export default function HmsMyHandbookReaderPage() {
   const ackMut = useMutation({
     mutationFn: async (sectionId: string | null) => {
       if (!data?.handbook || !data?.version || !user?.id) throw new Error("Mangler kontekst");
-      const { error } = await sb.from("hms_handbook_acknowledgements").insert({
-        handbook_id: data.handbook.id,
-        version_id: data.version.id,
-        company_id: data.handbook.company_id,
-        user_id: user.id,
-        section_id: sectionId,
-        method: "system",
-        confirmation_text: CONFIRMATION_TEXT,
-        user_agent: navigator.userAgent.slice(0, 250),
+      const { data: res, error } = await sb.rpc("hms_handbook_ack_internal", {
+        p_version_id: data.version.id,
+        p_section_id: sectionId,
+        p_user_agent: navigator.userAgent.slice(0, 250),
+        p_confirmation_text: CONFIRMATION_TEXT,
       });
-      if (error) throw error;
+      if (error && error.code !== "23505") throw error;
+      if ((res as any)?.error) throw new Error(String((res as any).error));
     },
     onSuccess: () => {
       toast({ title: "Bekreftelse registrert" });
-      qc.invalidateQueries({ queryKey: ["my-handbook", id] });
-      qc.invalidateQueries({ queryKey: ["my-handbooks"] });
+      invalidateAckQueries(qc);
     },
     onError: (e: any) => toast({ title: "Kunne ikke bekrefte", description: String(e.message || e), variant: "destructive" }),
   });
