@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import type { ChemicalInclusionMode, HandbookResourceLink } from "@/lib/hms/handbookPackage";
+import { fetchHmsEmployeeBasis } from "@/lib/hms/employeeBasis";
 
 const sb = supabase as any;
 
@@ -73,50 +74,32 @@ export interface SendableEmployee {
   full_name: string;
   email: string | null;
   phone: string | null;
+  is_shared_resource: boolean;
+  other_company_names: string[];
 }
 
-/** Aktive ansatte som kan motta HMS-utsending (fra employment_profiles). */
+/** Aktive ansatte i valgt firma som kan motta HMS-utsending (felles HMS-grunnlag). */
 export function useSendableEmployees() {
-  const { activeCompanyId: cid } = useCompanyContext();
+  const { activeCompanyId: cid, allowedCompanyIds } = useCompanyContext();
+  const scopeOk = !!cid && (!allowedCompanyIds?.length || allowedCompanyIds.includes(cid));
   return useQuery<SendableEmployee[]>({
     queryKey: ["handbook-sendable-employees", cid],
-    enabled: !!cid,
+    enabled: scopeOk,
     queryFn: async () => {
-      const { data, error } = await sb
-        .from("employment_profiles")
-        .select("person_id, archived_at, people(full_name, email, phone, is_active)")
-        .eq("company_id", cid);
-      if (error) throw error;
-
-      const rows = (data ?? []).filter((r: any) => !r.archived_at && r.people?.is_active !== false);
-      const personIds = [...new Set(rows.map((r: any) => r.person_id).filter(Boolean))] as string[];
-      let userMap = new Map<string, string>();
-      if (personIds.length > 0) {
-        const { data: accounts } = await sb
-          .from("user_accounts")
-          .select("person_id, auth_user_id")
-          .eq("company_id", cid)
-          .in("person_id", personIds);
-        userMap = new Map((accounts ?? []).map((a: any) => [a.person_id, a.auth_user_id]));
-      }
-
-      const seen = new Set<string>();
-      const out: SendableEmployee[] = [];
-      for (const r of rows as any[]) {
-        if (!r.person_id || seen.has(r.person_id)) continue;
-        seen.add(r.person_id);
-        out.push({
-          person_id: r.person_id,
-          user_id: userMap.get(r.person_id) ?? null,
-          full_name: r.people?.full_name ?? "Ukjent",
-          email: r.people?.email ?? null,
-          phone: r.people?.phone ?? null,
-        });
-      }
-      return out.sort((a, b) => a.full_name.localeCompare(b.full_name, "nb"));
+      const rows = await fetchHmsEmployeeBasis(cid!);
+      return rows.map((r) => ({
+        person_id: r.person_id,
+        user_id: r.user_id,
+        full_name: r.full_name,
+        email: r.email,
+        phone: r.phone,
+        is_shared_resource: r.is_shared_resource,
+        other_company_names: r.other_company_names,
+      }));
     },
   });
 }
+
 
 export function useHandbookDistributions(handbookId?: string) {
   const { activeCompanyId: cid } = useCompanyContext();
