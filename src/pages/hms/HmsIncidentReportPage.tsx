@@ -316,6 +316,41 @@ export default function HmsIncidentReportPage() {
           </div>
         )}
 
+        {/* Kjemikalie */}
+        {chemicals.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-sm">Gjelder et kjemikalie? (valgfritt)</Label>
+            <select
+              value={chemicalId ?? ""}
+              onChange={(e) => setChemicalId(e.target.value || null)}
+              className="w-full h-12 rounded-md border border-input bg-background px-3 text-base"
+            >
+              <option value="">Ingen kjemikaliekobling</option>
+              {chemicals.map((c) => (
+                <option key={c.id} value={c.id}>{c.product_name}</option>
+              ))}
+            </select>
+            {chemicalId && (
+              <>
+                <select
+                  value={chemicalIssueType ?? ""}
+                  onChange={(e) => setChemicalIssueType(e.target.value || null)}
+                  className="w-full h-12 rounded-md border border-input bg-background px-3 text-base"
+                >
+                  <option value="">Hva gjelder det?</option>
+                  {CHEMICAL_ISSUE_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Sikkerhetsdatablad og HMS-rutine for produktet vises automatisk i saken.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+
         {/* Proposed action */}
         <div className="space-y-2">
           <Label htmlFor="action" className="text-sm">Foreslått tiltak</Label>
