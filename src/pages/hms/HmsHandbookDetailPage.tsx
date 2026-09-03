@@ -120,7 +120,7 @@ export default function HmsHandbookDetailPage() {
     if (sections.length && !activeChapterId) setActiveChapterId(sections[0].id);
   }, [sections, activeChapterId]);
 
-  // Load my acknowledgement
+  // Load my acknowledgement (samlet bekreftelse for hele håndboken)
   const { data: myAck } = useQuery({
     queryKey: ["hms-handbook-my-ack", publishedVersion?.id, user?.id],
     enabled: !!publishedVersion && !!user?.id,
@@ -131,33 +131,96 @@ export default function HmsHandbookDetailPage() {
         .select("id, user_id, version_id, acknowledged_at")
         .eq("version_id", publishedVersion!.id)
         .eq("user_id", user!.id)
+        .is("section_id", null)
+        .order("acknowledged_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       return data as Ack | null;
     },
   });
 
-  // Admin: company employees + acks for current published version
+  // Admin: alle aktive ansatte + bekreftelser (interne og fra utsending) for publisert versjon
   const { data: ackOverview } = useQuery({
     queryKey: ["hms-handbook-ack-overview", publishedVersion?.id, activeCompanyId],
     enabled: !!publishedVersion && !!activeCompanyId && canManage,
     queryFn: async () => {
       const sb = supabase as any;
-      const [{ data: members }, { data: acks }] = await Promise.all([
-        sb.from("user_memberships")
-          .select("user_id, user_accounts!inner(person_id, is_active, people:person_id(full_name, primary_email))")
-          .eq("company_id", activeCompanyId).eq("is_active", true),
+      const [{ data: emps }, { data: accounts }, { data: acks }, { data: recips }] = await Promise.all([
+        sb.from("employment_profiles")
+          .select("person_id, archived_at, people(full_name, email, is_active)")
+          .eq("company_id", activeCompanyId),
+        sb.from("user_accounts").select("person_id, auth_user_id").eq("company_id", activeCompanyId),
         sb.from("hms_handbook_acknowledgements")
-          .select("user_id, acknowledged_at")
+          .select("user_id, person_id, recipient_id, section_id, acknowledged_at, confirmed_via")
+          .eq("version_id", publishedVersion!.id)
+          .is("section_id", null),
+        sb.from("hms_handbook_recipients")
+          .select("id, person_id, user_id, full_name, email, sent_at, acknowledged_at, section_ids")
+          .eq("company_id", activeCompanyId)
           .eq("version_id", publishedVersion!.id),
       ]);
-      const ackMap = new Map<string, string>((acks ?? []).map((a: any) => [a.user_id, a.acknowledged_at]));
-      const rows = (members ?? []).map((m: any) => ({
-        user_id: m.user_id,
-        full_name: m.user_accounts?.people?.full_name ?? null,
-        email: m.user_accounts?.people?.primary_email ?? null,
-        acknowledged_at: ackMap.get(m.user_id) ?? null,
-      }));
-      return rows;
+
+      const personToUser = new Map<string, string>((accounts ?? []).map((a: any) => [a.person_id, a.auth_user_id]));
+      const userToPerson = new Map<string, string>((accounts ?? []).map((a: any) => [a.auth_user_id, a.person_id]));
+
+      type Row = {
+        key: string; person_id: string | null; user_id: string | null;
+        full_name: string | null; email: string | null;
+        acknowledged_at: string | null; confirmed_via: string | null;
+        sent_at: string | null; is_employee: boolean;
+      };
+
+      const rows: Row[] = [];
+      const byPerson = new Map<string, Row>();
+
+      for (const e of (emps ?? []) as any[]) {
+        if (!e.person_id || e.archived_at || e.people?.is_active === false) continue;
+        if (byPerson.has(e.person_id)) continue;
+        const row: Row = {
+          key: e.person_id,
+          person_id: e.person_id,
+          user_id: personToUser.get(e.person_id) ?? null,
+          full_name: e.people?.full_name ?? null,
+          email: e.people?.email ?? null,
+          acknowledged_at: null, confirmed_via: null, sent_at: null, is_employee: true,
+        };
+        byPerson.set(e.person_id, row);
+        rows.push(row);
+      }
+
+      // Mottakere som ikke er aktive ansatte tas med, slik at utsendinger alltid synes
+      const recipientRows = new Map<string, Row>();
+      for (const r of (recips ?? []) as any[]) {
+        const pid = r.person_id ?? (r.user_id ? userToPerson.get(r.user_id) ?? null : null);
+        const target = pid ? byPerson.get(pid) : null;
+        if (target) {
+          if (r.sent_at && (!target.sent_at || r.sent_at > target.sent_at)) target.sent_at = r.sent_at;
+          continue;
+        }
+        const key = `recipient:${r.id}`;
+        const row: Row = {
+          key, person_id: pid, user_id: r.user_id ?? null,
+          full_name: r.full_name ?? null, email: r.email ?? null,
+          acknowledged_at: r.acknowledged_at ?? null,
+          confirmed_via: r.acknowledged_at ? "token" : null,
+          sent_at: r.sent_at ?? null, is_employee: false,
+        };
+        recipientRows.set(r.id, row);
+        rows.push(row);
+      }
+
+      for (const a of (acks ?? []) as any[]) {
+        const pid = a.person_id ?? (a.user_id ? userToPerson.get(a.user_id) ?? null : null);
+        let row = pid ? byPerson.get(pid) : undefined;
+        if (!row && a.recipient_id) row = recipientRows.get(a.recipient_id);
+        if (!row) continue;
+        if (!row.acknowledged_at || (a.acknowledged_at && a.acknowledged_at < row.acknowledged_at)) {
+          row.acknowledged_at = a.acknowledged_at;
+          row.confirmed_via = a.confirmed_via ?? "internal";
+        }
+      }
+
+      return rows.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "nb"));
     },
   });
 
