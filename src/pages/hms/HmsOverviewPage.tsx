@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HandbookAckStatusCard } from "@/components/hms/HandbookAckStatusCard";
+import { ChemicalStatusCard } from "@/components/hms/ChemicalStatusCard";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
