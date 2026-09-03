@@ -9,6 +9,7 @@ import { Loader2, Search, Users, ShieldAlert, ShieldCheck, ShieldQuestion } from
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
+import { EMPLOYEE_BASIS_LABEL } from "@/lib/hms/employeeBasis";
 
 interface Row {
   id: string;
@@ -25,9 +26,11 @@ interface Row {
   clearance_status: string | null;
   pob_status: string | null;
   nda_status: string | null;
+  other_company_names: string[];
 }
 
 type ActiveFilter = "all" | "active" | "archived";
+type ScopeFilter = "own" | "shared" | "all";
 type SecFilter = "all" | "ok" | "missing" | "check" | "unknown";
 
 function hmsCardStatus(expires: string | null): { label: string; tone: "ok" | "warn" | "bad" | "muted" } {
@@ -97,6 +100,7 @@ export default function HmsPeoplePage() {
   const [q, setQ] = useState("");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("active");
   const [secFilter, setSecFilter] = useState<SecFilter>("all");
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -141,7 +145,7 @@ export default function HmsPeoplePage() {
           return;
         }
 
-        const [peopleRes, comps, depts, profilesRes] = await Promise.all([
+        const [peopleRes, comps, depts, profilesRes, otherEmpRes, allCompsRes] = await Promise.all([
           supabase
             .from("people")
             .select("id, full_name, email, phone, is_active")
@@ -155,6 +159,12 @@ export default function HmsPeoplePage() {
                 .select("person_id, clearance_status, pob_status, nda_status")
                 .in("person_id", personIds)
             : Promise.resolve({ data: [] }),
+          (supabase as any)
+            .from("employment_profiles")
+            .select("person_id, company_id, archived_at")
+            .in("person_id", personIds)
+            .neq("company_id", activeCompanyId),
+          supabase.from("internal_companies").select("id, name"),
         ]);
 
         if ((peopleRes as any).error) throw (peopleRes as any).error;
@@ -163,6 +173,16 @@ export default function HmsPeoplePage() {
         for (const c of (comps as any).data ?? []) compById.set(c.id, c.name);
         const deptById = new Map<string, string>();
         for (const d of (depts as any).data ?? []) deptById.set(d.id, d.name);
+        const allCompById = new Map<string, string>();
+        for (const c of (allCompsRes as any).data ?? []) allCompById.set(c.id, c.name);
+        const otherCompaniesByPerson = new Map<string, string[]>();
+        for (const e of (otherEmpRes as any).data ?? []) {
+          if (e.archived_at) continue;
+          const list = otherCompaniesByPerson.get(e.person_id) ?? [];
+          const name = allCompById.get(e.company_id) ?? "Annet selskap";
+          if (!list.includes(name)) list.push(name);
+          otherCompaniesByPerson.set(e.person_id, list);
+        }
         const profByPerson = new Map<string, any>();
         for (const p of (profilesRes as any).data ?? []) profByPerson.set(p.person_id, p);
 
@@ -184,6 +204,7 @@ export default function HmsPeoplePage() {
             clearance_status: prof?.clearance_status ?? null,
             pob_status: prof?.pob_status ?? null,
             nda_status: prof?.nda_status ?? null,
+            other_company_names: otherCompaniesByPerson.get(p.id) ?? [],
           };
         });
 
@@ -204,6 +225,8 @@ export default function HmsPeoplePage() {
     return rows.filter((r) => {
       if (activeFilter === "active" && (r.archived_at || !r.is_active)) return false;
       if (activeFilter === "archived" && !r.archived_at) return false;
+      if (scopeFilter === "own" && r.other_company_names.length > 0) return false;
+      if (scopeFilter === "shared" && r.other_company_names.length === 0) return false;
       if (secFilter !== "all" && canViewSecurity) {
         const b = securityBucket(r);
         if (secFilter === "ok" && b !== "ok") return false;
@@ -218,14 +241,22 @@ export default function HmsPeoplePage() {
         r.phone?.toLowerCase().includes(term)
       );
     });
-  }, [rows, q, activeFilter, secFilter, canViewSecurity]);
+  }, [rows, q, activeFilter, secFilter, scopeFilter, canViewSecurity]);
 
   return (
     <div className="p-4 sm:p-6 space-y-4 max-w-7xl mx-auto">
       <div className="flex items-center gap-2">
         <Users className="h-5 w-5 text-muted-foreground" />
         <h1 className="text-xl font-semibold">Ansatte</h1>
+        <span className="text-[11px] text-muted-foreground hidden sm:inline">{EMPLOYEE_BASIS_LABEL}</span>
         <span className="ml-auto text-xs text-muted-foreground">{filtered.length} av {rows.length}</span>
+        <button
+          type="button"
+          onClick={() => navigate("/hms/people/kontroll")}
+          className="text-xs text-primary underline"
+        >
+          Kontroller ansattgrunnlag
+        </button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -244,6 +275,14 @@ export default function HmsPeoplePage() {
             <SelectItem value="active">Aktive</SelectItem>
             <SelectItem value="archived">Arkiverte</SelectItem>
             <SelectItem value="all">Alle</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={scopeFilter} onValueChange={(v) => setScopeFilter(v as ScopeFilter)}>
+          <SelectTrigger className="w-[210px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle jeg har tilgang til</SelectItem>
+            <SelectItem value="own">Kun ansatte i valgt firma</SelectItem>
+            <SelectItem value="shared">Delte ressurser</SelectItem>
           </SelectContent>
         </Select>
         {canViewSecurity && (
@@ -300,7 +339,14 @@ export default function HmsPeoplePage() {
                     <div>{r.email ?? "-"}</div>
                     {r.phone && <div className="text-xs">{r.phone}</div>}
                   </TableCell>
-                  <TableCell className="text-sm">{r.company_name ?? "-"}</TableCell>
+                  <TableCell className="text-sm">
+                    <div>{r.company_name ?? "-"}</div>
+                    {r.other_company_names.length > 0 && (
+                      <Badge variant="outline" className="mt-1 text-[10px] text-muted-foreground">
+                        Delt ressurs · {r.other_company_names.join(", ")}
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-sm">{r.department_name ?? "-"}</TableCell>
                   <TableCell>
                     {r.is_plannable_resource ? (

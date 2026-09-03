@@ -258,13 +258,21 @@ export function HandbookDistributeDialog({
                           checked={selectedPeople.includes(e.person_id)}
                           onCheckedChange={() => setSelectedPeople((p) => toggle(p, e.person_id))}
                         />
-                        <span className="flex-1">{e.full_name}</span>
+                        <span className="flex-1">
+                          {e.full_name}
+                          {e.is_shared_resource && (
+                            <span className="ml-1.5 text-[10px] rounded border px-1 py-0.5 text-muted-foreground align-middle">
+                              Delt ressurs fra {e.other_company_names.join(", ")}
+                            </span>
+                          )}
+                        </span>
                         <span className="text-[11px] text-muted-foreground">
                           {e.email ?? "ingen e-post"}
                           {e.phone ? ` · ${e.phone}` : ""}
                         </span>
                       </label>
                     ))}
+
                   </div>
                 )}
               </ScrollArea>
