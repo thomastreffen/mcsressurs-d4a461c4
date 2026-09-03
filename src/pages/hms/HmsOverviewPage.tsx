@@ -333,6 +333,9 @@ export default function HmsOverviewPage() {
       {/* ---- HMS-status: dokumentbekreftelser ---- */}
       <HandbookAckStatusCard />
 
+      <ChemicalStatusCard />
+
+
       {/* ---- Topp ansatte med åpne AML-varsler ---- */}
       {data?.topEmployees && data.topEmployees.length > 0 && (
         <Card className="border-border/60">
