@@ -7,7 +7,7 @@ async function bootstrap() {
   // cannot mount an old app shell or hydrate stale route chunks.
   if (await handleFreshResetIfRequested()) return;
 
-  const [{ default: App }, { ErrorBoundary }, { isStandalone, registerServiceWorker }, { installChunkErrorRecovery }, { APP_VERSION, APP_BUILD_TIME }, { HelmetProvider }] = await Promise.all([
+  const [{ default: App }, { ErrorBoundary }, { isStandalone, registerServiceWorker }, { installChunkErrorRecovery }, { APP_VERSION, APP_BUILD_TIME, APP_COMMIT }, { HelmetProvider }] = await Promise.all([
     import("./App.tsx"),
     import("./components/ErrorBoundary.tsx"),
     import("./pwa/registerSW"),
@@ -16,7 +16,7 @@ async function bootstrap() {
     import("react-helmet-async"),
   ]);
 
-  console.info("[app-version]", APP_VERSION, APP_BUILD_TIME);
+  console.info("[app-version]", { version: APP_VERSION, commit: APP_COMMIT, builtAt: APP_BUILD_TIME });
 
   if (isStandalone()) {
     document.body.classList.add("pwa-standalone");

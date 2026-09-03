@@ -16,7 +16,7 @@ import {
   onUpdateState,
   applyUpdateAndReload,
 } from "@/pwa/registerSW";
-import { APP_VERSION, APP_BUILD_TIME } from "@/pwa/buildVersion";
+import { APP_VERSION, APP_BUILD_TIME, APP_COMMIT } from "@/pwa/buildVersion";
 import { getInstallPrompt, onInstallPromptChange, detectPlatform } from "@/pwa/installPrompt";
 import { EnableNotificationsButton } from "./EnableNotificationsButton";
 import { useAuth } from "@/hooks/useAuth";
@@ -133,10 +133,11 @@ export function PwaStatusDialog({ open, onOpenChange }: Props) {
 
         <div className="rounded-md border border-border bg-card px-3">
           <Row label="Build-versjon" value={APP_VERSION} />
+          <Row label="Commit" value={APP_COMMIT === "not-available" ? "Ikke tilgjengelig" : APP_COMMIT} />
           <Row label="Bygget" value={buildTimeLabel} />
           <Row label="Ny versjon tilgjengelig" value={updateAvailable} />
           <Row label="Standalone" value={standalone} />
-          <Row label="Service worker aktiv" value={swActive} />
+          <Row label="Gammel service worker aktiv" value={swActive} />
           <Row label="Manifest funnet" value={manifestFound} />
           <Row label="Push støttet" value={pushSupported} />
           <Row label="Varseltillatelse" value={permission} />

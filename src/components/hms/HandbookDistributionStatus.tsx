@@ -110,7 +110,7 @@ export function HandbookDistributionStatus({
   const exportCsv = () => {
     const q = (v: any) => JSON.stringify(v ?? "");
     const lines = [
-      ["Navn", "E-post", "Telefon", "Type utsending", "Kapittelnavn", "Kapittel-IDer", "Utgave", "Kanal", "Sendt", "Første åpning", "Bekreftet", "Metode", "Levering", "Purringer"].join(";"),
+      ["Navn", "E-post", "Telefon", "Type utsending", "Kapittelnavn", "Kapittel-IDer", "Utgave", "Kanal", "Sendt", "Første åpning", "Bekreftet", "Metode", "Levering", "Purringer", "Koblede ressurser", "Kjemikalier", "SDS-versjoner/revisjonsdatoer"].join(";"),
       ...recipients.map((r) => {
         const d = distributions.find((x) => x.id === r.distribution_id);
         const ids = r.section_ids?.length ? r.section_ids : d?.section_ids ?? [];
@@ -126,6 +126,9 @@ export function HandbookDistributionStatus({
           q(r.first_opened_at ? format(new Date(r.first_opened_at), "yyyy-MM-dd HH:mm") : ""),
           q(r.acknowledged_at ? format(new Date(r.acknowledged_at), "yyyy-MM-dd HH:mm") : ""),
           q(r.ack_method), q(r.delivery_status), q(r.reminder_count),
+          q((r.included_resources ?? []).map((resource) => `${resource.type}: ${resource.label}`).join(" | ")),
+          q((r.chemical_snapshot ?? []).map((chemical) => chemical.product_name).join(" | ")),
+          q((r.chemical_snapshot ?? []).map((chemical) => `${chemical.product_name}: ${chemical.sds_version ?? "uten versjon"}${chemical.sds_revision_date ? ` (${chemical.sds_revision_date})` : ""}`).join(" | ")),
         ].join(";");
       }),
     ].join("\n");

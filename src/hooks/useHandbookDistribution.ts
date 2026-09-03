@@ -28,6 +28,14 @@ export interface HandbookRecipientRow {
   acknowledged_at: string | null;
   ack_method: string | null;
   reminder_count: number;
+  included_resources: HandbookResourceLink[];
+  chemical_snapshot: Array<{
+    id: string;
+    product_name: string;
+    sds_version: string | null;
+    sds_revision_date: string | null;
+    has_sds: boolean;
+  }>;
 }
 
 export interface HandbookSectionResourceRow {
@@ -138,14 +146,18 @@ export function useHandbookRecipients(handbookId?: string) {
     queryFn: async () => {
       let q = sb
         .from("hms_handbook_recipients")
-        .select("id, distribution_id, handbook_id, version_id, person_id, user_id, full_name, email, phone, share_token, section_ids, section_titles, channel, delivery_status, delivery_error, sent_at, first_opened_at, last_opened_at, open_count, acknowledged_at, ack_method, reminder_count")
+        .select("id, distribution_id, handbook_id, version_id, person_id, user_id, full_name, email, phone, share_token, section_ids, section_titles, channel, delivery_status, delivery_error, sent_at, first_opened_at, last_opened_at, open_count, acknowledged_at, ack_method, reminder_count, included_resources, chemical_snapshot")
         .eq("company_id", cid)
         .order("sent_at", { ascending: false })
         .limit(1000);
       if (handbookId) q = q.eq("handbook_id", handbookId);
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as HandbookRecipientRow[];
+      return (data ?? []).map((row: any) => ({
+        ...row,
+        included_resources: Array.isArray(row.included_resources) ? row.included_resources : [],
+        chemical_snapshot: Array.isArray(row.chemical_snapshot) ? row.chemical_snapshot : [],
+      })) as HandbookRecipientRow[];
     },
   });
 }

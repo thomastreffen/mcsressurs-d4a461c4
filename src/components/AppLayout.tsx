@@ -25,6 +25,7 @@ import {
 import { InstallAppDialog } from "@/components/pwa/InstallAppDialog";
 import { PwaStatusDialog } from "@/components/pwa/PwaStatusDialog";
 import { EnableNotificationsButton } from "@/components/pwa/EnableNotificationsButton";
+import { APP_BUILD_TIME, APP_COMMIT, APP_VERSION } from "@/pwa/buildVersion";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
@@ -124,6 +125,11 @@ export function AppLayout() {
           <main className={`flex-1 overflow-y-auto ${isMobile ? "pb-16" : ""}`}>
             <Outlet />
           </main>
+          <footer className={`border-t border-border/40 px-4 py-1.5 text-[10px] text-muted-foreground ${isMobile ? "mb-16" : ""}`}>
+            Build {APP_VERSION}
+            {APP_COMMIT !== "not-available" && ` · commit ${APP_COMMIT}`}
+            {APP_BUILD_TIME && ` · ${new Date(APP_BUILD_TIME).toLocaleString("nb-NO")}`}
+          </footer>
         </div>
 
         {isMobile && <MobileTabBar />}
