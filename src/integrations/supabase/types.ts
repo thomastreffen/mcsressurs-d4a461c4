@@ -7088,6 +7088,7 @@ export type Database = {
           recipient_count: number
           scope: string
           section_ids: string[]
+          section_titles: string[]
           sent_at: string
           sent_by: string | null
           subject: string | null
@@ -7105,6 +7106,7 @@ export type Database = {
           recipient_count?: number
           scope?: string
           section_ids?: string[]
+          section_titles?: string[]
           sent_at?: string
           sent_by?: string | null
           subject?: string | null
@@ -7122,6 +7124,7 @@ export type Database = {
           recipient_count?: number
           scope?: string
           section_ids?: string[]
+          section_titles?: string[]
           sent_at?: string
           sent_by?: string | null
           subject?: string | null
@@ -7167,6 +7170,7 @@ export type Database = {
           person_id: string | null
           phone: string | null
           reminder_count: number
+          section_titles: string[]
           sent_at: string | null
           share_token: string
           user_id: string | null
@@ -7193,6 +7197,7 @@ export type Database = {
           person_id?: string | null
           phone?: string | null
           reminder_count?: number
+          section_titles?: string[]
           sent_at?: string | null
           share_token?: string
           user_id?: string | null
@@ -7219,6 +7224,7 @@ export type Database = {
           person_id?: string | null
           phone?: string | null
           reminder_count?: number
+          section_titles?: string[]
           sent_at?: string | null
           share_token?: string
           user_id?: string | null

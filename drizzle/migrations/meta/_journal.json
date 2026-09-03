@@ -15,6 +15,13 @@
       "when": 1788425559424,
       "tag": "0001_hms_handbook_distribution",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788426327357,
+      "tag": "0002_handbook_distribution_scope_ack",
+      "breakpoints": true
     }
   ]
 }
