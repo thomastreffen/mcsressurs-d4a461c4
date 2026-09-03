@@ -28,6 +28,7 @@ import { nb } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import { logHmsAudit } from "@/lib/hms/audit";
 import { usePermissions } from "@/hooks/usePermissions";
+import { HandbookDistributionStatus } from "@/components/hms/HandbookDistributionStatus";
 
 const CONFIRMATION_TEXT = "Jeg har lest og forstått denne håndboken.";
 
@@ -40,7 +41,7 @@ interface Version {
   requires_acknowledgement: boolean; published_at: string | null; published_by: string | null;
   changelog: string | null; created_at: string;
 }
-interface Section { id: string; heading: string; body: string | null; ordering: number; }
+interface Section { id: string; heading: string; body: string | null; ordering: number; is_mandatory: boolean; }
 interface Ack { id: string; user_id: string; version_id: string; acknowledged_at: string; }
 
 export default function HmsHandbookDetailPage() {
@@ -102,7 +103,7 @@ export default function HmsHandbookDetailPage() {
       const sb = supabase as any;
       const { data, error } = await sb
         .from("hms_handbook_sections")
-        .select("id, heading, body, ordering")
+        .select("id, heading, body, ordering, is_mandatory")
         .eq("version_id", viewVersion!.id)
         .order("ordering", { ascending: true });
       if (error) throw error;
@@ -245,6 +246,20 @@ export default function HmsHandbookDetailPage() {
       await sb.from("hms_handbook_sections").update({ ordering: a.ordering }).eq("id", swap.id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hms-handbook-sections", viewVersion?.id] }),
+  });
+
+  const toggleMandatory = useMutation({
+    mutationFn: async ({ sid, value }: { sid: string; value: boolean }) => {
+      const sb = supabase as any;
+      const { error } = await sb.from("hms_handbook_sections").update({ is_mandatory: value }).eq("id", sid);
+      if (error) throw error;
+      await logHmsAudit({
+        company_id: handbook?.company_id, entity_type: "hms_handbook", entity_id: handbook?.id,
+        action: "section.mandatory_changed", payload: { section_id: sid, is_mandatory: value },
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hms-handbook-sections", viewVersion?.id] }),
+    onError: (e: any) => toast({ title: "Feil", description: String(e.message || e), variant: "destructive" }),
   });
 
   const publishMut = useMutation({
@@ -497,6 +512,7 @@ export default function HmsHandbookDetailPage() {
         <TabsList>
           <TabsTrigger value="content">Innhold</TabsTrigger>
           {canManage && <TabsTrigger value="status">Lesebekreftelser{totalEmployees > 0 && ` (${ackedCount}/${totalEmployees})`}</TabsTrigger>}
+          {canManage && <TabsTrigger value="distribution">Utsending</TabsTrigger>}
           <TabsTrigger value="versions">Versjoner</TabsTrigger>
         </TabsList>
 
@@ -545,6 +561,16 @@ export default function HmsHandbookDetailPage() {
                 {activeChapter && editMode && (
                   <>
                     <Input value={heading} onChange={(e) => setEditedSections((p) => ({ ...p, [activeChapter.id]: { heading: e.target.value, body } }))} className="text-lg font-semibold" />
+                    <div className="flex items-center justify-between rounded-md border p-3">
+                      <div>
+                        <div className="text-sm font-medium">Obligatorisk kapittel</div>
+                        <div className="text-xs text-muted-foreground">Krever egen lesebekreftelse fra alle ansatte, også ved ny utgave.</div>
+                      </div>
+                      <Switch
+                        checked={!!activeChapter.is_mandatory}
+                        onCheckedChange={(v) => toggleMandatory.mutate({ sid: activeChapter.id, value: v })}
+                      />
+                    </div>
                     <Textarea value={body} onChange={(e) => setEditedSections((p) => ({ ...p, [activeChapter.id]: { heading, body: e.target.value } }))} rows={24} className="font-mono text-xs" />
                     <div className="flex justify-between items-center gap-2 flex-wrap">
                       <DropdownMenu>
@@ -632,6 +658,19 @@ export default function HmsHandbookDetailPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
+
+        {canManage && (
+          <TabsContent value="distribution" className="mt-4">
+            <HandbookDistributionStatus
+              handbookId={handbook.id}
+              handbookTitle={handbook.title}
+              versionId={publishedVersion?.id ?? null}
+              versionNumber={publishedVersion?.version_number ?? null}
+              chapters={sections.map((s) => ({ id: s.id, heading: s.heading, is_mandatory: s.is_mandatory }))}
+              canManage={canManage}
+            />
           </TabsContent>
         )}
 

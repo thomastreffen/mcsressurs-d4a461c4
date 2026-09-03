@@ -11,6 +11,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { HandbookAckStatusCard } from "@/components/hms/HandbookAckStatusCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -328,6 +329,9 @@ export default function HmsOverviewPage() {
           </Link>
         ))}
       </div>
+
+      {/* ---- HMS-status: dokumentbekreftelser ---- */}
+      <HandbookAckStatusCard />
 
       {/* ---- Topp ansatte med åpne AML-varsler ---- */}
       {data?.topEmployees && data.topEmployees.length > 0 && (

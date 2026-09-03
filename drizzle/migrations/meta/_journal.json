@@ -8,6 +8,13 @@
       "when": 1788172972481,
       "tag": "0000_shift_resource_assignments_with_event_time",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788425559424,
+      "tag": "0001_hms_handbook_distribution",
+      "breakpoints": true
     }
   ]
 }
