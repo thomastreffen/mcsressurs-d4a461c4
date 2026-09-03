@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { renderHandbookBody } from "@/lib/hms/handbookText";
+import { invalidateAckQueries } from "@/lib/hms/handbookAck";
 
 const sb = supabase as any;
 const CONFIRMATION_TEXT = "Jeg har lest og forstått.";
