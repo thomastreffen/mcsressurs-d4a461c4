@@ -22,18 +22,16 @@ export function ChemicalRiskAlert({ riskText, technicians }: Props) {
   const sendMut = useSendChemicalInfo();
   const [sent, setSent] = useState(false);
 
+  const riskHits = useMemo(() => matchesChemicalRisk(riskText), [riskText]);
+
   const relevant = useMemo(
     () =>
-      chemicals.filter(
-        (c) =>
-          c.status === "active" &&
-          c.requires_acknowledgement &&
-          (matchesChemicalRisk(riskText) || matchesChemicalRisk(`${c.product_name} ${c.category ?? ""} ${(c.locations ?? []).join(" ")}`) === false
-            ? matchesChemicalRisk(riskText)
-            : false)
-      ),
-    [chemicals, riskText]
+      riskHits.length === 0
+        ? []
+        : chemicals.filter((c) => c.status === "active" && c.requires_acknowledgement),
+    [chemicals, riskHits]
   );
+
 
   const ackedKeys = useMemo(() => {
     const s = new Set<string>();
