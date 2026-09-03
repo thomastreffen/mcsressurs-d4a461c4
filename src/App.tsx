@@ -217,6 +217,8 @@ const App = () => (
             <Route path="/orders/:id/pickliste" element={<MaterialPickListPrintPage />} />
             <Route path="/m/:token" element={<SharedMaterialListPage />} />
             <Route path="/hb/:token" element={<HandbookPublicPage />} />
+            <Route path="/kj/:token" element={<ChemicalPublicPage />} />
+
             <Route path="/invite/thread/:token" element={<ThreadInviteAcceptPage />} />
             <Route path="/activate" element={<ActivatePage />} />
             <Route path="/bestilling" element={<OrderFormsCatalogPage />} />
