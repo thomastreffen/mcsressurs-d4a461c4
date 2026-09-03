@@ -19,6 +19,15 @@ interface RecipientInput {
   phone?: string | null;
 }
 
+interface ResourceLink {
+  type: string;
+  label: string;
+  url?: string | null;
+  note?: string | null;
+  section_id?: string | null;
+  section_heading?: string | null;
+}
+
 interface Body {
   handbook_id: string;
   version_id: string;
@@ -29,7 +38,14 @@ interface Body {
   kind?: "distribution" | "reminder";
   base_url: string;
   recipients: RecipientInput[];
+  /** Hvilke kjemikalier som skal følge med pakken. */
+  chemical_mode?: "all_relevant" | "audience" | "specific" | "none";
+  chemical_ids?: string[];
+  audience_tags?: string[];
+  /** Ekstra lenker admin har lagt til for denne utsendingen. */
+  extra_resources?: ResourceLink[];
 }
+
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
@@ -86,22 +102,101 @@ Deno.serve(async (req) => {
     }
 
     const requestedIds = (body.section_ids ?? []).filter(Boolean);
+
+    // Alle kapitler i utgaven – trengs både for validering og for koblede ressurser
+    const { data: allSecs } = await admin
+      .from("hms_handbook_sections")
+      .select("id, heading, ordering, resource_links, chemical_ids")
+      .eq("version_id", version.id)
+      .order("ordering", { ascending: true });
+
     let sectionIds: string[] = [];
     let sectionTitles: string[] = [];
+    let includedSecs = allSecs ?? [];
     if (requestedIds.length > 0) {
-      // Kun kapitler som faktisk hører til denne utgaven
-      const { data: secs } = await admin
-        .from("hms_handbook_sections")
-        .select("id, heading, ordering")
-        .eq("version_id", version.id)
-        .in("id", requestedIds)
-        .order("ordering", { ascending: true });
-      sectionIds = (secs ?? []).map((s: any) => s.id);
-      sectionTitles = (secs ?? []).map((s: any) => s.heading);
+      includedSecs = (allSecs ?? []).filter((s: any) => requestedIds.includes(s.id));
+      sectionIds = includedSecs.map((s: any) => s.id);
+      sectionTitles = includedSecs.map((s: any) => s.heading);
       if (sectionIds.length === 0) {
         return json({ error: "Ingen gyldige kapitler valgt for denne utgaven" }, 400);
       }
     }
+
+    // ---- Bygg HMS-pakken: koblede ressurser + relevante kjemikalier/SDS ----
+    const chemMode = body.chemical_mode ?? "all_relevant";
+    const audienceTags = (body.audience_tags ?? []).filter(Boolean);
+
+    const sectionChemIds = new Set<string>();
+    for (const s of includedSecs as any[]) {
+      for (const cid of (s.chemical_ids ?? []) as string[]) sectionChemIds.add(cid);
+    }
+
+    let chemicalIds: string[] = [];
+    let snapshot: {
+      id: string; product_name: string; supplier: string | null; is_high_risk: boolean;
+      sds_version: string | null; sds_revision_date: string | null; has_sds: boolean;
+    }[] = [];
+    if (chemMode !== "none") {
+      const { data: chems } = await admin
+        .from("hms_chemicals")
+        .select("id, product_name, supplier, is_high_risk, relevant_for_all, audience_tags, status, sds_version, sds_revision_date, sds_path")
+        .eq("company_id", handbook.company_id)
+        .is("deleted_at", null);
+      const all = (chems ?? []) as any[];
+      const pick = all.filter((c) => {
+        if (sectionChemIds.has(c.id)) return true;
+        if (chemMode === "specific") return (body.chemical_ids ?? []).includes(c.id);
+        if (c.status === "expired") return false;
+        if (chemMode === "all_relevant") return c.relevant_for_all || c.is_high_risk;
+        if (chemMode === "audience") {
+          return c.relevant_for_all || (c.audience_tags ?? []).some((t: string) => audienceTags.includes(t));
+        }
+        return false;
+      });
+      chemicalIds = pick.map((c) => c.id);
+      snapshot = pick.map((c) => ({
+        id: c.id,
+        product_name: c.product_name,
+        supplier: c.supplier,
+        is_high_risk: c.is_high_risk,
+        sds_version: c.sds_version,
+        sds_revision_date: c.sds_revision_date,
+        has_sds: !!c.sds_path,
+      }));
+    }
+
+    const resources: ResourceLink[] = [];
+    for (const s of includedSecs as any[]) {
+      for (const l of ((s.resource_links ?? []) as ResourceLink[])) {
+        if (!l?.label) continue;
+        resources.push({
+          type: l.type ?? "vedlegg",
+          label: l.label,
+          url: l.url ?? null,
+          note: l.note ?? null,
+          section_id: s.id,
+          section_heading: s.heading,
+        });
+      }
+    }
+    for (const l of body.extra_resources ?? []) {
+      if (l?.label) resources.push({ type: l.type ?? "vedlegg", label: l.label, url: l.url ?? null, note: l.note ?? null });
+    }
+    if (snapshot.length > 0) {
+      resources.unshift({
+        type: "stoffkartotek",
+        label: "Stoffkartotek – kjemikalier for ditt arbeid",
+        note: "Produktene med sikkerhetsdatablad ligger nederst i pakken.",
+      });
+    }
+    // Dedupliser
+    const seenRes = new Set<string>();
+    const includedResources = resources.filter((r) => {
+      const key = `${r.type}|${r.label.toLowerCase()}|${r.url ?? ""}`;
+      if (seenRes.has(key)) return false;
+      seenRes.add(key);
+      return true;
+    });
 
     const channels = (body.channels ?? ["email"]).filter((c) => c === "email" || c === "sms");
     const wantsEmail = channels.includes("email");
@@ -123,6 +218,9 @@ Deno.serve(async (req) => {
         kind: body.kind ?? "distribution",
         recipient_count: body.recipients.length,
         sent_by: authUser.id,
+        included_resources: includedResources,
+        chemical_ids: chemicalIds,
+        chemical_snapshot: snapshot,
       })
       .select("id")
       .single();
@@ -135,6 +233,9 @@ Deno.serve(async (req) => {
       version_id: version.id,
       section_ids: sectionIds,
       section_titles: sectionTitles,
+      included_resources: includedResources,
+      chemical_ids: chemicalIds,
+      chemical_snapshot: snapshot,
       person_id: r.person_id ?? null,
       user_id: r.user_id ?? null,
       full_name: r.full_name ?? null,
@@ -148,6 +249,7 @@ Deno.serve(async (req) => {
       .insert(rows)
       .select("id, full_name, email, phone, share_token, channel");
     if (recErr) return json({ error: recErr.message }, 500);
+
 
     const scopeText = sectionTitles.length > 0
       ? `kapittel: ${sectionTitles.join(", ")}`
@@ -183,6 +285,8 @@ Deno.serve(async (req) => {
               scopeText,
               message: body.message ?? "",
               link,
+              resourceCount: includedResources.length,
+              chemicalCount: snapshot.length,
             }),
           });
           if (res.error) {
@@ -231,6 +335,10 @@ Deno.serve(async (req) => {
         section_titles: sectionTitles,
         scope: sectionIds.length > 0 ? "chapters" : "full",
         channels,
+        included_resources: includedResources,
+        chemical_ids: chemicalIds,
+        chemical_snapshot: snapshot,
+        chemical_mode: chemMode,
         recipient_count: results.length,
         failed: results.filter((r) => r.status === "failed").length,
       },
@@ -249,12 +357,17 @@ function esc(s: string) {
 
 function buildHtml(p: {
   name: string; title: string; versionNumber: number; scopeText: string; message: string; link: string;
+  resourceCount?: number; chemicalCount?: number;
 }) {
+  const pkg: string[] = [];
+  if (p.chemicalCount) pkg.push(`${p.chemicalCount} kjemikalier med sikkerhetsdatablad`);
+  if (p.resourceCount) pkg.push(`${p.resourceCount} viktige vedlegg og lenker`);
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:8px;">
   <h2 style="font-size:18px;color:#111827;margin:0 0 4px;">${esc(p.title)}</h2>
   <p style="margin:0 0 16px;color:#6B7280;font-size:13px;">Utgave ${p.versionNumber} · ${esc(p.scopeText)}</p>
   <p style="font-size:15px;color:#374151;">Hei${p.name ? " " + esc(p.name) : ""},</p>
   <p style="font-size:15px;color:#374151;">${p.message ? esc(p.message) : "Du har fått tilsendt HMS-informasjon som du skal lese og bekrefte."}</p>
+  ${pkg.length ? `<p style="font-size:14px;color:#374151;background:#F3F4F6;border-radius:8px;padding:12px;">Pakken inneholder også:<br/>${pkg.map((x) => "&bull; " + esc(x)).join("<br/>")}</p>` : ""}
   <p style="margin:24px 0;">
     <a href="${p.link}" style="background:#111827;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:8px;font-size:15px;display:inline-block;">Åpne, les og bekreft</a>
   </p>

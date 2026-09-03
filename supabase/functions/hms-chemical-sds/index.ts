@@ -23,11 +23,25 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const token: string | undefined = body?.token;
+    const handbookToken: string | undefined = body?.handbook_token;
     const chemicalId: string | undefined = body?.chemical_id;
 
     let chemId: string | null = null;
 
-    if (token) {
+    if (handbookToken) {
+      // Mottaker av HMS-pakke (/hb/:token) – kun kjemikalier som fulgte med pakken
+      const { data: rec } = await admin
+        .from("hms_handbook_recipients")
+        .select("chemical_ids, expires_at")
+        .eq("share_token", handbookToken)
+        .maybeSingle();
+      if (!rec) return json({ error: "not_found" }, 404);
+      if (new Date(rec.expires_at) < new Date()) return json({ error: "expired" }, 410);
+      if (!chemicalId || !((rec.chemical_ids ?? []) as string[]).includes(chemicalId)) {
+        return json({ error: "not_found" }, 404);
+      }
+      chemId = chemicalId;
+    } else if (token) {
       const { data: rec } = await admin
         .from("hms_chemical_recipients")
         .select("chemical_id, expires_at")

@@ -43,6 +43,13 @@
       "when": 1788428113402,
       "tag": "0005_hms_work_readiness",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788428994018,
+      "tag": "0006_hms_handbook_resource_packages",
+      "breakpoints": true
     }
   ]
 }

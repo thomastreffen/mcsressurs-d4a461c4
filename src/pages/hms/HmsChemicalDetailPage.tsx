@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { CHEMICAL_AUDIENCE_TAGS } from "@/lib/hms/handbookPackage";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, Download, FileWarning, Loader2, Save, Send, Trash2, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -263,6 +264,47 @@ export default function HmsChemicalDetailPage() {
               <Toggle label="Krever særskilt personlig verneutstyr" checked={!!form.requires_special_ppe} onChange={(v) => set("requires_special_ppe", v)} />
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Målgruppe i HMS-pakken</CardTitle></CardHeader>
+            <CardContent className="p-4 pt-0 space-y-3">
+              <Toggle
+                label="Relevant for alle montører (følger alltid med HMS-håndboken)"
+                checked={!!form.relevant_for_all}
+                onChange={(v) => set("relevant_for_all", v)}
+              />
+              <div className="space-y-1.5">
+                <div className="text-xs text-muted-foreground">
+                  Målgrupper – styrer hvilke utsendinger kjemikaliet følger med i.
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {CHEMICAL_AUDIENCE_TAGS.map((t) => {
+                    const on = (form.audience_tags ?? []).includes(t);
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() =>
+                          set(
+                            "audience_tags",
+                            on
+                              ? (form.audience_tags ?? []).filter((x) => x !== t)
+                              : [...(form.audience_tags ?? []), t],
+                          )
+                        }
+                        className={`rounded-full border px-2.5 py-1 text-[11px] transition ${
+                          on ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
         </TabsContent>
 
         <TabsContent value="safety" className="space-y-4 pt-4">

@@ -33,6 +33,8 @@ export interface ChemicalRow {
   requires_acknowledgement: boolean;
   requires_sja: boolean;
   requires_special_ppe: boolean;
+  audience_tags: string[];
+  relevant_for_all: boolean;
   notes: string | null;
   updated_at: string;
 }
@@ -65,7 +67,7 @@ const CHEMICAL_COLS =
   "pictograms, h_statements, p_statements, ppe_requirements, ventilation_requirements, first_aid, " +
   "storage_requirements, waste_handling, sds_path, sds_filename, sds_revision_date, sds_version, " +
   "sds_uploaded_at, status, is_high_risk, requires_training, requires_acknowledgement, requires_sja, " +
-  "requires_special_ppe, notes, updated_at";
+  "requires_special_ppe, audience_tags, relevant_for_all, notes, updated_at";
 
 export function useChemicals() {
   const { activeCompanyId: cid } = useCompanyContext();
