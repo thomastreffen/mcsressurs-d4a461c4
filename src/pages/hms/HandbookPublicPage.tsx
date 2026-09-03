@@ -91,7 +91,8 @@ export default function HandbookPublicPage() {
         p_user_agent: navigator.userAgent.slice(0, 250),
         p_confirmation_text: CONFIRMATION_TEXT,
       });
-      if (error) throw error;
+      // Bekreftelsen er idempotent: finnes den allerede, er det et gyldig resultat
+      if (error && error.code !== "23505") throw error;
       if ((res as any)?.error) throw new Error((res as any).error);
     },
     onSuccess: () => {
