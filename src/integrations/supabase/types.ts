@@ -6985,6 +6985,423 @@ export type Database = {
         }
         Relationships: []
       }
+      hms_chemical_acknowledgements: {
+        Row: {
+          acknowledged_at: string
+          chemical_id: string
+          company_id: string
+          confirmation_text: string | null
+          full_name: string | null
+          id: string
+          method: string
+          person_id: string | null
+          recipient_id: string | null
+          sds_revision_date: string | null
+          sds_version: string | null
+          section_ids: string[]
+          section_titles: string[]
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string
+          chemical_id: string
+          company_id: string
+          confirmation_text?: string | null
+          full_name?: string | null
+          id?: string
+          method?: string
+          person_id?: string | null
+          recipient_id?: string | null
+          sds_revision_date?: string | null
+          sds_version?: string | null
+          section_ids?: string[]
+          section_titles?: string[]
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string
+          chemical_id?: string
+          company_id?: string
+          confirmation_text?: string | null
+          full_name?: string | null
+          id?: string
+          method?: string
+          person_id?: string | null
+          recipient_id?: string | null
+          sds_revision_date?: string | null
+          sds_version?: string | null
+          section_ids?: string[]
+          section_titles?: string[]
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hms_chemical_acknowledgements_chemical_id_fkey"
+            columns: ["chemical_id"]
+            isOneToOne: false
+            referencedRelation: "hms_chemicals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_chemical_acknowledgements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_chemical_acknowledgements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_chemical_acknowledgements_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "hms_chemical_recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hms_chemical_distributions: {
+        Row: {
+          channels: string[]
+          chemical_id: string
+          company_id: string
+          created_at: string
+          id: string
+          kind: string
+          message: string | null
+          recipient_count: number
+          sds_revision_date: string | null
+          sds_version: string | null
+          section_ids: string[]
+          section_titles: string[]
+          sent_at: string
+          sent_by: string | null
+          subject: string | null
+        }
+        Insert: {
+          channels?: string[]
+          chemical_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          kind?: string
+          message?: string | null
+          recipient_count?: number
+          sds_revision_date?: string | null
+          sds_version?: string | null
+          section_ids?: string[]
+          section_titles?: string[]
+          sent_at?: string
+          sent_by?: string | null
+          subject?: string | null
+        }
+        Update: {
+          channels?: string[]
+          chemical_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          message?: string | null
+          recipient_count?: number
+          sds_revision_date?: string | null
+          sds_version?: string | null
+          section_ids?: string[]
+          section_titles?: string[]
+          sent_at?: string
+          sent_by?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hms_chemical_distributions_chemical_id_fkey"
+            columns: ["chemical_id"]
+            isOneToOne: false
+            referencedRelation: "hms_chemicals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hms_chemical_recipients: {
+        Row: {
+          ack_method: string | null
+          acknowledged_at: string | null
+          channel: string
+          chemical_id: string
+          company_id: string
+          created_at: string
+          delivery_error: string | null
+          delivery_status: string
+          distribution_id: string
+          email: string | null
+          expires_at: string
+          first_opened_at: string | null
+          full_name: string | null
+          id: string
+          last_opened_at: string | null
+          last_reminder_at: string | null
+          open_count: number
+          person_id: string | null
+          phone: string | null
+          reminder_count: number
+          sds_revision_date: string | null
+          sds_version: string | null
+          section_ids: string[]
+          section_titles: string[]
+          sent_at: string | null
+          share_token: string
+          user_id: string | null
+        }
+        Insert: {
+          ack_method?: string | null
+          acknowledged_at?: string | null
+          channel?: string
+          chemical_id: string
+          company_id: string
+          created_at?: string
+          delivery_error?: string | null
+          delivery_status?: string
+          distribution_id: string
+          email?: string | null
+          expires_at?: string
+          first_opened_at?: string | null
+          full_name?: string | null
+          id?: string
+          last_opened_at?: string | null
+          last_reminder_at?: string | null
+          open_count?: number
+          person_id?: string | null
+          phone?: string | null
+          reminder_count?: number
+          sds_revision_date?: string | null
+          sds_version?: string | null
+          section_ids?: string[]
+          section_titles?: string[]
+          sent_at?: string | null
+          share_token?: string
+          user_id?: string | null
+        }
+        Update: {
+          ack_method?: string | null
+          acknowledged_at?: string | null
+          channel?: string
+          chemical_id?: string
+          company_id?: string
+          created_at?: string
+          delivery_error?: string | null
+          delivery_status?: string
+          distribution_id?: string
+          email?: string | null
+          expires_at?: string
+          first_opened_at?: string | null
+          full_name?: string | null
+          id?: string
+          last_opened_at?: string | null
+          last_reminder_at?: string | null
+          open_count?: number
+          person_id?: string | null
+          phone?: string | null
+          reminder_count?: number
+          sds_revision_date?: string | null
+          sds_version?: string | null
+          section_ids?: string[]
+          section_titles?: string[]
+          sent_at?: string | null
+          share_token?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hms_chemical_recipients_chemical_id_fkey"
+            columns: ["chemical_id"]
+            isOneToOne: false
+            referencedRelation: "hms_chemicals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_chemical_recipients_distribution_id_fkey"
+            columns: ["distribution_id"]
+            isOneToOne: false
+            referencedRelation: "hms_chemical_distributions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_chemical_recipients_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_chemical_recipients_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hms_chemical_sections: {
+        Row: {
+          chemical_id: string
+          company_id: string
+          created_at: string
+          id: string
+          section_id: string
+        }
+        Insert: {
+          chemical_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          section_id: string
+        }
+        Update: {
+          chemical_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hms_chemical_sections_chemical_id_fkey"
+            columns: ["chemical_id"]
+            isOneToOne: false
+            referencedRelation: "hms_chemicals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_chemical_sections_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "hms_handbook_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hms_chemicals: {
+        Row: {
+          category: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          first_aid: string | null
+          h_statements: string[]
+          hms_areas: string[]
+          id: string
+          is_high_risk: boolean
+          locations: string[]
+          manufacturer: string | null
+          notes: string | null
+          p_statements: string[]
+          pictograms: string[]
+          ppe_requirements: string | null
+          product_name: string
+          requires_acknowledgement: boolean
+          requires_sja: boolean
+          requires_special_ppe: boolean
+          requires_training: boolean
+          sds_filename: string | null
+          sds_path: string | null
+          sds_revision_date: string | null
+          sds_uploaded_at: string | null
+          sds_version: string | null
+          status: string
+          storage_requirements: string | null
+          supplier: string | null
+          updated_at: string
+          updated_by: string | null
+          usage_area: string | null
+          ventilation_requirements: string | null
+          waste_handling: string | null
+        }
+        Insert: {
+          category?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          first_aid?: string | null
+          h_statements?: string[]
+          hms_areas?: string[]
+          id?: string
+          is_high_risk?: boolean
+          locations?: string[]
+          manufacturer?: string | null
+          notes?: string | null
+          p_statements?: string[]
+          pictograms?: string[]
+          ppe_requirements?: string | null
+          product_name: string
+          requires_acknowledgement?: boolean
+          requires_sja?: boolean
+          requires_special_ppe?: boolean
+          requires_training?: boolean
+          sds_filename?: string | null
+          sds_path?: string | null
+          sds_revision_date?: string | null
+          sds_uploaded_at?: string | null
+          sds_version?: string | null
+          status?: string
+          storage_requirements?: string | null
+          supplier?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          usage_area?: string | null
+          ventilation_requirements?: string | null
+          waste_handling?: string | null
+        }
+        Update: {
+          category?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          first_aid?: string | null
+          h_statements?: string[]
+          hms_areas?: string[]
+          id?: string
+          is_high_risk?: boolean
+          locations?: string[]
+          manufacturer?: string | null
+          notes?: string | null
+          p_statements?: string[]
+          pictograms?: string[]
+          ppe_requirements?: string | null
+          product_name?: string
+          requires_acknowledgement?: boolean
+          requires_sja?: boolean
+          requires_special_ppe?: boolean
+          requires_training?: boolean
+          sds_filename?: string | null
+          sds_path?: string | null
+          sds_revision_date?: string | null
+          sds_uploaded_at?: string | null
+          sds_version?: string | null
+          status?: string
+          storage_requirements?: string | null
+          supplier?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          usage_area?: string | null
+          ventilation_requirements?: string | null
+          waste_handling?: string | null
+        }
+        Relationships: []
+      }
       hms_handbook_acknowledgements: {
         Row: {
           acknowledged_at: string
@@ -7517,6 +7934,8 @@ export type Database = {
         Row: {
           assigned_to: string | null
           attachments: Json
+          chemical_id: string | null
+          chemical_issue_type: string | null
           closed_at: string | null
           closed_by: string | null
           closed_reason: string | null
@@ -7542,6 +7961,8 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           attachments?: Json
+          chemical_id?: string | null
+          chemical_issue_type?: string | null
           closed_at?: string | null
           closed_by?: string | null
           closed_reason?: string | null
@@ -7567,6 +7988,8 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           attachments?: Json
+          chemical_id?: string | null
+          chemical_issue_type?: string | null
           closed_at?: string | null
           closed_by?: string | null
           closed_reason?: string | null
@@ -7589,7 +8012,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hms_incidents_chemical_id_fkey"
+            columns: ["chemical_id"]
+            isOneToOne: false
+            referencedRelation: "hms_chemicals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hms_risk_assessments: {
         Row: {
@@ -15315,6 +15746,15 @@ export type Database = {
         Args: { _auth_user_id: string; _thread_id: string }
         Returns: boolean
       }
+      hms_chemical_ack_by_token: {
+        Args: {
+          p_confirmation_text?: string
+          p_token: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
+      hms_chemical_open_by_token: { Args: { p_token: string }; Returns: Json }
       hms_handbook_ack_by_token: {
         Args: {
           p_confirmation_text?: string
