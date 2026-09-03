@@ -1,4 +1,30 @@
 const APP_SW_PATHS = ["/sw.js", "/service-worker.js"];
+const HMS_CACHE_SCHEMA_KEY = "mcs-hms-cache-schema";
+const HMS_CACHE_SCHEMA_VERSION = "2026-09-hms-package-v1";
+const HMS_STORAGE_PREFIXES = ["hms-", "handbook-", "chemical-", "readiness-"];
+
+/**
+ * React Query is memory-only in this app, but remove any legacy persisted HMS
+ * payloads whenever the HMS package schema changes. Authentication and active
+ * company selection are deliberately preserved.
+ */
+export function invalidateLegacyHmsStorage() {
+  if (typeof window === "undefined") return;
+  try {
+    if (localStorage.getItem(HMS_CACHE_SCHEMA_KEY) === HMS_CACHE_SCHEMA_VERSION) return;
+    for (const storage of [localStorage, sessionStorage]) {
+      const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index)).filter(
+        (key): key is string => Boolean(key),
+      );
+      for (const key of keys) {
+        if (HMS_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) storage.removeItem(key);
+      }
+    }
+    localStorage.setItem(HMS_CACHE_SCHEMA_KEY, HMS_CACHE_SCHEMA_VERSION);
+  } catch {
+    // Storage can be unavailable in restricted/private browser contexts.
+  }
+}
 
 function cleanUrlWithoutResetParam(): string {
   const params = new URLSearchParams(window.location.search);

@@ -14,8 +14,7 @@ const APP_COMMIT =
 const APP_VERSION =
   process.env.VITE_APP_VERSION ||
   process.env.LOVABLE_BUILD_ID ||
-  APP_COMMIT !== "not-available" ? APP_COMMIT :
-  APP_BUILD_TIME;
+  (APP_COMMIT !== "not-available" ? APP_COMMIT : APP_BUILD_TIME);
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
