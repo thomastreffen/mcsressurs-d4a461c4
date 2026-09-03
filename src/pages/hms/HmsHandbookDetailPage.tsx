@@ -366,23 +366,19 @@ export default function HmsHandbookDetailPage() {
     mutationFn: async () => {
       if (!handbook || !publishedVersion || !user?.id) throw new Error("Mangler kontekst");
       const sb = supabase as any;
-      const { error } = await sb.from("hms_handbook_acknowledgements").insert({
-        handbook_id: handbook.id, version_id: publishedVersion.id, company_id: handbook.company_id,
-        user_id: user.id, confirmation_text: CONFIRMATION_TEXT,
-        user_agent: navigator.userAgent.slice(0, 250),
+      const { data, error } = await sb.rpc("hms_handbook_ack_internal", {
+        p_version_id: publishedVersion.id,
+        p_section_id: null,
+        p_user_agent: navigator.userAgent.slice(0, 250),
+        p_confirmation_text: CONFIRMATION_TEXT,
       });
       if (error) throw error;
-      await logHmsAudit({
-        company_id: handbook.company_id, entity_type: "hms_handbook", entity_id: handbook.id,
-        action: "acknowledgement.recorded",
-        payload: { version_id: publishedVersion.id, version_number: publishedVersion.version_number },
-      });
+      if ((data as any)?.error) throw new Error(String((data as any).error));
     },
     onSuccess: () => {
       toast({ title: "Bekreftelse registrert" });
       setConfirmOpen(false);
-      qc.invalidateQueries({ queryKey: ["hms-handbook-my-ack"] });
-      qc.invalidateQueries({ queryKey: ["hms-handbook-ack-overview"] });
+      invalidateAckQueries(qc);
     },
     onError: (e: any) => toast({ title: "Feil", description: String(e.message || e), variant: "destructive" }),
   });
@@ -390,17 +386,20 @@ export default function HmsHandbookDetailPage() {
   const exportCsv = () => {
     if (!ackOverview) return;
     const lines = [
-      ["Navn", "E-post", "Status", "Bekreftet"].join(","),
+      ["Navn", "E-post", "Grunnlag", "Sendt", "Status", "Bekreftet via", "Bekreftet"].join(","),
       ...ackOverview.map((r: any) => [
         JSON.stringify(r.full_name ?? ""), JSON.stringify(r.email ?? ""),
+        r.is_employee ? "ansatt" : "mottaker",
+        r.sent_at ? format(new Date(r.sent_at), "yyyy-MM-dd HH:mm") : "",
         r.acknowledged_at ? "bekreftet" : "mangler",
+        r.acknowledged_at ? (r.confirmed_via === "token" ? "utsending" : "internt") : "",
         r.acknowledged_at ? format(new Date(r.acknowledged_at), "yyyy-MM-dd HH:mm") : "",
       ].join(",")),
     ].join("\n");
     const blob = new Blob([lines], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `lesebekreftelser-${handbook?.title ?? "handbok"}.csv`; a.click();
+    a.href = url; a.download = `bekreftelser-${handbook?.title ?? "handbok"}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
