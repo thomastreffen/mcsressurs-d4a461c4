@@ -29,6 +29,9 @@ import { toast } from "@/hooks/use-toast";
 import { logHmsAudit } from "@/lib/hms/audit";
 import { usePermissions } from "@/hooks/usePermissions";
 import { HandbookDistributionStatus } from "@/components/hms/HandbookDistributionStatus";
+import { HandbookResourceLinks } from "@/components/hms/HandbookResourceLinks";
+import { HmsCoveragePanel } from "@/components/hms/HmsCoveragePanel";
+import { useHandbookSectionResources } from "@/hooks/useHandbookDistribution";
 
 const CONFIRMATION_TEXT = "Jeg har lest og forstått denne håndboken.";
 
@@ -110,6 +113,8 @@ export default function HmsHandbookDetailPage() {
       return (data ?? []) as Section[];
     },
   });
+
+  const { data: sectionResources = [] } = useHandbookSectionResources(viewVersion?.id ?? null);
 
   useEffect(() => {
     if (sections.length && !activeChapterId) setActiveChapterId(sections[0].id);
@@ -513,6 +518,7 @@ export default function HmsHandbookDetailPage() {
           <TabsTrigger value="content">Innhold</TabsTrigger>
           {canManage && <TabsTrigger value="status">Lesebekreftelser{totalEmployees > 0 && ` (${ackedCount}/${totalEmployees})`}</TabsTrigger>}
           {canManage && <TabsTrigger value="distribution">Utsending</TabsTrigger>}
+          {canManage && <TabsTrigger value="coverage">Dekning</TabsTrigger>}
           <TabsTrigger value="versions">Versjoner</TabsTrigger>
         </TabsList>
 
@@ -670,6 +676,16 @@ export default function HmsHandbookDetailPage() {
               versionNumber={publishedVersion?.version_number ?? null}
               chapters={sections.map((s) => ({ id: s.id, heading: s.heading, is_mandatory: s.is_mandatory }))}
               canManage={canManage}
+            />
+          </TabsContent>
+        )}
+
+        {canManage && (
+          <TabsContent value="coverage" className="mt-4">
+            <HmsCoveragePanel
+              handbookId={handbook.id}
+              versionId={viewVersion?.id ?? null}
+              versionNumber={viewVersion?.version_number ?? null}
             />
           </TabsContent>
         )}
