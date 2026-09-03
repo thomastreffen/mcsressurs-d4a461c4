@@ -50,6 +50,13 @@
       "when": 1788428994018,
       "tag": "0006_hms_handbook_resource_packages",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788430627750,
+      "tag": "0007_scope_customer_contact_tags_to_company",
+      "breakpoints": true
     }
   ]
 }
