@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, BookOpen, CheckCircle2, ExternalLink, FileDown, FlaskConical, Loader2, Package, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,8 +11,24 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { renderHandbookBody } from "@/lib/hms/handbookText";
+import { RESOURCE_TYPE_LABELS, isPublicUrl, type HandbookResourceLink, type HandbookResourceType } from "@/lib/hms/handbookPackage";
 
 const CONFIRMATION_TEXT = "Jeg har lest og forstått.";
+
+interface PublicChemical {
+  id: string;
+  product_name: string;
+  supplier: string | null;
+  category: string | null;
+  is_high_risk: boolean;
+  requires_sja: boolean;
+  requires_special_ppe: boolean;
+  ppe_requirements: string | null;
+  first_aid: string | null;
+  sds_version: string | null;
+  sds_revision_date: string | null;
+  has_sds: boolean;
+}
 
 interface PublicSection {
   id: string;
@@ -20,6 +36,7 @@ interface PublicSection {
   body: string | null;
   is_mandatory: boolean;
   acknowledged_at: string | null;
+  resource_links?: HandbookResourceLink[] | null;
 }
 
 interface PublicPayload {
@@ -28,6 +45,8 @@ interface PublicPayload {
   handbook?: { id: string; title: string; description: string | null };
   version?: { id: string; version_number: number; requires_acknowledgement: boolean; published_at: string | null };
   sections?: PublicSection[];
+  resources?: HandbookResourceLink[];
+  chemicals?: PublicChemical[];
 }
 
 export default function HandbookPublicPage() {
@@ -46,6 +65,19 @@ export default function HandbookPublicPage() {
   });
 
   const sections = useMemo(() => data?.sections ?? [], [data]);
+  const resources = useMemo(() => data?.resources ?? [], [data]);
+  const chemicals = useMemo(() => data?.chemicals ?? [], [data]);
+
+  const openSds = async (chemicalId: string) => {
+    const { data: res, error } = await (supabase as any).functions.invoke("hms-chemical-sds", {
+      body: { handbook_token: token, chemical_id: chemicalId },
+    });
+    if (error || (res as any)?.error || !(res as any)?.url) {
+      toast({ title: "Kunne ikke åpne sikkerhetsdatablad", variant: "destructive" });
+      return;
+    }
+    window.open((res as any).url, "_blank", "noopener");
+  };
 
   useEffect(() => {
     if (sections.length && !openId) setOpenId(sections[0].id);
@@ -164,6 +196,83 @@ export default function HandbookPublicPage() {
             </Card>
           );
         })}
+
+        {(resources.length > 0 || chemicals.length > 0) && (
+          <Card className="border-primary/30">
+            <CardContent className="pt-4 space-y-4">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Package className="h-4 w-4" /> Viktige vedlegg og lenker
+              </div>
+
+              {resources.length > 0 && (
+                <div className="space-y-1.5">
+                  {resources.map((r, i) => (
+                    <div key={`${r.label}-${i}`} className="rounded-md border bg-secondary/30 px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          {RESOURCE_TYPE_LABELS[r.type as HandbookResourceType] ?? r.type}
+                        </Badge>
+                        <span className="text-sm font-medium flex-1">{r.label}</span>
+                        {isPublicUrl(r.url) && (
+                          <a href={r.url!} target="_blank" rel="noopener noreferrer" className="text-primary">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
+                      {r.note && <p className="text-xs text-muted-foreground mt-1">{r.note}</p>}
+                      {r.url && !isPublicUrl(r.url) && (
+                        <p className="text-[11px] text-muted-foreground mt-1">Tilgjengelig når du logger inn i MCS Kontrollsenter.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {chemicals.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                    <FlaskConical className="h-3.5 w-3.5" /> Stoffkartotek – kjemikalier for ditt arbeid
+                  </div>
+                  {chemicals.map((c) => (
+                    <div key={c.id} className="rounded-md border px-3 py-2 space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-medium">{c.product_name}</div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {[c.supplier, c.category].filter(Boolean).join(" · ")}
+                          </div>
+                        </div>
+                        {c.is_high_risk && (
+                          <Badge variant="outline" className="text-[10px] border-red-300 bg-red-50 text-red-700 gap-1">
+                            <AlertTriangle className="h-3 w-3" /> Høyrisiko
+                          </Badge>
+                        )}
+                      </div>
+                      {c.ppe_requirements && (
+                        <p className="text-xs"><span className="text-muted-foreground">Verneutstyr: </span>{c.ppe_requirements}</p>
+                      )}
+                      {c.first_aid && (
+                        <p className="text-xs"><span className="text-muted-foreground">Førstehjelp: </span>{c.first_aid}</p>
+                      )}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {c.requires_sja && <Badge variant="outline" className="text-[10px]">Krever SJA</Badge>}
+                        {c.requires_special_ppe && <Badge variant="outline" className="text-[10px]">Særskilt PVU</Badge>}
+                        {c.has_sds ? (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSds(c.id)}>
+                            <FileDown className="h-3.5 w-3.5 mr-1" /> Sikkerhetsdatablad
+                            {c.sds_version ? ` (v${c.sds_version})` : ""}
+                          </Button>
+                        ) : (
+                          <span className="text-[11px] text-amber-700">Sikkerhetsdatablad ikke lastet opp – kontakt HMS-ansvarlig.</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 border-t bg-background px-4 py-3">
