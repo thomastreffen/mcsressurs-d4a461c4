@@ -85,14 +85,22 @@ Deno.serve(async (req) => {
       return json({ error: "Ugyldig versjon" }, 400);
     }
 
-    const sectionIds = (body.section_ids ?? []).filter(Boolean);
+    const requestedIds = (body.section_ids ?? []).filter(Boolean);
+    let sectionIds: string[] = [];
     let sectionTitles: string[] = [];
-    if (sectionIds.length > 0) {
+    if (requestedIds.length > 0) {
+      // Kun kapitler som faktisk hører til denne utgaven
       const { data: secs } = await admin
         .from("hms_handbook_sections")
-        .select("heading")
-        .in("id", sectionIds);
+        .select("id, heading, ordering")
+        .eq("version_id", version.id)
+        .in("id", requestedIds)
+        .order("ordering", { ascending: true });
+      sectionIds = (secs ?? []).map((s: any) => s.id);
       sectionTitles = (secs ?? []).map((s: any) => s.heading);
+      if (sectionIds.length === 0) {
+        return json({ error: "Ingen gyldige kapitler valgt for denne utgaven" }, 400);
+      }
     }
 
     const channels = (body.channels ?? ["email"]).filter((c) => c === "email" || c === "sms");
@@ -107,6 +115,7 @@ Deno.serve(async (req) => {
         version_id: version.id,
         version_number: version.version_number,
         section_ids: sectionIds,
+        section_titles: sectionTitles,
         scope: sectionIds.length > 0 ? "chapters" : "full",
         channels,
         subject: body.subject ?? null,
@@ -124,6 +133,8 @@ Deno.serve(async (req) => {
       company_id: handbook.company_id,
       handbook_id: handbook.id,
       version_id: version.id,
+      section_ids: sectionIds,
+      section_titles: sectionTitles,
       person_id: r.person_id ?? null,
       user_id: r.user_id ?? null,
       full_name: r.full_name ?? null,
@@ -217,6 +228,8 @@ Deno.serve(async (req) => {
         version_id: version.id,
         version_number: version.version_number,
         section_ids: sectionIds,
+        section_titles: sectionTitles,
+        scope: sectionIds.length > 0 ? "chapters" : "full",
         channels,
         recipient_count: results.length,
         failed: results.filter((r) => r.status === "failed").length,

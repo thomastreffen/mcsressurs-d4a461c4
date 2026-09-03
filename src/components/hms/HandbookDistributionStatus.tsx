@@ -40,10 +40,16 @@ export function HandbookDistributionStatus({
   const sendMut = useSendHandbook();
   const [sendOpen, setSendOpen] = useState(false);
 
-  const chapterName = (ids: string[]) =>
-    ids.length === 0
-      ? "Hele håndboken"
-      : ids.map((id) => chapters.find((c) => c.id === id)?.heading ?? "Kapittel").join(", ");
+  /** Innhold slik det faktisk ble sendt – bruker lagrede kapittelnavn, med fallback til nåværende kapitler. */
+  const contentLabel = (ids: string[] | null | undefined, titles: string[] | null | undefined) => {
+    const list = ids ?? [];
+    if (list.length === 0) return "Hele håndboken";
+    return list
+      .map((id, i) => chapters.find((c) => c.id === id)?.heading ?? titles?.[i] ?? "Kapittel")
+      .join(", ");
+  };
+  const scopeLabel = (ids: string[] | null | undefined) =>
+    (ids ?? []).length === 0 ? "Hele håndboken" : "Valgte kapitler";
 
   const currentRecipients = useMemo(
     () => recipients.filter((r) => !versionId || r.version_id === versionId),
@@ -56,28 +62,46 @@ export function HandbookDistributionStatus({
     return s;
   }, [currentRecipients]);
 
+  /**
+   * Purring gjelder kun innholdet som faktisk ble sendt: mottakere grupperes per
+   * innhold (hele håndboken vs. samme kapittelutvalg), og hver gruppe purres for seg.
+   */
   const remind = async () => {
     const pending = currentRecipients.filter((r) => !r.acknowledged_at);
-    const unique = new Map<string, typeof pending[number]>();
-    for (const r of pending) if (r.person_id && !unique.has(r.person_id)) unique.set(r.person_id, r);
-    if (unique.size === 0 || !versionId) {
+    if (pending.length === 0 || !versionId) {
       toast({ title: "Ingen å purre", description: "Alle mottakere har bekreftet." });
       return;
     }
+
+    const groups = new Map<string, { ids: string[]; titles: string[]; people: Map<string, typeof pending[number]> }>();
+    for (const r of pending) {
+      const ids = [...(r.section_ids ?? [])].sort();
+      const key = ids.join("|");
+      if (!groups.has(key)) groups.set(key, { ids, titles: r.section_titles ?? [], people: new Map() });
+      const g = groups.get(key)!;
+      const pid = r.person_id ?? r.id;
+      if (!g.people.has(pid)) g.people.set(pid, r);
+    }
+
     try {
-      await sendMut.mutateAsync({
-        handbook_id: handbookId,
-        version_id: versionId,
-        section_ids: [],
-        channels: ["email"],
-        kind: "reminder",
-        subject: `Påminnelse: ${handbookTitle}`,
-        message: "Vi mangler din bekreftelse på at du har lest denne HMS-informasjonen.",
-        recipients: [...unique.values()].map((r) => ({
-          person_id: r.person_id, user_id: r.user_id, full_name: r.full_name, email: r.email, phone: r.phone,
-        })),
-      });
-      toast({ title: "Påminnelse sendt", description: `${unique.size} mottaker(e) er purret.` });
+      let count = 0;
+      for (const g of groups.values()) {
+        const label = contentLabel(g.ids, g.titles);
+        await sendMut.mutateAsync({
+          handbook_id: handbookId,
+          version_id: versionId,
+          section_ids: g.ids,
+          channels: ["email"],
+          kind: "reminder",
+          subject: `Påminnelse: ${handbookTitle}`,
+          message: `Vi mangler din bekreftelse på at du har lest ${label.toLowerCase() === "hele håndboken" ? "hele håndboken" : label}.`,
+          recipients: [...g.people.values()].map((r) => ({
+            person_id: r.person_id, user_id: r.user_id, full_name: r.full_name, email: r.email, phone: r.phone,
+          })),
+        });
+        count += g.people.size;
+      }
+      toast({ title: "Påminnelse sendt", description: `${count} mottaker(e) er purret på det de fikk tilsendt.` });
     } catch (e: any) {
       toast({ title: "Purring feilet", description: String(e.message || e), variant: "destructive" });
     }
@@ -86,12 +110,17 @@ export function HandbookDistributionStatus({
   const exportCsv = () => {
     const q = (v: any) => JSON.stringify(v ?? "");
     const lines = [
-      ["Navn", "E-post", "Telefon", "Innhold", "Utgave", "Kanal", "Sendt", "Første åpning", "Bekreftet", "Metode", "Levering", "Purringer"].join(";"),
+      ["Navn", "E-post", "Telefon", "Type utsending", "Kapittelnavn", "Kapittel-IDer", "Utgave", "Kanal", "Sendt", "Første åpning", "Bekreftet", "Metode", "Levering", "Purringer"].join(";"),
       ...recipients.map((r) => {
         const d = distributions.find((x) => x.id === r.distribution_id);
+        const ids = r.section_ids?.length ? r.section_ids : d?.section_ids ?? [];
+        const titles = r.section_titles?.length ? r.section_titles : d?.section_titles ?? [];
         return [
           q(r.full_name), q(r.email), q(r.phone),
-          q(chapterName(d?.section_ids ?? [])), q(d?.version_number ?? ""),
+          q(scopeLabel(ids)),
+          q(ids.length === 0 ? "" : contentLabel(ids, titles)),
+          q(ids.join(", ")),
+          q(d?.version_number ?? ""),
           q(r.channel),
           q(r.sent_at ? format(new Date(r.sent_at), "yyyy-MM-dd HH:mm") : ""),
           q(r.first_opened_at ? format(new Date(r.first_opened_at), "yyyy-MM-dd HH:mm") : ""),
@@ -149,6 +178,7 @@ export function HandbookDistributionStatus({
           <TableHeader>
             <TableRow>
               <TableHead>Ansatt</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Innhold</TableHead>
               <TableHead>Utgave</TableHead>
               <TableHead>Status</TableHead>
@@ -159,12 +189,14 @@ export function HandbookDistributionStatus({
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-sm text-muted-foreground">Laster…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-sm text-muted-foreground">Laster…</TableCell></TableRow>
             ) : recipients.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-sm text-muted-foreground">Ingen utsendinger enda.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-sm text-muted-foreground">Ingen utsendinger enda.</TableCell></TableRow>
             ) : (
               recipients.map((r) => {
                 const d = distributions.find((x) => x.id === r.distribution_id);
+                const ids = r.section_ids?.length ? r.section_ids : d?.section_ids ?? [];
+                const titles = r.section_titles?.length ? r.section_titles : d?.section_titles ?? [];
                 const state = recipientState(r);
                 return (
                   <TableRow key={r.id}>
@@ -172,7 +204,12 @@ export function HandbookDistributionStatus({
                       <div className="font-medium text-sm">{r.full_name ?? "—"}</div>
                       <div className="text-[11px] text-muted-foreground">{r.email ?? r.phone ?? ""}</div>
                     </TableCell>
-                    <TableCell className="text-xs max-w-[220px] truncate">{chapterName(d?.section_ids ?? [])}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">
+                      <Badge variant="outline" className="text-[10px]">{scopeLabel(ids)}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs max-w-[240px]">
+                      <span className="line-clamp-2">{contentLabel(ids, titles)}</span>
+                    </TableCell>
                     <TableCell className="text-xs">{d?.version_number ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant={STATE_VARIANT[state]} className="text-[10px]">{RECIPIENT_STATE_LABEL[state]}</Badge>

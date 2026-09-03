@@ -113,9 +113,13 @@ export default function HandbookPublicPage() {
       </header>
 
       <main className="mx-auto max-w-2xl p-4 space-y-3 pb-32">
-        {data.recipient?.full_name && (
-          <p className="text-sm text-muted-foreground">Hei {data.recipient.full_name}, les gjennom og bekreft nederst.</p>
-        )}
+        <p className="text-sm text-muted-foreground">
+          {data.recipient?.full_name ? `Hei ${data.recipient.full_name}. ` : ""}
+          {sections.length === 1
+            ? "Du har fått tilsendt ett kapittel."
+            : `Du har fått tilsendt ${sections.length} kapitler.`}{" "}
+          Les gjennom og bekreft nederst.
+        </p>
 
         {sections.map((s) => {
           const open = openId === s.id;

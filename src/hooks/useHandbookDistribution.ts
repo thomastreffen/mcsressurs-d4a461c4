@@ -15,6 +15,8 @@ export interface HandbookRecipientRow {
   email: string | null;
   phone: string | null;
   share_token: string;
+  section_ids: string[];
+  section_titles: string[];
   channel: string;
   delivery_status: string;
   delivery_error: string | null;
@@ -33,6 +35,7 @@ export interface HandbookDistributionRow {
   version_id: string;
   version_number: number | null;
   section_ids: string[];
+  section_titles: string[];
   scope: string;
   channels: string[];
   subject: string | null;
@@ -102,7 +105,7 @@ export function useHandbookDistributions(handbookId?: string) {
     queryFn: async () => {
       let q = sb
         .from("hms_handbook_distributions")
-        .select("id, handbook_id, version_id, version_number, section_ids, scope, channels, subject, message, kind, recipient_count, sent_by, sent_at")
+        .select("id, handbook_id, version_id, version_number, section_ids, section_titles, scope, channels, subject, message, kind, recipient_count, sent_by, sent_at")
         .eq("company_id", cid)
         .order("sent_at", { ascending: false })
         .limit(200);
@@ -122,7 +125,7 @@ export function useHandbookRecipients(handbookId?: string) {
     queryFn: async () => {
       let q = sb
         .from("hms_handbook_recipients")
-        .select("id, distribution_id, handbook_id, version_id, person_id, user_id, full_name, email, phone, share_token, channel, delivery_status, delivery_error, sent_at, first_opened_at, last_opened_at, open_count, acknowledged_at, ack_method, reminder_count")
+        .select("id, distribution_id, handbook_id, version_id, person_id, user_id, full_name, email, phone, share_token, section_ids, section_titles, channel, delivery_status, delivery_error, sent_at, first_opened_at, last_opened_at, open_count, acknowledged_at, ack_method, reminder_count")
         .eq("company_id", cid)
         .order("sent_at", { ascending: false })
         .limit(1000);
