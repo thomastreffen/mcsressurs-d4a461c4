@@ -27,6 +27,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import { logHmsAudit } from "@/lib/hms/audit";
+import { invalidateAckQueries, confirmedViaLabel } from "@/lib/hms/handbookAck";
 import { usePermissions } from "@/hooks/usePermissions";
 import { HandbookDistributionStatus } from "@/components/hms/HandbookDistributionStatus";
 import { HandbookResourceLinks } from "@/components/hms/HandbookResourceLinks";
