@@ -132,6 +132,11 @@ import HmsIncidentDetailPage from "./pages/hms/HmsIncidentDetailPage";
 import HmsPeoplePage from "./pages/hms/HmsPeoplePage";
 import HmsMyHandbookPage from "./pages/hms/HmsMyHandbookPage";
 import HmsMyHandbookReaderPage from "./pages/hms/HmsMyHandbookReaderPage";
+import HmsChemicalsPage from "./pages/hms/HmsChemicalsPage";
+import HmsChemicalDetailPage from "./pages/hms/HmsChemicalDetailPage";
+import HmsMyChemicalsPage from "./pages/hms/HmsMyChemicalsPage";
+import ChemicalPublicPage from "./pages/hms/ChemicalPublicPage";
+
 import HandbookPublicPage from "./pages/hms/HandbookPublicPage";
 import HmsPersonDetailPage from "./pages/hms/HmsPersonDetailPage";
 import { HmsContextGate } from "@/components/hms/HmsContextGate";
