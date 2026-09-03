@@ -149,7 +149,9 @@ export default function HmsHandbookDetailPage() {
       const [{ data: emps }, { data: accounts }, { data: acks }, { data: recips }] = await Promise.all([
         sb.from("employment_profiles")
           .select("person_id, archived_at, people(full_name, email, is_active)")
-          .eq("company_id", activeCompanyId),
+          .eq("company_id", activeCompanyId)
+          .eq("include_in_hms_people", true),
+
         sb.from("user_accounts").select("person_id, auth_user_id").eq("company_id", activeCompanyId),
         sb.from("hms_handbook_acknowledgements")
           .select("user_id, person_id, recipient_id, section_id, acknowledged_at, confirmed_via")
