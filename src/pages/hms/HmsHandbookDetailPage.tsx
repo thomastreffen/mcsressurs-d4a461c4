@@ -28,6 +28,7 @@ import { nb } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import { logHmsAudit } from "@/lib/hms/audit";
 import { usePermissions } from "@/hooks/usePermissions";
+import { HandbookDistributionStatus } from "@/components/hms/HandbookDistributionStatus";
 
 const CONFIRMATION_TEXT = "Jeg har lest og forstått denne håndboken.";
 
@@ -40,7 +41,7 @@ interface Version {
   requires_acknowledgement: boolean; published_at: string | null; published_by: string | null;
   changelog: string | null; created_at: string;
 }
-interface Section { id: string; heading: string; body: string | null; ordering: number; }
+interface Section { id: string; heading: string; body: string | null; ordering: number; is_mandatory: boolean; }
 interface Ack { id: string; user_id: string; version_id: string; acknowledged_at: string; }
 
 export default function HmsHandbookDetailPage() {
@@ -102,7 +103,7 @@ export default function HmsHandbookDetailPage() {
       const sb = supabase as any;
       const { data, error } = await sb
         .from("hms_handbook_sections")
-        .select("id, heading, body, ordering")
+        .select("id, heading, body, ordering, is_mandatory")
         .eq("version_id", viewVersion!.id)
         .order("ordering", { ascending: true });
       if (error) throw error;
