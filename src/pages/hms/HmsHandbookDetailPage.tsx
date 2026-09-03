@@ -626,7 +626,16 @@ export default function HmsHandbookDetailPage() {
                 )}
               </CardContent>
             </Card>
+            {canManage && activeChapter && viewVersion && (() => {
+              const sr = sectionResources.find((s) => s.id === activeChapter.id);
+              return sr ? (
+                <div className="md:col-start-2">
+                  <HandbookResourceLinks versionId={viewVersion.id} section={sr} />
+                </div>
+              ) : null;
+            })()}
           </div>
+
         </TabsContent>
 
         {canManage && (
