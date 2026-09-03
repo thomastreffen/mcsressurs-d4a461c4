@@ -61,6 +61,10 @@ export function HandbookDistributeDialog({
       toast({ title: "Ingen publisert utgave", description: "Publiser håndboken før utsending.", variant: "destructive" });
       return;
     }
+    if (scope === "chapters" && selectedChapters.length === 0) {
+      toast({ title: "Velg minst ett kapittel", variant: "destructive" });
+      return;
+    }
     if (selected.length === 0) {
       toast({ title: "Velg minst én ansatt", variant: "destructive" });
       return;
@@ -150,7 +154,7 @@ export function HandbookDistributeDialog({
         ) : (
           <div className="space-y-5">
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Innhold</Label>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">1. Innhold</Label>
               <div className="flex gap-2">
                 <Button size="sm" variant={scope === "full" ? "default" : "outline"} onClick={() => setScope("full")}>
                   Hele håndboken
@@ -159,6 +163,11 @@ export function HandbookDistributeDialog({
                   Valgte kapitler
                 </Button>
               </div>
+              {scope === "chapters" && (
+                <p className="text-xs text-muted-foreground">
+                  Velg ett eller flere kapitler. Mottakerne ser kun disse, og bekreftelsen gjelder hvert valgte kapittel.
+                </p>
+              )}
               {scope === "chapters" && (
                 <ScrollArea className="h-40 rounded-md border p-2">
                   <div className="space-y-1.5">
@@ -180,7 +189,7 @@ export function HandbookDistributeDialog({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Mottakere {selected.length > 0 && `(${selected.length})`}
+                  2. Mottakere {selected.length > 0 && `(${selected.length})`}
                 </Label>
                 <Button
                   size="sm"
@@ -220,7 +229,7 @@ export function HandbookDistributeDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Kanal</Label>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">3. Kanal</Label>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 text-sm">
                   <Checkbox checked={useEmail} onCheckedChange={(v) => setUseEmail(!!v)} /> E-post
