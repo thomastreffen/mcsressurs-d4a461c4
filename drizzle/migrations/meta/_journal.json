@@ -22,6 +22,13 @@
       "when": 1788426327357,
       "tag": "0002_handbook_distribution_scope_ack",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788426374858,
+      "tag": "0003_handbook_recipient_section_ids",
+      "breakpoints": true
     }
   ]
 }

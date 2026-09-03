@@ -7170,6 +7170,7 @@ export type Database = {
           person_id: string | null
           phone: string | null
           reminder_count: number
+          section_ids: string[]
           section_titles: string[]
           sent_at: string | null
           share_token: string
@@ -7197,6 +7198,7 @@ export type Database = {
           person_id?: string | null
           phone?: string | null
           reminder_count?: number
+          section_ids?: string[]
           section_titles?: string[]
           sent_at?: string | null
           share_token?: string
@@ -7224,6 +7226,7 @@ export type Database = {
           person_id?: string | null
           phone?: string | null
           reminder_count?: number
+          section_ids?: string[]
           section_titles?: string[]
           sent_at?: string | null
           share_token?: string
