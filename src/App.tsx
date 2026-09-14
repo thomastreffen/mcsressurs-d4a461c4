@@ -22,6 +22,8 @@ import OverviewPage from "./pages/OverviewPage";
 import KpiDashboard from "./pages/KpiDashboard";
 import JobsPage from "./pages/JobsPage";
 import ResourcePlan from "./pages/ResourcePlan";
+import PlanningBoardPage from "./pages/planning/PlanningBoardPage";
+import PlanningProjectPage from "./pages/planning/PlanningProjectPage";
 import JobDetail from "./pages/JobDetail";
 import MaterialPickListPrintPage from "./pages/MaterialPickListPrintPage";
 import SharedMaterialListPage from "./pages/SharedMaterialListPage";
