@@ -67,6 +67,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const mainNav = [
   { title: "Hjem", url: "/overview", icon: Home, moduleKey: "overview", modulePermission: "module.overview" },
+  // Planlegging er tilgjengelig for alle interne brukere – ingen modul- eller ressursplan-krav.
+  { title: "Planlegging", url: "/planlegging", icon: LayoutDashboard, alwaysVisible: true },
   { title: "Prosjekter", url: "/projects", icon: FolderKanban, moduleKey: "projects", modulePermission: "module.projects", requiredPermission: "jobs.view" },
   { title: "Ressursplan", url: "/projects/plan", icon: CalendarDays, moduleKey: "resource_plan", modulePermission: "module.resource_plan", requiredPermission: "resourceplan.view" },
   { title: "Fravær", url: "/absence", icon: CalendarOff, moduleKey: "absence", modulePermission: "module.absence" },
