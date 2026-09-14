@@ -273,6 +273,8 @@ const App = () => (
               <Route path="/projects/:id/conversations/new" element={<ConversationNewPage />} />
               <Route path="/projects/:id/conversations/:threadId" element={<ConversationDetailPage />} />
               <Route path="/projects/plan" element={<ResourcePlan />} />
+              <Route path="/planlegging" element={<PlanningBoardPage />} />
+              <Route path="/planlegging/:id" element={<PlanningProjectPage />} />
               <Route path="/calendar/confirmations" element={<ConfirmationsPage />} />
               <Route path="/absence" element={<AbsencePage />} />
               <Route path="/admin/ai-matcher" element={
