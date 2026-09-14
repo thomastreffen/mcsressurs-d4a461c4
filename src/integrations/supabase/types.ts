@@ -12548,6 +12548,745 @@ export type Database = {
           },
         ]
       }
+      planning_activity: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          metadata: Json
+          performed_by: string | null
+          performed_by_name: string | null
+          planning_project_id: string
+          summary: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          performed_by?: string | null
+          performed_by_name?: string | null
+          planning_project_id: string
+          summary: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          performed_by?: string | null
+          performed_by_name?: string | null
+          planning_project_id?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_activity_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_contacts: {
+        Row: {
+          company_name: string | null
+          contact_type: string
+          created_at: string
+          created_by: string | null
+          department_name: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          planning_project_id: string
+          role: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          contact_type?: string
+          created_at?: string
+          created_by?: string | null
+          department_name?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          planning_project_id: string
+          role?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          contact_type?: string
+          created_at?: string
+          created_by?: string | null
+          department_name?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          planning_project_id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_contacts_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_external_refs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          planning_project_id: string
+          reference: string | null
+          system: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          planning_project_id: string
+          reference?: string | null
+          system: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          planning_project_id?: string
+          reference?: string | null
+          system?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_external_refs_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_files: {
+        Row: {
+          category: string
+          company_id: string | null
+          created_at: string
+          department_id: string | null
+          display_name: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          original_file_name: string
+          planning_project_id: string
+          revision: number
+          storage_path: string
+          supersedes_file_id: string | null
+          uploaded_by: string | null
+          uploaded_by_name: string | null
+          visibility: string
+        }
+        Insert: {
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          display_name: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          original_file_name: string
+          planning_project_id: string
+          revision?: number
+          storage_path: string
+          supersedes_file_id?: string | null
+          uploaded_by?: string | null
+          uploaded_by_name?: string | null
+          visibility?: string
+        }
+        Update: {
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          display_name?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          original_file_name?: string
+          planning_project_id?: string
+          revision?: number
+          storage_path?: string
+          supersedes_file_id?: string | null
+          uploaded_by?: string | null
+          uploaded_by_name?: string | null
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_files_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_files_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_files_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_files_supersedes_file_id_fkey"
+            columns: ["supersedes_file_id"]
+            isOneToOne: false
+            referencedRelation: "planning_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_members: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          id: string
+          member_type: string
+          person_id: string | null
+          planning_project_id: string
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          id?: string
+          member_type?: string
+          person_id?: string | null
+          planning_project_id: string
+          role?: string
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          id?: string
+          member_type?: string
+          person_id?: string | null
+          planning_project_id?: string
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_members_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_members_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_members_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_members_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_members_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_messages: {
+        Row: {
+          attachments: Json
+          author_company: string | null
+          author_department: string | null
+          author_id: string | null
+          author_name: string | null
+          body: string
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_important: boolean
+          mentioned_department_ids: string[]
+          mentioned_user_ids: string[]
+          planning_project_id: string
+          reply_to_id: string | null
+          visibility: string
+        }
+        Insert: {
+          attachments?: Json
+          author_company?: string | null
+          author_department?: string | null
+          author_id?: string | null
+          author_name?: string | null
+          body: string
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_important?: boolean
+          mentioned_department_ids?: string[]
+          mentioned_user_ids?: string[]
+          planning_project_id: string
+          reply_to_id?: string | null
+          visibility?: string
+        }
+        Update: {
+          attachments?: Json
+          author_company?: string | null
+          author_department?: string | null
+          author_id?: string | null
+          author_name?: string | null
+          body?: string
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_important?: boolean
+          mentioned_department_ids?: string[]
+          mentioned_user_ids?: string[]
+          planning_project_id?: string
+          reply_to_id?: string | null
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_messages_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "planning_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_projects: {
+        Row: {
+          budget_value: number | null
+          company_id: string | null
+          contract_form: string
+          contract_value: number | null
+          created_at: string
+          created_by: string | null
+          customer_contact_id: string | null
+          customer_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          department_id: string | null
+          description: string | null
+          estimated_hours: number | null
+          estimated_material_cost: number | null
+          expected_end: string | null
+          expected_start: string | null
+          hourly_rate: number | null
+          id: string
+          invoice_recipient: string | null
+          invoicing_company_id: string | null
+          linked_event_id: string | null
+          name: string
+          owner_user_id: string | null
+          period_label: string | null
+          status: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          budget_value?: number | null
+          company_id?: string | null
+          contract_form?: string
+          contract_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          customer_contact_id?: string | null
+          customer_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          estimated_hours?: number | null
+          estimated_material_cost?: number | null
+          expected_end?: string | null
+          expected_start?: string | null
+          hourly_rate?: number | null
+          id?: string
+          invoice_recipient?: string | null
+          invoicing_company_id?: string | null
+          linked_event_id?: string | null
+          name: string
+          owner_user_id?: string | null
+          period_label?: string | null
+          status?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          budget_value?: number | null
+          company_id?: string | null
+          contract_form?: string
+          contract_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          customer_contact_id?: string | null
+          customer_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          estimated_hours?: number | null
+          estimated_material_cost?: number | null
+          expected_end?: string | null
+          expected_start?: string | null
+          hourly_rate?: number | null
+          id?: string
+          invoice_recipient?: string | null
+          invoicing_company_id?: string | null
+          linked_event_id?: string | null
+          name?: string
+          owner_user_id?: string | null
+          period_label?: string | null
+          status?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_projects_customer_contact_id_fkey"
+            columns: ["customer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "customer_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_projects_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_projects_invoicing_company_id_fkey"
+            columns: ["invoicing_company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_projects_linked_event_id_fkey"
+            columns: ["linked_event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_tasks: {
+        Row: {
+          assignee_person_id: string | null
+          company_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          planning_project_id: string
+          status: string
+          title: string
+          updated_at: string
+          work_package_id: string | null
+        }
+        Insert: {
+          assignee_person_id?: string | null
+          company_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          planning_project_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          work_package_id?: string | null
+        }
+        Update: {
+          assignee_person_id?: string | null
+          company_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          planning_project_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          work_package_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_tasks_assignee_person_id_fkey"
+            columns: ["assignee_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_tasks_assignee_person_id_fkey"
+            columns: ["assignee_person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_tasks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_tasks_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_tasks_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_tasks_work_package_id_fkey"
+            columns: ["work_package_id"]
+            isOneToOne: false
+            referencedRelation: "planning_work_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_work_packages: {
+        Row: {
+          agreed_price: number | null
+          assignment_state: string
+          billing_from_company_id: string | null
+          billing_to_company_id: string | null
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          estimated_hours: number | null
+          external_vendor_name: string | null
+          hourly_rate: number | null
+          id: string
+          linked_event_id: string | null
+          name: string
+          planned_end: string | null
+          planned_start: string | null
+          planning_project_id: string
+          price_form: string
+          resource_count: number | null
+          responsible_company_id: string | null
+          responsible_department_id: string | null
+          responsible_person_id: string | null
+          sort_order: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agreed_price?: number | null
+          assignment_state?: string
+          billing_from_company_id?: string | null
+          billing_to_company_id?: string | null
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_hours?: number | null
+          external_vendor_name?: string | null
+          hourly_rate?: number | null
+          id?: string
+          linked_event_id?: string | null
+          name: string
+          planned_end?: string | null
+          planned_start?: string | null
+          planning_project_id: string
+          price_form?: string
+          resource_count?: number | null
+          responsible_company_id?: string | null
+          responsible_department_id?: string | null
+          responsible_person_id?: string | null
+          sort_order?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agreed_price?: number | null
+          assignment_state?: string
+          billing_from_company_id?: string | null
+          billing_to_company_id?: string | null
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_hours?: number | null
+          external_vendor_name?: string | null
+          hourly_rate?: number | null
+          id?: string
+          linked_event_id?: string | null
+          name?: string
+          planned_end?: string | null
+          planned_start?: string | null
+          planning_project_id?: string
+          price_form?: string
+          resource_count?: number | null
+          responsible_company_id?: string | null
+          responsible_department_id?: string | null
+          responsible_person_id?: string | null
+          sort_order?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_work_packages_billing_from_company_id_fkey"
+            columns: ["billing_from_company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_work_packages_billing_to_company_id_fkey"
+            columns: ["billing_to_company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_work_packages_linked_event_id_fkey"
+            columns: ["linked_event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_work_packages_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_work_packages_responsible_company_id_fkey"
+            columns: ["responsible_company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_work_packages_responsible_department_id_fkey"
+            columns: ["responsible_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_work_packages_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_work_packages_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_notification_preferences: {
         Row: {
           channel_email: boolean
@@ -15826,6 +16565,10 @@ export type Database = {
       }
       has_hms_view: {
         Args: { _auth_user_id: string; _company_id: string }
+        Returns: boolean
+      }
+      has_planning_project_access: {
+        Args: { _project_id: string }
         Returns: boolean
       }
       has_role: {

@@ -22,6 +22,8 @@ import OverviewPage from "./pages/OverviewPage";
 import KpiDashboard from "./pages/KpiDashboard";
 import JobsPage from "./pages/JobsPage";
 import ResourcePlan from "./pages/ResourcePlan";
+import PlanningBoardPage from "./pages/planning/PlanningBoardPage";
+import PlanningProjectPage from "./pages/planning/PlanningProjectPage";
 import JobDetail from "./pages/JobDetail";
 import MaterialPickListPrintPage from "./pages/MaterialPickListPrintPage";
 import SharedMaterialListPage from "./pages/SharedMaterialListPage";
@@ -273,6 +275,8 @@ const App = () => (
               <Route path="/projects/:id/conversations/new" element={<ConversationNewPage />} />
               <Route path="/projects/:id/conversations/:threadId" element={<ConversationDetailPage />} />
               <Route path="/projects/plan" element={<ResourcePlan />} />
+              <Route path="/planlegging" element={<PlanningBoardPage />} />
+              <Route path="/planlegging/:id" element={<PlanningProjectPage />} />
               <Route path="/calendar/confirmations" element={<ConfirmationsPage />} />
               <Route path="/absence" element={<AbsencePage />} />
               <Route path="/admin/ai-matcher" element={

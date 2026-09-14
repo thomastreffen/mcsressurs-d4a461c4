@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   Clock,
   ShieldAlert,
+  LayoutDashboard,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,6 +68,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const mainNav = [
   { title: "Hjem", url: "/overview", icon: Home, moduleKey: "overview", modulePermission: "module.overview" },
+  // Planlegging er tilgjengelig for alle interne brukere – ingen modul- eller ressursplan-krav.
+  { title: "Planlegging", url: "/planlegging", icon: LayoutDashboard, alwaysVisible: true },
   { title: "Prosjekter", url: "/projects", icon: FolderKanban, moduleKey: "projects", modulePermission: "module.projects", requiredPermission: "jobs.view" },
   { title: "Ressursplan", url: "/projects/plan", icon: CalendarDays, moduleKey: "resource_plan", modulePermission: "module.resource_plan", requiredPermission: "resourceplan.view" },
   { title: "Fravær", url: "/absence", icon: CalendarOff, moduleKey: "absence", modulePermission: "module.absence" },
@@ -211,7 +214,9 @@ export function AppSidebar() {
   const hasPostkontor = hasPermission("postkontor.view") || isAdmin;
   const hasPostkontorAdmin = hasPermission("postkontor.admin") || isAdmin;
 
-  const visibleMainNav = mainNav.filter((item) => {
+  const visibleMainNav = mainNav.filter((item: any) => {
+    // Alltid synlige hovedinnganger (f.eks. Planlegging) trenger ingen modul/permission
+    if (item.alwaysVisible) return true;
     if (!canAccessModule(item.moduleKey, item.modulePermission)) return false;
     // Additional action-level permission check
     if (item.requiredPermission && !isAdmin && !hasPermission(item.requiredPermission)) return false;

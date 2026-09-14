@@ -64,6 +64,13 @@
       "when": 1788431630468,
       "tag": "0008_handbook_ack_scope_idempotent",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789382632619,
+      "tag": "0009_create_planning_projects",
+      "breakpoints": true
     }
   ]
 }
