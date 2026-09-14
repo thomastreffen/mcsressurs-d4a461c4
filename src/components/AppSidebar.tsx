@@ -214,7 +214,9 @@ export function AppSidebar() {
   const hasPostkontor = hasPermission("postkontor.view") || isAdmin;
   const hasPostkontorAdmin = hasPermission("postkontor.admin") || isAdmin;
 
-  const visibleMainNav = mainNav.filter((item) => {
+  const visibleMainNav = mainNav.filter((item: any) => {
+    // Alltid synlige hovedinnganger (f.eks. Planlegging) trenger ingen modul/permission
+    if (item.alwaysVisible) return true;
     if (!canAccessModule(item.moduleKey, item.modulePermission)) return false;
     // Additional action-level permission check
     if (item.requiredPermission && !isAdmin && !hasPermission(item.requiredPermission)) return false;
