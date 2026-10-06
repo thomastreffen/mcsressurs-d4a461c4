@@ -8,7 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
-import { usePlanningLookups, usePlanningMutations } from "@/hooks/usePlanning";
+import {
+  uniqueParticipants,
+  useEligibleParticipants,
+  usePlanningLookups,
+  usePlanningMutations,
+} from "@/hooks/usePlanning";
+import { supabase } from "@/integrations/supabase/client";
+import { ParticipantPicker } from "@/components/planning/ParticipantPicker";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
@@ -31,6 +38,9 @@ export default function PlanningNewProjectPage() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [description, setDescription] = useState("");
+  const [participants, setParticipants] = useState<string[]>([]);
+  const { data: eligible } = useEligibleParticipants();
+  const ownerOptions = uniqueParticipants(eligible);
 
   // Aktivt firma og innlogget bruker lastes asynkront – sett standardverdier når dialogen åpnes
   useEffect(() => {
@@ -63,6 +73,18 @@ export default function PlanningNewProjectPage() {
         status: "early_planning",
       });
       toast.success("Planleggingsprosjekt opprettet");
+      // Overordnet ansvarlig legges inn automatisk (rolle «owner») av databasen
+      const extra = participants.filter((p) => p !== (ownerUserId === NONE ? null : ownerUserId));
+      if (extra.length > 0) {
+        const byId = new Map(ownerOptions.map((o) => [o.user_id, o]));
+        const { error: mErr } = await (supabase as any).from("planning_members").insert(
+          extra.map((uid) => ({
+            planning_project_id: id, user_id: uid, company_id: byId.get(uid)?.company_id ?? null,
+            role: "member", member_type: "internal",
+          })),
+        );
+        if (mErr) toast.error(`Prosjektet ble opprettet, men deltakere kunne ikke legges til: ${mErr.message}`);
+      }
       navigate(`/planlegging/${id}`, { replace: true });
     } catch (e: any) {
       toast.error(e.message ?? "Kunne ikke opprette prosjekt");
@@ -111,8 +133,8 @@ export default function PlanningNewProjectPage() {
                 <SelectTrigger><SelectValue placeholder="Velg person" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>Ikke valgt</SelectItem>
-                  {(lookups?.users ?? []).map((u) => (
-                    <SelectItem key={u.user_id} value={u.user_id}>{u.name || "Ukjent"}</SelectItem>
+                  {ownerOptions.map((u) => (
+                    <SelectItem key={u.user_id} value={u.user_id}>{u.full_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -149,6 +171,19 @@ export default function PlanningNewProjectPage() {
               <Label htmlFor="planning-project-end">Forventet slutt</Label>
               <Input id="planning-project-end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Deltakere</Label>
+            <ParticipantPicker
+              value={participants}
+              onChange={(ids) => setParticipants(ids)}
+              exclude={ownerUserId === NONE ? [] : [ownerUserId]}
+              label="Velg interne deltakere (valgfritt)"
+            />
+            <p className="text-xs text-muted-foreground">
+              Interne brukere som skal følge prosjektet. Kunde og kundekontakter legges til separat og gir ikke tilgang.
+            </p>
           </div>
 
           <div className="space-y-1.5">
