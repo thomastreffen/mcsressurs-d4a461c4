@@ -174,7 +174,7 @@ import PortalTeam from "./pages/portal/PortalTeam";
 import PortalNotificationSettings from "./pages/portal/PortalNotificationSettings";
 import PortalNotificationsPage from "./pages/portal/PortalNotificationsPage";
 import { PortalProvider } from "@/hooks/usePortal";
-import PublicHome from "./pages/public/Home";
+import HubHome from "./pages/public/HubHome";
 import { ServiceFeilsoking, Elektrotavler, Stromskinner, Hasteoppdrag } from "./pages/public/ServicePages";
 import { Kontakt, BestillService, OmMcs, Referanser } from "./pages/public/InfoPages";
 
@@ -208,7 +208,7 @@ const App = () => (
           <PreviewModeProvider>
           <Routes>
             {/* Public marketing site */}
-            <Route path="/" element={<PublicHome />} />
+            <Route path="/" element={<HubHome />} />
             <Route path="/tjenester/service-og-feilsoking" element={<ServiceFeilsoking />} />
             <Route path="/tjenester/elektrotavler" element={<Elektrotavler />} />
             <Route path="/tjenester/stromskinner" element={<Stromskinner />} />
@@ -218,7 +218,7 @@ const App = () => (
             <Route path="/kontakt" element={<Kontakt />} />
             <Route path="/bestill-service" element={<BestillService />} />
 
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<HubHome />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/approval/:token" element={<ApprovalPage />} />
             <Route path="/offer/accept/:token" element={<OfferAcceptPage />} />
