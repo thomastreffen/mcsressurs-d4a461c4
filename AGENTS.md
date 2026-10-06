@@ -1,0 +1,3 @@
+- New Planning files go in private bucket `planning-files` (path `{projectId}/...`) opened via short-lived signed URLs; legacy `planning/...` paths stay in public `job-attachments`. Why: real access control without breaking old links.
+- Planning staffing/date-deviation is derived live from events/event_technicians via `get_planning_wp_staffing`, never stored. Why: Ressursplan is source of truth.
+- RLS checks that test "no row exists" in another RLS-protected table must use a SECURITY DEFINER helper. Why: RLS hides rows and inverts the check.
