@@ -83,41 +83,17 @@ export function PlanningWorkPackages({
       toast.error("Sett planlagt start før arbeidspakken sendes til ressursplan");
       return;
     }
+    if (sendingId) return;
+    setSendingId(wp.id);
     try {
-      const start = new Date(`${wp.planned_start}T07:00:00`);
-      const end = new Date(`${wp.planned_end || wp.planned_start}T15:00:00`);
-      const customerName = nameOf(lookups?.customers, project.customer_id);
-      const { data, error } = await sb
-        .from("events")
-        .insert({
-          title: `${project.name} – ${wp.name}`,
-          description: [wp.description, resourceNeedLabel(wp.resource_count, wp.estimated_hours)]
-            .filter(Boolean)
-            .join("\n\nRessursbehov: "),
-          start_time: start.toISOString(),
-          end_time: end.toISOString(),
-          status: "requested",
-          project_type: "project",
-          company_id: wp.responsible_company_id ?? project.company_id,
-          department_id: wp.responsible_department_id ?? project.department_id,
-          customer: customerName,
-          customer_id: project.customer_id,
-          created_by: user?.id ?? null,
-          client_request_id: crypto.randomUUID(),
-        })
-        .select("id, project_number")
-        .single();
+      // Idempotent i databasen: låser arbeidspakken og gjenbruker eksisterende oppdrag
+      const { data, error } = await sb.rpc("send_planning_wp_to_resource_plan", { _wp_id: wp.id });
       if (error) throw error;
-
-      await saveWorkPackage.mutateAsync({
-        id: wp.id,
-        patch: { assignment_state: "in_resource_plan", linked_event_id: data.id },
-      });
-      await logActivity(
-        project.id,
-        "sent_to_resource_plan",
-        `Ressursbehov sendt til ressursplan: ${wp.name}${data.project_number ? ` (${data.project_number})` : ""}`,
-      );
+      invalidate();
+      if (!data?.created) {
+        toast.info("Arbeidspakken ligger allerede i ressursplanen");
+        return;
+      }
       if (project.status === "confirmed" || project.status === "early_planning" || project.status === "probable") {
         await updateProject.mutateAsync({
           id: project.id,
