@@ -53,7 +53,53 @@ export function PlanningOverview({
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const { data: lookups } = usePlanningLookups();
-  const { updateProject } = usePlanningMutations(project.id);
+  const { updateProject, saveWorkPackage } = usePlanningMutations(project.id);
+  const [suggest, setSuggest] = useState<{ from: string; to: string; ids: string[] } | null>(null);
+  const companyName = (id: string | null | undefined) => (id && lookups?.companies.find((c) => c.id === id)?.name) || "Ikke satt";
+  const deptName = (id: string | null | undefined) => (id && lookups?.departments.find((d) => d.id === id)?.name) || "Ikke satt";
+  const customerName = (id: string | null | undefined) => (id && lookups?.customers.find((c) => c.id === id)?.name) || "Ikke satt";
+
+  /** Lagrer ett felt med en gang og logger gammel → ny verdi i Historikk. */
+  const saveNow = async (patch: Partial<PlanningProject>, summary: string) => {
+    try {
+      await updateProject.mutateAsync({ id: project.id, patch, logSummary: summary });
+      toast.success("Lagret");
+    } catch (e: any) {
+      toast.error(e.message ?? "Kunne ikke lagre");
+    }
+  };
+
+  const changeClient = async (newId: string | null) => {
+    if (newId === project.company_id) return;
+    const deptValid = !project.department_id || (lookups?.departments ?? []).some((d) => d.id === project.department_id && d.company_id === newId);
+    const patch: Partial<PlanningProject> = { company_id: newId };
+    let summary = `Oppdragsgiver endret: ${companyName(project.company_id)} → ${companyName(newId)}`;
+    if (!deptValid) {
+      patch.department_id = null;
+      summary += ` (avdeling ${deptName(project.department_id)} nullstilt)`;
+    }
+    const oldId = project.company_id;
+    await saveNow(patch, summary);
+    // Foreslå – ikke gjør – oppdatering av arbeidspakker som bare har arvet «faktureres til» fra gammel oppdragsgiver
+    const inherited = workPackages.filter((w) => oldId && newId && w.billing_to_company_id === oldId);
+    setSuggest(inherited.length > 0 && oldId && newId ? { from: oldId, to: newId, ids: inherited.map((w) => w.id) } : null);
+  };
+
+  const applySuggestion = async () => {
+    if (!suggest) return;
+    try {
+      for (const id of suggest.ids) await saveWorkPackage.mutateAsync({ id, patch: { billing_to_company_id: suggest.to } });
+      await updateProject.mutateAsync({
+        id: project.id,
+        patch: {},
+        logSummary: `«Faktureres til» endret på ${suggest.ids.length} arbeidspakke(r): ${companyName(suggest.from)} → ${companyName(suggest.to)}`,
+      });
+      toast.success("Arbeidspakkene er oppdatert");
+      setSuggest(null);
+    } catch (e: any) {
+      toast.error(e.message ?? "Kunne ikke oppdatere arbeidspakkene");
+    }
+  };
   const { data: activity } = usePlanningActivity(project.id);
   const { data: finance } = usePlanningFinance(project.id);
   const { data: eligible } = useEligibleParticipants();
@@ -76,7 +122,7 @@ export function PlanningOverview({
   };
 
   const departments = (lookups?.departments ?? []).filter(
-    (d) => !v("company_id") || d.company_id === v("company_id"),
+    (d) => !project.company_id || d.company_id === project.company_id,
   );
   const openTasks = tasks.filter((t) => t.status !== "done");
   const totalPeople = workPackages.reduce((s, w) => s + (w.resource_count ?? 0), 0);
@@ -87,13 +133,31 @@ export function PlanningOverview({
       <div className="space-y-6 lg:col-span-2">
         <PlanningWorkLine project={project} workPackages={workPackages} />
         <Card className="space-y-4 p-4">
-          <h2 className="text-sm font-semibold text-foreground">Prosjektinformasjon</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Prosjektinformasjon</h2>
+            <p className="text-xs text-muted-foreground">Oppdragsgiver, avdeling og kunde lagres med en gang du endrer dem.</p>
+          </div>
+          {suggest && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
+              <p className="text-foreground">
+                {suggest.ids.length} arbeidspakke(r) faktureres fortsatt til {companyName(suggest.from)}. Skal de faktureres til {companyName(suggest.to)} i stedet?
+              </p>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSuggest(null)}>Behold</Button>
+                <Button size="sm" onClick={applySuggestion} disabled={saveWorkPackage.isPending}>Oppdater</Button>
+              </div>
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Kunde / sluttkunde</Label>
               <Select
-                value={v("customer_id") ?? NONE}
-                onValueChange={(x) => setDraft({ ...draft, customer_id: x === NONE ? null : x })}
+                value={project.customer_id ?? NONE}
+                onValueChange={(x) => {
+                  const id = x === NONE ? null : x;
+                  if (id !== project.customer_id)
+                    saveNow({ customer_id: id }, `Kunde / sluttkunde endret: ${customerName(project.customer_id)} → ${customerName(id)}`);
+                }}
               >
                 <SelectTrigger><SelectValue placeholder="Velg kunde" /></SelectTrigger>
                 <SelectContent>
@@ -125,8 +189,8 @@ export function PlanningOverview({
             <div className="space-y-1.5">
               <Label>Oppdragsgiver (firma)</Label>
               <Select
-                value={v("company_id") ?? NONE}
-                onValueChange={(x) => setDraft({ ...draft, company_id: x === NONE ? null : x, department_id: null })}
+                value={project.company_id ?? NONE}
+                onValueChange={(x) => changeClient(x === NONE ? null : x)}
               >
                 <SelectTrigger><SelectValue placeholder="Velg selskap" /></SelectTrigger>
                 <SelectContent>
@@ -138,8 +202,12 @@ export function PlanningOverview({
             <div className="space-y-1.5">
               <Label>Oppdragsgivers avdeling</Label>
               <Select
-                value={v("department_id") ?? NONE}
-                onValueChange={(x) => setDraft({ ...draft, department_id: x === NONE ? null : x })}
+                value={project.department_id ?? NONE}
+                onValueChange={(x) => {
+                  const id = x === NONE ? null : x;
+                  if (id !== project.department_id)
+                    saveNow({ department_id: id }, `Oppdragsgivers avdeling endret: ${deptName(project.department_id)} → ${deptName(id)}`);
+                }}
               >
                 <SelectTrigger><SelectValue placeholder="Velg avdeling" /></SelectTrigger>
                 <SelectContent>
