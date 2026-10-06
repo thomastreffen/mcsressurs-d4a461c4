@@ -260,12 +260,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4 pb-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
-            M
-          </div>
+          <img src="/icons/icon-192.png" alt="" className="h-8 w-8 shrink-0 rounded-lg" />
           {!collapsed && (
             <div>
-              <h1 className="text-sm font-semibold leading-tight text-sidebar-foreground tracking-tight">MCS Service</h1>
+              <h1 className="text-sm font-semibold leading-tight text-sidebar-foreground tracking-tight">MCS Hub</h1>
             </div>
           )}
         </div>
