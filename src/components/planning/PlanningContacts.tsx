@@ -6,11 +6,67 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Mail, Phone, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { usePlanningMutations, type PlanningContact, type PlanningExternalRef } from "@/hooks/usePlanning";
-import { CONTACT_ROLES, EXTERNAL_SYSTEMS } from "@/lib/planning";
+import { CONTACT_TYPES, EXTERNAL_SYSTEMS, contactTypeLabel } from "@/lib/planning";
+
+function ContactEditor({
+  initial,
+  onCancel,
+  onSave,
+}: {
+  initial: Partial<PlanningContact>;
+  onCancel: () => void;
+  onSave: (c: Partial<PlanningContact>) => void;
+}) {
+  const [c, setC] = useState<Partial<PlanningContact>>(initial);
+  const set = (p: Partial<PlanningContact>) => setC({ ...c, ...p });
+  return (
+    <Card className="space-y-4 border-primary/40 p-4 sm:col-span-2">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="c-name">Navn *</Label>
+          <Input id="c-name" autoFocus value={c.name ?? ""} onChange={(e) => set({ name: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Type</Label>
+          <Select value={c.contact_type ?? "internal"} onValueChange={(v) => set({ contact_type: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {c.contact_type === "external" && <SelectItem value="external">Ekstern</SelectItem>}
+              {CONTACT_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="c-company">Firma</Label>
+          <Input id="c-company" value={c.company_name ?? ""} onChange={(e) => set({ company_name: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="c-role">Rolle / tittel</Label>
+          <Input id="c-role" value={c.role ?? ""} onChange={(e) => set({ role: e.target.value })} placeholder="F.eks. Prosjektleder" />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="c-phone">Telefon</Label>
+          <Input id="c-phone" value={c.phone ?? ""} onChange={(e) => set({ phone: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="c-email">E-post</Label>
+          <Input id="c-email" value={c.email ?? ""} onChange={(e) => set({ email: e.target.value })} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="c-notes">Kommentar</Label>
+        <Textarea id="c-notes" rows={2} value={c.notes ?? ""} onChange={(e) => set({ notes: e.target.value })} />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={onCancel}>Avbryt</Button>
+        <Button onClick={() => onSave(c)}>Lagre</Button>
+      </div>
+    </Card>
+  );
+}
 
 export function PlanningContacts({
   projectId,
@@ -22,21 +78,21 @@ export function PlanningContacts({
   externalRefs: PlanningExternalRef[];
 }) {
   const { saveContact, deleteContact, saveExternalRef, deleteExternalRef } = usePlanningMutations(projectId);
-  const [editing, setEditing] = useState<Partial<PlanningContact> | null>(null);
+  const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [refOpen, setRefOpen] = useState(false);
   const [refDraft, setRefDraft] = useState<Partial<PlanningExternalRef>>({ system: EXTERNAL_SYSTEMS[0] });
 
-  const save = async () => {
-    if (!editing?.name?.trim()) {
+  const save = async (draft: Partial<PlanningContact>) => {
+    if (!draft.name?.trim()) {
       toast.error("Kontakten må ha et navn");
       return;
     }
-    const patch = { ...editing };
+    const patch: any = { ...draft };
     const id = patch.id;
-    delete (patch as any).id;
+    for (const k of ["id", "planning_project_id", "created_at", "created_by"]) delete patch[k];
     try {
       await saveContact.mutateAsync({ id, patch });
-      setEditing(null);
+      setEditingId(null);
     } catch (e: any) {
       toast.error(e.message ?? "Kunne ikke lagre");
     }
@@ -56,43 +112,47 @@ export function PlanningContacts({
   return (
     <div className="space-y-8">
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Kontakter</h2>
-          <Button size="sm" className="gap-2" onClick={() => setEditing({ name: "", contact_type: "internal" })}>
-            <Plus className="h-4 w-4" /> Ny kontakt
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Kontakter</h2>
+            <p className="text-sm text-muted-foreground">Kontakter gir ikke tilgang til prosjektet. Deltakere styres under Oversikt.</p>
+          </div>
+          {editingId !== "new" && (
+            <Button size="sm" className="gap-2" onClick={() => setEditingId("new")}>
+              <Plus className="h-4 w-4" /> Ny kontakt
+            </Button>
+          )}
         </div>
 
-        {contacts.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-muted-foreground">Ingen kontakter ennå.</Card>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {contacts.map((c) => (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {editingId === "new" && (
+            <ContactEditor initial={{ name: "", contact_type: "customer" }} onCancel={() => setEditingId(null)} onSave={save} />
+          )}
+          {contacts.length === 0 && editingId !== "new" && (
+            <Card className="p-8 text-center text-sm text-muted-foreground sm:col-span-2">Ingen kontakter ennå.</Card>
+          )}
+          {contacts.map((c) =>
+            editingId === c.id ? (
+              <ContactEditor key={c.id} initial={c} onCancel={() => setEditingId(null)} onSave={save} />
+            ) : (
               <Card key={c.id} className="space-y-2 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium text-foreground">{c.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {[c.company_name, c.department_name].filter(Boolean).join(" · ") || "Firma ikke satt"}
+                      {[c.role, c.company_name, c.department_name].filter(Boolean).join(" · ") || "Firma ikke satt"}
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Badge variant={c.contact_type === "external" ? "outline" : "secondary"}>
-                      {c.contact_type === "external" ? "Ekstern" : "Intern"}
-                    </Badge>
-                    <Button variant="ghost" size="icon" onClick={() => setEditing(c)}>
+                    <Badge variant={c.contact_type === "internal" ? "secondary" : "outline"}>{contactTypeLabel(c.contact_type)}</Badge>
+                    <Button variant="ghost" size="icon" aria-label="Rediger" onClick={() => setEditingId(c.id)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => { if (confirm("Slette kontakten?")) deleteContact.mutate(c.id); }}
-                    >
+                    <Button variant="ghost" size="icon" aria-label="Slett" onClick={() => { if (confirm("Slette kontakten?")) deleteContact.mutate(c.id); }}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-                {c.role && <Badge variant="outline">{c.role}</Badge>}
                 <div className="space-y-1 text-xs text-muted-foreground">
                   {c.phone && (
                     <p className="flex items-center gap-1.5">
@@ -109,23 +169,50 @@ export function PlanningContacts({
                   {c.notes && <p>{c.notes}</p>}
                 </div>
               </Card>
-            ))}
-          </div>
-        )}
+            ),
+          )}
+        </div>
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Eksterne systemer</h2>
             <p className="text-sm text-muted-foreground">Referanser og lenker til Business Central, SharePoint og andre.</p>
           </div>
-          <Button size="sm" variant="outline" className="gap-2" onClick={() => setRefOpen(true)}>
-            <Plus className="h-4 w-4" /> Ny referanse
-          </Button>
+          {!refOpen && (
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => setRefOpen(true)}>
+              <Plus className="h-4 w-4" /> Ny referanse
+            </Button>
+          )}
         </div>
+        {refOpen && (
+          <Card className="grid gap-3 border-primary/40 p-4 sm:grid-cols-[180px_1fr_1fr_auto] sm:items-end">
+            <div className="space-y-1.5">
+              <Label>System</Label>
+              <Select value={refDraft.system ?? EXTERNAL_SYSTEMS[0]} onValueChange={(v) => setRefDraft({ ...refDraft, system: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {EXTERNAL_SYSTEMS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ref-ref">Referanse</Label>
+              <Input id="ref-ref" value={refDraft.reference ?? ""} onChange={(e) => setRefDraft({ ...refDraft, reference: e.target.value })} placeholder="F.eks. P-10484" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ref-url">Lenke</Label>
+              <Input id="ref-url" value={refDraft.url ?? ""} onChange={(e) => setRefDraft({ ...refDraft, url: e.target.value })} placeholder="https://…" />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setRefOpen(false)}>Avbryt</Button>
+              <Button onClick={saveRef}>Lagre</Button>
+            </div>
+          </Card>
+        )}
         {externalRefs.length === 0 ? (
-          <Card className="p-6 text-center text-sm text-muted-foreground">Ingen referanser ennå.</Card>
+          !refOpen && <Card className="p-6 text-center text-sm text-muted-foreground">Ingen referanser ennå.</Card>
         ) : (
           <div className="space-y-2">
             {externalRefs.map((r) => (
@@ -141,7 +228,7 @@ export function PlanningContacts({
                     </a>
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" onClick={() => deleteExternalRef.mutate(r.id)}>
+                <Button variant="ghost" size="icon" aria-label="Slett" onClick={() => { if (confirm("Slette referansen?")) deleteExternalRef.mutate(r.id); }}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </Card>
@@ -149,123 +236,6 @@ export function PlanningContacts({
           </div>
         )}
       </div>
-
-      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editing?.id ? "Rediger kontakt" : "Ny kontakt"}</DialogTitle>
-          </DialogHeader>
-          {editing && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Navn *</Label>
-                <Input value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Firma</Label>
-                <Input
-                  value={editing.company_name ?? ""}
-                  onChange={(e) => setEditing({ ...editing, company_name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Avdeling</Label>
-                <Input
-                  value={editing.department_name ?? ""}
-                  onChange={(e) => setEditing({ ...editing, department_name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Rolle</Label>
-                <Select
-                  value={editing.role ?? ""}
-                  onValueChange={(v) => setEditing({ ...editing, role: v })}
-                >
-                  <SelectTrigger><SelectValue placeholder="Velg rolle" /></SelectTrigger>
-                  <SelectContent>
-                    {CONTACT_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Type</Label>
-                <Select
-                  value={editing.contact_type ?? "internal"}
-                  onValueChange={(v) => setEditing({ ...editing, contact_type: v })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="internal">Intern</SelectItem>
-                    <SelectItem value="external">Ekstern</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Telefon</Label>
-                <Input value={editing.phone ?? ""} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>E-post</Label>
-                <Input value={editing.email ?? ""} onChange={(e) => setEditing({ ...editing, email: e.target.value })} />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Kommentar</Label>
-                <Textarea
-                  rows={2}
-                  value={editing.notes ?? ""}
-                  onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditing(null)}>Avbryt</Button>
-            <Button onClick={save}>Lagre</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={refOpen} onOpenChange={setRefOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Ny systemreferanse</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>System</Label>
-              <Select
-                value={refDraft.system ?? EXTERNAL_SYSTEMS[0]}
-                onValueChange={(v) => setRefDraft({ ...refDraft, system: v })}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {EXTERNAL_SYSTEMS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Referanse</Label>
-              <Input
-                value={refDraft.reference ?? ""}
-                onChange={(e) => setRefDraft({ ...refDraft, reference: e.target.value })}
-                placeholder="F.eks. P-10484"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Lenke</Label>
-              <Input
-                value={refDraft.url ?? ""}
-                onChange={(e) => setRefDraft({ ...refDraft, url: e.target.value })}
-                placeholder="https://…"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setRefOpen(false)}>Avbryt</Button>
-            <Button onClick={saveRef}>Lagre</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
