@@ -64,7 +64,7 @@ export default function PlanningWorkPackagePage() {
 
   const [form, setForm] = useState<Partial<PlanningWorkPackage> | null>(null);
   useEffect(() => {
-    if (isNew && !form) {
+    if (isNew && !form && project) {
       setForm({
         name: "",
         status: "planned",
