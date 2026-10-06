@@ -16414,6 +16414,14 @@ export type Database = {
         }[]
       }
       get_planning_finance: { Args: { _project_id: string }; Returns: Json }
+      get_planning_wp_assignees: {
+        Args: { _project_id: string }
+        Returns: {
+          name: string
+          technician_id: string
+          work_package_id: string
+        }[]
+      }
       get_planning_wp_staffing: {
         Args: { _project_id: string }
         Returns: {

@@ -120,6 +120,13 @@
       "when": 1791269983717,
       "tag": "0016_planning_company_access",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791271397775,
+      "tag": "0017_planning_wp_assignees",
+      "breakpoints": true
     }
   ]
 }
