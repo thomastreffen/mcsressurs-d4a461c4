@@ -43,6 +43,7 @@ import { MobileResourceHeader } from "@/components/resource-plan/MobileResourceH
 import { CapacityStatusBar } from "@/components/resource-plan/CapacityStatusBar";
 import { UnplannedProjectsBanner } from "@/components/resource-plan/UnplannedProjectsBanner";
 import { UnplannedJobsStrip } from "@/components/resource-plan/UnplannedJobsStrip";
+import { PlanningNeedsStrip } from "@/components/resource-plan/PlanningNeedsStrip";
 import { UnplannedDrawer } from "@/components/resource-plan/UnplannedDrawer";
 import { FollowUpStrip, getFilteredJobIds, type FollowUpCategory } from "@/components/resource-plan/FollowUpStrip";
 import { RecommendedActions } from "@/components/resource-plan/RecommendedActions";
@@ -905,6 +906,25 @@ export default function ResourcePlan() {
             )}
           </div>
         </div>
+
+        {(calendarView === "team" || calendarView === "timeGridWeek" || calendarView === "listWeek") && (
+          <PlanningNeedsStrip
+            weekStart={weekStart}
+            weekEnd={addWeeks(weekStart, 1)}
+            companyId={effectiveCompanyId}
+            allowedCompanyIds={allowedCompanyIds}
+            refreshKey={refreshKey}
+            onPick={(calEvent) => {
+              setEditEvent(calEvent);
+              setClickedTechId(null);
+              setPreselectedStart(null);
+              setPreselectedEnd(null);
+              setDropProjectId(null);
+              setDropProjectTitle(null);
+              setDrawerOpen(true);
+            }}
+          />
+        )}
 
         {/* ═══ Team-matrise (eier montørvisning, kapasitet og legende) ═══ */}
         <div onTouchStart={isMobile ? handleTouchStart : undefined} onTouchEnd={isMobile ? handleTouchEnd : undefined}>
