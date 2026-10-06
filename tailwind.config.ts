@@ -14,6 +14,7 @@ export default {
     },
     extend: {
       colors: {
+        hub: { blue: "hsl(var(--hub-blue))", ink: "hsl(var(--hub-ink))" },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
