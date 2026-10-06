@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { usePlanningLookups, usePlanningMutations, type PlanningProject, type PlanningWorkPackage } from "@/hooks/usePlanning";
+import { usePlanningFinance, usePlanningLookups, usePlanningMutations, type PlanningProject, type PlanningWorkPackage } from "@/hooks/usePlanning";
 import { CONTRACT_FORMS, contractFormLabel, formatMoney } from "@/lib/planning";
 
 const NONE = "__none__";
@@ -20,9 +20,11 @@ export function PlanningEconomy({
 }) {
   const { data: lookups } = usePlanningLookups();
   const { updateProject } = usePlanningMutations(project.id);
+  const { data: finance, isLoading: financeLoading } = usePlanningFinance(project.id);
   const [draft, setDraft] = useState<Partial<PlanningProject>>({});
 
-  const v = <K extends keyof PlanningProject>(k: K): any => (draft[k] !== undefined ? draft[k] : project[k]);
+  const merged: any = { ...project, ...(finance ?? {}) };
+  const v = <K extends keyof PlanningProject>(k: K): any => (draft[k] !== undefined ? draft[k] : merged[k]);
   const num = (s: string) => (s === "" ? null : Number(s));
   const nameOf = (id: string | null) => (id && lookups?.companies.find((c) => c.id === id)?.name) || null;
 
@@ -37,6 +39,20 @@ export function PlanningEconomy({
       toast.error(e.message ?? "Kunne ikke lagre");
     }
   };
+
+  if (!financeLoading && !finance) {
+    return (
+      <Card className="p-8 text-center text-sm text-muted-foreground">
+        Du har ikke tilgang til prosjektøkonomi. Tilgangen følger prisrettigheten i Kontrollsenteret.
+      </Card>
+    );
+  }
+
+  const priced = workPackages.map((w) => {
+    const f = finance?.work_packages.find((x) => x.id === w.id);
+    return { ...w, agreed_price: f?.agreed_price ?? null, hourly_rate: f?.hourly_rate ?? null };
+  });
+  workPackages = priced;
 
   const internal = workPackages.filter((w) => w.billing_from_company_id && w.billing_to_company_id);
   const wpFixedSum = workPackages.reduce((s, w) => s + Number(w.agreed_price ?? 0), 0);
@@ -161,7 +177,7 @@ export function PlanningEconomy({
         <div className="grid gap-3 pt-2 text-sm sm:grid-cols-3">
           <div>
             <p className="text-xs text-muted-foreground">Hovedkontrakt</p>
-            <p className="font-semibold">{formatMoney(project.contract_value)}</p>
+            <p className="font-semibold">{formatMoney(finance?.contract_value ?? null)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Sum fastpris arbeidspakker</p>

@@ -14,6 +14,7 @@ import { nb } from "date-fns/locale";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   usePlanningActivity,
+  usePlanningFinance,
   usePlanningLookups,
   usePlanningMutations,
   type PlanningContact,
@@ -50,6 +51,7 @@ export function PlanningOverview({
   const { data: lookups } = usePlanningLookups();
   const { updateProject } = usePlanningMutations(project.id);
   const { data: activity } = usePlanningActivity(project.id);
+  const { data: finance } = usePlanningFinance(project.id);
   const [draft, setDraft] = useState<Partial<PlanningProject>>({});
 
   const v = <K extends keyof PlanningProject>(k: K): any => (draft[k] !== undefined ? draft[k] : project[k]);
@@ -232,10 +234,12 @@ export function PlanningOverview({
               <span className="text-muted-foreground">Kontraktsform</span>
               <span>{contractFormLabel(project.contract_form)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Kontraktsverdi</span>
-              <span>{formatMoney(project.contract_value)}</span>
-            </div>
+            {finance && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Kontraktsverdi</span>
+                <span>{formatMoney(finance.contract_value)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Ressursbehov</span>
               <span>{resourceNeedLabel(totalPeople || null, totalHours || null) ?? "–"}</span>
