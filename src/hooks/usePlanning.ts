@@ -278,6 +278,7 @@ export function usePlanningMutations(projectId?: string) {
     if (id) {
       qc.invalidateQueries({ queryKey: ["planning-project", id] });
       qc.invalidateQueries({ queryKey: ["planning-children", id] });
+      qc.invalidateQueries({ queryKey: ["planning-staffing", id] });
       qc.invalidateQueries({ queryKey: ["planning-activity", id] });
       qc.invalidateQueries({ queryKey: ["planning-finance", id] });
     }
