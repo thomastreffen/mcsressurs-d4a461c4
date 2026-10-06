@@ -578,3 +578,125 @@ export function usePlanningChildren(projectId: string | undefined) {
 export function planningFileUrl(path: string): string {
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
+
+/* ── Prosjektdeltakere ── */
+
+export const PARTICIPANT_ROLES = [
+  { value: "owner", label: "Overordnet ansvarlig" },
+  { value: "lead", label: "Prosjektleder" },
+  { value: "member", label: "Deltaker" },
+  { value: "specialist", label: "Fagansvarlig" },
+  { value: "observer", label: "Følger" },
+] as const;
+
+export function participantRoleLabel(v: string | null | undefined) {
+  return PARTICIPANT_ROLES.find((r) => r.value === v)?.label ?? "Deltaker";
+}
+
+export interface EligibleParticipant {
+  user_id: string;
+  full_name: string;
+  company_id: string;
+  company_name: string;
+  department_id: string | null;
+  department_name: string | null;
+}
+
+/** Personer innlogget bruker har lov til å se/legge til (håndheves også i databasen). */
+export function useEligibleParticipants() {
+  return useQuery<EligibleParticipant[]>({
+    queryKey: ["planning-eligible-participants"],
+    queryFn: async () => {
+      const { data, error } = await sb.rpc("planning_eligible_participants");
+      if (error) throw error;
+      return ((data ?? []) as EligibleParticipant[]).sort((a, b) => a.full_name.localeCompare(b.full_name, "nb"));
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Én rad per bruker (en bruker kan være medlem av flere selskaper). */
+export function uniqueParticipants(list: EligibleParticipant[] | undefined) {
+  const map = new Map<string, EligibleParticipant>();
+  for (const p of list ?? []) if (!map.has(p.user_id)) map.set(p.user_id, p);
+  return [...map.values()];
+}
+
+export interface PlanningMember {
+  id: string;
+  planning_project_id: string;
+  user_id: string | null;
+  company_id: string | null;
+  department_id: string | null;
+  role: string;
+  member_type: string;
+  created_at: string;
+  created_by: string | null;
+}
+
+export function usePlanningMembers(projectId: string | undefined) {
+  return useQuery<PlanningMember[]>({
+    queryKey: ["planning-members", projectId],
+    enabled: !!projectId,
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("planning_members")
+        .select("id, planning_project_id, user_id, company_id, department_id, role, member_type, created_at, created_by")
+        .eq("planning_project_id", projectId)
+        .eq("member_type", "internal")
+        .order("created_at");
+      if (error) throw error;
+      return (data ?? []) as PlanningMember[];
+    },
+  });
+}
+
+export function usePlanningMemberMutations(projectId: string) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const { data: myName } = useMyDisplayName();
+  const done = () => {
+    qc.invalidateQueries({ queryKey: ["planning-members", projectId] });
+    qc.invalidateQueries({ queryKey: ["planning-activity", projectId] });
+  };
+  const log = (summary: string, action: string) =>
+    sb.from("planning_activity").insert({
+      planning_project_id: projectId, action, summary,
+      performed_by: user?.id ?? null, performed_by_name: myName ?? null,
+    });
+
+  const addMembers = useMutation({
+    mutationFn: async (people: { user_id: string; company_id?: string | null; name: string; role?: string }[]) => {
+      if (people.length === 0) return;
+      const { error } = await sb.from("planning_members").insert(
+        people.map((p) => ({
+          planning_project_id: projectId, user_id: p.user_id, company_id: p.company_id ?? null,
+          role: p.role ?? "member", member_type: "internal",
+        })),
+      );
+      if (error) throw error;
+      await log(`Deltaker lagt til: ${people.map((p) => p.name).join(", ")}`, "member_added");
+    },
+    onSuccess: done,
+  });
+
+  const updateRole = useMutation({
+    mutationFn: async ({ id, role, name }: { id: string; role: string; name: string }) => {
+      const { error } = await sb.from("planning_members").update({ role }).eq("id", id);
+      if (error) throw error;
+      await log(`Rolle endret for ${name}: ${participantRoleLabel(role)}`, "member_role_changed");
+    },
+    onSuccess: done,
+  });
+
+  const removeMember = useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const { error } = await sb.from("planning_members").delete().eq("id", id);
+      if (error) throw error;
+      await log(`Deltaker fjernet: ${name}`, "member_removed");
+    },
+    onSuccess: done,
+  });
+
+  return { addMembers, updateRole, removeMember };
+}
