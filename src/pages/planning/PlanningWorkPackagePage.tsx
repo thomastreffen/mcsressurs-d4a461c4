@@ -71,11 +71,13 @@ export default function PlanningWorkPackagePage() {
         price_form: "unclear",
         assignment_state: "not_assigned",
         billing_to_company_id: project?.company_id ?? null,
+        planned_start: project?.expected_start ?? null,
+        planned_end: project?.expected_end ?? null,
       });
     } else if (existing && (!form || form.id !== existing.id)) {
       setForm(existing);
     }
-  }, [isNew, existing, project?.company_id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isNew, existing, project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const back = () => navigate(`/planlegging/${projectId}?tab=arbeidspakker`);
 
@@ -155,6 +157,15 @@ export default function PlanningWorkPackagePage() {
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Arbeidspakke</p>
           <h1 className="text-2xl font-bold text-foreground">{isNew ? "Ny arbeidspakke" : existing?.name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Oppdragsgiver: <span className="text-foreground">{lookups?.companies.find((c) => c.id === project.company_id)?.name ?? "ikke satt"}</span>
+            {" · "}Kunde / sluttkunde: <span className="text-foreground">{lookups?.customers.find((c) => c.id === project.customer_id)?.name ?? "ikke satt"}</span>
+          </p>
+          {isNew && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Bare navn er påkrevd. Datoer og «faktureres til» er foreslått fra prosjektet – endre ved behov.
+            </p>
+          )}
         </div>
         {!isNew && (
           <Button variant="ghost" size="sm" className="gap-1.5 text-destructive" onClick={remove}>
