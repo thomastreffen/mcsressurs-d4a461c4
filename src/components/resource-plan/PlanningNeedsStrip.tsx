@@ -45,7 +45,7 @@ export function PlanningNeedsStrip({
     (async () => {
       let q = sb
         .from("events")
-        .select("id, title, customer, address, description, internal_number, start_time, end_time, technician_id, department_id, company_id, event_technicians(id), departments(name)")
+        .select("id, title, customer, address, description, internal_number, start_time, end_time, technician_id, department_id, company_id, event_technicians(id)")
         .not("planning_work_package_id", "is", null)
         .is("deleted_at", null)
         .lt("start_time", weekEnd.toISOString())
@@ -60,11 +60,14 @@ export function PlanningNeedsStrip({
         setItems([]);
         return;
       }
-      setItems(
-        (data ?? [])
-          .filter((e: any) => !e.technician_id && (e.event_technicians ?? []).length === 0)
-          .map((e: any) => ({ ...e, department: e.departments?.name ?? null })),
-      );
+      const open = (data ?? []).filter((e: any) => !e.technician_id && (e.event_technicians ?? []).length === 0);
+      const deptIds = [...new Set(open.map((e: any) => e.department_id).filter(Boolean))];
+      const { data: depts } = deptIds.length
+        ? await sb.from("departments").select("id, name").in("id", deptIds)
+        : { data: [] };
+      if (cancelled) return;
+      const dn = new Map((depts ?? []).map((d: any) => [d.id, d.name]));
+      setItems(open.map((e: any) => ({ ...e, department: (dn.get(e.department_id) as string) ?? null })));
     })();
     return () => {
       cancelled = true;
