@@ -71,6 +71,27 @@
       "when": 1789382632619,
       "tag": "0009_create_planning_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791267678721,
+      "tag": "0010_planning_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791267989717,
+      "tag": "0011_scope_customers_employment_to_company",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791268023263,
+      "tag": "0012_contact_tags_membership_only",
+      "breakpoints": true
     }
   ]
 }

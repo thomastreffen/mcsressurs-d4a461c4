@@ -7,6 +7,42 @@ import { sanitizeStorageFileName } from "@/lib/storage-path";
 const sb = supabase as any;
 const BUCKET = "job-attachments";
 
+/** Kolonner som kan leses direkte. Økonomikolonner hentes kun via get_planning_finance (krever prisrettighet). */
+const PROJECT_COLS =
+  "id,name,description,status,company_id,department_id,customer_id,customer_contact_id,owner_user_id,expected_start,expected_end,period_label,contract_form,invoicing_company_id,invoice_recipient,estimated_hours,linked_event_id,visibility,created_by,created_at,updated_at,deleted_at";
+const WP_COLS =
+  "id,planning_project_id,name,description,status,responsible_company_id,responsible_department_id,responsible_person_id,external_vendor_name,planned_start,planned_end,resource_count,estimated_hours,price_form,billing_from_company_id,billing_to_company_id,assignment_state,linked_event_id,comment,sort_order,created_by,created_at,updated_at";
+const PROJECT_FINANCE_KEYS = ["contract_value", "budget_value", "hourly_rate", "estimated_material_cost"] as const;
+const WP_FINANCE_KEYS = ["agreed_price", "hourly_rate"] as const;
+
+function splitFinance<T extends Record<string, any>>(patch: T, keys: readonly string[]) {
+  const plain: Record<string, any> = {};
+  const finance: Record<string, any> = {};
+  for (const [k, v] of Object.entries(patch)) (keys.includes(k) ? finance : plain)[k] = v;
+  return { plain, finance, hasFinance: Object.keys(finance).length > 0 };
+}
+
+export interface PlanningFinance {
+  contract_value: number | null;
+  budget_value: number | null;
+  hourly_rate: number | null;
+  estimated_material_cost: number | null;
+  work_packages: { id: string; agreed_price: number | null; hourly_rate: number | null }[];
+}
+
+/** Økonomi – returnerer null når brukeren mangler prisrettighet (håndheves i databasen). */
+export function usePlanningFinance(projectId: string | undefined) {
+  return useQuery<PlanningFinance | null>({
+    queryKey: ["planning-finance", projectId],
+    enabled: !!projectId,
+    queryFn: async () => {
+      const { data, error } = await sb.rpc("get_planning_finance", { _project_id: projectId });
+      if (error) throw error;
+      return (data ?? null) as PlanningFinance | null;
+    },
+  });
+}
+
 export interface PlanningProject {
   id: string;
   name: string;
@@ -169,7 +205,7 @@ export function usePlanningProjects() {
     queryFn: async () => {
       let q = sb
         .from("planning_projects")
-        .select("*")
+        .select(PROJECT_COLS)
         .is("deleted_at", null)
         .order("updated_at", { ascending: false })
         .limit(500);
@@ -186,7 +222,12 @@ export function usePlanningProject(id: string | undefined) {
     queryKey: ["planning-project", id],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await sb.from("planning_projects").select("*").eq("id", id).maybeSingle();
+      const { data, error } = await sb
+        .from("planning_projects")
+        .select(PROJECT_COLS)
+        .eq("id", id)
+        .is("deleted_at", null)
+        .maybeSingle();
       if (error) throw error;
       return (data ?? null) as PlanningProject | null;
     },
@@ -238,6 +279,7 @@ export function usePlanningMutations(projectId?: string) {
       qc.invalidateQueries({ queryKey: ["planning-project", id] });
       qc.invalidateQueries({ queryKey: ["planning-children", id] });
       qc.invalidateQueries({ queryKey: ["planning-activity", id] });
+      qc.invalidateQueries({ queryKey: ["planning-finance", id] });
     }
   };
 
@@ -256,7 +298,7 @@ export function usePlanningMutations(projectId?: string) {
     mutationFn: async (input: Partial<PlanningProject>) => {
       const { data, error } = await sb
         .from("planning_projects")
-        .insert({ ...input, created_by: user?.id ?? null })
+        .insert({ ...splitFinance(input, PROJECT_FINANCE_KEYS).plain, created_by: user?.id ?? null })
         .select("id")
         .single();
       if (error) throw error;
@@ -276,11 +318,18 @@ export function usePlanningMutations(projectId?: string) {
       patch: Partial<PlanningProject>;
       logSummary?: string;
     }) => {
-      const { error } = await sb
-        .from("planning_projects")
-        .update({ ...patch, updated_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
+      const { plain, finance, hasFinance } = splitFinance(patch, PROJECT_FINANCE_KEYS);
+      if (Object.keys(plain).length > 0) {
+        const { error } = await sb
+          .from("planning_projects")
+          .update({ ...plain, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (error) throw error;
+      }
+      if (hasFinance) {
+        const { error } = await sb.rpc("set_planning_project_finance", { _project_id: id, _patch: finance });
+        if (error) throw error;
+      }
       if (logSummary) await log(id, "project_updated", logSummary, patch);
     },
     onSuccess: (_d, v) => invalidate(v.id),
@@ -288,19 +337,34 @@ export function usePlanningMutations(projectId?: string) {
 
   const saveWorkPackage = useMutation({
     mutationFn: async ({ id, patch }: { id?: string; patch: Partial<PlanningWorkPackage> }) => {
+      const { plain, finance, hasFinance } = splitFinance(patch, WP_FINANCE_KEYS);
+      let wpId = id;
       if (id) {
-        const { error } = await sb
-          .from("planning_work_packages")
-          .update({ ...patch, updated_at: new Date().toISOString() })
-          .eq("id", id);
-        if (error) throw error;
-        await log(projectId!, "work_package_updated", `Arbeidspakke oppdatert: ${patch.name ?? ""}`.trim());
+        if (Object.keys(plain).length > 0) {
+          const { error } = await sb
+            .from("planning_work_packages")
+            .update({ ...plain, updated_at: new Date().toISOString() })
+            .eq("id", id);
+          if (error) throw error;
+        }
+        if (plain.name !== undefined || plain.responsible_department_id !== undefined) {
+          await log(projectId!, "work_package_updated", `Arbeidspakke oppdatert: ${plain.name ?? ""}`.trim());
+        }
       } else {
-        const { error } = await sb
+        const { data, error } = await sb
           .from("planning_work_packages")
-          .insert({ ...patch, planning_project_id: projectId, created_by: user?.id ?? null });
+          .insert({ ...plain, planning_project_id: projectId, created_by: user?.id ?? null })
+          .select("id")
+          .single();
         if (error) throw error;
-        await log(projectId!, "work_package_created", `Arbeidspakke opprettet: ${patch.name}`);
+        wpId = data.id;
+        await log(projectId!, "work_package_created", `Arbeidspakke opprettet: ${plain.name}`);
+      }
+      // Priser lagres bare når brukeren har prisrettighet; ellers ignoreres de stille
+      const hasValues = Object.values(finance).some((v) => v !== null && v !== undefined && v !== "");
+      if (hasFinance && wpId && (id || hasValues)) {
+        const { error } = await sb.rpc("set_planning_wp_finance", { _wp_id: wpId, _patch: finance });
+        if (error && error.code !== "42501") throw error;
       }
     },
     onSuccess: () => invalidate(),
@@ -467,6 +531,7 @@ export function usePlanningMutations(projectId?: string) {
     deleteFile,
     sendMessage,
     logActivity: log,
+    invalidate,
   };
 }
 
@@ -479,7 +544,7 @@ export function usePlanningChildren(projectId: string | undefined) {
       const [wp, tasks, contacts, refs, files, messages] = await Promise.all([
         sb
           .from("planning_work_packages")
-          .select("*")
+          .select(WP_COLS)
           .eq("planning_project_id", projectId)
           .order("sort_order")
           .order("created_at"),

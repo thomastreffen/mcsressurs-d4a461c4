@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  usePlanningFinance,
   usePlanningLookups,
   usePlanningMutations,
   type PlanningProject,
@@ -39,16 +40,24 @@ function emptyWp(): Partial<PlanningWorkPackage> {
 
 export function PlanningWorkPackages({
   project,
-  workPackages,
+  workPackages: rawWorkPackages,
 }: {
   project: PlanningProject;
   workPackages: PlanningWorkPackage[];
 }) {
+  const { data: finance } = usePlanningFinance(project.id);
+  const canSeeFinance = !!finance;
+  // Priser flettes kun inn når databasen har gitt tilgang til dem
+  const workPackages = rawWorkPackages.map((w) => {
+    const f = finance?.work_packages.find((x) => x.id === w.id);
+    return f ? { ...w, agreed_price: f.agreed_price, hourly_rate: f.hourly_rate } : { ...w, agreed_price: null, hourly_rate: null };
+  });
+  const [sendingId, setSendingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const { data: lookups } = usePlanningLookups();
-  const { saveWorkPackage, deleteWorkPackage, updateProject, logActivity } = usePlanningMutations(project.id);
+  const { saveWorkPackage, deleteWorkPackage, updateProject, invalidate } = usePlanningMutations(project.id);
 
   const [editing, setEditing] = useState<Partial<PlanningWorkPackage> | null>(null);
   const canSeeResourcePlan = hasPermission("resourceplan.view");
@@ -83,41 +92,17 @@ export function PlanningWorkPackages({
       toast.error("Sett planlagt start før arbeidspakken sendes til ressursplan");
       return;
     }
+    if (sendingId) return;
+    setSendingId(wp.id);
     try {
-      const start = new Date(`${wp.planned_start}T07:00:00`);
-      const end = new Date(`${wp.planned_end || wp.planned_start}T15:00:00`);
-      const customerName = nameOf(lookups?.customers, project.customer_id);
-      const { data, error } = await sb
-        .from("events")
-        .insert({
-          title: `${project.name} – ${wp.name}`,
-          description: [wp.description, resourceNeedLabel(wp.resource_count, wp.estimated_hours)]
-            .filter(Boolean)
-            .join("\n\nRessursbehov: "),
-          start_time: start.toISOString(),
-          end_time: end.toISOString(),
-          status: "requested",
-          project_type: "project",
-          company_id: wp.responsible_company_id ?? project.company_id,
-          department_id: wp.responsible_department_id ?? project.department_id,
-          customer: customerName,
-          customer_id: project.customer_id,
-          created_by: user?.id ?? null,
-          client_request_id: crypto.randomUUID(),
-        })
-        .select("id, project_number")
-        .single();
+      // Idempotent i databasen: låser arbeidspakken og gjenbruker eksisterende oppdrag
+      const { data, error } = await sb.rpc("send_planning_wp_to_resource_plan", { _wp_id: wp.id });
       if (error) throw error;
-
-      await saveWorkPackage.mutateAsync({
-        id: wp.id,
-        patch: { assignment_state: "in_resource_plan", linked_event_id: data.id },
-      });
-      await logActivity(
-        project.id,
-        "sent_to_resource_plan",
-        `Ressursbehov sendt til ressursplan: ${wp.name}${data.project_number ? ` (${data.project_number})` : ""}`,
-      );
+      invalidate();
+      if (!data?.created) {
+        toast.info("Arbeidspakken ligger allerede i ressursplanen");
+        return;
+      }
       if (project.status === "confirmed" || project.status === "early_planning" || project.status === "probable") {
         await updateProject.mutateAsync({
           id: project.id,
@@ -128,6 +113,8 @@ export function PlanningWorkPackages({
       toast.success("Sendt til ressursplan – avdelingen velger personer der");
     } catch (e: any) {
       toast.error(e.message ?? "Kunne ikke sende til ressursplan");
+    } finally {
+      setSendingId(null);
     }
   };
 
@@ -210,8 +197,8 @@ export function PlanningWorkPackages({
                   )}
                   <span>
                     {CONTRACT_FORMS.find((c) => c.value === wp.price_form)?.label ?? "Ikke avklart"}
-                    {wp.agreed_price ? ` · ${formatMoney(wp.agreed_price)}` : ""}
-                    {wp.hourly_rate ? ` · ${formatMoney(wp.hourly_rate)}/t` : ""}
+                    {canSeeFinance && wp.agreed_price ? ` · ${formatMoney(wp.agreed_price)}` : ""}
+                    {canSeeFinance && wp.hourly_rate ? ` · ${formatMoney(wp.hourly_rate)}/t` : ""}
                   </span>
                 </div>
 
@@ -237,7 +224,7 @@ export function PlanningWorkPackages({
                     )
                   ) : (
                     canSeeResourcePlan && (
-                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => sendToResourcePlan(wp)}>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={sendingId === wp.id} onClick={() => sendToResourcePlan(wp)}>
                         <Send className="h-3.5 w-3.5" /> Send til ressursplan
                       </Button>
                     )
@@ -258,8 +245,9 @@ export function PlanningWorkPackages({
           {editing && (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Navn *</Label>
+                <Label htmlFor="wp-name">Navn *</Label>
                 <Input
+                  id="wp-name"
                   value={editing.name ?? ""}
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                   placeholder="F.eks. Montere strømskinner"
@@ -404,22 +392,28 @@ export function PlanningWorkPackages({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Avtalt pris</Label>
-                  <Input
-                    type="number"
-                    value={editing.agreed_price ?? ""}
-                    onChange={(e) => setEditing({ ...editing, agreed_price: e.target.value ? Number(e.target.value) : null })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Timepris</Label>
-                  <Input
-                    type="number"
-                    value={editing.hourly_rate ?? ""}
-                    onChange={(e) => setEditing({ ...editing, hourly_rate: e.target.value ? Number(e.target.value) : null })}
-                  />
-                </div>
+                {canSeeFinance && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="wp-agreed-price">Avtalt pris</Label>
+                      <Input
+                        id="wp-agreed-price"
+                        type="number"
+                        value={editing.agreed_price ?? ""}
+                        onChange={(e) => setEditing({ ...editing, agreed_price: e.target.value ? Number(e.target.value) : null })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="wp-hourly-rate">Timepris</Label>
+                      <Input
+                        id="wp-hourly-rate"
+                        type="number"
+                        value={editing.hourly_rate ?? ""}
+                        onChange={(e) => setEditing({ ...editing, hourly_rate: e.target.value ? Number(e.target.value) : null })}
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="space-y-1.5">
                   <Label>Fakturerer</Label>
                   <Select

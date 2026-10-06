@@ -5909,6 +5909,8 @@ export type Database = {
           outlook_last_synced_at: string | null
           outlook_sync_status: string
           parent_project_id: string | null
+          planning_project_id: string | null
+          planning_work_package_id: string | null
           postal_code: string | null
           project_aliases: string[] | null
           project_number: string | null
@@ -5996,6 +5998,8 @@ export type Database = {
           outlook_last_synced_at?: string | null
           outlook_sync_status?: string
           parent_project_id?: string | null
+          planning_project_id?: string | null
+          planning_work_package_id?: string | null
           postal_code?: string | null
           project_aliases?: string[] | null
           project_number?: string | null
@@ -6083,6 +6087,8 @@ export type Database = {
           outlook_last_synced_at?: string | null
           outlook_sync_status?: string
           parent_project_id?: string | null
+          planning_project_id?: string | null
+          planning_work_package_id?: string | null
           postal_code?: string | null
           project_aliases?: string[] | null
           project_number?: string | null
@@ -6160,6 +6166,20 @@ export type Database = {
             columns: ["parent_project_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_planning_work_package_id_fkey"
+            columns: ["planning_work_package_id"]
+            isOneToOne: false
+            referencedRelation: "planning_work_packages"
             referencedColumns: ["id"]
           },
           {
@@ -16062,6 +16082,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_view_planning_finance: { Args: never; Returns: boolean }
       check_permission: {
         Args: { _perm: string; _user_id: string }
         Returns: boolean
@@ -16350,6 +16371,7 @@ export type Database = {
           template_name: string
         }[]
       }
+      get_planning_finance: { Args: { _project_id: string }; Returns: Json }
       get_project_member_type: {
         Args: { _auth_user_id: string; _project_id: string }
         Returns: string
@@ -16618,6 +16640,7 @@ export type Database = {
         Returns: Json
       }
       hms_handbook_open_by_token: { Args: { p_token: string }; Returns: Json }
+      is_active_member_of: { Args: { _company_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_company_member: {
         Args: { _auth_user_id: string; _company_id: string }
@@ -16706,6 +16729,18 @@ export type Database = {
       }
       repair_resource_plan_ghosts: { Args: never; Returns: Json }
       scan_resource_plan_ghosts: { Args: never; Returns: Json }
+      send_planning_wp_to_resource_plan: {
+        Args: { _wp_id: string }
+        Returns: Json
+      }
+      set_planning_project_finance: {
+        Args: { _patch: Json; _project_id: string }
+        Returns: undefined
+      }
+      set_planning_wp_finance: {
+        Args: { _patch: Json; _wp_id: string }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       submission_has_tracking_token: {
