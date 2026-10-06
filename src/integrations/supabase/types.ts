@@ -16683,6 +16683,17 @@ export type Database = {
         Args: { _submission_id: string }
         Returns: boolean
       }
+      planning_eligible_participants: {
+        Args: never
+        Returns: {
+          company_id: string
+          company_name: string
+          department_id: string
+          department_name: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       remove_work_visit_from_plan: {
         Args: {
           p_actor?: string
