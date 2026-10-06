@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  usePlanningFinance,
   usePlanningLookups,
   usePlanningMutations,
   type PlanningProject,
@@ -39,16 +40,24 @@ function emptyWp(): Partial<PlanningWorkPackage> {
 
 export function PlanningWorkPackages({
   project,
-  workPackages,
+  workPackages: rawWorkPackages,
 }: {
   project: PlanningProject;
   workPackages: PlanningWorkPackage[];
 }) {
+  const { data: finance } = usePlanningFinance(project.id);
+  const canSeeFinance = !!finance;
+  // Priser flettes kun inn når databasen har gitt tilgang til dem
+  const workPackages = rawWorkPackages.map((w) => {
+    const f = finance?.work_packages.find((x) => x.id === w.id);
+    return f ? { ...w, agreed_price: f.agreed_price, hourly_rate: f.hourly_rate } : { ...w, agreed_price: null, hourly_rate: null };
+  });
+  const [sendingId, setSendingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const { data: lookups } = usePlanningLookups();
-  const { saveWorkPackage, deleteWorkPackage, updateProject, logActivity } = usePlanningMutations(project.id);
+  const { saveWorkPackage, deleteWorkPackage, updateProject, invalidate } = usePlanningMutations(project.id);
 
   const [editing, setEditing] = useState<Partial<PlanningWorkPackage> | null>(null);
   const canSeeResourcePlan = hasPermission("resourceplan.view");
@@ -104,6 +113,8 @@ export function PlanningWorkPackages({
       toast.success("Sendt til ressursplan – avdelingen velger personer der");
     } catch (e: any) {
       toast.error(e.message ?? "Kunne ikke sende til ressursplan");
+    } finally {
+      setSendingId(null);
     }
   };
 
@@ -186,8 +197,8 @@ export function PlanningWorkPackages({
                   )}
                   <span>
                     {CONTRACT_FORMS.find((c) => c.value === wp.price_form)?.label ?? "Ikke avklart"}
-                    {wp.agreed_price ? ` · ${formatMoney(wp.agreed_price)}` : ""}
-                    {wp.hourly_rate ? ` · ${formatMoney(wp.hourly_rate)}/t` : ""}
+                    {canSeeFinance && wp.agreed_price ? ` · ${formatMoney(wp.agreed_price)}` : ""}
+                    {canSeeFinance && wp.hourly_rate ? ` · ${formatMoney(wp.hourly_rate)}/t` : ""}
                   </span>
                 </div>
 
@@ -213,7 +224,7 @@ export function PlanningWorkPackages({
                     )
                   ) : (
                     canSeeResourcePlan && (
-                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => sendToResourcePlan(wp)}>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={sendingId === wp.id} onClick={() => sendToResourcePlan(wp)}>
                         <Send className="h-3.5 w-3.5" /> Send til ressursplan
                       </Button>
                     )
