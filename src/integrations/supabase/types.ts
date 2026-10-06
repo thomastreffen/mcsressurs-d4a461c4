@@ -16700,6 +16700,7 @@ export type Database = {
         Args: { _submission_id: string }
         Returns: boolean
       }
+      person_has_employment: { Args: { _person_id: string }; Returns: boolean }
       planning_eligible_participants: {
         Args: never
         Returns: {
