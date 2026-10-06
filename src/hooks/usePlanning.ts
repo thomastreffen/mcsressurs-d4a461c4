@@ -496,6 +496,7 @@ export function usePlanningMutations(projectId?: string) {
       isImportant,
       attachments,
       mentionedUserIds,
+      mentionedDepartmentIds,
     }: {
       body: string;
       replyToId?: string | null;
