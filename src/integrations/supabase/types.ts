@@ -12609,6 +12609,41 @@ export type Database = {
           },
         ]
       }
+      planning_company_access: {
+        Row: {
+          company_id: string
+          created_at: string
+          granted_by: string | null
+          id: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_company_access_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planning_contacts: {
         Row: {
           company_name: string | null
@@ -16085,6 +16120,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_plan_for_company: {
+        Args: { _company_id: string; _uid: string }
+        Returns: boolean
+      }
       can_view_planning_finance: { Args: never; Returns: boolean }
       check_permission: {
         Args: { _perm: string; _user_id: string }
@@ -16675,6 +16714,10 @@ export type Database = {
         Args: { _submission_id: string; _user_id: string }
         Returns: boolean
       }
+      is_planning_member: {
+        Args: { _project_id: string; _uid: string }
+        Returns: boolean
+      }
       is_project_admin: {
         Args: { _auth_user_id: string; _project_id: string }
         Returns: boolean
@@ -16701,6 +16744,15 @@ export type Database = {
         Returns: boolean
       }
       person_has_employment: { Args: { _person_id: string }; Returns: boolean }
+      planning_companies: {
+        Args: never
+        Returns: {
+          can_plan: boolean
+          id: string
+          is_active: boolean
+          name: string
+        }[]
+      }
       planning_eligible_participants: {
         Args: never
         Returns: {

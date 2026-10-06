@@ -145,7 +145,7 @@ export default function PlanningNewProjectPage() {
                 <SelectTrigger><SelectValue placeholder="Velg selskap" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>Ikke valgt</SelectItem>
-                  {(lookups?.companies ?? []).map((c) => (
+                  {(lookups?.planCompanies ?? []).map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
