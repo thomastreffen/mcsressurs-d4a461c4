@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExternalLink } from "lucide-react";
 import { PlanningParticipants } from "./PlanningParticipants";
+import { PlanningWorkLine } from "./PlanningWorkLine";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -84,11 +85,12 @@ export function PlanningOverview({
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
+        <PlanningWorkLine project={project} workPackages={workPackages} />
         <Card className="space-y-4 p-4">
-          <h2 className="text-sm font-semibold text-foreground">Overordnet ansvar</h2>
+          <h2 className="text-sm font-semibold text-foreground">Prosjektinformasjon</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Kunde</Label>
+              <Label>Kunde / sluttkunde</Label>
               <Select
                 value={v("customer_id") ?? NONE}
                 onValueChange={(x) => setDraft({ ...draft, customer_id: x === NONE ? null : x })}
@@ -101,7 +103,7 @@ export function PlanningOverview({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Overordnet prosjektansvarlig</Label>
+              <Label>Overordnet prosjekteier</Label>
               <Select
                 value={v("owner_user_id") ?? NONE}
                 onValueChange={(x) => setDraft({ ...draft, owner_user_id: x === NONE ? null : x })}
@@ -121,7 +123,7 @@ export function PlanningOverview({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Ansvarlig firma</Label>
+              <Label>Oppdragsgiver (firma)</Label>
               <Select
                 value={v("company_id") ?? NONE}
                 onValueChange={(x) => setDraft({ ...draft, company_id: x === NONE ? null : x, department_id: null })}
@@ -134,7 +136,7 @@ export function PlanningOverview({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Ansvarlig avdeling</Label>
+              <Label>Oppdragsgivers avdeling</Label>
               <Select
                 value={v("department_id") ?? NONE}
                 onValueChange={(x) => setDraft({ ...draft, department_id: x === NONE ? null : x })}
@@ -201,39 +203,6 @@ export function PlanningOverview({
           )}
         </Card>
 
-        <Card className="space-y-3 p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Arbeidspakker</h2>
-            <Button variant="ghost" size="sm" onClick={() => onGoTo("arbeidspakker")}>Se alle</Button>
-          </div>
-          {workPackages.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ingen arbeidspakker ennå.</p>
-          ) : (
-            workPackages.slice(0, 5).map((w) => (
-              <div key={w.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/40 p-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{w.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {[
-                      nameOf(lookups?.companies, w.responsible_company_id),
-                      nameOf(lookups?.departments as any, w.responsible_department_id),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "Ansvarlig ikke satt"}
-                    {" · "}
-                    {formatPeriod(w.planned_start, w.planned_end, null)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {resourceNeedLabel(w.resource_count, w.estimated_hours) && (
-                    <Badge variant="secondary">{resourceNeedLabel(w.resource_count, w.estimated_hours)}</Badge>
-                  )}
-                  <Badge variant="outline">{assignmentStateLabel(w.assignment_state)}</Badge>
-                </div>
-              </div>
-            ))
-          )}
-        </Card>
       </div>
 
       <div className="space-y-6">

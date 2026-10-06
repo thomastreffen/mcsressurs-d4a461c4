@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,19 @@ export function PlanningEconomy({
   workPackages: PlanningWorkPackage[];
 }) {
   const { data: lookups } = usePlanningLookups();
-  const { updateProject } = usePlanningMutations(project.id);
+  const { updateProject, saveWorkPackage } = usePlanningMutations(project.id);
+  const navigate = useNavigate();
+  const [wpEdit, setWpEdit] = useState<{ id: string; price_form: string; agreed_price: number | null; hourly_rate: number | null } | null>(null);
+  const saveWp = async () => {
+    if (!wpEdit) return;
+    try {
+      await saveWorkPackage.mutateAsync({ id: wpEdit.id, patch: { price_form: wpEdit.price_form, agreed_price: wpEdit.agreed_price, hourly_rate: wpEdit.hourly_rate } });
+      setWpEdit(null);
+      toast.success("Pris lagret");
+    } catch (e: any) {
+      toast.error(e.message ?? "Kunne ikke lagre");
+    }
+  };
   const { data: finance, isLoading: financeLoading } = usePlanningFinance(project.id);
   const [draft, setDraft] = useState<Partial<PlanningProject>>({});
 
@@ -150,12 +163,54 @@ export function PlanningEconomy({
       </Card>
 
       <Card className="space-y-3 p-4">
-        <h3 className="text-sm font-semibold text-foreground">Fakturering per arbeidspakke</h3>
+        <h3 className="text-sm font-semibold text-foreground">Hvem fakturerer hvem</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/40 p-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Hele prosjektet</p>
+            <p className="text-xs text-muted-foreground">
+              {nameOf(project.invoicing_company_id) || "Fakturerende ikke satt"} → {project.invoice_recipient || lookups?.customers.find((c) => c.id === project.customer_id)?.name || "Kunde ikke satt"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <Badge variant="outline">{contractFormLabel(project.contract_form)}</Badge>
+            <span className="text-muted-foreground">{formatMoney(finance?.contract_value ?? null)}</span>
+          </div>
+        </div>
         {workPackages.length === 0 ? (
           <p className="text-sm text-muted-foreground">Ingen arbeidspakker ennå.</p>
         ) : (
           <div className="space-y-2">
-            {workPackages.map((w) => (
+            {workPackages.map((w) => wpEdit?.id === w.id ? (
+              <div key={w.id} className="grid gap-3 rounded-lg border border-primary/40 p-3 sm:grid-cols-[1fr_160px_140px_140px_auto] sm:items-end">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{w.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {nameOf(w.billing_from_company_id) || w.external_vendor_name || "?"} → {nameOf(w.billing_to_company_id) || "?"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Prisform</Label>
+                  <Select value={wpEdit.price_form} onValueChange={(x) => setWpEdit({ ...wpEdit, price_form: x })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CONTRACT_FORMS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Avtalt pris</Label>
+                  <Input type="number" value={wpEdit.agreed_price ?? ""} onChange={(e) => setWpEdit({ ...wpEdit, agreed_price: num(e.target.value) })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Timepris</Label>
+                  <Input type="number" value={wpEdit.hourly_rate ?? ""} onChange={(e) => setWpEdit({ ...wpEdit, hourly_rate: num(e.target.value) })} />
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => setWpEdit(null)}>Avbryt</Button>
+                  <Button size="sm" onClick={saveWp} disabled={saveWorkPackage.isPending}>Lagre</Button>
+                </div>
+              </div>
+            ) : (
               <div key={w.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/40 p-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">{w.name}</p>
@@ -169,6 +224,12 @@ export function PlanningEconomy({
                   <span className="text-muted-foreground">
                     {w.agreed_price ? formatMoney(w.agreed_price) : w.hourly_rate ? `${formatMoney(w.hourly_rate)}/t` : "–"}
                   </span>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setWpEdit({ id: w.id, price_form: w.price_form ?? "unclear", agreed_price: w.agreed_price, hourly_rate: w.hourly_rate })}>
+                    Endre pris
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate(`/planlegging/${project.id}/arbeidspakker/${w.id}`)}>
+                    Åpne
+                  </Button>
                 </div>
               </div>
             ))}

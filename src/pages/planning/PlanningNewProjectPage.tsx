@@ -116,7 +116,7 @@ export default function PlanningNewProjectPage() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Kunde</Label>
+              <Label>Kunde / sluttkunde</Label>
               <Select value={customerId} onValueChange={setCustomerId}>
                 <SelectTrigger><SelectValue placeholder="Velg kunde" /></SelectTrigger>
                 <SelectContent>
@@ -128,7 +128,7 @@ export default function PlanningNewProjectPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Overordnet ansvarlig</Label>
+              <Label>Overordnet prosjekteier</Label>
               <Select value={ownerUserId} onValueChange={setOwnerUserId}>
                 <SelectTrigger><SelectValue placeholder="Velg person" /></SelectTrigger>
                 <SelectContent>
@@ -140,7 +140,7 @@ export default function PlanningNewProjectPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Ansvarlig selskap</Label>
+              <Label>Oppdragsgiver (firma)</Label>
               <Select value={companyId} onValueChange={(v) => { setCompanyId(v); setDepartmentId(NONE); }}>
                 <SelectTrigger><SelectValue placeholder="Velg selskap" /></SelectTrigger>
                 <SelectContent>
@@ -152,7 +152,7 @@ export default function PlanningNewProjectPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Ansvarlig avdeling</Label>
+              <Label>Oppdragsgivers avdeling</Label>
               <Select value={departmentId} onValueChange={setDepartmentId}>
                 <SelectTrigger><SelectValue placeholder="Velg avdeling" /></SelectTrigger>
                 <SelectContent>

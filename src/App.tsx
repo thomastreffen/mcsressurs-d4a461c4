@@ -24,6 +24,7 @@ import JobsPage from "./pages/JobsPage";
 import ResourcePlan from "./pages/ResourcePlan";
 import PlanningBoardPage from "./pages/planning/PlanningBoardPage";
 import PlanningProjectPage from "./pages/planning/PlanningProjectPage";
+import PlanningWorkPackagePage from "./pages/planning/PlanningWorkPackagePage";
 import PlanningNewProjectPage from "./pages/planning/PlanningNewProjectPage";
 import JobDetail from "./pages/JobDetail";
 import MaterialPickListPrintPage from "./pages/MaterialPickListPrintPage";
@@ -279,6 +280,7 @@ const App = () => (
               <Route path="/planlegging" element={<PlanningBoardPage />} />
               <Route path="/planlegging/ny" element={<PlanningNewProjectPage />} />
               <Route path="/planlegging/:id" element={<PlanningProjectPage />} />
+              <Route path="/planlegging/:id/arbeidspakker/:wpId" element={<PlanningWorkPackagePage />} />
               <Route path="/calendar/confirmations" element={<ConfirmationsPage />} />
               <Route path="/absence" element={<AbsencePage />} />
               <Route path="/admin/ai-matcher" element={
