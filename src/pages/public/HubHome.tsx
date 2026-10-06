@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { Loader2, CalendarRange, FolderKanban, Users, Handshake, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,11 +35,22 @@ export default function HubHome() {
     document.title = "MCS Hub — Felles portal for planlegging, prosjekter og samarbeid";
   }, []);
 
-  if (!loading && session) return <Navigate to="/overview" replace />;
+  // Innloggede brukere kan se forsiden. Vi sender dem bare videre rett etter
+  // Microsoft-innlogging, eller når de åpner /login direkte.
+  const { pathname } = useLocation();
+  const POST_LOGIN_KEY = "mcs:hub-post-login";
+  if (!loading && session) {
+    const justSignedIn = sessionStorage.getItem(POST_LOGIN_KEY) === "1";
+    if (justSignedIn || pathname === "/login") {
+      sessionStorage.removeItem(POST_LOGIN_KEY);
+      return <Navigate to="/overview" replace />;
+    }
+  }
 
   const login = async () => {
     if (signingIn) return;
     setSigningIn(true);
+    sessionStorage.setItem("mcs:hub-post-login", "1");
     try {
       const result = await lovable.auth.signInWithOAuth("microsoft", { redirect_uri: window.location.origin });
       if (result.error) {
@@ -100,9 +111,23 @@ export default function HubHome() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-lg sm:p-8">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-hub-blue" />
-                <h2 className="text-lg font-semibold text-hub-ink">Logg inn på MCS Hub</h2>
+                <h2 className="text-lg font-semibold text-hub-ink">{session ? "Velkommen tilbake" : "Logg inn på MCS Hub"}</h2>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">For ansatte, samarbeidspartnere og kunder med tilgang.</p>
+              {session ? (
+                <>
+                  <Link
+                    to="/overview"
+                    className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-hub-ink px-4 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+                  >
+                    Gå til arbeidsflaten <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Du er logget inn{session.user?.email ? ` som ${session.user.email}` : ""}.
+                  </p>
+                </>
+              ) : (
+                <>
               <button
                 type="button"
                 onClick={login}
@@ -113,6 +138,8 @@ export default function HubHome() {
                 {signingIn ? "Åpner Microsoft …" : "Logg inn med Microsoft"}
               </button>
               <p className="mt-3 text-xs text-muted-foreground">Bruk jobbkontoen din. Du sendes rett til din arbeidsflate.</p>
+                </>
+              )}
               <div className="mt-6 border-t border-border pt-4">
                 <a href="/portal/login" className="inline-flex items-center gap-1.5 text-sm font-medium text-hub-blue hover:underline">
                   Kunde eller partner uten Microsoft-konto? Logg inn her <ArrowRight className="h-4 w-4" />
