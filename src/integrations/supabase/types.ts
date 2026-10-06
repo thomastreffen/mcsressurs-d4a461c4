@@ -16640,6 +16640,7 @@ export type Database = {
         Returns: Json
       }
       hms_handbook_open_by_token: { Args: { p_token: string }; Returns: Json }
+      is_active_member_of: { Args: { _company_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_company_member: {
         Args: { _auth_user_id: string; _company_id: string }
