@@ -36,6 +36,15 @@ export function CreatePlanningProjectDialog({
   const [end, setEnd] = useState("");
   const [description, setDescription] = useState("");
 
+  // Aktivt firma og innlogget bruker lastes asynkront – sett standardverdier når dialogen åpnes
+  useEffect(() => {
+    if (!open) return;
+    if (companyId === NONE && activeCompanyId) setCompanyId(activeCompanyId);
+    if (ownerUserId === NONE && user?.id) setOwnerUserId(user.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeCompanyId, user?.id]);
+
+
   const departments = (lookups?.departments ?? []).filter(
     (d) => companyId === NONE || d.company_id === companyId,
   );
