@@ -85,6 +85,13 @@
       "when": 1791267989717,
       "tag": "0011_scope_customers_employment_to_company",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791268023263,
+      "tag": "0012_contact_tags_membership_only",
+      "breakpoints": true
     }
   ]
 }
