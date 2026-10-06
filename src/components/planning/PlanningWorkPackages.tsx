@@ -391,22 +391,28 @@ export function PlanningWorkPackages({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Avtalt pris</Label>
-                  <Input
-                    type="number"
-                    value={editing.agreed_price ?? ""}
-                    onChange={(e) => setEditing({ ...editing, agreed_price: e.target.value ? Number(e.target.value) : null })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Timepris</Label>
-                  <Input
-                    type="number"
-                    value={editing.hourly_rate ?? ""}
-                    onChange={(e) => setEditing({ ...editing, hourly_rate: e.target.value ? Number(e.target.value) : null })}
-                  />
-                </div>
+                {canSeeFinance && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="wp-agreed-price">Avtalt pris</Label>
+                      <Input
+                        id="wp-agreed-price"
+                        type="number"
+                        value={editing.agreed_price ?? ""}
+                        onChange={(e) => setEditing({ ...editing, agreed_price: e.target.value ? Number(e.target.value) : null })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="wp-hourly-rate">Timepris</Label>
+                      <Input
+                        id="wp-hourly-rate"
+                        type="number"
+                        value={editing.hourly_rate ?? ""}
+                        onChange={(e) => setEditing({ ...editing, hourly_rate: e.target.value ? Number(e.target.value) : null })}
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="space-y-1.5">
                   <Label>Fakturerer</Label>
                   <Select
