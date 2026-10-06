@@ -8,11 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExternalLink } from "lucide-react";
+import { PlanningParticipants } from "./PlanningParticipants";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
+  uniqueParticipants,
+  useEligibleParticipants,
   usePlanningActivity,
   usePlanningFinance,
   usePlanningLookups,
@@ -52,6 +55,8 @@ export function PlanningOverview({
   const { updateProject } = usePlanningMutations(project.id);
   const { data: activity } = usePlanningActivity(project.id);
   const { data: finance } = usePlanningFinance(project.id);
+  const { data: eligible } = useEligibleParticipants();
+  const ownerOptions = uniqueParticipants(eligible);
   const [draft, setDraft] = useState<Partial<PlanningProject>>({});
 
   const v = <K extends keyof PlanningProject>(k: K): any => (draft[k] !== undefined ? draft[k] : project[k]);
@@ -104,8 +109,13 @@ export function PlanningOverview({
                 <SelectTrigger><SelectValue placeholder="Velg person" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>Ikke valgt</SelectItem>
-                  {(lookups?.users ?? []).map((u) => (
-                    <SelectItem key={u.user_id} value={u.user_id}>{u.name || "Ukjent"}</SelectItem>
+                  {project.owner_user_id && !ownerOptions.some((o) => o.user_id === project.owner_user_id) && (
+                    <SelectItem value={project.owner_user_id}>
+                      {lookups?.users.find((u) => u.user_id === project.owner_user_id)?.name ?? "Nåværende ansvarlig"}
+                    </SelectItem>
+                  )}
+                  {ownerOptions.map((u) => (
+                    <SelectItem key={u.user_id} value={u.user_id}>{u.full_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -227,6 +237,7 @@ export function PlanningOverview({
       </div>
 
       <div className="space-y-6">
+        <PlanningParticipants project={project} />
         <Card className="space-y-3 p-4">
           <h2 className="text-sm font-semibold text-foreground">Nøkkeltall</h2>
           <div className="space-y-2 text-sm">

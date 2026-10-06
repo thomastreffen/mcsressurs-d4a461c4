@@ -8,7 +8,6 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import {
   PARTICIPANT_ROLES,
-  participantRoleLabel,
   uniqueParticipants,
   useEligibleParticipants,
   usePlanningLookups,
@@ -118,7 +117,6 @@ export function PlanningParticipants({ project }: { project: PlanningProject }) 
           Legg til {pending.length} {pending.length === 1 ? "deltaker" : "deltakere"}
         </Button>
       )}
-      <p className="sr-only">{participantRoleLabel("member")}</p>
     </Card>
   );
 }
