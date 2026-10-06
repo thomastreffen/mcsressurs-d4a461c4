@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowDown, ArrowRight, AlertCircle, Plus } from "lucide-react";
+import { ArrowDown, AlertCircle, Plus } from "lucide-react";
 import {
   usePlanningAssignees,
   usePlanningFinance,
@@ -46,19 +46,32 @@ export function PlanningWorkLine({ project, workPackages }: { project: PlanningP
   const customer = nameOf(lookups?.customers, project.customer_id);
   const priceOf = (id: string) => finance?.work_packages.find((x) => x.id === id);
 
+  const ownerName = user(project.owner_user_id);
+  const clientName = company(project.company_id);
+
   const missing: string[] = [];
-  if (!project.company_id) missing.push("Oppdragsgiver er ikke satt");
-  if (!project.customer_id) missing.push("Kunde / sluttkunde er ikke satt");
-  if (!project.owner_user_id) missing.push("Overordnet prosjekteier er ikke satt");
-  if (workPackages.length === 0) missing.push("Ingen arbeidspakker – hva skal gjøres?");
+  if (!project.company_id) missing.push("Avklar hvem som bestiller jobben (oppdragsgiver)");
+  if (!project.customer_id) missing.push("Avklar hvem jobben gjøres for (kunde / sluttkunde)");
+  if (!project.owner_user_id) missing.push("Utpek hvem som eier prosjektet");
+  if (workPackages.length === 0) missing.push("Beskriv hva som skal gjøres – legg til første arbeidspakke");
   for (const w of workPackages) {
-    if (!w.responsible_company_id && !w.external_vendor_name) missing.push(`${w.name}: utførende firma mangler`);
-    if (!w.responsible_person_id) missing.push(`${w.name}: arbeidspakkeansvarlig mangler`);
-    if (!w.planned_start) missing.push(`${w.name}: dato mangler`);
-    if (!w.price_form || w.price_form === "unclear") missing.push(`${w.name}: prisform ikke avklart`);
+    if (!w.responsible_company_id && !w.external_vendor_name) missing.push(`Hvem skal utføre «${w.name}»?`);
+    else if (!w.responsible_person_id) missing.push(`Hvem styrer «${w.name}»?`);
+    if (!w.planned_start) missing.push(`Når skal «${w.name}» gjøres?`);
+    if (!w.price_form || w.price_form === "unclear") missing.push(`Bli enige om pris for «${w.name}»`);
     const st = staffing?.[w.id];
-    if (st?.event_id && st.needed && st.assigned_count < st.needed) missing.push(`${w.name}: ${st.needed - st.assigned_count} person(er) mangler`);
+    if (st?.event_id && st.needed && st.assigned_count < st.needed)
+      missing.push(`«${w.name}» mangler ${st.needed - st.assigned_count} ${st.needed - st.assigned_count === 1 ? "person" : "personer"}`);
+    else if (!w.linked_event_id && w.resource_count && w.planned_start && w.responsible_company_id)
+      missing.push(`Send «${w.name}» til Ressursplan for bemanning`);
   }
+
+  const Fact = ({ k, v, muted }: { k: string; v: React.ReactNode; muted?: boolean }) => (
+    <div className="min-w-0">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{k}</p>
+      <p className={`truncate text-sm ${muted ? "text-muted-foreground" : "font-medium text-foreground"}`}>{v}</p>
+    </div>
+  );
 
   return (
     <Card className="space-y-4 p-4">
@@ -70,42 +83,48 @@ export function PlanningWorkLine({ project, workPackages }: { project: PlanningP
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">
-        <Step label="Oppdragsgiver">
-          <p className="text-sm font-medium text-foreground">{company(project.company_id) ?? "Ikke satt"}</p>
-          {dept(project.department_id) && <p className="text-xs text-muted-foreground">{dept(project.department_id)}</p>}
-        </Step>
-        <Step label="Kunde / sluttkunde">
-          <p className="text-sm font-medium text-foreground">{customer ?? "Ikke satt"}</p>
-        </Step>
+        <div className="rounded-lg border-l-4 border-primary bg-primary/5 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Oppdragsgiver · bestiller jobben</p>
+          <p className="mt-0.5 text-sm font-semibold text-foreground">{clientName ?? "Ikke avklart"}</p>
+          <p className="text-xs text-muted-foreground">{dept(project.department_id) ?? "Internt MCS-firma som initierer arbeidet"}</p>
+        </div>
+        <div className="rounded-lg border-l-4 border-muted-foreground/40 bg-muted/40 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Kunde / sluttkunde · jobben gjøres for</p>
+          <p className="mt-0.5 text-sm font-semibold text-foreground">{customer ?? "Ikke avklart"}</p>
+          <p className="text-xs text-muted-foreground">Den eksterne kunden prosjektet gjelder</p>
+        </div>
       </div>
       <Down />
       <Step label="Prosjekt">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="text-sm font-semibold text-foreground">{project.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {formatPeriod(project.expected_start, project.expected_end, project.period_label)}
-          </p>
+          <p className="text-xs text-muted-foreground">{formatPeriod(project.expected_start, project.expected_end, project.period_label)}</p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Eier: {user(project.owner_user_id) ?? "ikke satt"} · {contractFormLabel(project.contract_form)}
-          {finance?.contract_value ? ` ${formatMoney(finance.contract_value)}` : ""}
-          {" · "}
-          {company(project.invoicing_company_id) ?? "Fakturerer ikke satt"}
-          <ArrowRight className="mx-1 inline h-3 w-3" />
-          {project.invoice_recipient || customer || "Kunde"}
-        </p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-4">
+          <Fact k="Prosjekteier" v={ownerName ?? "Ikke avklart"} muted={!ownerName} />
+          <Fact
+            k="Prisform"
+            v={`${contractFormLabel(project.contract_form)}${finance?.contract_value ? ` · ${formatMoney(finance.contract_value)}` : ""}`}
+            muted={project.contract_form === "unclear"}
+          />
+          <Fact k="Fakturerer" v={company(project.invoicing_company_id) ?? "Ikke avklart"} muted={!project.invoicing_company_id} />
+          <Fact k="Faktureres til" v={project.invoice_recipient || customer || "Ikke avklart"} muted={!project.invoice_recipient && !customer} />
+        </div>
       </Step>
       <Down />
       <div className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Arbeidspakker</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Arbeidspakker · hvem gjør hva</p>
         {workPackages.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-            Ingen arbeidspakker ennå.
+            Ingen arbeidspakker ennå. Bare navn trengs for å komme i gang.
           </p>
         ) : (
           workPackages.map((w, i) => {
             const p = priceOf(w.id);
+            const doer = [company(w.responsible_company_id) ?? w.external_vendor_name, dept(w.responsible_department_id)].filter(Boolean).join(" · ");
+            const resp = person(w.responsible_person_id);
             const need = resourceNeedLabel(w.resource_count, w.estimated_hours);
+            const price = `${contractFormLabel(w.price_form)}${p?.agreed_price ? ` · ${formatMoney(p.agreed_price)}` : p?.hourly_rate ? ` · ${formatMoney(p.hourly_rate)}/t` : ""}`;
             return (
               <button
                 key={w.id}
@@ -113,27 +132,16 @@ export function PlanningWorkLine({ project, workPackages }: { project: PlanningP
                 onClick={() => navigate(`/planlegging/${project.id}/arbeidspakker/${w.id}`)}
                 className="w-full rounded-lg border border-border/60 p-3 text-left transition-colors hover:bg-muted/40"
               >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">
-                      {i + 1}. {w.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {[company(w.responsible_company_id) ?? w.external_vendor_name, dept(w.responsible_department_id)].filter(Boolean).join(" · ") ||
-                        "Utførende ikke satt"}
-                      {" · "}Ansvarlig: {person(w.responsible_person_id) ?? "ikke satt"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {[need, formatPeriod(w.planned_start, w.planned_end, null)].filter(Boolean).join(" · ")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {company(w.billing_from_company_id) ?? w.external_vendor_name ?? "?"}
-                      <ArrowRight className="mx-1 inline h-3 w-3" />
-                      {company(w.billing_to_company_id) ?? "?"} · {contractFormLabel(w.price_form)}
-                      {p?.agreed_price ? ` ${formatMoney(p.agreed_price)}` : p?.hourly_rate ? ` ${formatMoney(p.hourly_rate)}/t` : ""}
-                    </p>
-                  </div>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-foreground">{i + 1}. {w.name}</p>
                   <Badge variant="secondary">{wpStatusLabel(w.status)}</Badge>
+                </div>
+                <div className="mt-2 grid gap-3 sm:grid-cols-5">
+                  <Fact k="Utfører" v={doer || "Ikke avklart"} muted={!doer} />
+                  <Fact k="Ansvarlig" v={resp ?? "Ikke avklart"} muted={!resp} />
+                  <Fact k="Når" v={w.planned_start ? formatPeriod(w.planned_start, w.planned_end, null) : "Ikke avklart"} muted={!w.planned_start} />
+                  <Fact k="Ressursbehov" v={need ?? "Ikke satt"} muted={!need} />
+                  <Fact k="Prisform" v={price} muted={w.price_form === "unclear"} />
                 </div>
                 <div className="mt-2">
                   <WorkPackageStaffing assignmentState={w.assignment_state} staffing={staffing?.[w.id]} assignees={assignees?.[w.id]} compact />
