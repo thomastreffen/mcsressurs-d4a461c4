@@ -111,7 +111,7 @@ export default function HubHome() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-lg sm:p-8">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-hub-blue" />
-                <h2 className="text-lg font-semibold text-hub-ink">Logg inn på MCS Hub</h2>
+                <h2 className="text-lg font-semibold text-hub-ink">{session ? "Velkommen tilbake" : "Logg inn på MCS Hub"}</h2>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">For ansatte, samarbeidspartnere og kunder med tilgang.</p>
               {session ? (
