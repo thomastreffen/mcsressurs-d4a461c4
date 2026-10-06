@@ -24,6 +24,7 @@ import JobsPage from "./pages/JobsPage";
 import ResourcePlan from "./pages/ResourcePlan";
 import PlanningBoardPage from "./pages/planning/PlanningBoardPage";
 import PlanningProjectPage from "./pages/planning/PlanningProjectPage";
+import PlanningWorkPackagePage from "./pages/planning/PlanningWorkPackagePage";
 import PlanningNewProjectPage from "./pages/planning/PlanningNewProjectPage";
 import JobDetail from "./pages/JobDetail";
 import MaterialPickListPrintPage from "./pages/MaterialPickListPrintPage";

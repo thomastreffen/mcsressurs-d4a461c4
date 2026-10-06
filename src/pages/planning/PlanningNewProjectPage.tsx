@@ -116,7 +116,7 @@ export default function PlanningNewProjectPage() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Kunde</Label>
+              <Label>Kunde / sluttkunde</Label>
               <Select value={customerId} onValueChange={setCustomerId}>
                 <SelectTrigger><SelectValue placeholder="Velg kunde" /></SelectTrigger>
                 <SelectContent>
