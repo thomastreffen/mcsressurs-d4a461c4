@@ -95,6 +95,8 @@
     --sidebar-ring: 173 80% 26%;
 
     /* MCS Service public marketing site tokens */
+    --hub-blue: 206 93% 41%;           /* MCS Hub-blå #0779D0 */
+    --hub-ink: 220 15% 8%;
     --mcs-navy: 213 64% 9%;            /* #081320 */
     --mcs-charcoal: 220 38% 14%;       /* #142433 */
     --mcs-light: 220 25% 97%;          /* #F5F7FA */
