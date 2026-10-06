@@ -168,7 +168,7 @@ export function usePlanningLookups() {
     queryKey: ["planning-lookups"],
     queryFn: async () => {
       const [companies, departments, customers, users, people] = await Promise.all([
-        sb.from("internal_companies").select("id, name").eq("is_active", true).order("name"),
+        sb.rpc("planning_companies"),
         sb.from("departments").select("id, name, company_id").eq("is_active", true).order("name"),
         sb.from("customers").select("id, name").is("deleted_at", null).order("name").limit(1000),
         sb.from("technicians").select("user_id, name").not("user_id", "is", null).order("name"),
@@ -178,7 +178,11 @@ export function usePlanningLookups() {
           .is("archived_at", null),
       ]);
       return {
-        companies: (companies.data ?? []) as { id: string; name: string }[],
+        companies: ((companies.data ?? []) as any[]).map((c) => ({ id: c.id as string, name: c.name as string })),
+        /** Companies the user may choose as responsible/invoicing company in Planning. */
+        planCompanies: ((companies.data ?? []) as any[])
+          .filter((c) => c.can_plan)
+          .map((c) => ({ id: c.id as string, name: c.name as string })),
         departments: (departments.data ?? []) as { id: string; name: string; company_id: string }[],
         customers: (customers.data ?? []) as { id: string; name: string }[],
         users: (users.data ?? []) as { user_id: string; name: string | null }[],
