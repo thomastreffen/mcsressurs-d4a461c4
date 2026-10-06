@@ -79,8 +79,8 @@ export function CreatePlanningProjectDialog({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Prosjektnavn *</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="F.eks. AQ Odin" autoFocus />
+            <Label htmlFor="planning-project-name">Prosjektnavn *</Label>
+            <Input id="planning-project-name" data-testid="planning-project-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="F.eks. AQ Odin" autoFocus />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -133,18 +133,19 @@ export function CreatePlanningProjectDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Forventet start</Label>
-              <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+              <Label htmlFor="planning-project-start">Forventet start</Label>
+              <Input id="planning-project-start" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Forventet slutt</Label>
-              <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+              <Label htmlFor="planning-project-end">Forventet slutt</Label>
+              <Input id="planning-project-end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Kort beskrivelse</Label>
+            <Label htmlFor="planning-project-description">Kort beskrivelse</Label>
             <Textarea
+              id="planning-project-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -155,7 +156,7 @@ export function CreatePlanningProjectDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Avbryt</Button>
-          <Button onClick={submit} disabled={createProject.isPending}>
+          <Button data-testid="planning-project-submit" onClick={submit} disabled={createProject.isPending}>
             {createProject.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Opprett prosjekt
           </Button>

@@ -245,8 +245,9 @@ export function PlanningWorkPackages({
           {editing && (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Navn *</Label>
+                <Label htmlFor="wp-name">Navn *</Label>
                 <Input
+                  id="wp-name"
                   value={editing.name ?? ""}
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                   placeholder="F.eks. Montere strømskinner"
