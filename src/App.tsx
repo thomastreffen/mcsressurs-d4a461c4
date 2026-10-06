@@ -279,6 +279,7 @@ const App = () => (
               <Route path="/planlegging" element={<PlanningBoardPage />} />
               <Route path="/planlegging/ny" element={<PlanningNewProjectPage />} />
               <Route path="/planlegging/:id" element={<PlanningProjectPage />} />
+              <Route path="/planlegging/:id/arbeidspakker/:wpId" element={<PlanningWorkPackagePage />} />
               <Route path="/calendar/confirmations" element={<ConfirmationsPage />} />
               <Route path="/absence" element={<AbsencePage />} />
               <Route path="/admin/ai-matcher" element={
