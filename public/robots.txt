@@ -18,4 +18,4 @@ Disallow: /approval/
 Disallow: /activate
 Disallow: /auth/
 
-Sitemap: https://mcsservice.no/sitemap.xml
+Sitemap: https://mcsressurs.lovable.app/sitemap.xml

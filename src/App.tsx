@@ -174,8 +174,6 @@ import PortalNotificationSettings from "./pages/portal/PortalNotificationSetting
 import PortalNotificationsPage from "./pages/portal/PortalNotificationsPage";
 import { PortalProvider } from "@/hooks/usePortal";
 import HubHome from "./pages/public/HubHome";
-import { ServiceFeilsoking, Elektrotavler, Stromskinner, Hasteoppdrag } from "./pages/public/ServicePages";
-import { Kontakt, BestillService, OmMcs, Referanser } from "./pages/public/InfoPages";
 
 const queryClient = new QueryClient();
 
@@ -208,14 +206,16 @@ const App = () => (
           <Routes>
             {/* Public marketing site */}
             <Route path="/" element={<HubHome />} />
-            <Route path="/tjenester/service-og-feilsoking" element={<ServiceFeilsoking />} />
-            <Route path="/tjenester/elektrotavler" element={<Elektrotavler />} />
-            <Route path="/tjenester/stromskinner" element={<Stromskinner />} />
-            <Route path="/tjenester/hasteoppdrag" element={<Hasteoppdrag />} />
-            <Route path="/om-mcs" element={<OmMcs />} />
-            <Route path="/referanser" element={<Referanser />} />
-            <Route path="/kontakt" element={<Kontakt />} />
-            <Route path="/bestill-service" element={<BestillService />} />
+            <Route path="/tjenester/service-og-feilsoking" element={<Navigate to="/" replace />} />
+            <Route path="/tjenester/elektrotavler" element={<Navigate to="/" replace />} />
+            <Route path="/tjenester/stromskinner" element={<Navigate to="/" replace />} />
+            <Route path="/tjenester/hasteoppdrag" element={<Navigate to="/" replace />} />
+            <Route path="/tjenester/*" element={<Navigate to="/" replace />} />
+            <Route path="/om-oss" element={<Navigate to="/" replace />} />
+            <Route path="/om-mcs" element={<Navigate to="/" replace />} />
+            <Route path="/referanser" element={<Navigate to="/" replace />} />
+            <Route path="/kontakt" element={<Navigate to="/" replace />} />
+            <Route path="/bestill-service" element={<Navigate to="/" replace />} />
 
             <Route path="/login" element={<HubHome />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
