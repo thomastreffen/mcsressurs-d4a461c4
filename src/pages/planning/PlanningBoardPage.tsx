@@ -18,7 +18,6 @@ import {
   resourceNeedLabel,
   type PlanningStatus,
 } from "@/lib/planning";
-import { CreatePlanningProjectDialog } from "@/components/planning/CreatePlanningProjectDialog";
 
 const ALL = "__all__";
 const sb = supabase as any;
@@ -75,7 +74,6 @@ export default function PlanningBoardPage() {
   const navigate = useNavigate();
   const { data: projects, isLoading } = usePlanningProjects();
   const { data: lookups } = usePlanningLookups();
-  const [createOpen, setCreateOpen] = useState(false);
 
   const [search, setSearch] = useState("");
   const [company, setCompany] = useState(ALL);
@@ -128,7 +126,7 @@ export default function PlanningBoardPage() {
             Felles inngang for jobber og prosjekter på vei inn – på tvers av selskaper og avdelinger.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="gap-2">
+        <Button onClick={() => navigate("/planlegging/ny")} className="gap-2">
           <Plus className="h-4 w-4" />
           Nytt prosjekt
         </Button>
@@ -202,7 +200,7 @@ export default function PlanningBoardPage() {
           <p className="text-sm text-muted-foreground">
             Ingen planleggingsprosjekter ennå. Opprett det første – det trengs bare et navn.
           </p>
-          <Button className="mt-4 gap-2" onClick={() => setCreateOpen(true)}>
+          <Button className="mt-4 gap-2" onClick={() => navigate("/planlegging/ny")}>
             <Plus className="h-4 w-4" />
             Nytt prosjekt
           </Button>
@@ -269,7 +267,6 @@ export default function PlanningBoardPage() {
         </div>
       )}
 
-      <CreatePlanningProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }
