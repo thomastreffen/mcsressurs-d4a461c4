@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,17 +10,13 @@ import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanningLookups, usePlanningMutations } from "@/hooks/usePlanning";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 const NONE = "__none__";
 
-export function CreatePlanningProjectDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
+/** Egen side for nytt planleggingsprosjekt (/planlegging/ny) – ingen modal. */
+export default function PlanningNewProjectPage() {
+  const open = true;
   const navigate = useNavigate();
   const { user } = useAuth();
   const { activeCompanyId } = useCompanyContext();
@@ -67,24 +63,28 @@ export function CreatePlanningProjectDialog({
         status: "early_planning",
       });
       toast.success("Planleggingsprosjekt opprettet");
-      onOpenChange(false);
-      setName("");
-      setDescription("");
-      navigate(`/planlegging/${id}`);
+      navigate(`/planlegging/${id}`, { replace: true });
     } catch (e: any) {
       toast.error(e.message ?? "Kunne ikke opprette prosjekt");
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Nytt planleggingsprosjekt</DialogTitle>
-          <DialogDescription>
-            Bare prosjektnavn er påkrevd. Resten kan fylles ut inne i prosjektrommet.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
+      <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate("/planlegging")}>
+        <ArrowLeft className="h-4 w-4" /> Planlegging
+      </Button>
+      <header>
+        <h1 className="text-2xl font-bold text-foreground">Nytt planleggingsprosjekt</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Bare prosjektnavn er påkrevd. Resten kan fylles ut inne i prosjektrommet.
+        </p>
+      </header>
+      <Card className="p-4 sm:p-6">
+        <form
+          onSubmit={(e) => { e.preventDefault(); submit(); }}
+          className="space-y-6"
+        >
 
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -163,14 +163,15 @@ export function CreatePlanningProjectDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Avbryt</Button>
-          <Button data-testid="planning-project-submit" onClick={submit} disabled={createProject.isPending}>
-            {createProject.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Opprett prosjekt
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <div className="flex justify-end gap-2 border-t border-border/40 pt-4">
+            <Button type="button" variant="ghost" onClick={() => navigate("/planlegging")}>Avbryt</Button>
+            <Button type="submit" data-testid="planning-project-submit" disabled={createProject.isPending}>
+              {createProject.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Opprett prosjekt
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
   );
 }
