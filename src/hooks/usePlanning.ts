@@ -502,6 +502,7 @@ export function usePlanningMutations(projectId?: string) {
       isImportant?: boolean;
       attachments?: { path: string; name: string }[];
       mentionedUserIds?: string[];
+      mentionedDepartmentIds?: string[];
     }) => {
       const { error } = await sb.from("planning_messages").insert({
         planning_project_id: projectId,
@@ -512,6 +513,7 @@ export function usePlanningMutations(projectId?: string) {
         is_important: !!isImportant,
         attachments: attachments ?? [],
         mentioned_user_ids: mentionedUserIds ?? [],
+        mentioned_department_ids: mentionedDepartmentIds ?? [],
       });
       if (error) throw error;
     },
