@@ -96,6 +96,22 @@ export const CONTACT_ROLES = [
   "Underleverandør",
 ];
 
+export const CONTACT_TYPES = [
+  { value: "internal", label: "Intern kontakt" },
+  { value: "customer", label: "Kunde" },
+  { value: "end_customer", label: "Sluttkunde" },
+  { value: "supplier", label: "Leverandør" },
+  { value: "subcontractor", label: "Underleverandør" },
+  { value: "site", label: "Sitekontakt" },
+  { value: "technical", label: "Teknisk kontakt" },
+  { value: "billing", label: "Fakturakontakt" },
+] as const;
+
+export function contactTypeLabel(v: string | null | undefined): string {
+  if (v === "external") return "Ekstern";
+  return CONTACT_TYPES.find((c) => c.value === v)?.label ?? "Intern kontakt";
+}
+
 export const EXTERNAL_SYSTEMS = [
   "Business Central",
   "SharePoint",

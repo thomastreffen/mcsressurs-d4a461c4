@@ -103,6 +103,7 @@ export interface PlanningTask {
   description: string | null;
   status: string;
   department_id: string | null;
+  company_id: string | null;
   assignee_person_id: string | null;
   due_date: string | null;
   completed_at: string | null;
@@ -642,6 +643,23 @@ export function staffingLabel(s: WpStaffing | undefined): { label: string; tone:
   if (s.assigned_count === 0) return { label: "Ubemannet", tone: "warn" };
   if (s.needed && s.assigned_count < s.needed) return { label: `Delvis bemannet (${s.assigned_count}/${s.needed})`, tone: "partial" };
   return { label: s.assigned_count > 1 ? `Bemannet (${s.assigned_count})` : "Bemannet", tone: "ok" };
+}
+
+/** Konkrete personer tildelt i Ressursplan, per arbeidspakke. */
+export function usePlanningAssignees(projectId: string | undefined) {
+  return useQuery<Record<string, { id: string; name: string }[]>>({
+    queryKey: ["planning-staffing", projectId, "assignees"],
+    enabled: !!projectId,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const { data, error } = await sb.rpc("get_planning_wp_assignees", { _project_id: projectId });
+      if (error) throw error;
+      const out: Record<string, { id: string; name: string }[]> = {};
+      for (const r of (data ?? []) as any[]) (out[r.work_package_id] ??= []).push({ id: r.technician_id, name: r.name });
+      return out;
+    },
+  });
 }
 
 /* ── Prosjektdeltakere ── */
