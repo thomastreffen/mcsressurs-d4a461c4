@@ -17,6 +17,8 @@ import {
   usePlanningFinance,
   usePlanningLookups,
   usePlanningMutations,
+  usePlanningStaffing,
+  staffingLabel,
   type PlanningProject,
   type PlanningWorkPackage,
 } from "@/hooks/usePlanning";
@@ -52,6 +54,7 @@ export function PlanningWorkPackages({
     const f = finance?.work_packages.find((x) => x.id === w.id);
     return f ? { ...w, agreed_price: f.agreed_price, hourly_rate: f.hourly_rate } : { ...w, agreed_price: null, hourly_rate: null };
   });
+  const { data: staffing } = usePlanningStaffing(project.id);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -209,6 +212,36 @@ export function PlanningWorkPackages({
                   >
                     {assignmentStateLabel(wp.assignment_state)}
                   </Badge>
+                  {(() => {
+                    const st = staffing?.[wp.id];
+                    const sl = staffingLabel(st);
+                    return (
+                      <>
+                        {sl && (
+                          <Badge
+                            variant="outline"
+                            className={
+                              sl.tone === "warn" ? "border-warning/40 text-warning"
+                              : sl.tone === "partial" ? "border-primary/40 text-primary"
+                              : "border-success/40 text-success"
+                            }
+                          >
+                            {sl.label}
+                          </Badge>
+                        )}
+                        {st?.date_mismatch && (
+                          <Badge variant="outline" className="border-destructive/40 text-destructive">
+                            Avvik: datoen i Ressursplan er ikke justert
+                          </Badge>
+                        )}
+                        {st?.event_missing && (
+                          <Badge variant="outline" className="border-destructive/40 text-destructive">
+                            Oppdraget er fjernet fra Ressursplan
+                          </Badge>
+                        )}
+                      </>
+                    );
+                  })()}
                   {wp.linked_event_id ? (
                     canSeeResourcePlan ? (
                       <Button

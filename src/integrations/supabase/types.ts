@@ -12716,6 +12716,7 @@ export type Database = {
           original_file_name: string
           planning_project_id: string
           revision: number
+          storage_bucket: string
           storage_path: string
           supersedes_file_id: string | null
           uploaded_by: string | null
@@ -12734,6 +12735,7 @@ export type Database = {
           original_file_name: string
           planning_project_id: string
           revision?: number
+          storage_bucket?: string
           storage_path: string
           supersedes_file_id?: string | null
           uploaded_by?: string | null
@@ -12752,6 +12754,7 @@ export type Database = {
           original_file_name?: string
           planning_project_id?: string
           revision?: number
+          storage_bucket?: string
           storage_path?: string
           supersedes_file_id?: string | null
           uploaded_by?: string | null
@@ -16372,6 +16375,20 @@ export type Database = {
         }[]
       }
       get_planning_finance: { Args: { _project_id: string }; Returns: Json }
+      get_planning_wp_staffing: {
+        Args: { _project_id: string }
+        Returns: {
+          assigned_count: number
+          date_mismatch: boolean
+          event_end: string
+          event_id: string
+          event_missing: boolean
+          event_start: string
+          needed: number
+          project_number: string
+          work_package_id: string
+        }[]
+      }
       get_project_member_type: {
         Args: { _auth_user_id: string; _project_id: string }
         Returns: string
@@ -16683,6 +16700,7 @@ export type Database = {
         Args: { _submission_id: string }
         Returns: boolean
       }
+      person_has_employment: { Args: { _person_id: string }; Returns: boolean }
       planning_eligible_participants: {
         Args: never
         Returns: {
@@ -16694,6 +16712,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      planning_storage_access: { Args: { _name: string }; Returns: boolean }
       remove_work_visit_from_plan: {
         Args: {
           p_actor?: string

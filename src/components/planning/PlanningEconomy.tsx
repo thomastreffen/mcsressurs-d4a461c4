@@ -43,7 +43,7 @@ export function PlanningEconomy({
   if (!financeLoading && !finance) {
     return (
       <Card className="p-8 text-center text-sm text-muted-foreground">
-        Du har ikke tilgang til prosjektøkonomi. Tilgangen følger prisrettigheten i Kontrollsenteret.
+        Du har ikke tilgang til økonomiinformasjon for dette prosjektet.
       </Card>
     );
   }

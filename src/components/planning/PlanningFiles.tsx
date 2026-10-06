@@ -10,7 +10,7 @@ import { Upload, Trash2, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { usePlanningMutations, planningFileUrl, type PlanningFile } from "@/hooks/usePlanning";
+import { usePlanningMutations, openPlanningFile, bucketForPath, type PlanningFile } from "@/hooks/usePlanning";
 import { DEFAULT_FILE_CATEGORIES } from "@/lib/planning";
 
 const NEW_CATEGORY = "__new__";
@@ -92,14 +92,16 @@ export function PlanningFiles({ projectId, files }: { projectId: string; files: 
                 <Card key={f.id} className="flex items-center gap-3 p-3">
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
-                    <a
-                      href={planningFileUrl(f.storage_path)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm font-medium hover:underline"
+                    <button
+                      type="button"
+                      onClick={() => openPlanningFile(f.storage_path).catch((e) => toast.error(e?.message ?? "Kunne ikke åpne filen"))}
+                      className="text-left text-sm font-medium hover:underline"
                     >
                       {f.display_name}
-                    </a>
+                    </button>
+                    {bucketForPath(f.storage_path) !== "planning-files" && (
+                      <Badge variant="outline" className="ml-2 text-[10px]">Eldre fil – åpen lenke</Badge>
+                    )}
                     <p className="truncate text-xs text-muted-foreground">
                       {f.original_file_name} · {f.uploaded_by_name ?? "Ukjent"} ·{" "}
                       {format(new Date(f.created_at), "d. MMM yyyy HH:mm", { locale: nb })}

@@ -278,6 +278,7 @@ export function usePlanningMutations(projectId?: string) {
     if (id) {
       qc.invalidateQueries({ queryKey: ["planning-project", id] });
       qc.invalidateQueries({ queryKey: ["planning-children", id] });
+      qc.invalidateQueries({ queryKey: ["planning-staffing", id] });
       qc.invalidateQueries({ queryKey: ["planning-activity", id] });
       qc.invalidateQueries({ queryKey: ["planning-finance", id] });
     }
@@ -458,8 +459,8 @@ export function usePlanningMutations(projectId?: string) {
       category: string;
       displayName: string;
     }) => {
-      const path = `planning/${projectId}/${crypto.randomUUID()}-${sanitizeStorageFileName(file.name)}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file);
+      const path = `${projectId}/${crypto.randomUUID()}-${sanitizeStorageFileName(file.name)}`;
+      const { error: upErr } = await supabase.storage.from(PRIVATE_BUCKET).upload(path, file);
       if (upErr) throw upErr;
       const { error } = await sb.from("planning_files").insert({
         planning_project_id: projectId,
@@ -467,6 +468,7 @@ export function usePlanningMutations(projectId?: string) {
         display_name: displayName || file.name,
         original_file_name: file.name,
         storage_path: path,
+        storage_bucket: PRIVATE_BUCKET,
         mime_type: file.type || null,
         file_size: file.size,
         uploaded_by: user?.id ?? null,
@@ -480,7 +482,7 @@ export function usePlanningMutations(projectId?: string) {
 
   const deleteFile = useMutation({
     mutationFn: async (f: PlanningFile) => {
-      await supabase.storage.from(BUCKET).remove([f.storage_path]);
+      await supabase.storage.from(bucketForPath(f.storage_path)).remove([f.storage_path]);
       const { error } = await sb.from("planning_files").delete().eq("id", f.id);
       if (error) throw error;
     },
@@ -494,12 +496,14 @@ export function usePlanningMutations(projectId?: string) {
       isImportant,
       attachments,
       mentionedUserIds,
+      mentionedDepartmentIds,
     }: {
       body: string;
       replyToId?: string | null;
       isImportant?: boolean;
       attachments?: { path: string; name: string }[];
       mentionedUserIds?: string[];
+      mentionedDepartmentIds?: string[];
     }) => {
       const { error } = await sb.from("planning_messages").insert({
         planning_project_id: projectId,
@@ -510,6 +514,7 @@ export function usePlanningMutations(projectId?: string) {
         is_important: !!isImportant,
         attachments: attachments ?? [],
         mentioned_user_ids: mentionedUserIds ?? [],
+        mentioned_department_ids: mentionedDepartmentIds ?? [],
       });
       if (error) throw error;
     },
@@ -575,8 +580,64 @@ export function usePlanningChildren(projectId: string | undefined) {
   });
 }
 
-export function planningFileUrl(path: string): string {
-  return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+export const PRIVATE_BUCKET = "planning-files";
+
+/** Eldre filer (sti «planning/...») ligger i det offentlige arkivet; nye ligger privat. */
+export function bucketForPath(path: string) {
+  return path.startsWith("planning/") ? BUCKET : PRIVATE_BUCKET;
+}
+
+/** Åpner fil: kortlevd signert lenke for private filer (tilgang sjekkes i databasen). */
+export async function openPlanningFile(path: string) {
+  const win = window.open("", "_blank");
+  try {
+    let url: string;
+    if (bucketForPath(path) === BUCKET) {
+      url = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+    } else {
+      const { data, error } = await supabase.storage.from(PRIVATE_BUCKET).createSignedUrl(path, 300);
+      if (error || !data) throw error ?? new Error("Ingen tilgang til filen");
+      url = data.signedUrl;
+    }
+    if (win) win.location.href = url; else window.location.href = url;
+  } catch (e) {
+    win?.close();
+    throw e;
+  }
+}
+
+export interface WpStaffing {
+  work_package_id: string;
+  event_id: string | null;
+  project_number: string | null;
+  assigned_count: number;
+  needed: number | null;
+  event_start: string | null;
+  event_end: string | null;
+  date_mismatch: boolean;
+  event_missing: boolean;
+}
+
+/** Bemanning hentes fra ressursplanen (source of truth). */
+export function usePlanningStaffing(projectId: string | undefined) {
+  return useQuery<Record<string, WpStaffing>>({
+    queryKey: ["planning-staffing", projectId],
+    enabled: !!projectId,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const { data, error } = await sb.rpc("get_planning_wp_staffing", { _project_id: projectId });
+      if (error) throw error;
+      return Object.fromEntries(((data ?? []) as WpStaffing[]).map((r) => [r.work_package_id, r]));
+    },
+  });
+}
+
+export function staffingLabel(s: WpStaffing | undefined): { label: string; tone: "warn" | "partial" | "ok" } | null {
+  if (!s || !s.event_id) return null;
+  if (s.assigned_count === 0) return { label: "Ubemannet", tone: "warn" };
+  if (s.needed && s.assigned_count < s.needed) return { label: `Delvis bemannet (${s.assigned_count}/${s.needed})`, tone: "partial" };
+  return { label: s.assigned_count > 1 ? `Bemannet (${s.assigned_count})` : "Bemannet", tone: "ok" };
 }
 
 /* ── Prosjektdeltakere ── */
