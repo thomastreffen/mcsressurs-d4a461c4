@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Mail, Wrench, CheckCircle } from "lucide-react";
+import { Loader2, Mail, CheckCircle } from "lucide-react";
+import hubLogo from "@/assets/mcs/mcs-hub-logo.webp.asset.json";
 
 export default function PortalLogin() {
   const navigate = useNavigate();
@@ -59,15 +60,15 @@ export default function PortalLogin() {
         <div className="flex flex-col items-center gap-8 rounded-xl border bg-card p-8 shadow-sm">
           {/* Logo */}
           <div className="flex flex-col items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Wrench className="h-6 w-6" />
-            </div>
+            <a href="/" aria-label="MCS Hub forside">
+              <img src={hubLogo.url} alt="MCS Hub" className="h-10 w-auto" />
+            </a>
             <div className="text-center">
               <h1 className="text-xl font-semibold text-card-foreground">
                 Kundeportal
               </h1>
               <p className="text-sm text-muted-foreground">
-                MCS Service
+                For kunder og samarbeidspartnere
               </p>
             </div>
           </div>
@@ -114,7 +115,7 @@ export default function PortalLogin() {
                   />
                 </div>
               </div>
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              <Button type="submit" className="w-full bg-hub-ink text-background hover:bg-hub-ink/90" size="lg" disabled={loading}>
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
