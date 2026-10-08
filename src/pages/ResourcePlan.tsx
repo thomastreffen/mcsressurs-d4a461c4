@@ -44,6 +44,7 @@ import { CapacityStatusBar } from "@/components/resource-plan/CapacityStatusBar"
 import { UnplannedProjectsBanner } from "@/components/resource-plan/UnplannedProjectsBanner";
 import { UnplannedJobsStrip } from "@/components/resource-plan/UnplannedJobsStrip";
 import { PlanningNeedsStrip } from "@/components/resource-plan/PlanningNeedsStrip";
+import { PlanningNeedsGlobal } from "@/components/resource-plan/PlanningNeedsGlobal";
 import { UnplannedDrawer } from "@/components/resource-plan/UnplannedDrawer";
 import { FollowUpStrip, getFilteredJobIds, type FollowUpCategory } from "@/components/resource-plan/FollowUpStrip";
 import { RecommendedActions } from "@/components/resource-plan/RecommendedActions";
@@ -906,6 +907,16 @@ export default function ResourcePlan() {
             )}
           </div>
         </div>
+
+        <PlanningNeedsGlobal
+          companyId={effectiveCompanyId}
+          allowedCompanyIds={allowedCompanyIds}
+          refreshKey={refreshKey}
+          onPick={(eventId, start) => {
+            setDeepLinkHandled(false);
+            setSearchParams({ openTask: eventId, date: format(start, "yyyy-MM-dd") }, { replace: true });
+          }}
+        />
 
         {(calendarView === "team" || calendarView === "timeGridWeek" || calendarView === "listWeek") && (
           <PlanningNeedsStrip
