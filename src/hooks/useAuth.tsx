@@ -44,6 +44,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** Non-blocking role fetch from DB — updates user if role differs */
   const fetchRoleInBackground = useCallback(async (supaUser: User) => {
     try {
+      // Deactivated accounts may not use the system, even with a still-valid session
+      const { data: ua } = await supabase
+        .from("user_accounts")
+        .select("is_active")
+        .eq("auth_user_id", supaUser.id)
+        .maybeSingle();
+      if (ua && ua.is_active === false) {
+        console.warn("[Auth] Account deactivated — signing out");
+        await supabase.auth.signOut();
+        window.location.href = "/?deaktivert=1";
+        return;
+      }
+
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
