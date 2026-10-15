@@ -33,6 +33,7 @@ interface PersonRow {
   role_names: string[];
   has_user_account: boolean;
   has_logged_in: boolean;
+  access_disabled?: boolean;
   company_count: number;
   auth_user_id: string | null;
 }
@@ -175,7 +176,7 @@ export default function PeoplePage() {
   const getStatusBadge = (person: PersonRow) => {
     if (person.archived_at) return <Badge variant="destructive" className="text-[10px]">🔴 Arkivert</Badge>;
     if (!person.has_user_account) return <Badge variant="outline" className="text-[10px]">⚪ Kun ansatt</Badge>;
-    if ((person as any).access_disabled) return <Badge variant="destructive" className="text-[10px]">⛔ Tilgang deaktivert</Badge>;
+    if (person.access_disabled) return <Badge variant="destructive" className="text-[10px]">⛔ Tilgang deaktivert</Badge>;
     if (!person.has_logged_in) return <Badge variant="outline" className="text-[10px] border-yellow-500/50 text-yellow-700">🟡 Invitert</Badge>;
     return <Badge variant="outline" className="text-[10px] border-green-500/50 text-green-700">🟢 Aktiv</Badge>;
   };
