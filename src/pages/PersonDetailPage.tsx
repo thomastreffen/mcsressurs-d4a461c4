@@ -477,7 +477,7 @@ export default function PersonDetailPage() {
               <h1 className="text-xl sm:text-2xl font-bold truncate">{person.full_name}</h1>
               {employment?.archived_at ? (
                 <Badge variant="destructive" className="text-[10px]">Arkivert</Badge>
-              ) : (
+              ) : account && !account.is_active ? null : (
                 <Badge variant="outline" className="text-[10px]">Aktiv</Badge>
               )}
               {account && <Badge variant="secondary" className="text-[10px]">Brukerkonto</Badge>}
@@ -758,7 +758,11 @@ export default function PersonDetailPage() {
                 {account ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px] border-green-500/50 text-green-700">Brukerkonto aktiv</Badge>
+                      {account.is_active ? (
+                        <Badge variant="outline" className="text-[10px] border-green-500/50 text-green-700">Brukerkonto aktiv</Badge>
+                      ) : (
+                        <Badge variant="destructive" className="text-[10px]">Tilgang deaktivert – kan ikke logge inn</Badge>
+                      )}
                       <span className="text-xs text-muted-foreground">Auth ID: {account.auth_user_id.slice(0, 8)}…</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
