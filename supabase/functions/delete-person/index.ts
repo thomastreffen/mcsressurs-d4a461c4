@@ -218,6 +218,45 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---- DEACTIVATE / REACTIVATE ACCESS (keeps all data) ----
+    if (action === "set_access") {
+      const active = body.active === true;
+      if (authUserId === caller.id && !active) {
+        return new Response(JSON.stringify({ error: "Du kan ikke deaktivere deg selv" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (authUserId) {
+        const { error: banErr } = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+          ban_duration: active ? "none" : "876000h",
+        } as any);
+        if (banErr) {
+          return new Response(JSON.stringify({ error: banErr.message }), {
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+      if (userAccount) {
+        const { error: uaErr } = await supabaseAdmin.from("user_accounts")
+          .update({ is_active: active }).eq("id", userAccount.id);
+        if (uaErr) {
+          return new Response(JSON.stringify({ error: uaErr.message }), {
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+      await supabaseAdmin.from("audit_log").insert({
+        action: active ? "access_reactivated" : "access_deactivated",
+        target_type: "person",
+        target_id: person_id,
+        actor_user_account_id: userAccount?.id || null,
+        metadata: { performed_by_auth: caller.id, person_email: person.email },
+      });
+      return new Response(JSON.stringify({ success: true, active }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ---- HARD DELETE ----
     if (action === "delete") {
       if (!canHardDelete) {
