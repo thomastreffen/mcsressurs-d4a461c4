@@ -359,51 +359,51 @@ export default function PersonDetailPage() {
     };
     try {
       // Save roles (v2 + legacy sync)
-      await supabase.from("user_roles_v2").delete().eq("user_account_id", account.id);
+      await must(supabase.from("user_roles_v2").delete().eq("user_account_id", account.id));
       if (assignedRoles.length > 0) {
-        await supabase.from("user_roles_v2").insert(
+        await must(supabase.from("user_roles_v2").insert(
           assignedRoles.map((rid) => ({ user_account_id: account.id, role_id: rid }))
-        );
+        ));
       }
-      await supabase.from("user_role_assignments").delete().eq("user_id", account.auth_user_id);
+      await must(supabase.from("user_role_assignments").delete().eq("user_id", account.auth_user_id));
       if (assignedRoles.length > 0) {
-        await supabase.from("user_role_assignments").insert(
+        await must(supabase.from("user_role_assignments").insert(
           assignedRoles.map((rid) => ({ user_id: account.auth_user_id, role_id: rid }))
-        );
+        ));
       }
 
       // Save scopes (v2 + legacy sync)
-      await supabase.from("user_scopes").delete().eq("user_account_id", account.id);
+      await must(supabase.from("user_scopes").delete().eq("user_account_id", account.id));
       if (scopes.length > 0) {
-        await supabase.from("user_scopes").insert(
+        await must(supabase.from("user_scopes").insert(
           scopes.map((s) => ({ user_account_id: account.id, company_id: s.company_id, department_id: s.department_id }))
-        );
+        ));
       }
-      await supabase.from("user_memberships").delete().eq("user_id", account.auth_user_id);
+      await must(supabase.from("user_memberships").delete().eq("user_id", account.auth_user_id));
       if (scopes.length > 0) {
-        await supabase.from("user_memberships").insert(
+        await must(supabase.from("user_memberships").insert(
           scopes.map((s) => ({
             user_id: account.auth_user_id,
             company_id: s.company_id,
             department_id: s.department_id,
             role_id: s.department_id === null ? (membershipRoles[s.company_id] ?? null) : null,
           }))
-        );
+        ));
       }
 
       // Save permission overrides (v2 + legacy sync) — scoped to selected company
       // Only delete overrides for the currently selected company (preserve other companies' overrides)
       if (overrideCompanyId) {
-        await supabase.from("user_permission_overrides_v2")
+        await must(supabase.from("user_permission_overrides_v2")
           .delete()
           .eq("user_account_id", account.id)
-          .eq("scope_company_id", overrideCompanyId);
+          .eq("scope_company_id", overrideCompanyId));
       } else {
         // Fallback: delete global (null company) overrides only
-        await supabase.from("user_permission_overrides_v2")
+        await must(supabase.from("user_permission_overrides_v2")
           .delete()
           .eq("user_account_id", account.id)
-          .is("scope_company_id", null);
+          .is("scope_company_id", null));
       }
       const rows: any[] = Object.entries(overrides).map(([key, mode]) => ({
         user_account_id: account.id, permission_key: key, mode,
@@ -413,7 +413,7 @@ export default function PersonDetailPage() {
         rows.push({ user_account_id: account.id, permission_key: scopeOverride, mode: "allow", scope_company_id: overrideCompanyId || null });
       }
       if (rows.length > 0) {
-        await supabase.from("user_permission_overrides_v2").insert(rows);
+        await must(supabase.from("user_permission_overrides_v2").insert(rows));
       }
 
       // Update allOverridesV2 cache
@@ -423,17 +423,17 @@ export default function PersonDetailPage() {
       setAllOverridesV2([...remaining, ...rows.map(r => ({ ...r, scope_company_id: r.scope_company_id }))]);
 
       // Legacy sync — flatten all v2 overrides to v1 (global)
-      const { data: allV2 } = await supabase.from("user_permission_overrides_v2")
+      const { data: allV2 } = await must(supabase.from("user_permission_overrides_v2")
         .select("permission_key, mode")
-        .eq("user_account_id", account.id);
-      await supabase.from("user_permission_overrides").delete().eq("user_id", account.auth_user_id);
+        .eq("user_account_id", account.id));
+      await must(supabase.from("user_permission_overrides").delete().eq("user_id", account.auth_user_id));
       const legacyRows = (allV2 || []).map((r: any) => ({
         user_id: account.auth_user_id,
         permission_key: r.permission_key,
         allowed: r.mode === "allow",
       }));
       if (legacyRows.length > 0) {
-        await supabase.from("user_permission_overrides").insert(legacyRows);
+        await must(supabase.from("user_permission_overrides").insert(legacyRows));
       }
 
       toast.success("Roller, omfang og rettigheter lagret");
