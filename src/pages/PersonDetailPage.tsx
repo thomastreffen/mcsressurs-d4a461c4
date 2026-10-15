@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Loader2, ArrowLeft, User, Building, Shield, Activity,
-  Archive, ArchiveRestore, Plus, Trash2, Mail, RotateCcw,
+  Archive, ArchiveRestore, Plus, Trash2, Mail, RotateCcw, Ban, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -332,56 +332,78 @@ export default function PersonDetailPage() {
     fetchData();
   };
 
+  const handleAccessToggle = async () => {
+    if (!account || !person) return;
+    const activate = !account.is_active;
+    if (!activate && !window.confirm(`Deaktiver tilgang for ${person.full_name}? Personen kan ikke lenger logge inn. Alle data beholdes.`)) return;
+    setSaving(true);
+    const { data, error } = await supabase.functions.invoke("delete-person", {
+      body: { person_id: person.id, action: "set_access", active: activate },
+    });
+    setSaving(false);
+    if (error || data?.error) {
+      toast.error("Kunne ikke endre tilgang", { description: data?.error || error?.message });
+      return;
+    }
+    toast.success(activate ? "Tilgang aktivert" : "Tilgang deaktivert – personen kan ikke logge inn");
+    fetchData();
+  };
+
   const handleSaveAll = async () => {
     if (!account) return;
     setSaving(true);
+    // Throw on any failed write so nothing fails silently
+    const must = async (p: PromiseLike<{ error: any }>) => {
+      const { error } = await p;
+      if (error) throw error;
+    };
     try {
       // Save roles (v2 + legacy sync)
-      await supabase.from("user_roles_v2").delete().eq("user_account_id", account.id);
+      await must(supabase.from("user_roles_v2").delete().eq("user_account_id", account.id));
       if (assignedRoles.length > 0) {
-        await supabase.from("user_roles_v2").insert(
+        await must(supabase.from("user_roles_v2").insert(
           assignedRoles.map((rid) => ({ user_account_id: account.id, role_id: rid }))
-        );
+        ));
       }
-      await supabase.from("user_role_assignments").delete().eq("user_id", account.auth_user_id);
+      await must(supabase.from("user_role_assignments").delete().eq("user_id", account.auth_user_id));
       if (assignedRoles.length > 0) {
-        await supabase.from("user_role_assignments").insert(
+        await must(supabase.from("user_role_assignments").insert(
           assignedRoles.map((rid) => ({ user_id: account.auth_user_id, role_id: rid }))
-        );
+        ));
       }
 
       // Save scopes (v2 + legacy sync)
-      await supabase.from("user_scopes").delete().eq("user_account_id", account.id);
+      await must(supabase.from("user_scopes").delete().eq("user_account_id", account.id));
       if (scopes.length > 0) {
-        await supabase.from("user_scopes").insert(
+        await must(supabase.from("user_scopes").insert(
           scopes.map((s) => ({ user_account_id: account.id, company_id: s.company_id, department_id: s.department_id }))
-        );
+        ));
       }
-      await supabase.from("user_memberships").delete().eq("user_id", account.auth_user_id);
+      await must(supabase.from("user_memberships").delete().eq("user_id", account.auth_user_id));
       if (scopes.length > 0) {
-        await supabase.from("user_memberships").insert(
+        await must(supabase.from("user_memberships").insert(
           scopes.map((s) => ({
             user_id: account.auth_user_id,
             company_id: s.company_id,
             department_id: s.department_id,
             role_id: s.department_id === null ? (membershipRoles[s.company_id] ?? null) : null,
           }))
-        );
+        ));
       }
 
       // Save permission overrides (v2 + legacy sync) — scoped to selected company
       // Only delete overrides for the currently selected company (preserve other companies' overrides)
       if (overrideCompanyId) {
-        await supabase.from("user_permission_overrides_v2")
+        await must(supabase.from("user_permission_overrides_v2")
           .delete()
           .eq("user_account_id", account.id)
-          .eq("scope_company_id", overrideCompanyId);
+          .eq("scope_company_id", overrideCompanyId));
       } else {
         // Fallback: delete global (null company) overrides only
-        await supabase.from("user_permission_overrides_v2")
+        await must(supabase.from("user_permission_overrides_v2")
           .delete()
           .eq("user_account_id", account.id)
-          .is("scope_company_id", null);
+          .is("scope_company_id", null));
       }
       const rows: any[] = Object.entries(overrides).map(([key, mode]) => ({
         user_account_id: account.id, permission_key: key, mode,
@@ -391,7 +413,7 @@ export default function PersonDetailPage() {
         rows.push({ user_account_id: account.id, permission_key: scopeOverride, mode: "allow", scope_company_id: overrideCompanyId || null });
       }
       if (rows.length > 0) {
-        await supabase.from("user_permission_overrides_v2").insert(rows);
+        await must(supabase.from("user_permission_overrides_v2").insert(rows));
       }
 
       // Update allOverridesV2 cache
@@ -404,14 +426,14 @@ export default function PersonDetailPage() {
       const { data: allV2 } = await supabase.from("user_permission_overrides_v2")
         .select("permission_key, mode")
         .eq("user_account_id", account.id);
-      await supabase.from("user_permission_overrides").delete().eq("user_id", account.auth_user_id);
+      await must(supabase.from("user_permission_overrides").delete().eq("user_id", account.auth_user_id));
       const legacyRows = (allV2 || []).map((r: any) => ({
         user_id: account.auth_user_id,
         permission_key: r.permission_key,
         allowed: r.mode === "allow",
       }));
       if (legacyRows.length > 0) {
-        await supabase.from("user_permission_overrides").insert(legacyRows);
+        await must(supabase.from("user_permission_overrides").insert(legacyRows));
       }
 
       toast.success("Roller, omfang og rettigheter lagret");
@@ -459,11 +481,23 @@ export default function PersonDetailPage() {
                 <Badge variant="outline" className="text-[10px]">Aktiv</Badge>
               )}
               {account && <Badge variant="secondary" className="text-[10px]">Brukerkonto</Badge>}
+              {account && !account.is_active && <Badge variant="destructive" className="text-[10px]">Tilgang deaktivert</Badge>}
               {employment?.is_plannable_resource && <Badge variant="success" className="text-[10px]">Planleggbar</Badge>}
             </div>
             <p className="text-sm text-muted-foreground">{person.email}</p>
           </div>
           <div className="flex items-center gap-2">
+            {isSuperAdmin && account && (
+              <Button
+                variant={account.is_active ? "outline" : "default"}
+                size="sm"
+                onClick={handleAccessToggle}
+                disabled={saving}
+                className="gap-1.5"
+              >
+                {account.is_active ? <><Ban className="h-4 w-4" />Deaktiver tilgang</> : <><CheckCircle2 className="h-4 w-4" />Aktiver tilgang</>}
+              </Button>
+            )}
             {isSuperAdmin && account && (
               <Button variant="outline" size="sm" onClick={() => setResetOnboardingOpen(true)} disabled={saving} className="gap-1.5">
                 <RotateCcw className="h-4 w-4" />
