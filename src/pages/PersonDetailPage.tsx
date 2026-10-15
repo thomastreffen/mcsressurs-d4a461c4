@@ -423,9 +423,9 @@ export default function PersonDetailPage() {
       setAllOverridesV2([...remaining, ...rows.map(r => ({ ...r, scope_company_id: r.scope_company_id }))]);
 
       // Legacy sync — flatten all v2 overrides to v1 (global)
-      const { data: allV2 } = await must(supabase.from("user_permission_overrides_v2")
+      const { data: allV2 } = await supabase.from("user_permission_overrides_v2")
         .select("permission_key, mode")
-        .eq("user_account_id", account.id));
+        .eq("user_account_id", account.id);
       await must(supabase.from("user_permission_overrides").delete().eq("user_id", account.auth_user_id));
       const legacyRows = (allV2 || []).map((r: any) => ({
         user_id: account.auth_user_id,
