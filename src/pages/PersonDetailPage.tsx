@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Loader2, ArrowLeft, User, Building, Shield, Activity,
-  Archive, ArchiveRestore, Plus, Trash2, Mail, RotateCcw,
+  Archive, ArchiveRestore, Plus, Trash2, Mail, RotateCcw, Ban, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -332,9 +332,31 @@ export default function PersonDetailPage() {
     fetchData();
   };
 
+  const handleAccessToggle = async () => {
+    if (!account || !person) return;
+    const activate = !account.is_active;
+    if (!activate && !window.confirm(`Deaktiver tilgang for ${person.full_name}? Personen kan ikke lenger logge inn. Alle data beholdes.`)) return;
+    setSaving(true);
+    const { data, error } = await supabase.functions.invoke("delete-person", {
+      body: { person_id: person.id, action: "set_access", active: activate },
+    });
+    setSaving(false);
+    if (error || data?.error) {
+      toast.error("Kunne ikke endre tilgang", { description: data?.error || error?.message });
+      return;
+    }
+    toast.success(activate ? "Tilgang aktivert" : "Tilgang deaktivert – personen kan ikke logge inn");
+    fetchData();
+  };
+
   const handleSaveAll = async () => {
     if (!account) return;
     setSaving(true);
+    // Throw on any failed write so nothing fails silently
+    const must = async (p: PromiseLike<{ error: any }>) => {
+      const { error } = await p;
+      if (error) throw error;
+    };
     try {
       // Save roles (v2 + legacy sync)
       await supabase.from("user_roles_v2").delete().eq("user_account_id", account.id);
@@ -459,11 +481,23 @@ export default function PersonDetailPage() {
                 <Badge variant="outline" className="text-[10px]">Aktiv</Badge>
               )}
               {account && <Badge variant="secondary" className="text-[10px]">Brukerkonto</Badge>}
+              {account && !account.is_active && <Badge variant="destructive" className="text-[10px]">Tilgang deaktivert</Badge>}
               {employment?.is_plannable_resource && <Badge variant="success" className="text-[10px]">Planleggbar</Badge>}
             </div>
             <p className="text-sm text-muted-foreground">{person.email}</p>
           </div>
           <div className="flex items-center gap-2">
+            {isSuperAdmin && account && (
+              <Button
+                variant={account.is_active ? "outline" : "default"}
+                size="sm"
+                onClick={handleAccessToggle}
+                disabled={saving}
+                className="gap-1.5"
+              >
+                {account.is_active ? <><Ban className="h-4 w-4" />Deaktiver tilgang</> : <><CheckCircle2 className="h-4 w-4" />Aktiver tilgang</>}
+              </Button>
+            )}
             {isSuperAdmin && account && (
               <Button variant="outline" size="sm" onClick={() => setResetOnboardingOpen(true)} disabled={saving} className="gap-1.5">
                 <RotateCcw className="h-4 w-4" />
