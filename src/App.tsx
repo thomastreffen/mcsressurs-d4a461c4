@@ -191,6 +191,13 @@ function HmsPage({ children }: { children: React.ReactNode }) {
   return <HmsContextGate>{children}</HmsContextGate>;
 }
 
+// Self-service HMS pages (own handbook, own chemicals, own readiness) are open to
+// every authenticated employee — gated by RLS on the underlying rows, not by the
+// hms.view/hms.manage company-module permission that HmsContextGate enforces.
+function HmsSelfServicePage({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
