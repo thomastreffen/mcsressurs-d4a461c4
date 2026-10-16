@@ -121,6 +121,7 @@ export default function PlanningNewProjectPage() {
         );
         if (mErr) toast.error(`Prosjektet ble opprettet, men deltakere kunne ikke legges til: ${mErr.message}`);
       }
+      clearDraft();
       navigate(`/planlegging/${id}`, { replace: true });
     } catch (e: any) {
       toast.error(e.message ?? "Kunne ikke opprette prosjekt");
