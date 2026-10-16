@@ -698,13 +698,13 @@ const App = () => (
               } />
               <Route path="/hms/mine-kjemikalier" element={
                 <ProtectedRoute>
-                  <HmsPage><HmsMyChemicalsPage /></HmsPage>
+                  <HmsSelfServicePage><HmsMyChemicalsPage /></HmsSelfServicePage>
                 </ProtectedRoute>
               } />
 
               <Route path="/hms/klar-for-arbeid" element={
                 <ProtectedRoute>
-                  <HmsPage><HmsMyReadinessPage /></HmsPage>
+                  <HmsSelfServicePage><HmsMyReadinessPage /></HmsSelfServicePage>
                 </ProtectedRoute>
               } />
 
