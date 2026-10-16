@@ -155,7 +155,8 @@ export default function PlanningWorkPackagePage() {
     try {
       await saveWorkPackage.mutateAsync({ id, patch });
       toast.success(id ? "Arbeidspakke lagret" : "Arbeidspakke opprettet");
-      back();
+      clearDraft();
+      navigate(`/planlegging/${projectId}?tab=arbeidspakker`);
     } catch (e: any) {
       toast.error(e.message ?? "Kunne ikke lagre");
     }
@@ -164,7 +165,8 @@ export default function PlanningWorkPackagePage() {
   const remove = async () => {
     if (!existing || !confirm("Slette arbeidspakken?")) return;
     await deleteWorkPackage.mutateAsync(existing.id);
-    back();
+    clearDraft();
+    navigate(`/planlegging/${projectId}?tab=arbeidspakker`);
   };
 
   const companySelect = (value: string | null | undefined, onChange: (v: string | null) => void, list = lookups?.planCompanies) => (
