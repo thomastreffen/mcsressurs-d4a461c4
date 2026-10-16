@@ -44,6 +44,7 @@ export default function PlanningWorkPackagePage() {
   const { id: projectId, wpId } = useParams<{ id: string; wpId: string }>();
   const isNew = !wpId || wpId === "ny";
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const canSeeResourcePlan = hasPermission("resourceplan.view");
 
