@@ -73,6 +73,36 @@ export default function HmsIncidentReportPage() {
 
   const [submitted, setSubmitted] = useState<{ id: string } | null>(null);
 
+  // Attachments (File objects) are never part of the draft — they can't survive
+  // sessionStorage and must be re-picked if the tab was closed mid-report.
+  const isDirty = !!(title.trim() || description.trim() || location.trim() || proposedAction.trim());
+  useUnsavedChangesGuard(isDirty, "Du har et påbegynt avvik som ikke er sendt inn. Vil du forlate siden?");
+  const draftScope = ["hms-incident-new", user?.id, activeCompanyId];
+  const { restoreDraft: restoreIncidentDraft, clearDraft: clearIncidentDraft } = useDraftAutosave({
+    scopeParts: draftScope,
+    value: { incidentType, severity, title, description, location, proposedAction, projectId, chemicalId, chemicalIssueType },
+    enabled: isDirty,
+  });
+  const [draftChecked, setDraftChecked] = useState(false);
+  useEffect(() => {
+    if (draftChecked || !activeCompanyId) return;
+    setDraftChecked(true);
+    const draft = restoreIncidentDraft() as any;
+    if (draft && (draft.title?.trim() || draft.description?.trim())) {
+      setIncidentType(draft.incidentType ?? "hms");
+      setSeverity(draft.severity ?? "medium");
+      setTitle(draft.title ?? "");
+      setDescription(draft.description ?? "");
+      setLocation(draft.location ?? "");
+      setProposedAction(draft.proposedAction ?? "");
+      setProjectId(draft.projectId ?? null);
+      setChemicalId(draft.chemicalId ?? null);
+      setChemicalIssueType(draft.chemicalIssueType ?? null);
+      toast({ title: "Gjenopprettet utkast", description: "Du hadde et påbegynt avvik. Husk å legge til bilder på nytt om nødvendig." });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCompanyId]);
+
   // Optional projects for selection
   const { data: projects } = useQuery({
     queryKey: ["hms-incident-projects", activeCompanyId],
