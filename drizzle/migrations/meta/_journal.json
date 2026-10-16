@@ -176,6 +176,13 @@
       "when": 1792150567963,
       "tag": "0024_hms_self_service_restrictive_policy_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792151400900,
+      "tag": "0025_widen_hms_incident_self_service_rls",
+      "breakpoints": true
     }
   ]
 }
