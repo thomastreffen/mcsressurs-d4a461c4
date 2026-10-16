@@ -99,6 +99,7 @@ const hmsActions: QuickAction[] = [
     icon: ShieldAlert,
     path: "/hms/incidents/new",
     permission: "hms.view",
+    level: "view",
   },
   {
     label: "HMS-observasjon",
@@ -106,6 +107,7 @@ const hmsActions: QuickAction[] = [
     icon: Eye,
     path: "/hms/incidents/new?type=observation",
     permission: "hms.view",
+    level: "view",
   },
   {
     label: "Ny SJA",
@@ -113,6 +115,7 @@ const hmsActions: QuickAction[] = [
     icon: ClipboardList,
     path: "/hms/mobile?start=sja",
     permission: "hms.view",
+    level: "view",
   },
   {
     label: "Ny sjekkliste",
@@ -120,6 +123,7 @@ const hmsActions: QuickAction[] = [
     icon: FileCheck,
     path: "/hms/mobile?start=checklist",
     permission: "hms.view",
+    level: "view",
   },
 ];
 
