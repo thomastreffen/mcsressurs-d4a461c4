@@ -41,10 +41,20 @@ export default function ComplianceOrganisationPage() {
   const people = useOrgPeople();
   const { save, remove } = useOrgRoleMutations();
   const { activeCompany } = useCompanyContext() as any;
+  const { user } = useAuth();
   const [editing, setEditing] = useState<(Partial<OrgRole> & { reports_to_id?: string | null }) | null>(null);
+  const [editingBaseline, setEditingBaseline] = useState<string | null>(null);
   const [aiDraft, setAiDraft] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [tab, setTab] = useState("roller");
+
+  const isEditingDirty = !!editing && JSON.stringify(editing) !== editingBaseline;
+  const { confirmNavigation } = useUnsavedChangesGuard(isEditingDirty, "Du har endringer i rollen som ikke er lagret. Vil du forlate siden?");
+  const { hasDraft: hasRoleDraft, restoreDraft: restoreRoleDraft, clearDraft: clearRoleDraft } = useDraftAutosave({
+    scopeParts: ["org-role", user?.id, activeCompany?.id, editing?.id ?? "new"],
+    value: editing,
+    enabled: !!editing && isEditingDirty,
+  });
   const respTypes = useResponsibilityTypes();
   const { templates } = useRoleTemplates();
   const activeTemplates = templates.filter((t) => t.is_active);
