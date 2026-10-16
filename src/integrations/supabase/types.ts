@@ -3196,6 +3196,7 @@ export type Database = {
       }
       compliance_org_roles: {
         Row: {
+          additional_person_ids: string[]
           authority: string | null
           company_id: string
           created_at: string
@@ -3205,18 +3206,21 @@ export type Database = {
           department_id: string | null
           deputy_person_id: string | null
           id: string
+          is_active: boolean
           person_id: string | null
           reports_to_id: string | null
           responsibilities: string | null
           role_type: string
           sort_order: number
           tasks: string | null
+          template_id: string | null
           title: string
           updated_at: string
           valid_from: string | null
           valid_to: string | null
         }
         Insert: {
+          additional_person_ids?: string[]
           authority?: string | null
           company_id: string
           created_at?: string
@@ -3226,18 +3230,21 @@ export type Database = {
           department_id?: string | null
           deputy_person_id?: string | null
           id?: string
+          is_active?: boolean
           person_id?: string | null
           reports_to_id?: string | null
           responsibilities?: string | null
           role_type?: string
           sort_order?: number
           tasks?: string | null
+          template_id?: string | null
           title: string
           updated_at?: string
           valid_from?: string | null
           valid_to?: string | null
         }
         Update: {
+          additional_person_ids?: string[]
           authority?: string | null
           company_id?: string
           created_at?: string
@@ -3247,12 +3254,14 @@ export type Database = {
           department_id?: string | null
           deputy_person_id?: string | null
           id?: string
+          is_active?: boolean
           person_id?: string | null
           reports_to_id?: string | null
           responsibilities?: string | null
           role_type?: string
           sort_order?: number
           tasks?: string | null
+          template_id?: string | null
           title?: string
           updated_at?: string
           valid_from?: string | null
@@ -3616,6 +3625,100 @@ export type Database = {
             columns: ["inspection_id"]
             isOneToOne: false
             referencedRelation: "compliance_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_responsibility_types: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          key: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          key: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_responsibility_types_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_role_templates: {
+        Row: {
+          authority: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          responsibilities: string | null
+          role_type: string
+          tasks: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          authority?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          responsibilities?: string | null
+          role_type?: string
+          tasks?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          authority?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          responsibilities?: string | null
+          role_type?: string
+          tasks?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_role_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
             referencedColumns: ["id"]
           },
         ]
