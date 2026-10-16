@@ -57,6 +57,10 @@ Deno.serve(async (req) => {
       if (!targetProjectId) {
         return new Response(JSON.stringify({ error: "No project to confirm" }), { status: 400, headers: corsHeaders });
       }
+      const { data: target } = await supabase.from("events").select("company_id").eq("id", targetProjectId).maybeSingle();
+      if (!target || target.company_id !== block.company_id) {
+        return new Response(JSON.stringify({ error: "Oppdrag og kalenderblokk må tilhøre samme selskap" }), { status: 403, headers: corsHeaders });
+      }
 
       const { error: updateError } = await supabase
         .from("schedule_blocks")
