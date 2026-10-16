@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PermissionsPanel } from "@/components/permissions/PermissionsPanel";
 import { HardDeleteDialog } from "@/components/person/HardDeleteDialog";
+import { CrossCompanyAccessCard } from "@/components/person/CrossCompanyAccessCard";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PersonSecurityTab } from "@/components/security/PersonSecurityTab";
@@ -879,6 +880,9 @@ export default function PersonDetailPage() {
                 onSelectedCompanyRoleChange={handleSelectedCompanyRoleChange}
                 effectiveRoleName={effectiveRoleName}
               />
+              <div className="mt-6">
+                <CrossCompanyAccessCard authUserId={account.auth_user_id} companies={companies as any} />
+              </div>
             </TabsContent>
           )}
 
