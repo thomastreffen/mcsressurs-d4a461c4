@@ -42,11 +42,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     }
 
     async function fetch() {
+      const userId = user?.id;
+      if (!userId) return;
+      setLoading(true);
       // Get user memberships
       const { data: memberships } = await supabase
         .from("user_memberships")
         .select("company_id, department_id, role_id")
-        .eq("user_id", user!.id)
+        .eq("user_id", userId)
         .eq("is_active", true);
 
       setUserMemberships(
@@ -57,25 +60,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         }))
       );
 
-      const memberCompanyIds = [...new Set((memberships || []).map((m: any) => m.company_id))];
-
-      let companyList: Company[] = [];
-      if (isSuperAdmin) {
-        const { data: comps } = await supabase
-          .from("internal_companies")
-          .select("id, name, org_number")
-          .eq("is_active", true)
-          .order("name");
-        companyList = (comps || []).map((c: any) => ({ id: c.id, name: c.name, org_number: c.org_number }));
-      } else if (memberCompanyIds.length > 0) {
-        const { data: comps } = await supabase
-          .from("internal_companies")
-          .select("id, name, org_number")
-          .eq("is_active", true)
-          .in("id", memberCompanyIds)
-          .order("name");
-        companyList = (comps || []).map((c: any) => ({ id: c.id, name: c.name, org_number: c.org_number }));
-      }
+      const { data: access, error } = await supabase.rpc("my_company_module_access");
+      const companyList: Company[] = error ? [] : [...new Map((access ?? []).map(row => [row.company_id, { id: row.company_id, name: row.company_name, org_number: row.org_number }])).values()];
 
       setCompanies(companyList);
 
@@ -90,6 +76,9 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       } else if (companyList.length > 0) {
         setActiveCompanyIdState(companyList[0].id);
         setIsAllCompanies(false);
+      } else {
+        setActiveCompanyIdState(null);
+        setIsAllCompanies(false);
       }
 
       setLoading(false);
@@ -99,6 +88,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   }, [user, isSuperAdmin]);
 
   const setActiveCompanyId = useCallback((id: string | null) => {
+    if (id && !companies.some(company => company.id === id)) return;
     if (id === null) {
       setActiveCompanyIdState(null);
       setIsAllCompanies(true);
@@ -108,7 +98,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       setIsAllCompanies(false);
       localStorage.setItem("mcs_active_company", id);
     }
-  }, []);
+  }, [companies]);
 
   const activeCompany = companies.find((c) => c.id === activeCompanyId) || null;
   const allowedCompanyIds = useMemo(() => companies.map((c) => c.id), [companies]);
