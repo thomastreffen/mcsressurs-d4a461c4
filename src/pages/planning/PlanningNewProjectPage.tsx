@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ParticipantPicker } from "@/components/planning/ParticipantPicker";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { useDraftAutosave } from "@/hooks/useDraftAutosave";
 
 const NONE = "__none__";
 
