@@ -6,25 +6,31 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
 import { OrgChart } from "@/components/compliance/OrgChart";
 import { OrgResponsibilityTable } from "@/components/compliance/OrgResponsibilityTable";
 import { OrgGapPanel } from "@/components/compliance/OrgGapPanel";
+import { OrgResponsibilityMatrix } from "@/components/compliance/OrgResponsibilityMatrix";
+import { OrgRoleLibraryTab, ResponsibilityTypesTab, OrgRoleHistoryTab } from "@/components/compliance/OrgRoleAdminTabs";
+import { useResponsibilityTypes, useRoleTemplates } from "@/hooks/useOrgRoleLibrary";
 import { Plus, Pencil, Trash2, Printer, Sparkles, Loader2, FileText } from "lucide-react";
 import { useOrgRoles, useOrgRoleMutations, type OrgRole } from "@/hooks/useCompliance";
 import { useOrgPeople } from "@/hooks/useOrgPeople";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ORG_ROLE_TYPES, formatDate } from "@/lib/compliance";
+import { formatDate } from "@/lib/compliance";
 import { computeOrgGaps, suggestOrgRoles, orgDocumentVersion, type RoleSuggestion } from "@/lib/org-overview";
 
 const EMPTY: Partial<OrgRole> = {
   title: "", role_type: "other", person_id: null, deputy_person_id: null, reports_to_id: null,
   responsibilities: "", tasks: "", authority: "", valid_from: null, valid_to: null, sort_order: 100,
+  is_active: true, additional_person_ids: [], template_id: null,
 } as any;
 
 export default function ComplianceOrganisationPage() {
@@ -36,6 +42,9 @@ export default function ComplianceOrganisationPage() {
   const [aiDraft, setAiDraft] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [tab, setTab] = useState("roller");
+  const respTypes = useResponsibilityTypes();
+  const { templates } = useRoleTemplates();
+  const activeTemplates = templates.filter((t) => t.is_active);
 
   const activePeople = useMemo(() => (people.data ?? []).filter((p) => p.is_active), [people.data]);
 
@@ -59,8 +68,12 @@ export default function ComplianceOrganisationPage() {
       arr.push(r);
       map.set(r.role_type, arr);
     }
-    return ORG_ROLE_TYPES.map((t) => ({ ...t, items: map.get(t.value) ?? [] })).filter((g) => g.items.length > 0);
-  }, [list]);
+    const keys = new Set(respTypes.types.map((t) => t.key));
+    const groups = respTypes.types.map((t) => ({ value: t.key, label: t.name, items: map.get(t.key) ?? [] }));
+    const orphan = list.filter((r) => !keys.has(r.role_type));
+    if (orphan.length) groups.push({ value: "_unknown", label: "Ukjent type", items: orphan });
+    return groups.filter((g) => g.items.length > 0);
+  }, [list, respTypes.types]);
 
   const set = (patch: Partial<OrgRole>) => setEditing((e) => ({ ...(e ?? {}), ...patch }));
 
@@ -150,7 +163,11 @@ export default function ComplianceOrganisationPage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="print:hidden">
           <TabsTrigger value="roller">Roller</TabsTrigger>
+          <TabsTrigger value="matrise">Ansvarsmatrise</TabsTrigger>
           <TabsTrigger value="oversikt">Organisasjonsoversikt</TabsTrigger>
+          <TabsTrigger value="bibliotek">Rollebibliotek</TabsTrigger>
+          <TabsTrigger value="typer">Ansvarstyper</TabsTrigger>
+          <TabsTrigger value="historikk">Historikk</TabsTrigger>
           <TabsTrigger value="kontroll">
             Systemkontroll
             {gaps.length > 0 && <Badge variant="secondary" className="ml-1.5 text-[10px]">{gaps.length}</Badge>}
@@ -168,7 +185,7 @@ export default function ComplianceOrganisationPage() {
                 <CardHeader className="pb-2"><CardTitle className="text-sm">{g.label}</CardTitle></CardHeader>
                 <CardContent className="space-y-2 p-4 pt-0">
                   {g.items.map((r) => (
-                    <div key={r.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3">
+                    <div key={r.id} className={`flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3 ${r.is_active === false ? "opacity-60" : ""}`}>
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-semibold">{r.title}</span>
@@ -179,18 +196,23 @@ export default function ComplianceOrganisationPage() {
                           {jobTitleOf(r.person_id) && (
                             <span className="text-xs text-muted-foreground">{jobTitleOf(r.person_id)}</span>
                           )}
+                          {(r.additional_person_ids ?? []).map((pid) => (
+                            <ComplianceStatusBadge key={pid} label={nameOf(pid)} tone={personOf(pid)?.is_active ? "ok" : "alert"} />
+                          ))}
+                          {r.is_active === false && <Badge variant="outline" className="text-[10px]">Inaktiv</Badge>}
+                          {r.reports_to_id && <span className="text-xs text-muted-foreground">Rapporterer til: {list.find((x) => x.id === r.reports_to_id)?.title ?? "—"}</span>}
                           {r.deputy_person_id && <span className="text-xs text-muted-foreground">Stedfortreder: {nameOf(r.deputy_person_id)}</span>}
                         </div>
                         {r.responsibilities && <p className="text-sm"><span className="text-muted-foreground">Ansvar:</span> {r.responsibilities}</p>}
-                        {r.tasks && <p className="text-sm"><span className="text-muted-foreground">Oppgaver:</span> {r.tasks}</p>}
-                        {r.authority && <p className="text-sm"><span className="text-muted-foreground">Myndighet:</span> {r.authority}</p>}
+                        {r.tasks && <p className="text-sm whitespace-pre-line"><span className="text-muted-foreground">Oppgaver:</span> {r.tasks}</p>}
+                        {r.authority && <p className="text-sm whitespace-pre-line"><span className="text-muted-foreground">Myndighet:</span> {r.authority}</p>}
                         {(r.valid_from || r.valid_to) && (
                           <p className="text-xs text-muted-foreground">Gyldig {formatDate(r.valid_from)} – {r.valid_to ? formatDate(r.valid_to) : "løpende"}</p>
                         )}
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" className="h-8" onClick={() => openRole(r.id)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button size="sm" variant="ghost" className="h-8 text-destructive" onClick={() => remove.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        <Button size="sm" variant="ghost" className="h-8 text-destructive" onClick={() => { if (window.confirm(`Fjerne rollen «${r.title}»? Den blir liggende i historikken.`)) remove.mutate(r.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                       </div>
                     </div>
                   ))}
@@ -222,20 +244,69 @@ export default function ComplianceOrganisationPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="matrise">
+          <Card><CardContent className="p-4">
+            <p className="mb-3 text-xs text-muted-foreground print:hidden">
+              Stilling (f.eks. Montør, Installatør) hentes fra ansattregisteret. Roller er ansvar som kommer i tillegg – én person kan ha flere roller.
+            </p>
+            <OrgResponsibilityMatrix
+              roles={printableRoles}
+              nameOf={nameOf}
+              isActivePerson={(id) => !!personOf(id)?.is_active}
+              typeLabel={respTypes.labelOf}
+              companyName={activeCompany?.name ?? "Virksomheten"}
+            />
+          </CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="bibliotek" className="print:hidden">
+          <OrgRoleLibraryTab
+            types={respTypes.types}
+            onUse={(t) => { setAiDraft(false); setEditing({ ...EMPTY, title: t.title, role_type: t.role_type, responsibilities: t.responsibilities ?? "", tasks: t.tasks ?? "", authority: t.authority ?? "", template_id: t.id } as any); }}
+          />
+        </TabsContent>
+
+        <TabsContent value="typer" className="print:hidden">
+          <ResponsibilityTypesTab types={respTypes.types} upsert={respTypes.upsert} usage={(k) => list.filter((r) => r.role_type === k).length} />
+        </TabsContent>
+
+        <TabsContent value="historikk" className="print:hidden">
+          <OrgRoleHistoryTab nameOf={nameOf} roleTitle={(id) => list.find((r) => r.id === id)?.title ?? null} />
+        </TabsContent>
+
         <TabsContent value="kontroll" className="print:hidden">
           <OrgGapPanel gaps={gaps} suggestions={suggestions} onFix={openRole} onAcceptSuggestion={acceptSuggestion} />
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!editing} onOpenChange={(v) => !v && (setEditing(null), setAiDraft(false))}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing?.id ? "Endre rolle" : "Ny rolle"}</DialogTitle>
-            <DialogDescription>
-              Navn, stilling og avdeling hentes fra ansattregisteret og registreres ikke på nytt her.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
+      <Sheet open={!!editing} onOpenChange={(v) => !v && (setEditing(null), setAiDraft(false))}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>{editing?.id ? "Endre rolle" : "Ny rolle"}</SheetTitle>
+            <SheetDescription>
+              Rollen er et ansvar som kommer i tillegg til personens stilling. Navn, stilling og avdeling hentes fra ansattregisteret.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-3 py-4">
+            {!editing?.id && activeTemplates.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Start fra mal (valgfritt)</Label>
+                <Select
+                  value={editing?.template_id ?? "none"}
+                  onValueChange={(v) => {
+                    const t = activeTemplates.find((x) => x.id === v);
+                    if (!t) return set({ template_id: null } as any);
+                    set({ template_id: t.id, title: t.title, role_type: t.role_type, responsibilities: t.responsibilities ?? "", tasks: t.tasks ?? "", authority: t.authority ?? "" } as any);
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Velg mal" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ingen mal</SelectItem>
+                    {activeTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Rolletittel</Label>
@@ -245,7 +316,7 @@ export default function ComplianceOrganisationPage() {
                 <Label>Type ansvar</Label>
                 <Select value={editing?.role_type ?? "other"} onValueChange={(v) => set({ role_type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{ORG_ROLE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{respTypes.types.filter((t) => t.is_active || t.key === editing?.role_type).map((t) => <SelectItem key={t.key} value={t.key}>{t.name}{!t.is_active ? " (deaktivert)" : ""}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
@@ -276,6 +347,21 @@ export default function ComplianceOrganisationPage() {
                     {activePeople.map((p) => <SelectItem key={p.person_id} value={p.person_id}>{p.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Flere ansvarlige (valgfritt)</Label>
+              <div className="max-h-36 space-y-1 overflow-y-auto rounded-md border p-2">
+                {activePeople.filter((p) => p.person_id !== editing?.person_id).map((p) => {
+                  const ids = editing?.additional_person_ids ?? [];
+                  const on = ids.includes(p.person_id);
+                  return (
+                    <label key={p.person_id} className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={on} onCheckedChange={(v) => set({ additional_person_ids: v ? [...ids, p.person_id] : ids.filter((x) => x !== p.person_id) } as any)} />
+                      {p.full_name}{p.job_role_name ? <span className="text-xs text-muted-foreground">– {p.job_role_name}</span> : null}
+                    </label>
+                  );
+                })}
               </div>
             </div>
             <div className="space-y-1.5">
@@ -331,22 +417,30 @@ export default function ComplianceOrganisationPage() {
                 <Input type="date" value={editing?.valid_to ?? ""} onChange={(e) => set({ valid_to: e.target.value || null })} />
               </div>
             </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label>Aktiv rolle</Label>
+                <p className="text-xs text-muted-foreground">Inaktive roller vises ikke i organisasjonskartet, men beholdes i historikken.</p>
+              </div>
+              <Switch checked={editing?.is_active !== false} onCheckedChange={(v) => set({ is_active: v } as any)} />
+            </div>
           </div>
-          <DialogFooter>
+          <SheetFooter className="gap-2">
             <Button variant="outline" onClick={() => { setEditing(null); setAiDraft(false); }}>Avbryt</Button>
             <Button
               disabled={!editing?.title || save.isPending}
               onClick={async () => {
-                await save.mutateAsync(editing!);
+                const { created_at, updated_at, ...payload } = editing as any;
+                await save.mutateAsync(payload);
                 setEditing(null);
                 setAiDraft(false);
               }}
             >
               {save.isPending ? "Lagrer…" : aiDraft ? "Bekreft og lagre" : "Lagre"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

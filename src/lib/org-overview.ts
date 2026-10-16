@@ -101,7 +101,7 @@ export function computeOrgGaps(roles: OrgRole[], people: OrgPerson[]): OrgGap[] 
   const byId = new Map(people.map((p) => [p.person_id, p]));
   const today = new Date().toISOString().slice(0, 10);
 
-  const isCurrent = (r: OrgRole) => !r.valid_to || r.valid_to >= today;
+  const isCurrent = (r: OrgRole) => r.is_active !== false && (!r.valid_to || r.valid_to >= today);
 
   for (const spec of KEY_ROLES) {
     const hits = roles.filter((r) => matchesKeyRole(r, spec) && isCurrent(r));
@@ -127,7 +127,7 @@ export function computeOrgGaps(roles: OrgRole[], people: OrgPerson[]): OrgGap[] 
     }
   }
 
-  for (const r of roles) {
+  for (const r of roles.filter((x) => x.is_active !== false)) {
     if (!r.person_id) {
       gaps.push({
         id: `noperson-${r.id}`,
@@ -228,8 +228,16 @@ export interface OrgNode {
 const HIERARCHY_TYPES = ["leadership", "elektrofaglig", "other"];
 
 export function buildOrgTree(roles: OrgRole[]): { tree: OrgNode[]; functions: OrgRole[] } {
-  const hierarchical = roles.filter((r) => HIERARCHY_TYPES.includes(r.role_type));
-  const functions = roles.filter((r) => !HIERARCHY_TYPES.includes(r.role_type));
+  const linked = new Set<string>();
+  roles.forEach((r) => {
+    if (r.reports_to_id && roles.some((x) => x.id === r.reports_to_id)) {
+      linked.add(r.id);
+      linked.add(r.reports_to_id);
+    }
+  });
+  const inTree = (r: OrgRole) => HIERARCHY_TYPES.includes(r.role_type) || linked.has(r.id);
+  const hierarchical = roles.filter(inTree);
+  const functions = roles.filter((r) => !inTree(r));
 
   const nodes = new Map<string, OrgNode>();
   hierarchical.forEach((r) => nodes.set(r.id, { role: r, children: [] }));

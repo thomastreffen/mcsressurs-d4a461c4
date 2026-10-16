@@ -81,6 +81,9 @@ export interface OrgRole {
   valid_from: string | null;
   valid_to: string | null;
   sort_order: number;
+  is_active?: boolean;
+  additional_person_ids?: string[];
+  template_id?: string | null;
 }
 
 export interface ComplianceAudit {
