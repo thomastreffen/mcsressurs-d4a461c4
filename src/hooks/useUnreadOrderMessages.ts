@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -85,12 +85,24 @@ export function useUnreadOrderMessages() {
 
   // Re-fetch on window focus and visibility change so the badge can never
   // sit stale just because the tab was in the background while another tab
-  // (or InPrivate window) marked messages as read.
+  // (or InPrivate window) marked messages as read — throttled so repeated
+  // tab switches don't fire a request every time.
+  const lastFetchAtRef = useRef(0);
+  useEffect(() => {
+    lastFetchAtRef.current = Date.now();
+  });
   useEffect(() => {
     if (!user) return;
-    const onFocus = () => fetchRows();
+    const MIN_INTERVAL_MS = 30_000;
+    const maybeRefetch = () => {
+      if (Date.now() - lastFetchAtRef.current >= MIN_INTERVAL_MS) {
+        lastFetchAtRef.current = Date.now();
+        fetchRows();
+      }
+    };
+    const onFocus = () => maybeRefetch();
     const onVisible = () => {
-      if (document.visibilityState === "visible") fetchRows();
+      if (document.visibilityState === "visible") maybeRefetch();
     };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
