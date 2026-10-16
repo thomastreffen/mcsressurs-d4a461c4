@@ -48,6 +48,8 @@ interface QuickAction {
   icon: React.ComponentType<{ className?: string }>;
   path?: string;
   permission: string | null;
+  /** Company-module access level this action needs (defaults to "edit" for write actions). */
+  level?: "view" | "edit" | "admin";
   onAction?: () => void;
 }
 
