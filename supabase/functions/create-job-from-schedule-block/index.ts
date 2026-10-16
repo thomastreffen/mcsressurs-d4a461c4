@@ -100,6 +100,7 @@ Deno.serve(async (req) => {
       .from("events")
       .select("id")
       .eq("client_request_id", client_request_id)
+      .eq("company_id", blockCheck.company_id)
       .maybeSingle();
 
     if (existing) {
