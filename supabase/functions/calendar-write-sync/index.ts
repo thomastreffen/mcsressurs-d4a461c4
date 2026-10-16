@@ -735,20 +735,13 @@ Deno.serve(async (req) => {
     );
 
     const callerUserId = await resolveCallerUserId(req, supabaseAdmin);
-
-    // ── Server-side permission check ──
-    if (callerUserId) {
-      const { data: canWrite } = await supabaseAdmin.rpc("check_permission_v2", {
-        _auth_user_id: callerUserId,
-        _perm: "calendar.write_events",
+    const bearer = req.headers.get("Authorization")?.replace(/^Bearer /, "");
+    const internalCaller = bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!callerUserId && !internalCaller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-      if (!canWrite) {
-        console.log(`[calendar-write-sync] DENIED: User ${callerUserId} lacks calendar.write_events`);
-        return new Response(JSON.stringify({ error: "Mangler rettighet: calendar.write_events", error_code: "permission_denied" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
     }
 
     const body = await req.json();
@@ -782,6 +775,23 @@ Deno.serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ── Server-side access check: company-scoped resource_plan edit (skipped for trusted internal/service-role callers) ──
+    if (callerUserId) {
+      const { data: canWrite } = await supabaseAdmin.rpc("has_company_access", {
+        _uid: callerUserId,
+        _company: event.company_id,
+        _module: "resource_plan",
+        _level: "edit",
+      });
+      if (!canWrite) {
+        console.log(`[calendar-write-sync] DENIED: User ${callerUserId} lacks resource_plan edit for company ${event.company_id}`);
+        return new Response(JSON.stringify({ error: "Ingen tilgang", error_code: "permission_denied" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Server-side overnight normalization: ensure end > start in DB
