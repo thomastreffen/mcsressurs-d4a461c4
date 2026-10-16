@@ -16987,6 +16987,16 @@ export type Database = {
         Args: { _submission_id: string }
         Returns: boolean
       }
+      parent_module_access: {
+        Args: {
+          _id: string
+          _level?: string
+          _module: string
+          _parent: string
+          _uid: string
+        }
+        Returns: boolean
+      }
       person_has_employment: { Args: { _person_id: string }; Returns: boolean }
       person_module_access: {
         Args: { _level?: string; _person: string; _uid: string }
@@ -17011,6 +17021,10 @@ export type Database = {
           full_name: string
           user_id: string
         }[]
+      }
+      planning_finance_access: {
+        Args: { _level?: string; _project_id: string }
+        Returns: boolean
       }
       planning_storage_access: { Args: { _name: string }; Returns: boolean }
       remove_work_visit_from_plan: {
