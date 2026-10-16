@@ -10,10 +10,11 @@ interface Props {
 }
 
 function Box({ role, nameOf, jobTitleOf }: { role: OrgRole } & Omit<Props, "roles">) {
-  const person = role.person_id ? nameOf(role.person_id) : "Ikke tildelt";
+  const ids = [role.person_id, ...(role.additional_person_ids ?? [])].filter(Boolean) as string[];
+  const person = ids.length ? ids.map((id) => nameOf(id)).join(", ") : "Ikke tildelt";
   const stilling = jobTitleOf?.(role.person_id);
   return (
-    <div className="rounded-lg border bg-card px-3 py-2 text-center shadow-sm">
+    <div className="min-w-[160px] rounded-lg border bg-card px-3 py-2 text-center shadow-sm">
       <p className="text-sm font-semibold leading-tight">{role.title}</p>
       <p className="text-xs text-muted-foreground">{person}</p>
       {stilling && <p className="text-[11px] text-muted-foreground/80">{stilling}</p>}
@@ -27,7 +28,10 @@ function Branch({ node, ...rest }: { node: OrgNode } & Omit<Props, "roles">) {
       <Box role={node.role} {...rest} />
       {node.children.length > 0 && (
         <>
-          <ChevronDown className="my-1 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-col items-center" aria-label="Rapporterer til">
+            <div className="h-3 w-px bg-border" />
+            <ChevronDown className="-mt-1 h-4 w-4 text-muted-foreground" />
+          </div>
           <div className="flex flex-wrap items-start justify-center gap-4">
             {node.children.map((c) => (
               <Branch key={c.role.id} node={c} {...rest} />
@@ -40,7 +44,7 @@ function Branch({ node, ...rest }: { node: OrgNode } & Omit<Props, "roles">) {
 }
 
 export function OrgChart({ roles, nameOf, jobTitleOf }: Props) {
-  const { tree, functions } = buildOrgTree(roles);
+  const { tree, functions } = buildOrgTree(roles.filter((r) => r.is_active !== false));
 
   if (roles.length === 0)
     return <p className="text-sm text-muted-foreground">Ingen roller registrert ennå.</p>;
