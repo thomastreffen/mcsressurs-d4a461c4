@@ -1,9 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const PREFIX = "mcs-draft";
 
 function buildKey(scopeParts: (string | null | undefined)[]) {
   return [PREFIX, ...scopeParts.map((p) => p ?? "none")].join(":");
+}
+
+/** Read a draft without mounting the hook — use before opening an editor to decide whether to offer a restore. */
+export function peekDraft<T>(scopeParts: (string | null | undefined)[]): T | null {
+  try {
+    const raw = sessionStorage.getItem(buildKey(scopeParts));
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remove a draft by scope without mounting the hook — use right after a successful save. */
+export function clearDraftByScope(scopeParts: (string | null | undefined)[]) {
+  try {
+    sessionStorage.removeItem(buildKey(scopeParts));
+  } catch {
+    // ignore
+  }
 }
 
 interface Options<T> {
