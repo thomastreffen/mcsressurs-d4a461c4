@@ -216,6 +216,7 @@ export default function HmsIncidentReportPage() {
               <Button
                 variant="ghost"
                 onClick={() => {
+                  clearIncidentDraft();
                   setSubmitted(null);
                   setTitle(""); setDescription(""); setLocation("");
                   setProposedAction(""); setFiles([]); setProjectId(null);
