@@ -6,7 +6,7 @@
 - [x] Minimal personinformasjon for Ressursplan
 - [x] Regresjonstest ekte brukere og direkte datakall (A–F grønne, se siste rapport)
 - [x] HMS-selvbetjening (håndbok/kjemikalier/klar-for-arbeid) åpen for alle ansatte uten hms-rolle
-- [ ] Fjern Eiriks gamle MCS Service-medlemskap, med revisjonsspor (venter til etter publisering)
+- [x] Fjern Eiriks gamle MCS Service-medlemskap, med revisjonsspor — fullført 2026-10-16
 
 ## Planlegging / Prosjektboard (iterasjon 1)
 - [x] Datamodell: planning_projects, members, work_packages, tasks, contacts, external_refs, files, messages, activity
