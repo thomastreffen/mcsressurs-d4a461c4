@@ -76,7 +76,7 @@ export default function HmsIncidentReportPage() {
   // Attachments (File objects) are never part of the draft — they can't survive
   // sessionStorage and must be re-picked if the tab was closed mid-report.
   const isDirty = !!(title.trim() || description.trim() || location.trim() || proposedAction.trim());
-  useUnsavedChangesGuard(isDirty, "Du har et påbegynt avvik som ikke er sendt inn. Vil du forlate siden?");
+  const { confirmNavigation: confirmBack } = useUnsavedChangesGuard(isDirty, "Du har et påbegynt avvik som ikke er sendt inn. Vil du forlate siden?");
   const draftScope = ["hms-incident-new", user?.id, activeCompanyId];
   const { restoreDraft: restoreIncidentDraft, clearDraft: clearIncidentDraft } = useDraftAutosave({
     scopeParts: draftScope,
