@@ -629,7 +629,6 @@ export function usePlanningStaffing(projectId: string | undefined) {
     queryKey: ["planning-staffing", projectId],
     enabled: !!projectId,
     refetchInterval: 60_000,
-    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await sb.rpc("get_planning_wp_staffing", { _project_id: projectId });
       if (error) throw error;
