@@ -59,10 +59,29 @@ Deno.serve(async (req) => {
     // 0. Check if schedule_block already has a project_id (idempotent on block level)
     const { data: blockCheck } = await db
       .from("schedule_blocks")
-      .select("project_id")
+      .select("project_id, company_id, technician_id")
       .eq("id", schedule_block_id)
       .is("deleted_at", null)
       .maybeSingle();
+
+    if (!blockCheck) {
+      return new Response(JSON.stringify({ error: "Block not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Server-side access check: company-scoped resource_plan edit, block identity locked to its own company/technician ──
+    const { data: canWrite } = await db.rpc("has_company_access", {
+      _uid: user.id,
+      _company: blockCheck.company_id,
+      _module: "resource_plan",
+      _level: "edit",
+    });
+    if (!canWrite || (company_id && company_id !== blockCheck.company_id) || (technician_id && technician_id !== blockCheck.technician_id)) {
+      console.log(`[create-job-from-schedule-block] DENIED: User ${user.id} lacks resource_plan edit for company ${blockCheck.company_id}`);
+      return new Response(
+        JSON.stringify({ error: "Ingen tilgang", error_code: "permission_denied" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (blockCheck?.project_id) {
       // Block already linked to a project – return it
