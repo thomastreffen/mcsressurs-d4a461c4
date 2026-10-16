@@ -336,49 +336,55 @@ export function AppSidebar() {
                    </SidebarMenuItem>
                  </>
                )}
-               {canAccessModule("hms", "module.hms") && (
-                 <SidebarMenuItem>
-                   <Collapsible defaultOpen={isActive("/hms")}>
-                     <CollapsibleTrigger asChild>
-                       <SidebarMenuButton
-                         tooltip="HMS & HR"
-                         className={cn(
-                           "rounded-xl h-10 transition-all duration-150",
-                           isActive("/hms")
-                             ? "bg-primary/10 text-primary font-semibold shadow-sm"
-                             : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                         )}
-                       >
-                         <ShieldCheck className="h-[19px] w-[19px]" />
-                         <span className="text-[13px] flex-1">HMS & HR</span>
-                         {!collapsed && <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />}
-                       </SidebarMenuButton>
-                     </CollapsibleTrigger>
-                     <CollapsibleContent>
-                       <SidebarMenu className="ml-5 mt-1 space-y-0.5 border-l border-sidebar-border/40 pl-2">
-                         <NavItem item={{ title: "Oversikt", url: "/hms", icon: Gauge }} isActive={(url) => location.pathname === "/hms"} collapsed={collapsed} />
-                         {companyAccess.can("employees") && <NavItem item={{ title: "Ansatte", url: "/hms/people", icon: Users }} isActive={isActive} collapsed={collapsed} />}
-                         <NavItem item={{ title: "Min HMS-håndbok", url: "/hms/handbok", icon: BookOpen }} isActive={(url) => location.pathname.startsWith("/hms/handbok") && !location.pathname.startsWith("/hms/handbooks")} collapsed={collapsed} />
-                        <NavItem item={{ title: "Håndbøker", url: "/hms/handbooks", icon: BookOpen }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Avvik / RUH", url: "/hms/incidents", icon: ShieldAlert }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Stoffkartotek / kjemikalier", url: "/hms/kjemikalier", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Mine kjemikalier", url: "/hms/mine-kjemikalier", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Klar for arbeid", url: "/hms/klar-for-arbeid", icon: ShieldAlert }} isActive={isActive} collapsed={collapsed} />
+              {isModuleVisible("hms") && (
+                <SidebarMenuItem>
+                  <Collapsible defaultOpen={isActive("/hms")}>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                        tooltip="HMS & HR"
+                        className={cn(
+                          "rounded-xl h-10 transition-all duration-150",
+                          isActive("/hms")
+                            ? "bg-primary/10 text-primary font-semibold shadow-sm"
+                            : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                        )}
+                      >
+                        <ShieldCheck className="h-[19px] w-[19px]" />
+                        <span className="text-[13px] flex-1">HMS & HR</span>
+                        {!collapsed && <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />}
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenu className="ml-5 mt-1 space-y-0.5 border-l border-sidebar-border/40 pl-2">
+                        {/* Self-service: every employee, regardless of hms company access */}
+                        <NavItem item={{ title: "Min HMS-håndbok", url: "/hms/handbok", icon: BookOpen }} isActive={(url) => location.pathname.startsWith("/hms/handbok") && !location.pathname.startsWith("/hms/handbooks")} collapsed={collapsed} />
+                        <NavItem item={{ title: "Mine kjemikalier", url: "/hms/mine-kjemikalier", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+                        <NavItem item={{ title: "Klar for arbeid", url: "/hms/klar-for-arbeid", icon: ShieldAlert }} isActive={isActive} collapsed={collapsed} />
 
-                         <NavItem item={{ title: "AML-status", url: "/hms/aml", icon: AlertTriangle }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Regelsett", url: "/hms/rulesets", icon: Settings }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Overtid", url: "/hms/overtime", icon: Clock }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "SJA & sjekklister", url: "/hms/templates", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Innsendinger", url: "/hms/submissions", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Mobil utfylling", url: "/hms/mobile", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Importbatcher", url: "/hms/import/batches", icon: FileText }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Rapporter", url: "/hms/reports", icon: BarChart3 }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Bransjeområder", url: "/hms/areas", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
-                       </SidebarMenu>
-                     </CollapsibleContent>
-                   </Collapsible>
-                 </SidebarMenuItem>
-               )}
+                        {/* HMS management: requires company hms access */}
+                        {companyAccess.can("hms") && (
+                          <>
+                            <NavItem item={{ title: "Oversikt", url: "/hms", icon: Gauge }} isActive={(url) => location.pathname === "/hms"} collapsed={collapsed} />
+                            {companyAccess.can("employees") && <NavItem item={{ title: "Ansatte", url: "/hms/people", icon: Users }} isActive={isActive} collapsed={collapsed} />}
+                            <NavItem item={{ title: "Håndbøker", url: "/hms/handbooks", icon: BookOpen }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "Avvik / RUH", url: "/hms/incidents", icon: ShieldAlert }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "Stoffkartotek / kjemikalier", url: "/hms/kjemikalier", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "AML-status", url: "/hms/aml", icon: AlertTriangle }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "Regelsett", url: "/hms/rulesets", icon: Settings }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "Overtid", url: "/hms/overtime", icon: Clock }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "SJA & sjekklister", url: "/hms/templates", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "Innsendinger", url: "/hms/submissions", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "Mobil utfylling", url: "/hms/mobile", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "Importbatcher", url: "/hms/import/batches", icon: FileText }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "Rapporter", url: "/hms/reports", icon: BarChart3 }} isActive={isActive} collapsed={collapsed} />
+                            <NavItem item={{ title: "Bransjeområder", url: "/hms/areas", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
+                          </>
+                        )}
+                      </SidebarMenu>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </SidebarMenuItem>
+              )}
                {canAccessModule("hms", "module.hms") && (
                  <SidebarMenuItem>
                    <Collapsible defaultOpen={isActive("/compliance")}>
