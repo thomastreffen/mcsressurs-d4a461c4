@@ -186,7 +186,7 @@ export default function ComplianceOrganisationPage() {
           >
             <Printer className="mr-1 h-3.5 w-3.5" /> Skriv ut oversikt
           </Button>
-          <Button size="sm" onClick={() => { setAiDraft(false); setEditing({ ...EMPTY } as any); }}>
+          <Button size="sm" onClick={() => { setAiDraft(false); openEditor({ ...EMPTY } as any); }}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Ny rolle
           </Button>
         </div>
@@ -294,7 +294,7 @@ export default function ComplianceOrganisationPage() {
         <TabsContent value="bibliotek" className="print:hidden">
           <OrgRoleLibraryTab
             types={respTypes.types}
-            onUse={(t) => { setAiDraft(false); setEditing({ ...EMPTY, title: t.title, role_type: t.role_type, responsibilities: t.responsibilities ?? "", tasks: t.tasks ?? "", authority: t.authority ?? "", template_id: t.id } as any); }}
+            onUse={(t) => { setAiDraft(false); openEditor({ ...EMPTY, title: t.title, role_type: t.role_type, responsibilities: t.responsibilities ?? "", tasks: t.tasks ?? "", authority: t.authority ?? "", template_id: t.id } as any); }}
           />
         </TabsContent>
 
@@ -311,7 +311,7 @@ export default function ComplianceOrganisationPage() {
         </TabsContent>
       </Tabs>
 
-      <Sheet open={!!editing} onOpenChange={(v) => !v && (setEditing(null), setAiDraft(false))}>
+      <Sheet open={!!editing} onOpenChange={(v) => !v && confirmNavigation(closeEditor)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>{editing?.id ? "Endre rolle" : "Ny rolle"}</SheetTitle>
@@ -458,12 +458,13 @@ export default function ComplianceOrganisationPage() {
             </div>
           </div>
           <SheetFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setEditing(null); setAiDraft(false); }}>Avbryt</Button>
+            <Button variant="outline" onClick={() => confirmNavigation(closeEditor)}>Avbryt</Button>
             <Button
               disabled={!editing?.title || save.isPending}
               onClick={async () => {
                 const { created_at, updated_at, ...payload } = editing as any;
                 await save.mutateAsync(payload);
+                clearDraftByScope(roleDraftScope(editing?.id));
                 setEditing(null);
                 setAiDraft(false);
               }}
