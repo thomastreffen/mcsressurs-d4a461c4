@@ -66,6 +66,29 @@ export default function HmsHandbookDetailPage() {
   const [changelog, setChangelog] = useState("");
   const [publishOpen, setPublishOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [draftRestoredFor, setDraftRestoredFor] = useState<string | null>(null);
+
+  const hasUnsavedChapterEdits = Object.keys(editedSections).length > 0;
+  useUnsavedChangesGuard(hasUnsavedChapterEdits, "Du har ulagrede endringer i håndboken. Vil du forlate siden?");
+  const { restoreDraft: restoreHandbookDraft } = useDraftAutosave({
+    scopeParts: ["hms-handbook-edit", user?.id, activeCompanyId, id],
+    value: editedSections,
+    enabled: hasUnsavedChapterEdits,
+  });
+
+  // Restore an autosaved draft once per handbook (e.g. after a tab was closed with
+  // edits still pending) — never overwrites edits the user is actively making.
+  useEffect(() => {
+    if (!id || draftRestoredFor === id) return;
+    setDraftRestoredFor(id);
+    const draft = restoreHandbookDraft();
+    if (draft && Object.keys(draft).length > 0) {
+      setEditedSections(draft);
+      setEditMode(true);
+      toast({ title: "Gjenopprettet utkast", description: "Du hadde ulagrede endringer i dette kapittelet." });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const { data: handbook, isLoading } = useQuery({
     queryKey: ["hms-handbook", id, activeCompanyId],
