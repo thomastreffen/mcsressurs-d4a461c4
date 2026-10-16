@@ -99,6 +99,45 @@ export type Database = {
           },
         ]
       }
+      access_audit_log: {
+        Row: {
+          action: string
+          company_id: string | null
+          details: Json
+          home_company_id: string | null
+          id: string
+          level: string | null
+          module: string | null
+          performed_at: string
+          performed_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          company_id?: string | null
+          details?: Json
+          home_company_id?: string | null
+          id?: string
+          level?: string | null
+          module?: string | null
+          performed_at?: string
+          performed_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          company_id?: string | null
+          details?: Json
+          home_company_id?: string | null
+          id?: string
+          level?: string | null
+          module?: string | null
+          performed_at?: string
+          performed_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       activity_log: {
         Row: {
           action: string
@@ -2071,6 +2110,62 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      company_module_access: {
+        Row: {
+          company_id: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          level: string
+          module: string
+          reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          updated_at: string
+          user_id: string
+          valid_from: string | null
+          valid_to: string | null
+        }
+        Insert: {
+          company_id: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          level: string
+          module: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          updated_at?: string
+          user_id: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Update: {
+          company_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          level?: string
+          module?: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          updated_at?: string
+          user_id?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_module_access_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_reminder_settings: {
         Row: {
@@ -5783,6 +5878,7 @@ export type Database = {
           id: string
           include_in_hms_people: boolean
           is_plannable_resource: boolean
+          is_primary: boolean
           job_role_id: string | null
           notes: string | null
           person_id: string
@@ -5803,6 +5899,7 @@ export type Database = {
           id?: string
           include_in_hms_people?: boolean
           is_plannable_resource?: boolean
+          is_primary?: boolean
           job_role_id?: string | null
           notes?: string | null
           person_id: string
@@ -5823,6 +5920,7 @@ export type Database = {
           id?: string
           include_in_hms_people?: boolean
           is_plannable_resource?: boolean
+          is_primary?: boolean
           job_role_id?: string | null
           notes?: string | null
           person_id?: string
@@ -16728,6 +16826,15 @@ export type Database = {
       get_user_account_id: { Args: { _auth_user_id: string }; Returns: string }
       get_user_scope: { Args: { _user_id: string }; Returns: string }
       get_user_scope_v2: { Args: { _auth_user_id: string }; Returns: string }
+      has_company_access: {
+        Args: {
+          _company: string
+          _level?: string
+          _module: string
+          _uid: string
+        }
+        Returns: boolean
+      }
       has_cross_company_order_access: {
         Args: { _auth_user_id: string; _submission_id: string }
         Returns: boolean
@@ -16807,10 +16914,15 @@ export type Database = {
         Returns: Json
       }
       hms_handbook_open_by_token: { Args: { p_token: string }; Returns: Json }
+      home_company_of: { Args: { _uid: string }; Returns: string }
       is_active_member_of: { Args: { _company_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_company_member: {
         Args: { _auth_user_id: string; _company_id: string }
+        Returns: boolean
+      }
+      is_employee_of: {
+        Args: { _company: string; _uid: string }
         Returns: boolean
       }
       is_explicit_space_member: {
