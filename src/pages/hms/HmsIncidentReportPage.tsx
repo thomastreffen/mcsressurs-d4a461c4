@@ -177,6 +177,7 @@ export default function HmsIncidentReportPage() {
       return incident.id as string;
     },
     onSuccess: (id) => {
+      clearIncidentDraft();
       setSubmitted({ id });
     },
     onError: (e: any) => {
