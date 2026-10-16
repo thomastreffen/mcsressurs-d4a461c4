@@ -141,6 +141,13 @@
       "when": 1792137528190,
       "tag": "0019_company_module_access",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792141539215,
+      "tag": "0020_module_access_phase2_foundation",
+      "breakpoints": true
     }
   ]
 }
