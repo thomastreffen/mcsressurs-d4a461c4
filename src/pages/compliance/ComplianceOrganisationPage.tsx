@@ -24,7 +24,7 @@ import { useOrgPeople } from "@/hooks/useOrgPeople";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
-import { useDraftAutosave } from "@/hooks/useDraftAutosave";
+import { useDraftAutosave, peekDraft, clearDraftByScope } from "@/hooks/useDraftAutosave";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/compliance";
