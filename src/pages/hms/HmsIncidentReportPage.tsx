@@ -18,7 +18,7 @@ import { CHEMICAL_ISSUE_TYPES } from "@/lib/hms/chemicals";
 import { useToast } from "@/hooks/use-toast";
 import { logHmsAudit } from "@/lib/hms/audit";
 import { cn } from "@/lib/utils";
-import { useUnsavedChangesGuard, confirmNavigation } from "@/hooks/useUnsavedChangesGuard";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { useDraftAutosave } from "@/hooks/useDraftAutosave";
 
 type Severity = "low" | "medium" | "high" | "critical";
