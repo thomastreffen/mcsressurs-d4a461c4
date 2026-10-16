@@ -130,7 +130,7 @@ export default function PlanningNewProjectPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
-      <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate("/planlegging")}>
+      <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => confirmNavigation(() => navigate("/planlegging"))}>
         <ArrowLeft className="h-4 w-4" /> Planlegging
       </Button>
       <header>
