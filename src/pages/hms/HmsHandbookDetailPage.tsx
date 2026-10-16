@@ -34,6 +34,8 @@ import { HandbookDistributionStatus } from "@/components/hms/HandbookDistributio
 import { HandbookResourceLinks } from "@/components/hms/HandbookResourceLinks";
 import { HmsCoveragePanel } from "@/components/hms/HmsCoveragePanel";
 import { useHandbookSectionResources } from "@/hooks/useHandbookDistribution";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { useDraftAutosave } from "@/hooks/useDraftAutosave";
 
 const CONFIRMATION_TEXT = "Jeg har lest og forstått denne håndboken.";
 
@@ -64,6 +66,29 @@ export default function HmsHandbookDetailPage() {
   const [changelog, setChangelog] = useState("");
   const [publishOpen, setPublishOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [draftRestoredFor, setDraftRestoredFor] = useState<string | null>(null);
+
+  const hasUnsavedChapterEdits = Object.keys(editedSections).length > 0;
+  useUnsavedChangesGuard(hasUnsavedChapterEdits, "Du har ulagrede endringer i håndboken. Vil du forlate siden?");
+  const { restoreDraft: restoreHandbookDraft } = useDraftAutosave({
+    scopeParts: ["hms-handbook-edit", user?.id, activeCompanyId, id],
+    value: editedSections,
+    enabled: hasUnsavedChapterEdits,
+  });
+
+  // Restore an autosaved draft once per handbook (e.g. after a tab was closed with
+  // edits still pending) — never overwrites edits the user is actively making.
+  useEffect(() => {
+    if (!id || draftRestoredFor === id) return;
+    setDraftRestoredFor(id);
+    const draft = restoreHandbookDraft();
+    if (draft && Object.keys(draft).length > 0) {
+      setEditedSections(draft);
+      setEditMode(true);
+      toast({ title: "Gjenopprettet utkast", description: "Du hadde ulagrede endringer i dette kapittelet." });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const { data: handbook, isLoading } = useQuery({
     queryKey: ["hms-handbook", id, activeCompanyId],
@@ -278,8 +303,9 @@ export default function HmsHandbookDetailPage() {
         action: "section.updated", payload: { section_id: s.id, version_id: viewVersion?.id },
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["hms-handbook-sections", viewVersion?.id] });
+      setEditedSections((p) => { const c = { ...p }; delete c[variables.id]; return c; });
       toast({ title: "Lagret" });
     },
     onError: (e: any) => toast({ title: "Feil", description: String(e.message || e), variant: "destructive" }),

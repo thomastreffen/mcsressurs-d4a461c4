@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -18,6 +18,8 @@ import { CHEMICAL_ISSUE_TYPES } from "@/lib/hms/chemicals";
 import { useToast } from "@/hooks/use-toast";
 import { logHmsAudit } from "@/lib/hms/audit";
 import { cn } from "@/lib/utils";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { useDraftAutosave } from "@/hooks/useDraftAutosave";
 
 type Severity = "low" | "medium" | "high" | "critical";
 type IncidentType = "hms" | "near_miss" | "personal_injury" | "material_damage" | "quality" | "environment" | "observation";
@@ -70,6 +72,36 @@ export default function HmsIncidentReportPage() {
   const { data: chemicals = [] } = useChemicals();
 
   const [submitted, setSubmitted] = useState<{ id: string } | null>(null);
+
+  // Attachments (File objects) are never part of the draft — they can't survive
+  // sessionStorage and must be re-picked if the tab was closed mid-report.
+  const isDirty = !!(title.trim() || description.trim() || location.trim() || proposedAction.trim());
+  const { confirmNavigation: confirmBack } = useUnsavedChangesGuard(isDirty, "Du har et påbegynt avvik som ikke er sendt inn. Vil du forlate siden?");
+  const draftScope = ["hms-incident-new", user?.id, activeCompanyId];
+  const { restoreDraft: restoreIncidentDraft, clearDraft: clearIncidentDraft } = useDraftAutosave({
+    scopeParts: draftScope,
+    value: { incidentType, severity, title, description, location, proposedAction, projectId, chemicalId, chemicalIssueType },
+    enabled: isDirty,
+  });
+  const [draftChecked, setDraftChecked] = useState(false);
+  useEffect(() => {
+    if (draftChecked || !activeCompanyId) return;
+    setDraftChecked(true);
+    const draft = restoreIncidentDraft() as any;
+    if (draft && (draft.title?.trim() || draft.description?.trim())) {
+      setIncidentType(draft.incidentType ?? "hms");
+      setSeverity(draft.severity ?? "medium");
+      setTitle(draft.title ?? "");
+      setDescription(draft.description ?? "");
+      setLocation(draft.location ?? "");
+      setProposedAction(draft.proposedAction ?? "");
+      setProjectId(draft.projectId ?? null);
+      setChemicalId(draft.chemicalId ?? null);
+      setChemicalIssueType(draft.chemicalIssueType ?? null);
+      toast({ title: "Gjenopprettet utkast", description: "Du hadde et påbegynt avvik. Husk å legge til bilder på nytt om nødvendig." });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCompanyId]);
 
   // Optional projects for selection
   const { data: projects } = useQuery({
@@ -145,6 +177,7 @@ export default function HmsIncidentReportPage() {
       return incident.id as string;
     },
     onSuccess: (id) => {
+      clearIncidentDraft();
       setSubmitted({ id });
     },
     onError: (e: any) => {
@@ -183,6 +216,7 @@ export default function HmsIncidentReportPage() {
               <Button
                 variant="ghost"
                 onClick={() => {
+                  clearIncidentDraft();
                   setSubmitted(null);
                   setTitle(""); setDescription(""); setLocation("");
                   setProposedAction(""); setFiles([]); setProjectId(null);
@@ -208,7 +242,7 @@ export default function HmsIncidentReportPage() {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/60">
         <div className="px-4 py-3 max-w-2xl mx-auto flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Tilbake">
+          <Button variant="ghost" size="icon" onClick={() => confirmBack(() => navigate(-1))} aria-label="Tilbake">
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">

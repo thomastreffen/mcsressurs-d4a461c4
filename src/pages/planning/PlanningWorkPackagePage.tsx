@@ -22,6 +22,9 @@ import {
 import { CONTRACT_FORMS, WP_STATUSES, taskStatusLabel } from "@/lib/planning";
 import { WorkPackageStaffing } from "@/components/planning/WorkPackageStaffing";
 import { useSendWpToResourcePlan } from "@/components/planning/useSendWpToResourcePlan";
+import { useAuth } from "@/hooks/useAuth";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { useDraftAutosave } from "@/hooks/useDraftAutosave";
 
 const NONE = "__none__";
 
@@ -41,6 +44,7 @@ export default function PlanningWorkPackagePage() {
   const { id: projectId, wpId } = useParams<{ id: string; wpId: string }>();
   const isNew = !wpId || wpId === "ny";
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const canSeeResourcePlan = hasPermission("resourceplan.view");
 
@@ -63,9 +67,16 @@ export default function PlanningWorkPackagePage() {
   }, [children, finance, wpId, isNew]);
 
   const [form, setForm] = useState<Partial<PlanningWorkPackage> | null>(null);
+  const [baseline, setBaseline] = useState<string | null>(null);
+  const draftScope = ["planning-wp", user?.id, projectId, wpId ?? "ny"];
+  const { restoreDraft, clearDraft } = useDraftAutosave({
+    scopeParts: draftScope,
+    value: form,
+    enabled: !!form && baseline !== null && JSON.stringify(form) !== baseline,
+  });
   useEffect(() => {
     if (isNew && !form && project) {
-      setForm({
+      const base = {
         name: "",
         status: "planned",
         price_form: "unclear",
@@ -73,13 +84,32 @@ export default function PlanningWorkPackagePage() {
         billing_to_company_id: project?.company_id ?? null,
         planned_start: project?.expected_start ?? null,
         planned_end: project?.expected_end ?? null,
-      });
+      };
+      setBaseline(JSON.stringify(base));
+      const draft = restoreDraft() as Partial<PlanningWorkPackage> | null;
+      if (draft && draft.name?.trim()) {
+        setForm(draft);
+        toast.info("Gjenopprettet en påbegynt arbeidspakke som ikke var opprettet.");
+      } else {
+        setForm(base);
+      }
     } else if (existing && (!form || form.id !== existing.id)) {
-      setForm(existing);
+      setBaseline(JSON.stringify(existing));
+      const draft = restoreDraft() as Partial<PlanningWorkPackage> | null;
+      if (draft && draft.id === existing.id) {
+        setForm(draft);
+        toast.info("Gjenopprettet ulagrede endringer i denne arbeidspakken.");
+      } else {
+        setForm(existing);
+      }
     }
-  }, [isNew, existing, project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, existing, project?.id]);
 
-  const back = () => navigate(`/planlegging/${projectId}?tab=arbeidspakker`);
+  const isDirty = !!form && baseline !== null && JSON.stringify(form) !== baseline;
+  const { confirmNavigation } = useUnsavedChangesGuard(isDirty, "Du har ulagrede endringer i arbeidspakken. Vil du forlate siden?");
+
+  const back = () => confirmNavigation(() => navigate(`/planlegging/${projectId}?tab=arbeidspakker`));
 
   if (isLoading || loadingChildren || !form) {
     if (!isLoading && !loadingChildren && !isNew && !existing) {
@@ -125,7 +155,8 @@ export default function PlanningWorkPackagePage() {
     try {
       await saveWorkPackage.mutateAsync({ id, patch });
       toast.success(id ? "Arbeidspakke lagret" : "Arbeidspakke opprettet");
-      back();
+      clearDraft();
+      navigate(`/planlegging/${projectId}?tab=arbeidspakker`);
     } catch (e: any) {
       toast.error(e.message ?? "Kunne ikke lagre");
     }
@@ -134,7 +165,8 @@ export default function PlanningWorkPackagePage() {
   const remove = async () => {
     if (!existing || !confirm("Slette arbeidspakken?")) return;
     await deleteWorkPackage.mutateAsync(existing.id);
-    back();
+    clearDraft();
+    navigate(`/planlegging/${projectId}?tab=arbeidspakker`);
   };
 
   const companySelect = (value: string | null | undefined, onChange: (v: string | null) => void, list = lookups?.planCompanies) => (

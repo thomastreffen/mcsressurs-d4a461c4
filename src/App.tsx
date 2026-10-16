@@ -175,7 +175,22 @@ import PortalNotificationsPage from "./pages/portal/PortalNotificationsPage";
 import { PortalProvider } from "@/hooks/usePortal";
 import HubHome from "./pages/public/HubHome";
 
-const queryClient = new QueryClient();
+// Default data-fetching behavior for the whole app: do not reload everything
+// just because the browser tab regained focus (that was wiping in-progress
+// form state and making pages feel laggy). Data still refreshes on actual
+// reconnect and after real changes (via targeted invalidateQueries calls).
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      refetchOnMount: true,
+      staleTime: 60_000,
+      gcTime: 10 * 60_000,
+      retry: 1,
+    },
+  },
+});
 
 /** Bridge: provides activeCompanyId to the permissions system */
 function PermissionCompanyBridge({ children }: { children: React.ReactNode }) {

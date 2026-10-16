@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ParticipantPicker } from "@/components/planning/ParticipantPicker";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { useDraftAutosave } from "@/hooks/useDraftAutosave";
 
 const NONE = "__none__";
 
@@ -49,6 +51,40 @@ export default function PlanningNewProjectPage() {
     if (ownerUserId === NONE && user?.id) setOwnerUserId(user.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activeCompanyId, user?.id]);
+
+  // Et nytt prosjekt krever bare navn, men vi vil ikke miste resten av utfyllingen
+  // ved et utilsiktet faneskifte eller lukket fane.
+  const isDirty = !!(
+    name.trim() || description.trim() || start || end ||
+    customerId !== NONE || departmentId !== NONE || participants.length > 0
+  );
+  const { confirmNavigation } = useUnsavedChangesGuard(isDirty, "Du har et påbegynt prosjekt som ikke er opprettet. Vil du forlate siden?");
+  const draftScope = ["planning-project-new", user?.id, activeCompanyId];
+  const { restoreDraft, clearDraft } = useDraftAutosave({
+    scopeParts: draftScope,
+    value: { name, customerId, companyId, departmentId, ownerUserId, start, end, description, participants },
+    enabled: isDirty,
+  });
+  const [draftChecked, setDraftChecked] = useState(false);
+  useEffect(() => {
+    if (draftChecked) return;
+    setDraftChecked(true);
+    const draft = restoreDraft() as any;
+    if (draft && (draft.name?.trim() || draft.description?.trim())) {
+      setName(draft.name ?? "");
+      setCustomerId(draft.customerId ?? NONE);
+      if (draft.companyId) setCompanyId(draft.companyId);
+      setDepartmentId(draft.departmentId ?? NONE);
+      if (draft.ownerUserId) setOwnerUserId(draft.ownerUserId);
+      setStart(draft.start ?? "");
+      setEnd(draft.end ?? "");
+      setDescription(draft.description ?? "");
+      setParticipants(draft.participants ?? []);
+      toast.info("Gjenopprettet et påbegynt prosjekt som ikke var opprettet.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
 
   const departments = (lookups?.departments ?? []).filter(
@@ -85,6 +121,7 @@ export default function PlanningNewProjectPage() {
         );
         if (mErr) toast.error(`Prosjektet ble opprettet, men deltakere kunne ikke legges til: ${mErr.message}`);
       }
+      clearDraft();
       navigate(`/planlegging/${id}`, { replace: true });
     } catch (e: any) {
       toast.error(e.message ?? "Kunne ikke opprette prosjekt");
@@ -93,7 +130,7 @@ export default function PlanningNewProjectPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
-      <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate("/planlegging")}>
+      <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => confirmNavigation(() => navigate("/planlegging"))}>
         <ArrowLeft className="h-4 w-4" /> Planlegging
       </Button>
       <header>
@@ -199,7 +236,7 @@ export default function PlanningNewProjectPage() {
         </div>
 
           <div className="flex justify-end gap-2 border-t border-border/40 pt-4">
-            <Button type="button" variant="ghost" onClick={() => navigate("/planlegging")}>Avbryt</Button>
+            <Button type="button" variant="ghost" onClick={() => confirmNavigation(() => navigate("/planlegging"))}>Avbryt</Button>
             <Button type="submit" data-testid="planning-project-submit" disabled={createProject.isPending}>
               {createProject.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Opprett prosjekt

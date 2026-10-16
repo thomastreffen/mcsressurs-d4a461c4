@@ -22,6 +22,9 @@ import { Plus, Pencil, Trash2, Printer, Sparkles, Loader2, FileText } from "luci
 import { useOrgRoles, useOrgRoleMutations, type OrgRole } from "@/hooks/useCompliance";
 import { useOrgPeople } from "@/hooks/useOrgPeople";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { useDraftAutosave, peekDraft, clearDraftByScope } from "@/hooks/useDraftAutosave";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/compliance";
@@ -38,10 +41,20 @@ export default function ComplianceOrganisationPage() {
   const people = useOrgPeople();
   const { save, remove } = useOrgRoleMutations();
   const { activeCompany } = useCompanyContext() as any;
+  const { user } = useAuth();
   const [editing, setEditing] = useState<(Partial<OrgRole> & { reports_to_id?: string | null }) | null>(null);
+  const [editingBaseline, setEditingBaseline] = useState<string | null>(null);
   const [aiDraft, setAiDraft] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [tab, setTab] = useState("roller");
+
+  const isEditingDirty = !!editing && JSON.stringify(editing) !== editingBaseline;
+  const { confirmNavigation } = useUnsavedChangesGuard(isEditingDirty, "Du har endringer i rollen som ikke er lagret. Vil du forlate siden?");
+  const { hasDraft: hasRoleDraft, restoreDraft: restoreRoleDraft, clearDraft: clearRoleDraft } = useDraftAutosave({
+    scopeParts: ["org-role", user?.id, activeCompany?.id, editing?.id ?? "new"],
+    value: editing,
+    enabled: !!editing && isEditingDirty,
+  });
   const respTypes = useResponsibilityTypes();
   const { templates } = useRoleTemplates();
   const activeTemplates = templates.filter((t) => t.is_active);
@@ -77,14 +90,33 @@ export default function ComplianceOrganisationPage() {
 
   const set = (patch: Partial<OrgRole>) => setEditing((e) => ({ ...(e ?? {}), ...patch }));
 
+  const roleDraftScope = (id: string | null | undefined) => ["org-role", user?.id, activeCompany?.id, id ?? "new"];
+
+  /** Opens the editor for `base`, restoring an autosaved draft for that role if one exists. */
+  const openEditor = (base: Partial<OrgRole> & { reports_to_id?: string | null }) => {
+    setEditingBaseline(JSON.stringify(base));
+    const draft = peekDraft<typeof base>(roleDraftScope(base.id));
+    if (draft) {
+      setEditing(draft);
+      toast.info("Gjenopprettet et utkast som ikke var lagret.");
+    } else {
+      setEditing(base);
+    }
+  };
+
+  const closeEditor = () => {
+    setEditing(null);
+    setAiDraft(false);
+  };
+
   const openRole = (id: string) => {
     const r = list.find((x) => x.id === id);
-    if (r) { setAiDraft(false); setEditing(r); }
+    if (r) { setAiDraft(false); openEditor(r); }
   };
 
   const acceptSuggestion = (s: RoleSuggestion) => {
     setAiDraft(false);
-    setEditing({
+    openEditor({
       ...EMPTY,
       title: s.spec.label,
       role_type: s.spec.role_type,
@@ -154,7 +186,7 @@ export default function ComplianceOrganisationPage() {
           >
             <Printer className="mr-1 h-3.5 w-3.5" /> Skriv ut oversikt
           </Button>
-          <Button size="sm" onClick={() => { setAiDraft(false); setEditing({ ...EMPTY } as any); }}>
+          <Button size="sm" onClick={() => { setAiDraft(false); openEditor({ ...EMPTY } as any); }}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Ny rolle
           </Button>
         </div>
@@ -262,7 +294,7 @@ export default function ComplianceOrganisationPage() {
         <TabsContent value="bibliotek" className="print:hidden">
           <OrgRoleLibraryTab
             types={respTypes.types}
-            onUse={(t) => { setAiDraft(false); setEditing({ ...EMPTY, title: t.title, role_type: t.role_type, responsibilities: t.responsibilities ?? "", tasks: t.tasks ?? "", authority: t.authority ?? "", template_id: t.id } as any); }}
+            onUse={(t) => { setAiDraft(false); openEditor({ ...EMPTY, title: t.title, role_type: t.role_type, responsibilities: t.responsibilities ?? "", tasks: t.tasks ?? "", authority: t.authority ?? "", template_id: t.id } as any); }}
           />
         </TabsContent>
 
@@ -279,7 +311,7 @@ export default function ComplianceOrganisationPage() {
         </TabsContent>
       </Tabs>
 
-      <Sheet open={!!editing} onOpenChange={(v) => !v && (setEditing(null), setAiDraft(false))}>
+      <Sheet open={!!editing} onOpenChange={(v) => !v && confirmNavigation(closeEditor)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>{editing?.id ? "Endre rolle" : "Ny rolle"}</SheetTitle>
@@ -426,12 +458,13 @@ export default function ComplianceOrganisationPage() {
             </div>
           </div>
           <SheetFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setEditing(null); setAiDraft(false); }}>Avbryt</Button>
+            <Button variant="outline" onClick={() => confirmNavigation(closeEditor)}>Avbryt</Button>
             <Button
               disabled={!editing?.title || save.isPending}
               onClick={async () => {
                 const { created_at, updated_at, ...payload } = editing as any;
                 await save.mutateAsync(payload);
+                clearDraftByScope(roleDraftScope(editing?.id));
                 setEditing(null);
                 setAiDraft(false);
               }}
