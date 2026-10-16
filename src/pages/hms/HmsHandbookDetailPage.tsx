@@ -303,8 +303,9 @@ export default function HmsHandbookDetailPage() {
         action: "section.updated", payload: { section_id: s.id, version_id: viewVersion?.id },
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["hms-handbook-sections", viewVersion?.id] });
+      setEditedSections((p) => { const c = { ...p }; delete c[variables.id]; return c; });
       toast({ title: "Lagret" });
     },
     onError: (e: any) => toast({ title: "Feil", description: String(e.message || e), variant: "destructive" }),
