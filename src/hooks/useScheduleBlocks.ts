@@ -247,11 +247,25 @@ export function useScheduleBlocks(
     return () => clearInterval(interval);
   }, [fetchBlocks]);
 
-  // Fallback: refetch on tab focus / visibilitychange
+  // Fallback: silent refetch on tab focus / visibilitychange, but throttled so
+  // switching tabs back and forth doesn't fire a request every time — only
+  // when the data has actually had a chance to go stale (mirrors the
+  // app-wide React Query staleTime instead of bypassing it).
+  const lastFetchAtRef = useRef(0);
   useEffect(() => {
-    const onFocus = () => fetchBlocks(true);
+    lastFetchAtRef.current = Date.now();
+  });
+  useEffect(() => {
+    const MIN_INTERVAL_MS = 30_000;
+    const maybeRefetch = () => {
+      if (Date.now() - lastFetchAtRef.current >= MIN_INTERVAL_MS) {
+        lastFetchAtRef.current = Date.now();
+        fetchBlocks(true);
+      }
+    };
+    const onFocus = () => maybeRefetch();
     const onVisible = () => {
-      if (document.visibilityState === "visible") fetchBlocks(true);
+      if (document.visibilityState === "visible") maybeRefetch();
     };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
