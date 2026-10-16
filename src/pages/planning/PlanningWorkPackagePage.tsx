@@ -22,6 +22,9 @@ import {
 import { CONTRACT_FORMS, WP_STATUSES, taskStatusLabel } from "@/lib/planning";
 import { WorkPackageStaffing } from "@/components/planning/WorkPackageStaffing";
 import { useSendWpToResourcePlan } from "@/components/planning/useSendWpToResourcePlan";
+import { useAuth } from "@/hooks/useAuth";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { useDraftAutosave } from "@/hooks/useDraftAutosave";
 
 const NONE = "__none__";
 
