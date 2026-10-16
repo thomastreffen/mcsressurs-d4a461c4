@@ -34,6 +34,8 @@ import { HandbookDistributionStatus } from "@/components/hms/HandbookDistributio
 import { HandbookResourceLinks } from "@/components/hms/HandbookResourceLinks";
 import { HmsCoveragePanel } from "@/components/hms/HmsCoveragePanel";
 import { useHandbookSectionResources } from "@/hooks/useHandbookDistribution";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { useDraftAutosave } from "@/hooks/useDraftAutosave";
 
 const CONFIRMATION_TEXT = "Jeg har lest og forstått denne håndboken.";
 
