@@ -16473,6 +16473,10 @@ export type Database = {
           technician_id: string
         }[]
       }
+      event_module_access: {
+        Args: { _event: string; _level?: string; _uid: string }
+        Returns: boolean
+      }
       event_technician_company_access: {
         Args: { _auth_user_id: string; _event_id: string }
         Returns: boolean
@@ -16984,6 +16988,10 @@ export type Database = {
         Returns: boolean
       }
       person_has_employment: { Args: { _person_id: string }; Returns: boolean }
+      person_module_access: {
+        Args: { _level?: string; _person: string; _uid: string }
+        Returns: boolean
+      }
       planning_companies: {
         Args: never
         Returns: {
@@ -17106,6 +17114,10 @@ export type Database = {
         }[]
       }
       sweep_orphan_schedule_blocks: { Args: never; Returns: Json }
+      technician_module_access: {
+        Args: { _level?: string; _technician_user: string; _uid: string }
+        Returns: boolean
+      }
       update_commercial_case_crm: {
         Args: {
           _case_id: string
