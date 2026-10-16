@@ -90,14 +90,33 @@ export default function ComplianceOrganisationPage() {
 
   const set = (patch: Partial<OrgRole>) => setEditing((e) => ({ ...(e ?? {}), ...patch }));
 
+  const roleDraftScope = (id: string | null | undefined) => ["org-role", user?.id, activeCompany?.id, id ?? "new"];
+
+  /** Opens the editor for `base`, restoring an autosaved draft for that role if one exists. */
+  const openEditor = (base: Partial<OrgRole> & { reports_to_id?: string | null }) => {
+    setEditingBaseline(JSON.stringify(base));
+    const draft = peekDraft<typeof base>(roleDraftScope(base.id));
+    if (draft) {
+      setEditing(draft);
+      toast.info("Gjenopprettet et utkast som ikke var lagret.");
+    } else {
+      setEditing(base);
+    }
+  };
+
+  const closeEditor = () => {
+    setEditing(null);
+    setAiDraft(false);
+  };
+
   const openRole = (id: string) => {
     const r = list.find((x) => x.id === id);
-    if (r) { setAiDraft(false); setEditing(r); }
+    if (r) { setAiDraft(false); openEditor(r); }
   };
 
   const acceptSuggestion = (s: RoleSuggestion) => {
     setAiDraft(false);
-    setEditing({
+    openEditor({
       ...EMPTY,
       title: s.spec.label,
       role_type: s.spec.role_type,
