@@ -52,6 +52,40 @@ export default function PlanningNewProjectPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activeCompanyId, user?.id]);
 
+  // Et nytt prosjekt krever bare navn, men vi vil ikke miste resten av utfyllingen
+  // ved et utilsiktet faneskifte eller lukket fane.
+  const isDirty = !!(
+    name.trim() || description.trim() || start || end ||
+    customerId !== NONE || departmentId !== NONE || participants.length > 0
+  );
+  const { confirmNavigation } = useUnsavedChangesGuard(isDirty, "Du har et påbegynt prosjekt som ikke er opprettet. Vil du forlate siden?");
+  const draftScope = ["planning-project-new", user?.id, activeCompanyId];
+  const { restoreDraft, clearDraft } = useDraftAutosave({
+    scopeParts: draftScope,
+    value: { name, customerId, companyId, departmentId, ownerUserId, start, end, description, participants },
+    enabled: isDirty,
+  });
+  const [draftChecked, setDraftChecked] = useState(false);
+  useEffect(() => {
+    if (draftChecked) return;
+    setDraftChecked(true);
+    const draft = restoreDraft() as any;
+    if (draft && (draft.name?.trim() || draft.description?.trim())) {
+      setName(draft.name ?? "");
+      setCustomerId(draft.customerId ?? NONE);
+      if (draft.companyId) setCompanyId(draft.companyId);
+      setDepartmentId(draft.departmentId ?? NONE);
+      if (draft.ownerUserId) setOwnerUserId(draft.ownerUserId);
+      setStart(draft.start ?? "");
+      setEnd(draft.end ?? "");
+      setDescription(draft.description ?? "");
+      setParticipants(draft.participants ?? []);
+      toast.info("Gjenopprettet et påbegynt prosjekt som ikke var opprettet.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
 
   const departments = (lookups?.departments ?? []).filter(
     (d) => companyId === NONE || d.company_id === companyId,
