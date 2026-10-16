@@ -3,6 +3,9 @@ import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { CompanyModuleGate } from "@/components/CompanyModuleGate";
+import { useLocation } from "react-router-dom";
+import { moduleForPath } from "@/lib/company-module-access";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -12,6 +15,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRoles, requiredPermission }: ProtectedRouteProps) {
+  const location = useLocation();
   const { session, user, loading, isAdmin } = useAuth();
   const { hasPermission, loading: permLoading } = usePermissions();
   const [roleSettled, setRoleSettled] = useState(false);
@@ -47,5 +51,5 @@ export function ProtectedRoute({ children, requiredRoles, requiredPermission }: 
     return <Navigate to="/" replace />;
   }
 
-  return <>{children}</>;
+  return <CompanyModuleGate module={moduleForPath(location.pathname)} level={requiredPermission?.endsWith(".manage") ? "edit" : "view"}>{children}</CompanyModuleGate>;
 }

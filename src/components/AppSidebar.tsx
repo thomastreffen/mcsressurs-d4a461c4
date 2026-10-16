@@ -35,6 +35,8 @@ import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { usePreviewMode } from "@/hooks/usePreviewMode";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useModuleVisibility } from "@/hooks/useModuleVisibility";
+import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
+import { moduleForMenu, moduleForPath } from "@/lib/company-module-access";
 import { supabase } from "@/integrations/supabase/client";
 import { useUnreadOrderMessages } from "@/hooks/useUnreadOrderMessages";
 import {
@@ -158,6 +160,7 @@ export function AppSidebar() {
   const permissions = usePermissions();
   const { hasPermission, loading: permissionsLoading, error: permissionsError } = permissions;
   const modules = useModuleVisibility();
+  const companyAccess = useCompanyModuleAccess();
   const { isModuleVisible, loading: modulesLoading, error: modulesError } = modules;
   const { active: previewActive, effectiveRole } = usePreviewMode();
   const location = useLocation();
@@ -204,6 +207,8 @@ export function AppSidebar() {
    *   2. hasPermission(modulePermission) – user/role level (module.* permission)
    */
   const canAccessModule = (moduleKey: string, modulePermission?: string) => {
+    const companyModule = moduleForMenu(moduleKey);
+    if (companyModule && !companyAccess.can(companyModule)) return false;
     // Layer 1: global toggle
     if (!isModuleVisible(moduleKey)) return false;
     // Layer 2: user permission (if defined). Admins bypass this check.
@@ -215,6 +220,8 @@ export function AppSidebar() {
   const hasPostkontorAdmin = hasPermission("postkontor.admin") || isAdmin;
 
   const visibleMainNav = mainNav.filter((item: any) => {
+    const companyModule = moduleForPath(item.url);
+    if (companyModule && !companyAccess.can(companyModule)) return false;
     // Alltid synlige hovedinnganger (f.eks. Planlegging) trenger ingen modul/permission
     if (item.alwaysVisible) return true;
     if (!canAccessModule(item.moduleKey, item.modulePermission)) return false;
@@ -232,8 +239,8 @@ export function AppSidebar() {
 
   const adminActive = filteredAdmin.some((item) => isActive(item.url));
 
-  const navLoading = companyLoading || permissionsLoading || modulesLoading;
-  const navError = permissionsError ?? modulesError;
+  const navLoading = companyLoading || companyAccess.loading || permissionsLoading || modulesLoading;
+  const navError = companyAccess.error ?? permissionsError ?? modulesError;
 
   useEffect(() => {
     if (import.meta.env.DEV && !navLoading && !navError) {
@@ -350,7 +357,7 @@ export function AppSidebar() {
                      <CollapsibleContent>
                        <SidebarMenu className="ml-5 mt-1 space-y-0.5 border-l border-sidebar-border/40 pl-2">
                          <NavItem item={{ title: "Oversikt", url: "/hms", icon: Gauge }} isActive={(url) => location.pathname === "/hms"} collapsed={collapsed} />
-                         <NavItem item={{ title: "Ansatte", url: "/hms/people", icon: Users }} isActive={isActive} collapsed={collapsed} />
+                         {companyAccess.can("employees") && <NavItem item={{ title: "Ansatte", url: "/hms/people", icon: Users }} isActive={isActive} collapsed={collapsed} />}
                          <NavItem item={{ title: "Min HMS-håndbok", url: "/hms/handbok", icon: BookOpen }} isActive={(url) => location.pathname.startsWith("/hms/handbok") && !location.pathname.startsWith("/hms/handbooks")} collapsed={collapsed} />
                         <NavItem item={{ title: "Håndbøker", url: "/hms/handbooks", icon: BookOpen }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Avvik / RUH", url: "/hms/incidents", icon: ShieldAlert }} isActive={isActive} collapsed={collapsed} />
@@ -396,7 +403,7 @@ export function AppSidebar() {
                          <NavItem item={{ title: "Kompetanse", url: "/compliance/kompetanse", icon: ShieldCheck }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Kompetansekrav", url: "/compliance/kompetansekrav", icon: SlidersHorizontal }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Regelverk", url: "/compliance/regelverk", icon: BookOpen }} isActive={isActive} collapsed={collapsed} />
-                         <NavItem item={{ title: "Organisasjon & ansvar", url: "/compliance/organisasjon", icon: Users }} isActive={isActive} collapsed={collapsed} />
+                         {companyAccess.can("organisation") && <NavItem item={{ title: "Organisasjon & ansvar", url: "/compliance/organisasjon", icon: Users }} isActive={isActive} collapsed={collapsed} />}
                          <NavItem item={{ title: "Internkontroll", url: "/compliance/internkontroll", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
                          <NavItem item={{ title: "Tilsyn & revisjoner", url: "/compliance/tilsyn", icon: FileSearch }} isActive={isActive} collapsed={collapsed} />
                        </SidebarMenu>

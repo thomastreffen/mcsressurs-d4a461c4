@@ -31,6 +31,8 @@ import { useActionRequired } from "@/hooks/useActionRequired";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useModuleVisibility } from "@/hooks/useModuleVisibility";
+import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
+import { moduleForMenu, moduleForPath } from "@/lib/company-module-access";
 import { cn } from "@/lib/utils";
 import {
   Drawer,
@@ -149,6 +151,7 @@ export function MobileTabBar() {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const { isModuleVisible } = useModuleVisibility();
+  const companyAccess = useCompanyModuleAccess();
   const isAdmin = user?.role === "super_admin" || user?.role === "admin";
   const isMontør = user?.role === "montør";
   const { unreadCount } = useNotifications();
@@ -169,6 +172,8 @@ export function MobileTabBar() {
     : baseQuickActions;
 
   const availableActions = quickActions.filter((action) => {
+    const companyModule = action.path ? moduleForPath(action.path) : "resource_plan";
+    if (companyModule && !companyAccess.can(companyModule, "edit")) return false;
     if (!action.permission) return true;
     if (isAdmin) return true;
     return hasPermission(action.permission);
@@ -176,6 +181,8 @@ export function MobileTabBar() {
 
   /** Same two-layer check as desktop sidebar */
   const canAccessModule = (moduleKey: string, modulePermission?: string) => {
+    const companyModule = moduleForMenu(moduleKey);
+    if (companyModule && !companyAccess.can(companyModule)) return false;
     if (!isModuleVisible(moduleKey)) return false;
     if (modulePermission && !isAdmin && !hasPermission(modulePermission)) return false;
     return true;

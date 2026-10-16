@@ -16346,6 +16346,10 @@ export type Database = {
         Returns: Json
       }
       cleanup_empty_calculations: { Args: never; Returns: Json }
+      company_role_permission: {
+        Args: { _company: string; _perm: string; _uid: string }
+        Returns: boolean
+      }
       compliance_competence_status: {
         Args: {
           _expires_at: string
@@ -16468,6 +16472,10 @@ export type Database = {
           start_at: string
           technician_id: string
         }[]
+      }
+      event_module_access: {
+        Args: { _event: string; _level?: string; _uid: string }
+        Returns: boolean
       }
       event_technician_company_access: {
         Args: { _auth_user_id: string; _event_id: string }
@@ -16962,11 +16970,38 @@ export type Database = {
         Args: { _message_ids: string[]; _submission_id: string }
         Returns: Json
       }
+      my_company_module_access: {
+        Args: never
+        Returns: {
+          can_admin: boolean
+          can_edit: boolean
+          can_view: boolean
+          company_id: string
+          company_name: string
+          is_home: boolean
+          module: string
+          org_number: string
+        }[]
+      }
       order_submission_allows_public_child_insert: {
         Args: { _submission_id: string }
         Returns: boolean
       }
+      parent_module_access: {
+        Args: {
+          _id: string
+          _level?: string
+          _module: string
+          _parent: string
+          _uid: string
+        }
+        Returns: boolean
+      }
       person_has_employment: { Args: { _person_id: string }; Returns: boolean }
+      person_module_access: {
+        Args: { _level?: string; _person: string; _uid: string }
+        Returns: boolean
+      }
       planning_companies: {
         Args: never
         Returns: {
@@ -16986,6 +17021,10 @@ export type Database = {
           full_name: string
           user_id: string
         }[]
+      }
+      planning_finance_access: {
+        Args: { _level?: string; _project_id: string }
+        Returns: boolean
       }
       planning_storage_access: { Args: { _name: string }; Returns: boolean }
       remove_work_visit_from_plan: {
@@ -17033,6 +17072,20 @@ export type Database = {
         }
       }
       repair_resource_plan_ghosts: { Args: never; Returns: Json }
+      resource_plan_personnel: {
+        Args: { _company_ids: string[] }
+        Returns: {
+          avatar_id: string
+          color: string
+          company_id: string
+          company_name: string
+          department_id: string
+          department_name: string
+          id: string
+          name: string
+          user_id: string
+        }[]
+      }
       scan_resource_plan_ghosts: { Args: never; Returns: Json }
       send_planning_wp_to_resource_plan: {
         Args: { _wp_id: string }
@@ -17075,6 +17128,10 @@ export type Database = {
         }[]
       }
       sweep_orphan_schedule_blocks: { Args: never; Returns: Json }
+      technician_module_access: {
+        Args: { _level?: string; _technician_user: string; _uid: string }
+        Returns: boolean
+      }
       update_commercial_case_crm: {
         Args: {
           _case_id: string

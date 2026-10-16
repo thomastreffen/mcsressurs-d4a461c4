@@ -1,5 +1,12 @@
 # Roadmap
 
+## Fase 2 – modultilgang og tenant-isolasjon
+- [ ] Sentral sjekk i meny, ruter og handlinger
+- [ ] Ressursplan, HMS, organisasjon, personer og økonomi: autoritativ datatilgang
+- [ ] Minimal personinformasjon for Ressursplan
+- [ ] Regresjonstest ekte brukere og direkte datakall
+- [ ] Fjern Eiriks gamle medlemskap bare etter grønne tester, med revisjonsspor
+
 ## Planlegging / Prosjektboard (iterasjon 1)
 - [x] Datamodell: planning_projects, members, work_packages, tasks, contacts, external_refs, files, messages, activity
 - [ ] Board-side på egen hovedrute `/planlegging` (ikke under prosjekt/ressursplan)

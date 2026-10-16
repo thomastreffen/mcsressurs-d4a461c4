@@ -23,6 +23,7 @@ import { setWorkHours } from "@/hooks/useTechnicianNowStatus";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
 import { useTechnicians } from "@/hooks/useTechnicians";
 import { useExternalBusy } from "@/hooks/useExternalBusy";
 import { useCalendarEvents, type CalendarEvent } from "@/hooks/useCalendarEvents";
@@ -121,12 +122,13 @@ export default function ResourcePlan() {
   const { isAdmin, isSuperAdmin } = useAuth();
   const { hasPermission } = usePermissions();
   const { activeCompanyId, allowedCompanyIds } = useCompanyContext();
+  const companyAccess = useCompanyModuleAccess();
   const canReadBusy = hasPermission("calendar.read_busy");
   const canViewExternal = hasPermission("calendar.view_external");
-  const canPlanResources = hasPermission("resource_plan.plan_resources") || hasPermission("resourceplan.schedule");
-  const canWriteEvents = canPlanResources || hasPermission("calendar.write_events");
-  const canDeleteEvents = hasPermission("calendar.delete_events");
-  const canEditOthers = hasPermission("resource_plan.edit_others") || hasPermission("resourceplan.edit_others");
+  const canPlanResources = companyAccess.can("resource_plan", "edit");
+  const canWriteEvents = canPlanResources;
+  const canDeleteEvents = companyAccess.can("resource_plan", "admin");
+  const canEditOthers = canPlanResources;
   // Cross-company access is now driven by memberships, not a separate permission
   const canCrossCompany = allowedCompanyIds.length > 1;
   const drawerReadOnly = !canPlanResources;

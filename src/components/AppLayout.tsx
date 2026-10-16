@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
+import { CompanyModuleGate } from "@/components/CompanyModuleGate";
+import { moduleForPath } from "@/lib/company-module-access";
+import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
+import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { MobileTabBar } from "@/components/MobileTabBar";
@@ -28,6 +32,9 @@ import { EnableNotificationsButton } from "@/components/pwa/EnableNotificationsB
 import { APP_BUILD_TIME, APP_COMMIT, APP_VERSION } from "@/pwa/buildVersion";
 
 export function AppLayout() {
+  const location = useLocation();
+  const access = useCompanyModuleAccess();
+  const company = useCompanyContext();
   const isMobile = useIsMobile();
   const { user, signOut, isSuperAdmin } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
@@ -121,9 +128,17 @@ export function AppLayout() {
           </header>
 
           <MsConnectionBanner />
+          {access.limited && !isSuperAdmin && (
+            <div className="border-b border-border bg-muted px-4 py-2 text-xs text-muted-foreground">
+              Du har begrenset tilgang til {company.activeCompany?.name}
+              {access.can("resource_plan") && <span> · Ressursplan: {access.can("resource_plan", "edit") ? "Se + endre" : "Se"}</span>}
+            </div>
+          )}
 
           <main className={`flex-1 overflow-y-auto ${isMobile ? "pb-16" : ""}`}>
-            <Outlet />
+            <CompanyModuleGate module={moduleForPath(location.pathname)}>
+              <Outlet />
+            </CompanyModuleGate>
           </main>
           <footer className={`border-t border-border/40 px-4 py-1.5 text-[10px] text-muted-foreground ${isMobile ? "mb-16" : ""}`}>
             Build {APP_VERSION}

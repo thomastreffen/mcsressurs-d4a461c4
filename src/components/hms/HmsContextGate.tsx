@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useModuleVisibility } from "@/hooks/useModuleVisibility";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
 
 type HmsContextState = {
   companyId: string | null;
@@ -71,15 +72,16 @@ export function useHmsContextReady(): HmsContextState {
   const { user, isAdmin } = useAuth();
   const company = useCompanyContext();
   const permissions = usePermissions();
+  const access = useCompanyModuleAccess();
   const modules = useModuleVisibility();
   const companyId = company.activeCompanyId;
-  const employeeProfilesQuery = useHmsEmployeeProfiles(companyId, !!user?.id);
+  const employeeProfilesQuery = useHmsEmployeeProfiles(companyId, !!user?.id && access.can("hms"));
 
   const moduleVisible = modules.isModuleVisible("hms");
-  const canViewHms = isAdmin || permissions.hasPermission("hms.view");
-  const canManageHms = isAdmin || permissions.hasPermission("hms.manage");
-  const loading = company.loading || permissions.loading || modules.loading || employeeProfilesQuery.isLoading;
-  const error = permissions.error ?? modules.error ?? (employeeProfilesQuery.error as Error | null) ?? null;
+  const canViewHms = access.can("hms");
+  const canManageHms = access.can("hms", "edit");
+  const loading = company.loading || access.loading || permissions.loading || modules.loading || (canViewHms && employeeProfilesQuery.isLoading);
+  const error = access.error ?? permissions.error ?? modules.error ?? (employeeProfilesQuery.error as Error | null) ?? null;
   const ready = !!companyId && !!user?.id && !loading && !error && moduleVisible && canViewHms;
 
   useEffect(() => {

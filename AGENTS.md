@@ -2,3 +2,4 @@
 - Planning staffing/date-deviation is derived live from events/event_technicians via `get_planning_wp_staffing`, never stored. Why: Ressursplan is source of truth.
 - RLS checks that test "no row exists" in another RLS-protected table must use a SECURITY DEFINER helper. Why: RLS hides rows and inverts the check.
 - Employment (employment_profiles, one is_primary per person) and system access are separate; cross-company access goes only through company_module_access + has_company_access(uid, company, module, level). Why: membership must never imply employment or blanket access.
+- Company-module UI access uses the server-returned my_company_module_access matrix and CompanyModuleGate before mounting protected content; personnel for ResourcePlan uses resource_plan_personnel. Why: global roles and cached company selection must not widen module access or expose HR fields.
