@@ -36,19 +36,6 @@ Deno.serve(async (req) => {
 
     const db = createClient(supabaseUrl, serviceKey);
 
-    // ── Permission check: calendar.write_events ──
-    const { data: canWrite } = await db.rpc("check_permission_v2", {
-      _auth_user_id: user.id,
-      _perm: "calendar.write_events",
-    });
-    if (!canWrite) {
-      console.log(`[create-job-from-schedule-block] DENIED: User ${user.id} lacks calendar.write_events`);
-      return new Response(
-        JSON.stringify({ error: "Mangler rettighet: calendar.write_events", error_code: "permission_denied" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const body = await req.json();
     const {
       client_request_id,
@@ -72,10 +59,29 @@ Deno.serve(async (req) => {
     // 0. Check if schedule_block already has a project_id (idempotent on block level)
     const { data: blockCheck } = await db
       .from("schedule_blocks")
-      .select("project_id")
+      .select("project_id, company_id, technician_id")
       .eq("id", schedule_block_id)
       .is("deleted_at", null)
       .maybeSingle();
+
+    if (!blockCheck) {
+      return new Response(JSON.stringify({ error: "Block not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Server-side access check: company-scoped resource_plan edit, block identity locked to its own company/technician ──
+    const { data: canWrite } = await db.rpc("has_company_access", {
+      _uid: user.id,
+      _company: blockCheck.company_id,
+      _module: "resource_plan",
+      _level: "edit",
+    });
+    if (!canWrite || (company_id && company_id !== blockCheck.company_id) || (technician_id && technician_id !== blockCheck.technician_id)) {
+      console.log(`[create-job-from-schedule-block] DENIED: User ${user.id} lacks resource_plan edit for company ${blockCheck.company_id}`);
+      return new Response(
+        JSON.stringify({ error: "Ingen tilgang", error_code: "permission_denied" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (blockCheck?.project_id) {
       // Block already linked to a project – return it
@@ -94,6 +100,7 @@ Deno.serve(async (req) => {
       .from("events")
       .select("id")
       .eq("client_request_id", client_request_id)
+      .eq("company_id", blockCheck.company_id)
       .maybeSingle();
 
     if (existing) {
@@ -130,8 +137,8 @@ Deno.serve(async (req) => {
         description: description || null,
         start_time,
         end_time,
-        technician_id,
-        company_id: company_id || null,
+        technician_id: blockCheck.technician_id,
+        company_id: blockCheck.company_id,
         status: "requested",
         created_by: user.id,
         client_request_id,

@@ -26,18 +26,6 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, block_id, project_id } = body;
 
-    // ── Server-side permission check: calendar.write_events ──
-    const { data: canWrite } = await supabase.rpc("check_permission_v2", {
-      _auth_user_id: user.id,
-      _perm: "calendar.write_events",
-    });
-    if (!canWrite) {
-      console.log(`[confirm-schedule-block] DENIED: User ${user.id} lacks calendar.write_events`);
-      return new Response(JSON.stringify({ error: "Mangler rettighet: calendar.write_events", error_code: "permission_denied" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     // Get the block
     const { data: block, error: blockError } = await supabase
       .from("schedule_blocks")
@@ -49,11 +37,29 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Block not found" }), { status: 404, headers: corsHeaders });
     }
 
+    // ── Server-side access check: company-scoped resource_plan edit ──
+    const { data: canWrite } = await supabase.rpc("has_company_access", {
+      _uid: user.id,
+      _company: block.company_id,
+      _module: "resource_plan",
+      _level: "edit",
+    });
+    if (!canWrite) {
+      console.log(`[confirm-schedule-block] DENIED: User ${user.id} lacks resource_plan edit for company ${block.company_id}`);
+      return new Response(JSON.stringify({ error: "Ingen tilgang", error_code: "permission_denied" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "confirm") {
       // Confirm with suggested or provided project
       const targetProjectId = project_id || block.project_id;
       if (!targetProjectId) {
         return new Response(JSON.stringify({ error: "No project to confirm" }), { status: 400, headers: corsHeaders });
+      }
+      const { data: target } = await supabase.from("events").select("company_id").eq("id", targetProjectId).maybeSingle();
+      if (!target || target.company_id !== block.company_id) {
+        return new Response(JSON.stringify({ error: "Oppdrag og kalenderblokk må tilhøre samme selskap" }), { status: 403, headers: corsHeaders });
       }
 
       const { error: updateError } = await supabase
