@@ -236,7 +236,7 @@ export default function PlanningNewProjectPage() {
         </div>
 
           <div className="flex justify-end gap-2 border-t border-border/40 pt-4">
-            <Button type="button" variant="ghost" onClick={() => navigate("/planlegging")}>Avbryt</Button>
+            <Button type="button" variant="ghost" onClick={() => confirmNavigation(() => navigate("/planlegging"))}>Avbryt</Button>
             <Button type="submit" data-testid="planning-project-submit" disabled={createProject.isPending}>
               {createProject.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Opprett prosjekt
