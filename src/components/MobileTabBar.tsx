@@ -179,7 +179,7 @@ export function MobileTabBar() {
 
   const availableActions = quickActions.filter((action) => {
     const companyModule = action.path ? moduleForPath(action.path) : "resource_plan";
-    if (companyModule && !companyAccess.can(companyModule, "edit")) return false;
+    if (companyModule && !companyAccess.can(companyModule, action.level ?? "edit")) return false;
     if (!action.permission) return true;
     if (isAdmin) return true;
     return hasPermission(action.permission);
