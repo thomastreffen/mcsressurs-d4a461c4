@@ -1,11 +1,12 @@
 # Roadmap
 
 ## Fase 2 – modultilgang og tenant-isolasjon
-- [ ] Sentral sjekk i meny, ruter og handlinger
-- [ ] Ressursplan, HMS, organisasjon, personer og økonomi: autoritativ datatilgang
-- [ ] Minimal personinformasjon for Ressursplan
-- [ ] Regresjonstest ekte brukere og direkte datakall
-- [ ] Fjern Eiriks gamle medlemskap bare etter grønne tester, med revisjonsspor
+- [x] Sentral sjekk i meny, ruter og handlinger
+- [x] Ressursplan, HMS, organisasjon, personer og økonomi: autoritativ datatilgang
+- [x] Minimal personinformasjon for Ressursplan
+- [x] Regresjonstest ekte brukere og direkte datakall (A–F grønne, se siste rapport)
+- [x] HMS-selvbetjening (håndbok/kjemikalier/klar-for-arbeid) åpen for alle ansatte uten hms-rolle
+- [ ] Fjern Eiriks gamle MCS Service-medlemskap, med revisjonsspor (venter til etter publisering)
 
 ## Planlegging / Prosjektboard (iterasjon 1)
 - [x] Datamodell: planning_projects, members, work_packages, tasks, contacts, external_refs, files, messages, activity
