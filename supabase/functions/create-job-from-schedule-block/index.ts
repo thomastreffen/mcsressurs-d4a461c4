@@ -36,19 +36,6 @@ Deno.serve(async (req) => {
 
     const db = createClient(supabaseUrl, serviceKey);
 
-    // ── Permission check: calendar.write_events ──
-    const { data: canWrite } = await db.rpc("check_permission_v2", {
-      _auth_user_id: user.id,
-      _perm: "calendar.write_events",
-    });
-    if (!canWrite) {
-      console.log(`[create-job-from-schedule-block] DENIED: User ${user.id} lacks calendar.write_events`);
-      return new Response(
-        JSON.stringify({ error: "Mangler rettighet: calendar.write_events", error_code: "permission_denied" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const body = await req.json();
     const {
       client_request_id,
