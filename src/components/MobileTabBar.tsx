@@ -48,6 +48,8 @@ interface QuickAction {
   icon: React.ComponentType<{ className?: string }>;
   path?: string;
   permission: string | null;
+  /** Company-module access level this action needs (defaults to "edit" for write actions). */
+  level?: "view" | "edit" | "admin";
   onAction?: () => void;
 }
 
@@ -97,6 +99,7 @@ const hmsActions: QuickAction[] = [
     icon: ShieldAlert,
     path: "/hms/incidents/new",
     permission: "hms.view",
+    level: "view",
   },
   {
     label: "HMS-observasjon",
@@ -104,6 +107,7 @@ const hmsActions: QuickAction[] = [
     icon: Eye,
     path: "/hms/incidents/new?type=observation",
     permission: "hms.view",
+    level: "view",
   },
   {
     label: "Ny SJA",
@@ -111,6 +115,7 @@ const hmsActions: QuickAction[] = [
     icon: ClipboardList,
     path: "/hms/mobile?start=sja",
     permission: "hms.view",
+    level: "view",
   },
   {
     label: "Ny sjekkliste",
@@ -118,6 +123,7 @@ const hmsActions: QuickAction[] = [
     icon: FileCheck,
     path: "/hms/mobile?start=checklist",
     permission: "hms.view",
+    level: "view",
   },
 ];
 
@@ -173,7 +179,7 @@ export function MobileTabBar() {
 
   const availableActions = quickActions.filter((action) => {
     const companyModule = action.path ? moduleForPath(action.path) : "resource_plan";
-    if (companyModule && !companyAccess.can(companyModule, "edit")) return false;
+    if (companyModule && !companyAccess.can(companyModule, action.level ?? "edit")) return false;
     if (!action.permission) return true;
     if (isAdmin) return true;
     return hasPermission(action.permission);

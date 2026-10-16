@@ -162,6 +162,20 @@
       "when": 1792141791600,
       "tag": "0022_module_access_phase2_child_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792150374431,
+      "tag": "0023_hms_self_service_rls_fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792150567963,
+      "tag": "0024_hms_self_service_restrictive_policy_fix",
+      "breakpoints": true
     }
   ]
 }

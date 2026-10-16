@@ -191,6 +191,13 @@ function HmsPage({ children }: { children: React.ReactNode }) {
   return <HmsContextGate>{children}</HmsContextGate>;
 }
 
+// Self-service HMS pages (own handbook, own chemicals, own readiness) are open to
+// every authenticated employee — gated by RLS on the underlying rows, not by the
+// hms.view/hms.manage company-module permission that HmsContextGate enforces.
+function HmsSelfServicePage({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -661,12 +668,12 @@ const App = () => (
               } />
               <Route path="/hms/handbok" element={
                 <ProtectedRoute>
-                  <HmsPage><HmsMyHandbookPage /></HmsPage>
+                  <HmsSelfServicePage><HmsMyHandbookPage /></HmsSelfServicePage>
                 </ProtectedRoute>
               } />
               <Route path="/hms/handbok/:id" element={
                 <ProtectedRoute>
-                  <HmsPage><HmsMyHandbookReaderPage /></HmsPage>
+                  <HmsSelfServicePage><HmsMyHandbookReaderPage /></HmsSelfServicePage>
                 </ProtectedRoute>
               } />
               <Route path="/hms/handbooks" element={
@@ -691,13 +698,13 @@ const App = () => (
               } />
               <Route path="/hms/mine-kjemikalier" element={
                 <ProtectedRoute>
-                  <HmsPage><HmsMyChemicalsPage /></HmsPage>
+                  <HmsSelfServicePage><HmsMyChemicalsPage /></HmsSelfServicePage>
                 </ProtectedRoute>
               } />
 
               <Route path="/hms/klar-for-arbeid" element={
                 <ProtectedRoute>
-                  <HmsPage><HmsMyReadinessPage /></HmsPage>
+                  <HmsSelfServicePage><HmsMyReadinessPage /></HmsSelfServicePage>
                 </ProtectedRoute>
               } />
 
