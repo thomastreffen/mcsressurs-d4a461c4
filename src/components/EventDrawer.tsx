@@ -1122,7 +1122,7 @@ export function EventDrawer({
       } else if (mode === "existing" && selectedJobId) {
         const gate = await checkParentOpenForNewJob(selectedJobId, selectedCompanyId ?? activeCompanyId);
         if (!gate.ok) {
-          toast.error(gate.message);
+          toast.error((gate as { message: string }).message);
           setSaving(false);
           return;
         }
