@@ -496,6 +496,7 @@ function CreateTaskDrawer({
           <Button className="w-full gap-1.5" onClick={handleSubmit} disabled={!title.trim() || saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Opprett intern oppgave
+          </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

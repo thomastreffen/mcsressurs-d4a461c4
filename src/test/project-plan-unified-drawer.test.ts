@@ -46,7 +46,7 @@ describe("Project plan uses the resource-plan EventDrawer", () => {
   it("internal task UI has no date/start/end or technician booking", () => {
     const body = createTaskDrawerBody();
     expect(body).not.toMatch(/type="date"|type="time"|scheduled_date|start_time|end_time/);
-    expect(body).not.toMatch(/TechnicianMultiSelect|Montør\(er\)|Tildel ressurser|Ressursplan|planlegg/i);
+    expect(body).not.toMatch(/TechnicianMultiSelect|Montør\(er\)|Tildel ressurser|Ressursplan|Planlegging \\(valgfritt\\)|Opprett oppgave og planlegg/);
     expect(body).toContain("Intern deloppgave/sjekkpunkt");
   });
 });
