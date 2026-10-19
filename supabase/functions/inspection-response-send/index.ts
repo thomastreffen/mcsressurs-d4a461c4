@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
         continue;
       }
       const buf = await file.arrayBuffer();
-      if (total + buf.byteLength > MAX_TOTAL_ATTACHMENTS) {
+      if (total + buf.byteLength >= MAX_TOTAL_ATTACHMENTS) {
         const { data: signed, error: signedError } = await admin.storage.from(a.storage_bucket).createSignedUrl(a.file_path, LINK_SECONDS, { download: a.export_name });
         if (signedError || !signed) { skipped.push(a.export_name); continue; }
         links.push({ name: a.export_name, url: signed.signedUrl, expires_at: new Date(Date.now() + LINK_SECONDS * 1000).toISOString() });
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
       } catch {
         return json({ ok: false, message: "Ugyldig filinnhold" }, 400);
       }
-      if (total + bytes.byteLength > MAX_TOTAL_ATTACHMENTS) {
+      if (total + bytes.byteLength >= MAX_TOTAL_ATTACHMENTS) {
         skipped.push(g.export_name);
         continue;
       }
