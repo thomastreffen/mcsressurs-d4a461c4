@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Dokumentasjon / Eksport
-- [ ] Tilsynseksport: valgt sak, forslag til organisasjon/FSE/kompetanse/internkontroll/funn 6–7 og tre leveringsvalg
+- [x] Tilsynseksport: valgt sak, forslag til organisasjon/FSE/kompetanse/internkontroll/funn 6–7 og tre leveringsvalg; innlogget forhåndsvisning, nedlasting og historikk verifisert
 - [x] Fast HMS-inngang, innholdsvalg, enkeltposter og relevante filtre
 - [x] Nedlasting, e-post og kombinert handling med filforhåndsvisning
 - [x] DLE-/revisjonsmaler og selskapsavgrenset eksporthistorikk
