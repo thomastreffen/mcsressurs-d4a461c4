@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMountLog } from "@/lib/debugMount";
 
 interface Company {
   id: string;
@@ -25,6 +26,7 @@ interface CompanyContextType {
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
+  useMountLog("COMPANY CONTEXT INIT");
   const { user, isSuperAdmin } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [activeCompanyId, setActiveCompanyIdState] = useState<string | null>(null);

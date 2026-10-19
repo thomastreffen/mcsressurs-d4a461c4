@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
+import { useMountLog } from "@/lib/debugMount";
 
 export type AppRole = "super_admin" | "admin" | "montør" | "customer_user";
 
@@ -36,6 +37,7 @@ function buildUserFromMeta(supaUser: User): AuthUser {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  useMountLog("AUTH CONTEXT INIT");
   const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
