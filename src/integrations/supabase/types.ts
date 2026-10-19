@@ -6068,6 +6068,10 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           city: string | null
+          classification_reason: string | null
+          classification_status: string
+          classified_at: string | null
+          classified_by: string | null
           client_request_id: string | null
           commercial_case_id: string | null
           company_id: string | null
@@ -6091,11 +6095,13 @@ export type Database = {
           editing_by: string | null
           editing_started_at: string | null
           end_time: string
+          entity_type: string
           external_project_id: string | null
           external_system: string | null
           external_tripletex_id: string | null
           id: string
           internal_number: string | null
+          is_framework_project: boolean
           job_number: string | null
           location_details: string | null
           map_link: string | null
@@ -6157,6 +6163,10 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           city?: string | null
+          classification_reason?: string | null
+          classification_status?: string
+          classified_at?: string | null
+          classified_by?: string | null
           client_request_id?: string | null
           commercial_case_id?: string | null
           company_id?: string | null
@@ -6180,11 +6190,13 @@ export type Database = {
           editing_by?: string | null
           editing_started_at?: string | null
           end_time: string
+          entity_type?: string
           external_project_id?: string | null
           external_system?: string | null
           external_tripletex_id?: string | null
           id?: string
           internal_number?: string | null
+          is_framework_project?: boolean
           job_number?: string | null
           location_details?: string | null
           map_link?: string | null
@@ -6246,6 +6258,10 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           city?: string | null
+          classification_reason?: string | null
+          classification_status?: string
+          classified_at?: string | null
+          classified_by?: string | null
           client_request_id?: string | null
           commercial_case_id?: string | null
           company_id?: string | null
@@ -6269,11 +6285,13 @@ export type Database = {
           editing_by?: string | null
           editing_started_at?: string | null
           end_time?: string
+          entity_type?: string
           external_project_id?: string | null
           external_system?: string | null
           external_tripletex_id?: string | null
           id?: string
           internal_number?: string | null
+          is_framework_project?: boolean
           job_number?: string | null
           location_details?: string | null
           map_link?: string | null
@@ -13273,6 +13291,7 @@ export type Database = {
           estimated_material_cost: number | null
           expected_end: string | null
           expected_start: string | null
+          financial_project_id: string | null
           hourly_rate: number | null
           id: string
           invoice_recipient: string | null
@@ -13302,6 +13321,7 @@ export type Database = {
           estimated_material_cost?: number | null
           expected_end?: string | null
           expected_start?: string | null
+          financial_project_id?: string | null
           hourly_rate?: number | null
           id?: string
           invoice_recipient?: string | null
@@ -13331,6 +13351,7 @@ export type Database = {
           estimated_material_cost?: number | null
           expected_end?: string | null
           expected_start?: string | null
+          financial_project_id?: string | null
           hourly_rate?: number | null
           id?: string
           invoice_recipient?: string | null
@@ -13370,6 +13391,13 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_projects_financial_project_id_fkey"
+            columns: ["financial_project_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
           {

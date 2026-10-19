@@ -63,7 +63,11 @@
 - [x] Nye Planlegging-filer i privat lager med signerte lenker
 - [ ] Flytte eldre Planlegging-filer fra åpent lager (venter på beslutning)
 
-## Tripletex-integrasjon (planlagt, ikke startet)
+## Tripletex-integrasjon
+- [x] TPX-000a/b Klassifiseringsfelt, databaseregler og automatisk forslag (60 prosjekt, 44 jobb, 34 service)
+- [x] TPX-000c Avklaringskø /admin/prosjektklassifisering (121 poster)
+- [ ] TPX-000d Ny opprettelsesflyt med typevalg — venter på svar om navn og rammeprosjekt
+- [ ] TPX-000f Manuell gjennomgang av 121 poster — venter på prosjektledere
 - [ ] TPX-001 Avklaringer med ledelse/regnskap + testmiljø — venter på interne svar
 - [ ] TPX-002–018 Fase 0/1 (grunnmur, ID-mapping, kunder/ansatte/prosjekter) — starter etter TPX-001
 - [ ] TPX-019–020 Lesende Tripletex-assistent (MCP) — etter stabil ID-mapping
