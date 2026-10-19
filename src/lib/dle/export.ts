@@ -19,6 +19,7 @@ export type DleCategory = typeof DLE_CATEGORIES[number]["key"];
 export interface DleRecord {
   id: string;
   parentId?: string | null;
+  version?: string;
   title: string;
   sections: { heading: string; text: string }[];
   original?: { chemicalId?: string; bucket?: string; path?: string; filename: string; mime: string };
@@ -48,7 +49,7 @@ export function buildDleFiles(category: DleCategory, records: DleRecord[], separ
   return groups.map((group) => {
     const original = group[0]?.original;
     const extension = original?.filename.split(".").pop()?.toLowerCase() || "pdf";
-    const title = group.length === 1 ? group[0].title : config.label;
+    const title = group.length === 1 && (separate || original) ? group[0].title : config.label;
     const base = `${slugForFile(company)}_${slugForFile(title)}_${date}`;
     const n = (used.get(base) ?? 0) + 1;
     used.set(base, n);
@@ -99,6 +100,7 @@ export function generateDlePdf(file: DleFile, company: string, date: string): Bl
   }
   for (const record of file.category === "chart" ? [] : file.records) {
     write(record.title, 13, true);
+    if (record.version) write(`Dokumentversjon: ${record.version}`, 9);
     for (const section of record.sections) {
       if (section.heading) write(section.heading, 11, true);
       if (section.text) write(section.text);
