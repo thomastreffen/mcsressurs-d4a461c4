@@ -16,7 +16,7 @@ describe("Project plan uses the resource-plan EventDrawer", () => {
   it("opens EventDrawer locked to the parent project", () => {
     expect(plan).toMatch(/<EventDrawer[\s\S]*?projectId=\{jobId\}[\s\S]*?projectTitle=\{jobTitle\}/);
     expect(plan).toContain("Planlegg jobb / serviceoppdrag");
-    expect(drawer).toContain('setMode(projectId ? "existing" : "new")');
+    expect(drawer).toContain('setMode("existing")');
     expect(drawer).toContain("setSelectedJobId(projectId || null)");
   });
 
