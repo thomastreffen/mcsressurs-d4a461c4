@@ -32,6 +32,7 @@ export default function ProjectNewPage() {
   const preselectedParentId = searchParams.get("parent") || "";
   const { user } = useAuth();
   const { activeCompanyId } = useCompanyContext();
+  const { isSuperAdmin: canImportTripletex } = useAuth();
 
   const [saving, setSaving] = useState(false);
   const [showOptional, setShowOptional] = useState(!!preselectedParentId);
@@ -153,6 +154,12 @@ export default function ProjectNewPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
+      {canImportTripletex && !preselectedParentId && (
+        <div className="rounded-xl border border-border bg-muted/40 p-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span>Økonomisk prosjekt? Opprett det i Tripletex først, og hent det inn her.</span>
+          <Button size="sm" variant="outline" onClick={() => navigate("/projects/import-tripletex")}>Hent fra Tripletex TEST</Button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-xl h-8 w-8">

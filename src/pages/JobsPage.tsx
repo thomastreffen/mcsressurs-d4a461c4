@@ -73,7 +73,7 @@ const TAB_LABELS: Record<StatusTab, string> = {
 
 export default function JobsPage() {
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isSuperAdmin } = useAuth();
   const { activeCompanyId, allowedCompanyIds } = useCompanyContext();
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -226,6 +226,11 @@ export default function JobsPage() {
               <ArrowRightLeft className="h-3.5 w-3.5" />
               Flytt selskap
             </Button>
+            {isSuperAdmin && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/projects/import-tripletex")} className="gap-1.5 rounded-xl text-xs">
+                Hent fra Tripletex TEST
+              </Button>
+            )}
             <Button onClick={() => navigate("/projects/new")} className="gap-1.5 rounded-xl">
               <Plus className="h-4 w-4" />
               Nytt prosjekt
