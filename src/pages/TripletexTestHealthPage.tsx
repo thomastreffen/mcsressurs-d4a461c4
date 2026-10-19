@@ -47,7 +47,7 @@ export default function TripletexTestHealthPage() {
     <div className="mx-auto max-w-3xl p-4 sm:p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Tripletex – testtilkobling</h1>
-        <p className="text-sm text-muted-foreground mt-1">Kun lesing mot Tripletex testmiljø. Ingenting endres i Tripletex.</p>
+        <p className="text-sm text-muted-foreground mt-1">Kun lesing mot Tripletex testmiljø. Ingenting endres i Tripletex. Krever secret <span className="font-mono">TRIPLETEX_TEST_API_TOKEN</span> (API-nøkkel fra testmiljøet).</p>
       </div>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
