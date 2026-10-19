@@ -7,7 +7,9 @@ const drawer = readFileSync("src/components/EventDrawer.tsx", "utf8");
 
 function createTaskDrawerBody() {
   const i = plan.indexOf("function CreateTaskDrawer");
-  return plan.slice(i);
+  const rest = plan.slice(i);
+  const end = rest.indexOf("\n}\n");
+  return end > 0 ? rest.slice(0, end) : rest;
 }
 
 describe("Project plan uses the resource-plan EventDrawer", () => {
