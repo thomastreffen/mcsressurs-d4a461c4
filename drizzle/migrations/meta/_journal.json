@@ -183,6 +183,13 @@
       "when": 1792151400900,
       "tag": "0025_widen_hms_incident_self_service_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792389159698,
+      "tag": "0026_fix_submission_participant_rls_recursion",
+      "breakpoints": true
     }
   ]
 }
