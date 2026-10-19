@@ -17508,6 +17508,23 @@ export type Database = {
         Args: { _level?: string; _technician_user: string; _uid: string }
         Returns: boolean
       }
+      tripletex_import_project_shell: {
+        Args: {
+          _actor: string
+          _connection_id: string
+          _customer_id: string
+          _end: string
+          _name: string
+          _number: string
+          _start: string
+          _tripletex_id: number
+          _version: number
+        }
+        Returns: {
+          created: boolean
+          event_id: string
+        }[]
+      }
       update_commercial_case_crm: {
         Args: {
           _case_id: string

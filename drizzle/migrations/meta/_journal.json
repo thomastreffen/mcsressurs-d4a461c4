@@ -267,6 +267,13 @@
       "when": 1792412711904,
       "tag": "0037_tripletex_employee_canonical_person",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792413727035,
+      "tag": "0038_tripletex_import_project_shell",
+      "breakpoints": true
     }
   ]
 }
