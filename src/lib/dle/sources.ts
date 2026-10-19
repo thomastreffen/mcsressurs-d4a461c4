@@ -15,7 +15,7 @@ async function rows(table: string, company: string, columns: string, deleted = t
 const section = (heading: string, value: unknown) => ({ heading, text: String(value ?? "") });
 
 export async function loadDleRecords(category: DleCategory, company: string, attachments: AttachmentCandidate[]): Promise<DleRecord[]> {
-  if (category === "attachments") return attachments.filter((a) => a.kind === "document" && a.storage_bucket && a.file_path).map((a) => ({
+  if (category === "attachments") return attachments.filter((a, index, all) => a.kind === "document" && a.storage_bucket && a.file_path && all.findIndex((b) => b.storage_bucket === a.storage_bucket && b.file_path === a.file_path) === index).map((a) => ({
     id: a.key, title: a.title, sections: [], original: { bucket: a.storage_bucket ?? undefined, path: a.file_path ?? undefined, filename: a.file_name, mime: a.mime_type ?? "application/octet-stream" },
   }));
   if (["chart", "matrix", "roles"].includes(category)) {
@@ -27,7 +27,7 @@ export async function loadDleRecords(category: DleCategory, company: string, att
     const names = new Map((employees.data ?? []).filter((e: any) => e.people?.is_active !== false).map((e: any) => [e.person_id, e.people?.full_name]));
     const name = (id: string) => String(names.get(id) ?? "Ikke registrert i ansattgrunnlaget");
     const active = roles.filter((r: any) => r.is_active !== false).sort((a: any, b: any) => a.sort_order - b.sort_order);
-    return active.map((r: any) => ({ id: r.id, title: r.title, sections: [
+    return active.map((r: any) => ({ id: r.id, parentId: r.reports_to_id, title: r.title, sections: [
       section("Ansvarlige", [r.person_id, ...(r.additional_person_ids ?? [])].filter(Boolean).map(name).join(", ") || "Ikke tildelt"),
       section("Stedfortreder", r.deputy_person_id ? name(r.deputy_person_id) : "Ikke tildelt"),
       ...(category === "chart" ? [section("Rapporterer til", active.find((p: any) => p.id === r.reports_to_id)?.title ?? "Øverste nivå")] : [section("Ansvar", r.responsibilities), ...(category === "roles" ? [section("Oppgaver", r.tasks), section("Myndighet", r.authority)] : [])]),
@@ -39,7 +39,7 @@ export async function loadDleRecords(category: DleCategory, company: string, att
     if (!versions.length) return [];
     const { data, error } = await sb.from("hms_handbook_sections").select("id,heading,body,ordering,version_id").in("version_id", versions).order("ordering");
     if (error) throw error;
-    return (data ?? []).filter((s: any) => category !== "fse" || /fse|elsikkerhet|strømulykke|arbeid.*spenning/i.test(`${s.heading} ${s.body}`)).map((s: any) => ({
+    return (data ?? []).filter((s: any) => category !== "fse" || /fse|elsikkerhet|strømulykke|arbeid.*spenning/i.test(s.heading)).map((s: any) => ({
       id: s.id, title: s.heading, sections: [section(handbooks.find((h: any) => h.current_version_id === s.version_id)?.title ?? "Håndbok", s.body)],
     }));
   }

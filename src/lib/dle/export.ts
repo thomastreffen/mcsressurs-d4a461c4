@@ -18,6 +18,7 @@ export const DLE_CATEGORIES = [
 export type DleCategory = typeof DLE_CATEGORIES[number]["key"];
 export interface DleRecord {
   id: string;
+  parentId?: string | null;
   title: string;
   sections: { heading: string; text: string }[];
   original?: { chemicalId?: string; bucket?: string; path?: string; filename: string; mime: string };
@@ -73,7 +74,30 @@ export function generateDlePdf(file: DleFile, company: string, date: string): Bl
   const config = DLE_CATEGORIES.find((c) => c.key === file.category);
   write(company, 16, true);
   write(`${config?.label ?? "Dokumentasjon"} | ${date} | DLE-tilsyn`, 10);
-  for (const record of file.records) {
+  if (file.category === "chart") {
+    const visited = new Set<string>();
+    const branch = (record: DleRecord, depth: number) => {
+      if (visited.has(record.id)) return;
+      visited.add(record.id);
+      if (y > 250) { pdf.addPage(); y = 20; }
+      const x = 18 + Math.min(depth, 5) * 12;
+      const width = 174 - Math.min(depth, 5) * 12;
+      const people = record.sections.find((s) => s.heading === "Ansvarlige")?.text ?? "Ikke tildelt";
+      pdf.setFontSize(10); pdf.setFont("helvetica", "normal");
+      const lines: string[] = pdf.splitTextToSize(externalText(people), width - 10);
+      const titles: string[] = pdf.splitTextToSize(externalText(record.title), width - 10);
+      const height = 9 + (lines.length + titles.length) * 5;
+      if (depth > 0) { pdf.line(x - 6, y - 6, x - 6, y + 5); pdf.line(x - 6, y + 5, x, y + 5); }
+      pdf.rect(x, y, width, height);
+      pdf.setFont("helvetica", "bold"); pdf.text(titles, x + 5, y + 6);
+      pdf.setFont("helvetica", "normal"); pdf.text(lines, x + 5, y + 6 + titles.length * 5);
+      y += height + 7;
+      for (const child of file.records.filter((r) => r.parentId === record.id)) branch(child, depth + 1);
+    };
+    for (const root of file.records.filter((r) => !r.parentId || !file.records.some((p) => p.id === r.parentId))) branch(root, 0);
+    for (const record of file.records) branch(record, 0);
+  }
+  for (const record of file.category === "chart" ? [] : file.records) {
     write(record.title, 13, true);
     for (const section of record.sections) {
       if (section.heading) write(section.heading, 11, true);
