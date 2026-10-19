@@ -53,17 +53,19 @@ Deno.serve(async (req) => {
     const userId = identity?.user?.id;
     if (claimsErr || !userId) return json({ ok: false, message: "Ugyldig token" }, 401);
 
-    const parsed = z.object({ package_id: z.string().uuid(), html: z.string().max(500000).optional(), subject: z.string().max(255).optional(), generated: z.array(z.object({ export_name: z.string().min(1).max(255), content: z.string().max(5000000).optional(), content_base64: z.string().max(5000000).optional(), mime_type: z.string().max(100).optional() })).max(100).optional() }).safeParse(await req.json().catch(() => null));
+    const parsed = z.object({ export_id: z.string().uuid().optional(), package_id: z.string().uuid().optional(), html: z.string().max(500000).optional(), subject: z.string().max(255).optional(), generated: z.array(z.object({ export_name: z.string().min(1).max(255), content: z.string().max(5000000).optional(), content_base64: z.string().max(5000000).optional(), mime_type: z.string().max(100).optional() })).max(100).optional() }).safeParse(await req.json().catch(() => null));
     if (!parsed.success) return json({ ok: false, message: "Ugyldig svarpakke eller filinnhold" }, 400);
     const body = parsed.data;
-    const packageId: string | undefined = body.package_id;
+    const standalone = !!body.export_id;
+    const packageId = body.export_id ?? body.package_id;
+    const packageTable = standalone ? "hms_document_exports" : "compliance_response_packages";
     const generated: { export_name: string; content?: string; content_base64?: string; mime_type?: string }[] = Array.isArray(body.generated) ? body.generated : [];
     if (!packageId) return json({ ok: false, message: "Mangler svarpakke" }, 400);
 
     const admin = createClient(url, service);
 
     const { data: pkg, error: pkgErr } = await admin
-      .from("compliance_response_packages")
+      .from(packageTable)
       .select("*")
       .eq("id", packageId)
       .maybeSingle();
@@ -71,17 +73,22 @@ Deno.serve(async (req) => {
     if (!pkg.recipient_email) return json({ ok: false, message: "Mottaker mangler e-postadresse" }, 400);
 
     // Autoritativ tilgangssjekk: brukeren må ha HMS-tilgang i selskapet pakken hører til
-    const { data: allowed } = await admin.rpc("has_hms_manage", { _auth_user_id: userId, _company_id: pkg.company_id });
+    const { data: allowed } = await admin.rpc("has_company_access", { _uid: userId, _company_id: pkg.company_id, _module: "hms", _level: "edit" });
     if (!allowed) return json({ ok: false, message: "Du har ikke tilgang til å sende svar på tilsyn" }, 403);
 
     const html: string = body.html ?? pkg.email_body_snapshot ?? "";
     const subject: string = body.subject ?? pkg.subject ?? "Tilbakemelding på tilsyn";
 
-    const { data: attachments, error: attachmentError } = await admin
-      .from("compliance_response_package_attachments")
-      .select("*")
-      .eq("package_id", packageId)
-      .order("sort_order");
+    const attachmentResult = standalone ? { data: pkg.files, error: null } : await admin.from("compliance_response_package_attachments").select("*").eq("package_id", packageId).order("sort_order");
+    const attachments = attachmentResult.data;
+    const attachmentError = attachmentResult.error;
+    if (standalone && (pkg.created_by !== userId || !Array.isArray(attachments) || attachments.length > 100)) return json({ ok: false, message: "Ugyldig eksport" }, 403);
+    if (standalone && attachments.some((a: any) => a.storage_bucket !== "dle-exports" || !a.file_path || !a.file_path.startsWith(`${pkg.id}/`))) return json({ ok: false, message: "Ugyldig eksportfil" }, 403);
+    async function logEvent(event_type: string, summary: string, payload: unknown) {
+      if (!standalone) return admin.from("compliance_inspection_events").insert({ company_id: pkg.company_id, inspection_id: pkg.inspection_id, actor_user_id: userId, event_type, summary, payload });
+      pkg.events = [...(pkg.events ?? []), { event_type, summary, payload, actor_user_id: userId, created_at: new Date().toISOString() }];
+      return admin.from(packageTable).update({ events: pkg.events }).eq("id", packageId);
+    }
 
     if (attachmentError) return json({ ok: false, message: "Kunne ikke lese dokumentmanifest" }, 500);
     const recipients = (value: string) => [...new Set(value.split(/[;,\s]+/).filter(Boolean))];
@@ -157,7 +164,7 @@ Deno.serve(async (req) => {
 
     const tokenResult = await getGraphToken();
     if (tokenResult.error) {
-      await admin.from("compliance_response_packages").update({ status: "draft", send_error: tokenResult.error, sent_at: null }).eq("id", packageId);
+      await admin.from(packageTable).update({ status: standalone ? "failed" : "draft", send_error: tokenResult.error, sent_at: null }).eq("id", packageId);
       return json({ ok: false, message: tokenResult.error }, 502);
     }
 
@@ -171,7 +178,11 @@ Deno.serve(async (req) => {
       message.ccRecipients = cc.map((e: string) => ({ emailAddress: { address: e } }));
     }
 
-    const { error: attemptError } = await admin.from("compliance_inspection_events").insert({ company_id: pkg.company_id, inspection_id: pkg.inspection_id, actor_user_id: userId, event_type: "dle_send_attempted", summary: `E-postforsøk til ${to.join(", ")}`, payload: { ...pkg.delivery_metadata, package_id: pkg.id, to, cc, links: links.map(({ url: _url, ...rest }) => rest) } });
+    if (standalone) {
+      const { data: claimed, error: claimError } = await admin.from(packageTable).update({ status: "sending" }).eq("id", packageId).in("status", ["prepared", "downloaded", "failed"]).select("id").maybeSingle();
+      if (claimError || !claimed) return json({ ok: false, message: "Eksporten er allerede sendt eller under sending" }, 409);
+    }
+    const { error: attemptError } = await logEvent("dle_send_attempted", `E-postforsøk til ${to.join(", ")}`, { ...pkg.delivery_metadata, package_id: pkg.id, to, cc, links: links.map(({ url: _url, ...rest }) => rest) });
     if (attemptError) return json({ ok: false, message: "Kunne ikke registrere sendeforsøket" }, 500);
     const resp = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/sendMail`, {
       method: "POST",
@@ -186,17 +197,17 @@ Deno.serve(async (req) => {
         msg = JSON.parse(errText)?.error?.message ?? errText;
       } catch { /* rå tekst */ }
       console.error("SVARPAKKE SEND FEILET", { packageId, status: resp.status, msg });
-      await admin.from("compliance_response_packages").update({ status: "draft", send_error: msg, sent_at: null }).eq("id", packageId);
-      await admin.from("compliance_inspection_events").insert({ company_id: pkg.company_id, inspection_id: pkg.inspection_id, actor_user_id: userId, event_type: "dle_send_failed", summary: "Microsoft avviste sendingen", payload: { package_id: pkg.id, to, cc, error: msg } });
+      await admin.from(packageTable).update({ status: standalone ? "failed" : "draft", send_error: msg, sent_at: null }).eq("id", packageId);
+      await logEvent("dle_send_failed", "Microsoft avviste sendingen", { package_id: pkg.id, to, cc, error: msg });
       return json({ ok: false, message: `Microsoft avviste utsendelsen: ${msg}` }, 502);
     }
 
     await admin
-      .from("compliance_response_packages")
+      .from(packageTable)
       .update({ status: "sent", sent_at: new Date().toISOString(), sent_by: userId, send_error: null })
       .eq("id", packageId);
 
-    await admin.from("compliance_inspection_events").insert({ company_id: pkg.company_id, inspection_id: pkg.inspection_id, actor_user_id: userId, event_type: "dle_sent", summary: `Microsoft aksepterte sending til ${to.join(", ")}${cc.length ? ` · Kopi: ${cc.join(", ")}` : ""}: ${(attachments ?? []).map(a => a.export_name).join(", ")}`, payload: { ...pkg.delivery_metadata, to, cc, package_id: pkg.id, delivery: links.length ? "email_link" : "email", exports: (attachments ?? []).map(a => a.export_name), links: links.map(({ url: _url, ...rest }) => rest) } });
+    await logEvent("dle_sent", `Microsoft aksepterte sending til ${to.join(", ")}${cc.length ? ` · Kopi: ${cc.join(", ")}` : ""}: ${(attachments ?? []).map(a => a.export_name).join(", ")}`, { ...pkg.delivery_metadata, to, cc, package_id: pkg.id, delivery: links.length ? "email_link" : "email", exports: (attachments ?? []).map(a => a.export_name), links: links.map(({ url: _url, ...rest }) => rest) });
     console.log("SVARPAKKE SENDT", {
       packageId,
       recipient: pkg.recipient_email,
