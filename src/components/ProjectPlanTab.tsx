@@ -386,21 +386,15 @@ function CreateTaskDrawer({
   jobId: string; userId: string | null; tasksCount: number;
   onCreated: () => void;
 }) {
-  const { activeCompanyId } = useCompanyContext();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [techIds, setTechIds] = useState<string[]>([]);
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Reset form when opening
   useEffect(() => {
     if (open) {
-      setTitle(""); setDescription(""); setTechIds([]);
-      setScheduledDate(""); setStartTime(""); setEndTime("");
+      setTitle(""); setDescription("");
       setFile(null);
     }
   }, [open]);
@@ -416,10 +410,6 @@ function CreateTaskDrawer({
       description: description.trim() || null,
       sort_order: tasksCount,
       created_by: userId,
-      assigned_technician_ids: techIds,
-      scheduled_date: scheduledDate || null,
-      start_time: startTime || null,
-      end_time: endTime || null,
     }).select("id").single();
 
     if (taskErr || !taskData) {
@@ -478,7 +468,7 @@ function CreateTaskDrawer({
           <div>
             <label className="text-xs font-medium text-muted-foreground">Beskrivelse</label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detaljer montøren trenger..."
+              placeholder="Hva skal sjekkes eller gjøres internt?"
               className="mt-1 min-h-[60px] resize-none" rows={2} />
           </div>
 
@@ -500,47 +490,12 @@ function CreateTaskDrawer({
             </div>
           </div>
 
-          {/* Resources */}
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tildel ressurser</label>
-            <div className="mt-1">
-              <TechnicianMultiSelect selectedIds={techIds} onChange={setTechIds} />
-            </div>
-          </div>
-
-          {/* Schedule */}
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Planlegging (valgfritt)</label>
-            <div className="mt-1 grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground">Dato</label>
-                <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} className="mt-0.5" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Start</label>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="mt-0.5" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Slutt</label>
-                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="mt-0.5" />
-              </div>
-            </div>
-            {scheduledDate && startTime && endTime && techIds.length > 0 && (
-              <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1">
-                <CalendarPlus className="h-3 w-3" />
-                Vil automatisk vises i Ressursplan
-              </p>
-            )}
-          </div>
         </div>
 
         <SheetFooter className="mt-4">
           <Button className="w-full gap-1.5" onClick={handleSubmit} disabled={!title.trim() || saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            {scheduledDate && startTime && endTime && techIds.length > 0
-              ? "Opprett oppgave og planlegg"
-              : "Opprett oppgave"}
-          </Button>
+            Opprett intern oppgave
         </SheetFooter>
       </SheetContent>
     </Sheet>
