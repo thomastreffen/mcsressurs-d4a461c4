@@ -49,8 +49,8 @@ Deno.serve(async (req) => {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const authClient = createClient(url, anon);
-    const { data: claims, error: claimsErr } = await authClient.auth.getClaims(token);
-    const userId = claims?.claims?.sub;
+    const { data: identity, error: claimsErr } = await authClient.auth.getUser(token);
+    const userId = identity?.user?.id;
     if (claimsErr || !userId) return json({ ok: false, message: "Ugyldig token" }, 401);
 
     const parsed = z.object({ package_id: z.string().uuid(), html: z.string().max(500000).optional(), subject: z.string().max(255).optional(), generated: z.array(z.object({ export_name: z.string().min(1).max(255), content: z.string().max(5000000).optional(), content_base64: z.string().max(5000000).optional(), mime_type: z.string().max(100).optional() })).max(100).optional() }).safeParse(await req.json().catch(() => null));
@@ -99,8 +99,8 @@ Deno.serve(async (req) => {
       // Verify legacy document paths through the caller's RLS, never service-role alone.
       if (a.storage_bucket !== "dle-exports") {
         const caller = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
-        const { data: doc } = await caller.from("documents").select("id").eq("id", a.document_id).maybeSingle();
-        if (!doc) return json({ ok: false, message: "Ingen tilgang til vedlegget" }, 403);
+        const { data: doc } = await caller.from("documents").select("id,file_path,storage_bucket").eq("id", a.document_id).maybeSingle();
+        if (!doc || doc.file_path !== a.file_path || doc.storage_bucket !== a.storage_bucket) return json({ ok: false, message: "Ingen tilgang til vedlegget" }, 403);
       }
       const { data: file, error } = await admin.storage.from(a.storage_bucket).download(a.file_path);
       if (error || !file) {
