@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { formatJobSchedule } from "../_shared/job-time.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,13 +69,7 @@ function buildReminderEmail(
   techStartAt?: string | null,
   techEndAt?: string | null,
 ): { subject: string; body: string } {
-  const effectiveStart = techStartAt || job.start_time;
-  const effectiveEnd = techEndAt || job.end_time;
-  const startDate = new Date(effectiveStart).toLocaleDateString("nb-NO", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
-  });
-  const startTime = new Date(effectiveStart).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
-  const endTime = new Date(effectiveEnd).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+  const { startDate, startTime, endTime } = formatJobSchedule(job.start_time, job.end_time, techStartAt, techEndAt);
 
   const approveUrl = `${APP_URL}/approval/${token}?action=approve`;
   const rescheduleUrl = `${APP_URL}/approval/${token}?action=reschedule`;

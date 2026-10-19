@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { formatJobSchedule } from "../_shared/job-time.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,11 +72,7 @@ function escapeHtml(value: string): string {
 }
 
 function buildEmail(job: any, techName: string, displayNumber: string, changes: ChangeItem[]): { subject: string; body: string } {
-  const startDate = job.start_time
-    ? new Date(job.start_time).toLocaleDateString("nb-NO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
-    : "—";
-  const startTime = job.start_time ? new Date(job.start_time).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" }) : "—";
-  const endTime = job.end_time ? new Date(job.end_time).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" }) : "—";
+  const { startDate, startTime, endTime } = formatJobSchedule(job.start_time, job.end_time);
   const jobUrl = `${APP_URL}/jobs/${job.id}`;
 
   const subject = `Oppdatering på oppdrag: ${displayNumber} – ${job.title || ""}`.trim();
@@ -193,7 +190,7 @@ Deno.serve(async (req) => {
 
     // Load assigned technicians (or filter by passed list)
     const { data: assignments } = await supabaseAdmin
-      .from("event_technicians").select("technician_id").eq("event_id", body.job_id);
+      .from("event_technicians").select("technician_id, start_at, end_at").eq("event_id", body.job_id);
     let techIds = (assignments || []).map((a: any) => a.technician_id);
     if (Array.isArray(body.technician_ids) && body.technician_ids.length > 0) {
       const set = new Set(body.technician_ids);
@@ -235,7 +232,9 @@ Deno.serve(async (req) => {
 
       // Email
       if (msToken && tech.email) {
-        const { subject, body: html } = buildEmail(job, tech.name, displayNumber, body.changes);
+        const assignment = assignments?.find((a: any) => a.technician_id === tech.id);
+        const recipientJob = { ...job, start_time: assignment?.start_at || job.start_time, end_time: assignment?.end_at || job.end_time };
+        const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes);
         try {
           const emailRes = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
             method: "POST",
