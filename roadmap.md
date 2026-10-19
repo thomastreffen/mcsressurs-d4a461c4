@@ -1,5 +1,10 @@
 # Roadmap
 
+## Klokkeslett hos montør
+- [ ] Rett UTC/Oslo-visning i utsending og relevante mottakerflater uten å endre registrerte tidspunkt
+- [ ] Test 06:00–14:00 i sommer- og vintertid og montørspesifikke tidspunkt
+- [ ] Verifiser utsendingsinnhold og publiser korrigerte utsendingsfunksjoner
+
 ## Lokal eksportstandard
 - [x] Gjenbrukbar Eksporter / Del med PDF, Excel, CSV, ZIP, rad-/kolonnevalg og e-post med filforhåndsvisning
 - [x] Lokal eksport for organisasjonens fire faner, ansatte, kompetanse, håndbok/aktivt kapittel, stoffkartotek, innsendte SJA/sjekklister, avvik, Ressursplan og tilsyn/revisjon
