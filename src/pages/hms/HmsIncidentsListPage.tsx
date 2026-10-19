@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -161,8 +162,10 @@ export default function HmsIncidentsListPage() {
             </div>
           </div>
           <Button asChild size="sm">
+ 
             <Link to="/hms/incidents/new"><Plus className="h-4 w-4 mr-1" /> Meld avvik</Link>
           </Button>
+          <LocalExportMenu title="HMS-avvik / RUH" module="hms" disabled={isLoading} filters={{Søk:q||'Alle',Utvalg:scope,Status:statusF,Alvorlighet:sevF,Type:typeF}} rows={filtered.map(i=>({'Tittel':i.title,'Type':TYPE_LABEL[i.incident_type]??i.incident_type,'Alvorlighet':SEV_LABEL[i.severity]??i.severity,'Status':STATUS_LABEL[i.status]??i.status,'Sted':i.location,'Dato':i.occurred_at?new Date(i.occurred_at):new Date(i.created_at),'Rapportert av':names?.[i.reported_by]??'Ukjent','Ansvarlig':names?.[i.assigned_to]??'Ikke satt','Prosjekt':projects?.[i.project_id]?.title??'','Prosjektnummer':projects?.[i.project_id]?.number??'','Frist':i.due_date?new Date(i.due_date):null}))}/>
         </div>
       </header>
 

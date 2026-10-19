@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -250,6 +251,7 @@ export default function HmsPeoplePage() {
         <h1 className="text-xl font-semibold">Ansatte</h1>
         <span className="text-[11px] text-muted-foreground hidden sm:inline">{EMPLOYEE_BASIS_LABEL}</span>
         <span className="ml-auto text-xs text-muted-foreground">{filtered.length} av {rows.length}</span>
+        <LocalExportMenu title="Ansatte" module="employees" disabled={loading||!!error} filters={{Søk:q||'Alle',Status:activeFilter,Grunnlag:scopeFilter,...(canViewSecurity?{Sikkerhet:secFilter}:{})}} rows={filtered.map(r=>({'Navn':r.full_name,'E-post':r.email,'Telefon':r.phone,'Firma':r.company_name,'Delt ressurs':r.other_company_names.join(', '),'Avdeling':r.department_name,'Planleggbar':r.is_plannable_resource,'HMS-kort':r.hms_card_number,'HMS-kort gyldig til':r.hms_card_expires_at?new Date(r.hms_card_expires_at):null,...(canViewSecurity?{'Sikkerhet':({ok:'OK',missing:'Mangler',check:'Må sjekkes',unknown:'Ikke vurdert'})[securityBucket(r)]}:{}),'Status':r.archived_at?'Arkivert':r.is_active?'Aktiv':'Inaktiv'}))}/>
         <button
           type="button"
           onClick={() => navigate("/hms/people/kontroll")}

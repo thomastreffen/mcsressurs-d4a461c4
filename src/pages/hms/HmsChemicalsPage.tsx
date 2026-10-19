@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { Link } from "react-router-dom";
 import { AlertTriangle, Beaker, FileWarning, Plus, Search, ShieldAlert } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -113,6 +114,7 @@ export default function HmsChemicalsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <LocalExportMenu title="Stoffkartotek" module="hms" disabled={isLoading} filters={{Søk:q||'Alle',Utvalg:filter}} rows={rows.map(c=>({'Produkt':c.product_name,'Leverandør':c.supplier??c.manufacturer,'Kategori':c.category,'SDS':SDS_STATE_LABELS[sdsState(c)],'Krav':[c.is_high_risk?'Høyrisiko':'',c.requires_training?'Opplæring':'',c.requires_acknowledgement?'Bekreftelse':'',c.requires_sja?'SJA':'',c.requires_special_ppe?'Særskilt PVU':''].filter(Boolean).join(', '),'Status':CHEMICAL_STATUS_LABELS[c.status]??c.status}))}/>
           <Button variant="outline" onClick={seedDemo} disabled={saveMut.isPending}>
             Legg inn epoxy-eksempel
           </Button>

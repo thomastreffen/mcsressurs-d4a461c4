@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { Link } from "react-router-dom";
 import { BookOpen, Plus, FileCheck2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,6 +123,7 @@ export default function HmsHandbooksPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <LocalExportMenu title="Håndbøker" module="hms" disabled={isLoading} rows={handbooks.map(h=>({'Tittel':h.title,'Beskrivelse':h.description,'Type':h.kind,'Oppdatert':new Date(h.updated_at)}))}/>
           <Button size="sm" variant="outline" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
             <Sparkles className="h-4 w-4 mr-1.5" />
             {seedMut.isPending ? "Oppretter…" : "Opprett MCS-startstruktur"}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,7 @@ export default function InspectionsPage() {
             <Plus className="mr-1 h-3.5 w-3.5" /> Nytt tilsyn
           </Button>
         )}
+        <LocalExportMenu title="Tilsyn og revisjoner" module="hms" disabled={inspections.isLoading} filters={{Søk:q||'Alle',Type:inspectionTypeLabel(typeFilter),Visning:view}} rows={rows.map(i=>({'Tittel':i.title,'Type':inspectionTypeLabel(i.inspection_type),'Status':inspectionStatusMeta(i.status).label,'Myndighet':i.authority_name,'Kontakt':i.contact_name,'Saksnummer':i.case_number,'Dato':i.inspection_date?new Date(i.inspection_date):null,'Ansvarlig':nameOf(i.responsible_person_id),'Svarfrist':i.response_deadline?new Date(i.response_deadline):null,'Funn':summaries.data?.[i.id]?.findings??0,'Åpne tiltak':summaries.data?.[i.id]?.openActions??0}))}/>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

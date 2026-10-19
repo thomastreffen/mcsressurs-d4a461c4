@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -86,6 +87,7 @@ export default function ComplianceCompetencePage() {
         <Button size="sm" variant="outline" onClick={() => navigate("/compliance/kompetansekrav")}>
           <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Kompetansekrav
         </Button>
+        <LocalExportMenu title="Kompetanse" module="hms" disabled={loading} filters={{Søk:search||'Alle',Avdeling:departments.find(d=>d.id===dept)?.name??'Alle',Kompetanse:filteredTypes.map(t=>t.name).join(', '),Status:statusFilter}} rows={rows.flatMap(({person,cells})=>cells.map(({type,req})=>({'Ansatt':person.full_name,'Avdeling':person.department_name,'Kompetanse':type.name,'Status':req?REQUIREMENT_STATUS_META[req.status].short:'Ingen krav','Gyldig til':req?.expires_at?new Date(req.expires_at):null})))}/>
       </div>
 
       <div className="flex flex-wrap gap-2">
