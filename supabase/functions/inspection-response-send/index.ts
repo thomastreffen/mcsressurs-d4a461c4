@@ -76,8 +76,9 @@ Deno.serve(async (req) => {
     const { data: allowed } = await admin.rpc("has_company_access", { _uid: userId, _company: pkg.company_id, _module: "hms", _level: "edit" });
     if (!allowed) return json({ ok: false, message: "Du har ikke tilgang til å sende svar på tilsyn" }, 403);
 
-    const html: string = body.html ?? pkg.email_body_snapshot ?? "";
-    const subject: string = body.subject ?? pkg.subject ?? "Tilbakemelding på tilsyn";
+    if (standalone && !["prepared", "downloaded", "failed"].includes(pkg.status)) return json({ ok: false, message: "Eksporten er allerede sendt eller under sending" }, 409);
+    const html: string = (standalone ? pkg.email_body_snapshot : body.html ?? pkg.email_body_snapshot) ?? "";
+    const subject: string = (standalone ? pkg.subject : body.subject ?? pkg.subject) ?? "Dokumentasjon";
 
     const attachmentResult = standalone ? { data: pkg.files, error: null } : await admin.from("compliance_response_package_attachments").select("*").eq("package_id", packageId).order("sort_order");
     const attachments = attachmentResult.data;

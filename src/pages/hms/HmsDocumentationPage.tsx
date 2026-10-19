@@ -16,6 +16,7 @@ import { useCompanyModuleAccess } from '@/hooks/useCompanyModuleAccess';
 import { CONTENT, PRESETS, filterExportRecords, exportCategory, type ContentKey, type ExportRecord, type ExportFilters } from '@/lib/documentation/catalog';
 import { loadDocumentation } from '@/lib/documentation/sources';
 import { prepareOutputs, saveDocumentationExport, sendDocumentationExport, markDocumentationDownloaded, type OutputFormat } from '@/lib/documentation/delivery';
+import { slugForFile } from '@/lib/response-package';
 import { buildDleFiles, deliverDleBlob, type DleFile } from '@/lib/dle/export';
 const sb=supabase as any;
 function Selector({label,value,onChange,options,disabled=false}:{label:string;value:string;onChange:(v:string)=>void;options:{id:string;name:string}[];disabled?:boolean}) {
@@ -48,8 +49,12 @@ function DocumentationWorkspace() {
     if(!enabled.has(c.key))return [];
     const list=visibleRecords(c.key).filter(r=>!omitted.has(`${c.key}:${r.id}`));
     if(format==='originals') return buildDleFiles(exportCategory(c.key),list.filter(r=>r.original),true,company,date).map(f=>({...f,key:`${c.key}:${f.key}`}));
-    // One independent category file by default; selected chapters/posts are separate.
-    return buildDleFiles(exportCategory(c.key),list,c.key==='chapters'||c.key==='selected_chemicals'||c.key==='project_docs',company,date).map(f=>({...f,key:`${c.key}:${f.key}`,name:f.name.replace(/HMS_handbok|Kompetanseoversikt/g,c.key==='emergency'?'Beredskap':c.key==='fse_status'?'FSE_status':c.key==='courses'?'Opplaering_kurs':c.key==='risks'?'Risikovurderinger':c.key==='checklists'?'Sjekklister':'$&')}));
+    // Use separate posts for selectable document lists; category reports remain available.
+    const separate=['chapters','selected_chemicals','project_docs','sja','rounds','risks','checklists','incidents','sds'].includes(c.key);
+    return buildDleFiles(exportCategory(c.key),list,separate,company,date).map(f=>{
+      const name=!separate && !f.records[0]?.original ? `${slugForFile(company)}_${slugForFile(c.label)}_${date}.pdf` : f.name;
+      return {...f,key:`${c.key}:${f.key}`,name,path:`${f.path.split('/')[0]}/${name}`};
+    });
   }),[enabled,records,filters,accounts,omitted,format,company,date]);
   // Categories that share a source must not duplicate the same snapshot or filename.
   const uniqueFiles=files.filter((f,i,all)=>all.findIndex(x=>x.name===f.name)===i);const selected=uniqueFiles.filter(f=>!excluded.has(f.key));
@@ -65,7 +70,7 @@ function DocumentationWorkspace() {
   async function prepare() {
     if(!activeCompanyId||!user||!canExport||!selected.length)return;
     if(filters.from&&filters.to&&filters.from>filters.to){toast.error('Fra-dato må være før til-dato');return;}
-    if(enabled.has('project_docs')&&!filters.project){toast.error('Velg prosjekt for prosjektspesifikk dokumentasjon');return;}
+    if(selected.some(f=>f.category==='attachments')&&!filters.project){toast.error('Velg prosjekt for prosjektspesifikk dokumentasjon');return;}
     setBusy(true);
     try{
       const outputs=await prepareOutputs(selected,format,company,purpose,date);
