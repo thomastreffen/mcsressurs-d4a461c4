@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMountLog } from "@/lib/debugMount";
 
 interface Company {
   id: string;
@@ -25,15 +26,21 @@ interface CompanyContextType {
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
+  useMountLog("COMPANY CONTEXT INIT");
   const { user, isSuperAdmin } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [activeCompanyId, setActiveCompanyIdState] = useState<string | null>(null);
   const [isAllCompanies, setIsAllCompanies] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userMemberships, setUserMemberships] = useState<{ company_id: string; department_id: string | null; role_id: string | null }[]>([]);
+  // Which person the current company list belongs to. A background re-check for
+  // the same person must keep the existing company and UI on screen.
+  const loadedForUser = useRef<string | null>(null);
+  const userId = user?.id ?? null;
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
+      loadedForUser.current = null;
       setCompanies([]);
       setActiveCompanyIdState(null);
       setIsAllCompanies(false);
@@ -41,10 +48,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let cancelled = false;
     async function fetch() {
-      const userId = user?.id;
       if (!userId) return;
-      setLoading(true);
+      if (loadedForUser.current !== userId) setLoading(true);
       // Get user memberships
       const { data: memberships } = await supabase
         .from("user_memberships")
@@ -52,6 +59,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         .eq("user_id", userId)
         .eq("is_active", true);
 
+      if (cancelled) return;
       setUserMemberships(
         (memberships || []).map((m: any) => ({
           company_id: m.company_id,
@@ -61,6 +69,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       );
 
       const { data: access, error } = await supabase.rpc("my_company_module_access");
+      if (cancelled) return;
       const companyList: Company[] = error ? [] : [...new Map((access ?? []).map(row => [row.company_id, { id: row.company_id, name: row.company_name, org_number: row.org_number }])).values()];
 
       setCompanies(companyList);
@@ -81,11 +90,13 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         setIsAllCompanies(false);
       }
 
+      loadedForUser.current = userId;
       setLoading(false);
     }
 
     fetch();
-  }, [user, isSuperAdmin]);
+    return () => { cancelled = true; };
+  }, [userId, isSuperAdmin]);
 
   const setActiveCompanyId = useCallback((id: string | null) => {
     if (id && !companies.some(company => company.id === id)) return;
@@ -100,13 +111,15 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     }
   }, [companies]);
 
-  const activeCompany = companies.find((c) => c.id === activeCompanyId) || null;
+  const activeCompany = useMemo(() => companies.find((c) => c.id === activeCompanyId) || null, [companies, activeCompanyId]);
   const allowedCompanyIds = useMemo(() => companies.map((c) => c.id), [companies]);
+  const value = useMemo(
+    () => ({ companies, activeCompanyId, activeCompany, setActiveCompanyId, loading, userMemberships, isAllCompanies, allowedCompanyIds }),
+    [companies, activeCompanyId, activeCompany, setActiveCompanyId, loading, userMemberships, isAllCompanies, allowedCompanyIds]
+  );
 
   return (
-    <CompanyContext.Provider
-      value={{ companies, activeCompanyId, activeCompany, setActiveCompanyId, loading, userMemberships, isAllCompanies, allowedCompanyIds }}
-    >
+    <CompanyContext.Provider value={value}>
       {children}
     </CompanyContext.Provider>
   );

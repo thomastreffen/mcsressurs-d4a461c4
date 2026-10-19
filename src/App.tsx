@@ -174,6 +174,7 @@ import PortalNotificationSettings from "./pages/portal/PortalNotificationSetting
 import PortalNotificationsPage from "./pages/portal/PortalNotificationsPage";
 import { PortalProvider } from "@/hooks/usePortal";
 import HubHome from "./pages/public/HubHome";
+import { MountProbe } from "@/lib/debugMount";
 
 // Default data-fetching behavior for the whole app: do not reload everything
 // just because the browser tab regained focus (that was wiping in-progress
@@ -215,6 +216,7 @@ function HmsSelfServicePage({ children }: { children: React.ReactNode }) {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <MountProbe mount="APP MOUNT" unmount="APP UNMOUNT" />
     <TooltipProvider>
       <Toaster />
       <Sonner />

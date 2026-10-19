@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
+import { useMountLog } from "@/lib/debugMount";
 
 export type AppRole = "super_admin" | "admin" | "montør" | "customer_user";
 
@@ -35,13 +36,23 @@ function buildUserFromMeta(supaUser: User): AuthUser {
   };
 }
 
+/** Minimum time between background account/role re-checks for the same signed-in user. */
+const ROLE_RECHECK_MS = 5 * 60_000;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  useMountLog("AUTH CONTEXT INIT");
   const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  // Mirror of `user` so auth events can compare against the current person
+  // without re-subscribing. Keeping the same object identity for the same
+  // person is what stops the app shell from re-running every user-dependent
+  // effect (and showing loading gates) when the tab regains focus.
+  const userRef = useRef<AuthUser | null>(null);
+  const lastRoleCheck = useRef(0);
 
-  /** Non-blocking role fetch from DB — updates user if role differs */
+  /** Non-blocking role fetch from DB — updates user only if the role actually differs */
   const fetchRoleInBackground = useCallback(async (supaUser: User) => {
     try {
       // Deactivated accounts may not use the system, even with a still-valid session
@@ -65,23 +76,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.warn("[Auth] DB role query error:", error.message);
-        return; // keep metadata role
+        return; // keep current role
       }
 
       if (data?.role) {
         const dbRole = data.role as AppRole;
-        const currentMetaRole = supaUser.user_metadata?.app_role;
-        if (dbRole !== currentMetaRole) {
-          console.log("[Auth] Role from DB differs, updating:", dbRole);
+        const prev = userRef.current;
+        if (prev && prev.id === supaUser.id && prev.role !== dbRole) {
+          const next = { ...prev, role: dbRole };
+          userRef.current = next;
+          setUser(next);
         }
-        setUser((prev) =>
-          prev && prev.id === supaUser.id ? { ...prev, role: dbRole } : prev
-        );
       }
     } catch (err) {
-      console.warn("[Auth] Role fetch exception, keeping default role");
+      console.warn("[Auth] Role fetch exception, keeping current role");
     }
   }, []);
+
+  /**
+   * Apply a session from Supabase. Supabase re-emits SIGNED_IN / TOKEN_REFRESHED
+   * every time the browser tab becomes visible again; for the same person this
+   * must be a no-op for the app (same user object, same role), otherwise every
+   * provider and gate below re-initialises and the whole Hub appears to reload.
+   */
+  const applySession = useCallback((next: Session | null) => {
+    setSession((prev) =>
+      prev && next && prev.access_token === next.access_token && prev.user?.id === next.user?.id ? prev : next
+    );
+
+    if (!next?.user) {
+      userRef.current = null;
+      setUser(null);
+      return;
+    }
+
+    const meta = buildUserFromMeta(next.user);
+    const prev = userRef.current;
+    if (prev && prev.id === meta.id) {
+      if (prev.email !== meta.email || prev.name !== meta.name) {
+        const updated = { ...prev, email: meta.email, name: meta.name };
+        userRef.current = updated;
+        setUser(updated);
+      }
+      if (Date.now() - lastRoleCheck.current > ROLE_RECHECK_MS) {
+        lastRoleCheck.current = Date.now();
+        fetchRoleInBackground(next.user);
+      }
+      return;
+    }
+
+    // New person (first load or account switch)
+    userRef.current = meta;
+    setUser(meta);
+    lastRoleCheck.current = Date.now();
+    fetchRoleInBackground(next.user);
+  }, [fetchRoleInBackground]);
 
   useEffect(() => {
     let mounted = true;
@@ -90,18 +139,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
         if (!mounted) return;
-        console.log("[Auth] State change:", _event, !!newSession);
-        setSession(newSession);
-
-        if (newSession?.user) {
-          // Set user immediately from metadata (non-blocking)
-          const authUser = buildUserFromMeta(newSession.user);
-          setUser(authUser);
-          // Then fetch real role in background
-          fetchRoleInBackground(newSession.user);
-        } else {
-          setUser(null);
-        }
+        if (import.meta.env.DEV) console.debug("[Auth] State change:", _event, !!newSession);
+        applySession(newSession);
         setLoading(false);
       }
     );
@@ -109,12 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 2. Check existing session
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
       if (!mounted) return;
-      setSession(existing);
-      if (existing?.user) {
-        const authUser = buildUserFromMeta(existing.user);
-        setUser(authUser);
-        fetchRoleInBackground(existing.user);
-      }
+      applySession(existing);
       setLoading(false);
     }).catch((err) => {
       console.error("[Auth] getSession failed:", err);
@@ -125,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchRoleInBackground]);
+  }, [applySession]);
 
   /**
    * Sign out: always callable, no dependency on loading state.
@@ -136,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     console.log("[Auth] Signing out...");
     // Clear state immediately
+    userRef.current = null;
     setUser(null);
     setSession(null);
     // Drop ALL user-scoped React Query cache so stale unread badges/counters
@@ -175,8 +210,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isSuperAdmin = user?.role === "super_admin";
 
+  const value = useMemo(
+    () => ({ session, user, loading, isAdmin, isSuperAdmin, signOut }),
+    [session, user, loading, isAdmin, isSuperAdmin, signOut]
+  );
+
   return (
-    <AuthContext.Provider value={{ session, user, loading, isAdmin, isSuperAdmin, signOut }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -29,9 +29,11 @@ import {
 import { InstallAppDialog } from "@/components/pwa/InstallAppDialog";
 import { PwaStatusDialog } from "@/components/pwa/PwaStatusDialog";
 import { EnableNotificationsButton } from "@/components/pwa/EnableNotificationsButton";
+import { useMountLog } from "@/lib/debugMount";
 import { APP_BUILD_TIME, APP_COMMIT, APP_VERSION } from "@/pwa/buildVersion";
 
 export function AppLayout() {
+  useMountLog("ROOT LAYOUT MOUNT", "ROOT LAYOUT UNMOUNT");
   const location = useLocation();
   const access = useCompanyModuleAccess();
   const company = useCompanyContext();
