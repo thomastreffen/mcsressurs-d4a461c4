@@ -1,5 +1,11 @@
 # Roadmap
 
+## DLE / ekstern opplasting
+- [ ] Separate filer, kategorivalg og samlet/separat PDF per post
+- [ ] Enkeltnedlasting, strukturert ZIP og ryddige eksportnavn
+- [ ] Valgt e-postutsendelse og filbasert revisjonsspor
+- [ ] Verifiser eksport med ekte innlogging og nedlastede filer
+
 ## Fase 2 – modultilgang og tenant-isolasjon
 - [x] Sentral sjekk i meny, ruter og handlinger
 - [x] Ressursplan, HMS, organisasjon, personer og økonomi: autoritativ datatilgang
