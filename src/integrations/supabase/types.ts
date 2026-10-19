@@ -16937,6 +16937,10 @@ export type Database = {
         Args: { _auth_user_id: string; _space_id: string }
         Returns: boolean
       }
+      is_hms_submission_participant: {
+        Args: { _submission_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_internal_nonfollow_member: {
         Args: { _auth_user_id: string; _project_id: string }
         Returns: boolean
