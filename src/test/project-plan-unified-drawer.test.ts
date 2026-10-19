@@ -42,4 +42,11 @@ describe("Project plan uses the resource-plan EventDrawer", () => {
   it("resource-plan label still resolves '<nr> · <job>'", () => {
     expect(formatProjectLabel("1", "Montere kurs")).toBe("1 · Montere kurs");
   });
+
+  it("internal task UI has no date/start/end or technician booking", () => {
+    const body = createTaskDrawerBody();
+    expect(body).not.toMatch(/type="date"|type="time"|scheduled_date|start_time|end_time/);
+    expect(body).not.toMatch(/TechnicianMultiSelect|Montør\(er\)|Tildel ressurser|Ressursplan|planlegg/i);
+    expect(body).toContain("Intern deloppgave/sjekkpunkt");
+  });
 });
