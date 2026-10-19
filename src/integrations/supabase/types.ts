@@ -17202,6 +17202,17 @@ export type Database = {
       get_user_account_id: { Args: { _auth_user_id: string }; Returns: string }
       get_user_scope: { Args: { _user_id: string }; Returns: string }
       get_user_scope_v2: { Args: { _auth_user_id: string }; Returns: string }
+      get_visible_project_numbers: {
+        Args: { _event_ids: string[] }
+        Returns: {
+          event_id: string
+          project_number: string
+        }[]
+      }
+      has_active_tripletex_project_link: {
+        Args: { _company_id: string; _event_id: string }
+        Returns: boolean
+      }
       has_company_access: {
         Args: {
           _company: string

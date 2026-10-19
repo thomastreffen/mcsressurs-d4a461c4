@@ -13,6 +13,9 @@ export interface ProjectRefEvent {
   entity_type?: string | null;
   project_number?: string | null;
   parent_project_id?: string | null;
+  company_id?: string | null;
+  /** True only when an active Tripletex project-link exists in the same company. */
+  has_active_link?: boolean;
 }
 
 function clean(v?: string | null) {
@@ -26,9 +29,12 @@ export function resolveFinancialProjectNumber(
   parent?: ProjectRefEvent | null,
 ): string | null {
   if (!event) return null;
-  if (event.entity_type === "financial_project") return clean(event.project_number);
+  if (event.entity_type === "financial_project") {
+    return event.has_active_link ? clean(event.project_number) : null;
+  }
   if (event.parent_project_id && parent && parent.id === event.parent_project_id
-      && parent.entity_type === "financial_project") {
+      && parent.entity_type === "financial_project" && parent.has_active_link
+      && (!event.company_id || !parent.company_id || event.company_id === parent.company_id)) {
     return clean(parent.project_number);
   }
   return null;
@@ -50,25 +56,17 @@ export function formatHubId(internalNumber?: string | null, jobNumber?: string |
   return num.startsWith("JOB-") ? num : `JOB-${num}`;
 }
 
-/** Batch-resolves display project numbers for event ids (read-only, RLS-scoped). */
+/**
+ * Batch-resolves display project numbers via the DB resolver
+ * `get_visible_project_numbers` (events RLS for the caller; active, same-company
+ * Tripletex project-link checked server-side — no direct tripletex_links access).
+ */
 export async function fetchFinancialProjectNumbers(eventIds: string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   const ids = Array.from(new Set(eventIds.filter(Boolean)));
   if (ids.length === 0) return out;
-  const sb = supabase as any;
-  const { data: rows } = await sb
-    .from("events").select("id, entity_type, project_number, parent_project_id").in("id", ids);
-  const evs: ProjectRefEvent[] = rows ?? [];
-  const parentIds = Array.from(new Set(evs.map((e) => e.parent_project_id).filter(Boolean))) as string[];
-  const parents = new Map<string, ProjectRefEvent>();
-  if (parentIds.length > 0) {
-    const { data: prows } = await sb
-      .from("events").select("id, entity_type, project_number, parent_project_id").in("id", parentIds);
-    for (const p of prows ?? []) parents.set(p.id, p);
-  }
-  for (const e of evs) {
-    const nr = resolveFinancialProjectNumber(e, e.parent_project_id ? parents.get(e.parent_project_id) : null);
-    if (nr && e.id) out.set(e.id, nr);
-  }
+  const { data, error } = await (supabase as any).rpc("get_visible_project_numbers", { _event_ids: ids });
+  if (error) return out;
+  for (const r of data ?? []) if (r.event_id && r.project_number) out.set(r.event_id, r.project_number);
   return out;
 }
