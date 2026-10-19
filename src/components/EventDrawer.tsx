@@ -1728,6 +1728,7 @@ export function EventDrawer({
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
+                <p className="text-[11px] text-muted-foreground mt-1">{ECONOMIC_PROJECT_HINT}.</p>
               )}
             </section>
           )}
