@@ -433,7 +433,7 @@ export default function InspectionDetailPage() {
                       {e.actor_user_id ? ` · ${e.payload?.actor_name ?? users.data?.find((u) => u.id === e.actor_user_id)?.name ?? "Ukjent bruker"}` : ""}
                     </p>
                     {e.payload?.company_name && <p className="text-xs text-muted-foreground">{e.payload.company_name} · {e.payload.delivery ?? "Generert"}</p>}
-                    {e.payload?.files?.map((f: any, i: number) => <p key={i} className="text-xs text-muted-foreground">{f.name} · {(f.versions ?? []).map((v: any) => v.version).filter(Boolean).join(", ")}</p>)}
+                    {e.payload?.files?.map((f: any, i: number) => <p key={i} className="text-xs text-muted-foreground">{f.name} · {[...new Set((f.versions ?? []).map((v: any) => v.version).filter(Boolean))].join(", ")}</p>)}
                     {e.payload?.links?.map((l: any, i: number) => <p key={i} className="text-xs text-muted-foreground">{l.name} · Lenke utløper {new Date(l.expires_at).toLocaleString("nb-NO")}</p>)}
                   </div>
                 </div>

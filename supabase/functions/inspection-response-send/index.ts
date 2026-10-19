@@ -187,6 +187,7 @@ Deno.serve(async (req) => {
       } catch { /* rå tekst */ }
       console.error("SVARPAKKE SEND FEILET", { packageId, status: resp.status, msg });
       await admin.from("compliance_response_packages").update({ status: "draft", send_error: msg, sent_at: null }).eq("id", packageId);
+      await admin.from("compliance_inspection_events").insert({ company_id: pkg.company_id, inspection_id: pkg.inspection_id, actor_user_id: userId, event_type: "dle_send_failed", summary: "Microsoft avviste sendingen", payload: { package_id: pkg.id, to, cc, error: msg } });
       return json({ ok: false, message: `Microsoft avviste utsendelsen: ${msg}` }, 502);
     }
 
