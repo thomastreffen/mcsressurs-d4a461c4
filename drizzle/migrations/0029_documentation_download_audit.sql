@@ -1,0 +1,3 @@
+CREATE OR REPLACE FUNCTION public.mark_documentation_downloaded(_export_id uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN UPDATE public.hms_document_exports SET downloaded_at=now() WHERE id=_export_id AND created_by=auth.uid() AND public.has_company_access(auth.uid(),company_id,'hms','edit'); IF NOT FOUND THEN RAISE EXCEPTION 'Export access denied'; END IF; END $$;
+REVOKE ALL ON FUNCTION public.mark_documentation_downloaded(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.mark_documentation_downloaded(uuid) TO authenticated;

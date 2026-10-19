@@ -17040,6 +17040,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _auth_user_id: string }; Returns: boolean }
+      mark_documentation_downloaded: {
+        Args: { _export_id: string }
+        Returns: undefined
+      }
       mark_messages_read_by_token: {
         Args: {
           _message_ids: string[]
