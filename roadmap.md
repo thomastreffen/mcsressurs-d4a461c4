@@ -1,9 +1,10 @@
 # Roadmap
 
 ## Klokkeslett hos montør
-- [ ] Rett UTC/Oslo-visning i utsending og relevante mottakerflater uten å endre registrerte tidspunkt
-- [ ] Test 06:00–14:00 i sommer- og vintertid og montørspesifikke tidspunkt
+- [x] Rett UTC/Oslo i forespørsler, påminnelser, oppdateringer og oppgavetråd uten å endre registrerte tidspunkt
+- [x] Test 06:00–14:00 i sommer- og vintertid, DST-overganger og montørspesifikke tidspunkt (7 tester)
 - [ ] Verifiser utsendingsinnhold og publiser korrigerte utsendingsfunksjoner
+- [ ] Faktisk innboksmottak — krever avtalt testmottaker; ingen eksisterende oppdrag sendes på nytt automatisk
 
 ## Lokal eksportstandard
 - [x] Gjenbrukbar Eksporter / Del med PDF, Excel, CSV, ZIP, rad-/kolonnevalg og e-post med filforhåndsvisning
