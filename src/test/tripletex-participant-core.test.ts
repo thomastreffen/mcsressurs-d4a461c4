@@ -81,6 +81,9 @@ describe("TPX-F3 participant core", () => {
   it("handles several technicians on the same job individually", async () => {
     const w = world({ employees: { t1: 11, t2: 22 } });
     expect((await add(w, { technicianId: "t1" })).result).toBe("added");
-    expect((await add(w, { technicianId: "t3" })).constructor).toBeDefined();
+    await expect(add(w, { technicianId: "t3" })).rejects.toMatchObject({ code: "employee_not_linked" });
+    expect((await add(w, { technicianId: "t2" })).result).toBe("added");
+    expect((await add(w, { technicianId: "t1" })).result).toBe("already_participant");
+    expect(w.participants).toEqual([11, 22]);
   });
 });
