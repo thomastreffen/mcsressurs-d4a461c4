@@ -295,7 +295,7 @@ export function TeamView({
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
 
   const exportRows: ExportRow[] = [
-    ...technicians.flatMap(t => filteredBlocks.filter(b=>b.technician_id===t.id).map(b=>({'Montør':t.name,'Prosjekt':b.project_title??'','Oppdrag':getResourceCardTitle(b),'Prosjektnummer':b.job_number??b.internal_number??'','Start':b.start_at,'Slutt':b.end_at,'Sted':b.location,'Status':TEAM_STATUS_OPTIONS.find(s=>s.key===blockStatusKey(b.job_status))?.label??'Planlagt'}))),
+    ...technicians.flatMap(t => filteredBlocks.filter(b=>b.technician_id===t.id).map(b=>({'Montør':t.name,'Prosjekt':b.project_title??'','Oppdrag':getResourceCardTitle({eventTitle:b.job_title,parentTitle:b.project_title,blockTitle:b.title,outlookSubject:b.outlook_subject,sourceOrderNumber:extractOrderRef(b.title,b.description,b.outlook_preview),fallbackRef:b.job_number_resolved||b.internal_number}),'Prosjektnummer':b.job_number_resolved||b.internal_number||'','Start':b.start_at,'Slutt':b.end_at,'Sted':b.location,'Status':TEAM_STATUS_OPTIONS.find(s=>s.key===blockStatusKey(b.job_status))?.label??'Planlagt'}))),
     ...(showAbsence?technicians.flatMap(t=>absenceBlocks.filter(b=>b.technicianId===t.id&&b.date>=weekStart&&b.date<weekEndExclusive).map(b=>({'Montør':t.name,'Prosjekt':'','Oppdrag':b.label,'Prosjektnummer':'','Start':b.date,'Slutt':b.date,'Sted':'','Status':'Fravær'}))):[]),
   ];
 

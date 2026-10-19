@@ -31,7 +31,7 @@ export function buildLocalCsv(snapshot: LocalExportSnapshot): string {
 }
 export function buildLocalWorkbook(snapshot: LocalExportSnapshot) {
   const workbook = XLSX.utils.book_new();
-  const sheet = XLSX.utils.aoa_to_sheet([snapshot.columns, ...snapshot.rows.map((r) => snapshot.columns.map((c) => r[c] ?? null))], { cellDates: true, dateNF: 'dd.mm.yyyy' });
+  const sheet = XLSX.utils.aoa_to_sheet([snapshot.columns, ...snapshot.rows.map((r) => snapshot.columns.map((c) => r[c] ?? null))], { cellDates: true, dateNF: 'dd"."mm"."yyyy' });
   sheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: snapshot.rows.length, c: Math.max(0, snapshot.columns.length - 1) } }) };
   sheet['!cols'] = snapshot.columns.map((c) => ({ wch: Math.min(45, Math.max(15, c.length + 3)) }));
   XLSX.utils.book_append_sheet(workbook, sheet, 'Data');
@@ -73,18 +73,24 @@ export function buildLocalPdf(snapshot: LocalExportSnapshot): Blob {
     write('Ansvars- og myndighetsoversikt', 12, true);
   }
   // A row is kept on one page where possible; long records continue naturally.
-  const cellWidth = (width - 30) / Math.min(snapshot.columns.length, 4);
   for (const row of snapshot.rows) {
     if (y > height - 55) { pdf.addPage(); y = 18; }
-    if (snapshot.columns.length <= 5 && !snapshot.chart?.length) {
+    if (snapshot.columns.length <= 4 && !snapshot.chart?.length) {
       const start = y;
+      const cellWidth = (width - 30) / snapshot.columns.length;
+      const values = snapshot.columns.map((c) => pdf.splitTextToSize(externalText(exportCell(row[c])), cellWidth - 3) as string[]);
+      const maxLines = Math.max(...values.map((v)=>v.length));
+      if (start + 12 + maxLines * 5 > height - 22) {
+        snapshot.columns.forEach((c)=>write(`${c}: ${exportCell(row[c])}`,9));
+        pdf.line(15,y,width-15,y); y+=7;
+        continue;
+      }
       snapshot.columns.forEach((column, i) => {
         const x = 15 + i * ((width - 30) / snapshot.columns.length);
         y = start;
         write(column, 8, true, x, (width - 30) / snapshot.columns.length - 3);
         write(exportCell(row[column]), 9, false, x, (width - 30) / snapshot.columns.length - 3);
       });
-      const maxLines = Math.max(...snapshot.columns.map((c) => pdf.splitTextToSize(externalText(exportCell(row[c])), cellWidth - 3).length));
       y = Math.max(y, start + 12 + maxLines * 5);
     } else {
       write(exportCell(row[snapshot.columns[0]]), 11, true);
