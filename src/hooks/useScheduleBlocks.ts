@@ -1,3 +1,4 @@
+import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek } from "date-fns";
@@ -41,6 +42,8 @@ export interface ScheduleBlock {
   job_title?: string | null;
   job_status?: string | null;
   job_number_resolved?: string | null;
+  /** TPX-F4.1: resolved financial project number for display only. */
+  financial_project_number?: string | null;
 }
 
 function mapRow(row: any): ScheduleBlock {
@@ -152,6 +155,11 @@ export function useScheduleBlocks(
       }
 
       const mapped = liveRows.map(mapRow);
+      try {
+        const refs = await fetchFinancialProjectNumbers(mapped.map((b) => (b as any).job_id || b.project_id).filter(Boolean) as string[]);
+        if (id !== fetchIdRef.current) return;
+        for (const b of mapped) b.financial_project_number = refs.get((b as any).job_id || b.project_id || "") ?? null;
+      } catch { /* display-only enrichment */ }
 
       // Defensive: detect orphaned project_id where project is soft-deleted
       // but job is still valid → unlink project reference so click routes to job.

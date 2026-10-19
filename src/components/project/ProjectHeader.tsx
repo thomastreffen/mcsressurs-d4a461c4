@@ -26,11 +26,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import type { JobStatus } from "@/lib/job-status";
+import { formatHubId } from "@/lib/project-reference";
 
 interface ProjectHeaderProps {
   jobNumber: string | null;
   internalNumber: string | null;
   projectNumber?: string | null;
+  /** TPX-F4.1: resolved Tripletex project number (own or financial parent). */
+  financialProjectNumber?: string | null;
   title: string;
   customer: string;
   address: string;
@@ -51,6 +54,7 @@ export function ProjectHeader({
   jobNumber,
   internalNumber,
   projectNumber,
+  financialProjectNumber,
   title,
   customer,
   start,
@@ -121,18 +125,30 @@ export function ProjectHeader({
             {title}
           </h1>
           <div className="flex items-center justify-center gap-2 mt-1 flex-wrap">
-            {projectNumber && (
-              <span className="inline-block font-mono text-xs font-semibold bg-primary/10 text-primary rounded-md px-2 py-0.5">
-                {projectNumber}
-              </span>
-            )}
-            {(internalNumber || jobNumber) && (
-              <span className={`inline-block font-mono text-xs rounded-md px-2 py-0.5 ${projectNumber ? 'text-muted-foreground bg-muted/50' : 'font-semibold bg-primary/10 text-primary'}`}>
-                {(() => {
-                  const num = internalNumber || jobNumber || "";
-                  return num.startsWith("JOB-") ? num : `JOB-${num}`;
-                })()}
-              </span>
+            {financialProjectNumber ? (
+              <>
+                <span data-testid="primary-project-ref" className="inline-block font-mono text-sm font-semibold bg-primary/10 text-primary rounded-md px-2 py-0.5">
+                  Prosjektnr. {financialProjectNumber}
+                </span>
+                {formatHubId(internalNumber, jobNumber) && (
+                  <span data-testid="hub-id" className="inline-block font-mono text-[11px] text-muted-foreground/70">
+                    Hub-ID {formatHubId(internalNumber, jobNumber)}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                {projectNumber && (
+                  <span className="inline-block font-mono text-xs font-semibold bg-primary/10 text-primary rounded-md px-2 py-0.5">
+                    {projectNumber}
+                  </span>
+                )}
+                {formatHubId(internalNumber, jobNumber) && (
+                  <span className={`inline-block font-mono text-xs rounded-md px-2 py-0.5 ${projectNumber ? 'text-muted-foreground bg-muted/50' : 'font-semibold bg-primary/10 text-primary'}`}>
+                    {formatHubId(internalNumber, jobNumber)}
+                  </span>
+                )}
+              </>
             )}
           </div>
 

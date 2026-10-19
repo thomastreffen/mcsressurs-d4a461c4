@@ -6,6 +6,7 @@ import { nb } from "date-fns/locale";
 import { Palmtree, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getResourceCardTitle, getResourceCardSecondary, extractOrderRef } from "@/lib/resource-card-title";
+import { formatProjectLabel } from "@/lib/project-reference";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -519,14 +520,14 @@ export function TeamView({
                         // Primary: always prefer the LIVE event title over the
                         // (possibly stale) schedule_blocks.title snapshot.
                         const orderRef = extractOrderRef(b.title, b.description, b.outlook_preview);
-                        const primaryTitle = getResourceCardTitle({
+                        const primaryTitle = formatProjectLabel(b.financial_project_number, getResourceCardTitle({
                           eventTitle: b.job_title,
                           parentTitle: b.project_title,
                           blockTitle: b.title,
                           outlookSubject: b.outlook_subject,
                           sourceOrderNumber: orderRef,
                           fallbackRef: b.job_number_resolved || b.internal_number,
-                        });
+                        }));
                         // Secondary: BST-ref / JOB-ID / internal number + time
                         const refId = b.job_number_resolved || b.internal_number || null;
                         const timeStr = `${fmtHour(b.start_at)}–${fmtHour(b.end_at)}`;
