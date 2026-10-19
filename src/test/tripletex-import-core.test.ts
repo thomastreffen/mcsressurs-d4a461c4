@@ -101,3 +101,19 @@ describe("TPX-F4 Tripletex-first import", () => {
     expect(shellTitle("70001", "Ny tavle")).toBe("Ny tavle");
   });
 });
+
+import { readFileSync } from "node:fs";
+import { resolveFinancialProject } from "../../supabase/functions/_shared/tripletex-participant-core";
+describe("TPX-F4 jobs and legacy guard", () => {
+  it("job created under an imported financial project resolves to the parent (Hub job, no Tripletex project)", () => {
+    const fp = { id: "fp", company_id: C, entity_type: "financial_project", parent_project_id: null };
+    const job = { id: "j", company_id: C, entity_type: "job", parent_project_id: "fp" };
+    expect(resolveFinancialProject(job, fp).id).toBe("fp");
+  });
+  it("import path never calls Tripletex write endpoints", () => {
+    for (const f of ["supabase/functions/tripletex-import/index.ts", "supabase/functions/_shared/tripletex-import-core.ts"]) {
+      const src = readFileSync(f, "utf8");
+      expect(src).not.toMatch(/call\("(POST|PUT|DELETE)"/);
+    }
+  });
+});
