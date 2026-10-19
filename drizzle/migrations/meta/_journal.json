@@ -211,6 +211,13 @@
       "when": 1792394217460,
       "tag": "0029_documentation_download_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792395298283,
+      "tag": "0030_local_view_exports",
+      "breakpoints": true
     }
   ]
 }

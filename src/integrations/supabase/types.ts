@@ -7637,6 +7637,7 @@ export type Database = {
       }
       hms_document_exports: {
         Row: {
+          access_level: string
           cc_emails: string[]
           client_request_id: string
           company_id: string
@@ -7653,10 +7654,12 @@ export type Database = {
           send_error: string | null
           sent_at: string | null
           sent_by: string | null
+          source_module: string
           status: string
           subject: string | null
         }
         Insert: {
+          access_level?: string
           cc_emails?: string[]
           client_request_id: string
           company_id: string
@@ -7673,10 +7676,12 @@ export type Database = {
           send_error?: string | null
           sent_at?: string | null
           sent_by?: string | null
+          source_module?: string
           status?: string
           subject?: string | null
         }
         Update: {
+          access_level?: string
           cc_emails?: string[]
           client_request_id?: string
           company_id?: string
@@ -7693,6 +7698,7 @@ export type Database = {
           send_error?: string | null
           sent_at?: string | null
           sent_by?: string | null
+          source_module?: string
           status?: string
           subject?: string | null
         }
@@ -16379,6 +16385,7 @@ export type Database = {
         Args: { _package: string }
         Returns: boolean
       }
+      can_access_document_export: { Args: { _id: string }; Returns: boolean }
       can_access_record: {
         Args: {
           _record_company_id: string
