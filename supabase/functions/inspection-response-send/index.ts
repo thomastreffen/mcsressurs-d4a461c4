@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     if (!pkg.recipient_email) return json({ ok: false, message: "Mottaker mangler e-postadresse" }, 400);
 
     // Autoritativ tilgangssjekk: brukeren må ha HMS-tilgang i selskapet pakken hører til
-    const { data: allowed } = await admin.rpc("has_company_access", { _uid: userId, _company: pkg.company_id, _module: "hms", _level: "edit" });
+    const { data: allowed } = await admin.rpc("has_company_access", { _uid: userId, _company: pkg.company_id, _module: standalone ? pkg.source_module ?? "hms" : "hms", _level: standalone ? pkg.access_level ?? "edit" : "edit" });
     if (!allowed) return json({ ok: false, message: "Du har ikke tilgang til å sende svar på tilsyn" }, 403);
 
     if (standalone && !["prepared", "downloaded", "failed"].includes(pkg.status)) return json({ ok: false, message: "Eksporten er allerede sendt eller under sending" }, 409);

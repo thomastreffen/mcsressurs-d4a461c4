@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
+import { roleStatus } from '@/components/compliance/OrgResponsibilityMatrix';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -173,6 +175,7 @@ export default function ComplianceOrganisationPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          {['roller','matrise','oversikt'].includes(tab) && <LocalExportMenu module="organisation" title={tab==='oversikt'?'Organisasjonsoversikt':tab==='matrise'?'Ansvarsmatrise':'Roller'} version={version} disabled={roles.isLoading} filters={{Fane:tab==='oversikt'?'Organisasjonsoversikt':tab==='matrise'?'Ansvarsmatrise':'Roller'}} rows={printableRoles.map(r=>({'Rolle':r.title,'Person':[r.person_id,...(r.additional_person_ids??[])].filter(Boolean).map(nameOf).join(', '),'Ansvar':r.responsibilities,'Oppgaver':r.tasks,'Myndighet':r.authority,'Stedfortreder':r.deputy_person_id?nameOf(r.deputy_person_id):'','Rapporterer til':list.find(p=>p.id===r.reports_to_id)?.title??'','Gyldig fra':r.valid_from?new Date(r.valid_from):null,'Gyldig til':r.valid_to?new Date(r.valid_to):null,'Status':roleStatus(r,id=>!!personOf(id)?.is_active).label}))} chart={tab==='oversikt'?printableRoles.filter(r=>r.is_active!==false).map(r=>({id:r.id,parentId:r.reports_to_id,title:r.title,people:[r.person_id,...(r.additional_person_ids??[])].filter(Boolean).map(nameOf).join(', ')||'Ikke tildelt'})):undefined}/>} 
           <Button size="sm" variant="outline" onClick={() => setTab("oversikt")}>
             <FileText className="mr-1 h-3.5 w-3.5" /> Generer organisasjonsoversikt
           </Button>

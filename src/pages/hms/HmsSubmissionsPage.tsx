@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck, Filter, Search } from "lucide-react";
@@ -58,6 +59,7 @@ export default function HmsSubmissionsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Innsendinger</h1>
           <p className="text-sm text-muted-foreground">Alle SJA og sjekklister sendt inn fra felt.</p>
         </div>
+        <LocalExportMenu title="SJA / sjekklister / vernerunder" module="hms" disabled={isLoading} filters={{Søk:search||'Alle',Type:kindFilter,Status:STATUS_TABS.find(t=>t.key===tab)?.label??tab}} rows={filtered.map(s=>({'Tittel':s.title,'Type':s.kind,'Status':STATUS_LABELS[s.status as SubmissionStatus]??s.status,'Oppdatert':new Date(s.updated_at),'Sendt inn':s.submitted_at?new Date(s.submitted_at):null,'HMS-områder':(s.hms_areas??[]).join(', ')}))}/>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center">

@@ -24,12 +24,12 @@ export async function prepareOutputs(files: DleFile[], format: OutputFormat, com
   }
   return outputs;
 }
-export async function saveDocumentationExport(input: {companyId:string;userId:string;actor:string;company:string;purpose:string;files:DleFile[];outputs:{name:string;blob:Blob}[];format:OutputFormat;action:string;subject:string;message:string;to:string;cc:string;filters:unknown}) {
+export async function saveDocumentationExport(input: {companyId:string;userId:string;actor:string;company:string;purpose:string;files:DleFile[];outputs:{name:string;blob:Blob}[];format:OutputFormat|'pdf'|'xlsx'|'csv';action:string;subject:string;message:string;to:string;cc:string;filters:unknown;sourceModule?:string;recordCount?:number;sourcePage?:string}) {
   const to=parseDleRecipients(input.to),cc=parseDleRecipients(input.cc);
   if(input.action!=='download'&&!to.length) throw new Error('Mottaker mangler');
   const id=crypto.randomUUID();
-  const metadata={actor_name:input.actor,company_name:input.company,purpose:input.purpose,format:input.format,action:input.action,to,cc,filters:input.filters,files:input.files.map(f=>({name:f.name,versions:f.records.map(r=>({id:r.id,title:r.title,version:r.version ?? 'Snapshot'}))}))};
-  const {error}=await sb.from('hms_document_exports').insert({id,client_request_id:crypto.randomUUID(),company_id:input.companyId,created_by:input.userId,purpose:input.purpose,subject:input.subject,recipient_email:to.join(';'),cc_emails:cc,email_body_snapshot:`<p>${escapeHtml(input.message).replace(/\n/g,'<br>')}</p>`,delivery_metadata:metadata});
+  const metadata={actor_name:input.actor,company_name:input.company,purpose:input.purpose,format:input.format,action:input.action,to,cc,filters:input.filters,source_module:input.sourceModule ?? 'hms',source_page:input.sourcePage,record_count:input.recordCount,files:input.files.map(f=>({name:f.name,versions:f.records.map(r=>({id:r.id,title:r.title,version:r.version ?? 'Snapshot'}))}))};
+  const {error}=await sb.from('hms_document_exports').insert({id,client_request_id:crypto.randomUUID(),company_id:input.companyId,created_by:input.userId,source_module:input.sourceModule ?? 'hms',access_level:input.sourceModule ? 'view' : 'edit',purpose:input.purpose,subject:input.subject,recipient_email:to.join(';'),cc_emails:cc,email_body_snapshot:`<p>${escapeHtml(input.message).replace(/\n/g,'<br>')}</p>`,delivery_metadata:metadata});
   if(error) throw error;
   const stored=[];
   for(const output of input.outputs) {

@@ -1,10 +1,12 @@
 # Roadmap
 
 ## Lokal eksportstandard
-- [ ] Gjenbrukbar Eksporter / Del med PDF, Excel, CSV, kolonnevalg og e-post med filforhåndsvisning
-- [ ] Lokal eksport for organisasjonens faner, ansatte, kompetanse, håndbok, stoffkartotek, SJA, avvik, vernerunder, Ressursplan og tilsyn/revisjon
-- [ ] Modul-/selskapsavgrenset levering og revisjonsspor uten utvidede rettigheter
-- [ ] Tester av datatyper, filtre og tilgang; innlogget nedlasting og eksportflyt
+- [x] Gjenbrukbar Eksporter / Del med PDF, Excel, CSV, ZIP, rad-/kolonnevalg og e-post med filforhåndsvisning
+- [x] Lokal eksport for organisasjonens fire faner, ansatte, kompetanse, håndbok/aktivt kapittel, stoffkartotek, innsendte SJA/sjekklister, avvik, Ressursplan og tilsyn/revisjon
+- [x] Modul-/selskapsavgrenset levering og revisjonsspor uten utvidede rettigheter; Eiriks Ressursplan tillatt, HMS/organisasjon/ansatte nektet
+- [x] 27 tester grønne; innlogget PDF/Excel/CSV, filtrert FSE og nedlastingshistorikk verifisert; e-postmanifest klargjort uten sending
+- [ ] Lokal e-post faktisk mottak — trenger avtalt testmottaker og tillatelse til sending
+- [ ] Ressursplan-nedlasting og konkrete vernerundedata ende til ende — aktiv testuke og innsendt vernerunde manglet i kontrollen
 
 ## Dokumentasjon / Eksport
 - [x] Tilsynseksport: valgt sak, forslag til organisasjon/FSE/kompetanse/internkontroll/funn 6–7 og tre leveringsvalg; innlogget forhåndsvisning, nedlasting og historikk verifisert
@@ -12,7 +14,8 @@
 - [x] Nedlasting, e-post og kombinert handling med filforhåndsvisning
 - [x] DLE-/revisjonsmaler og selskapsavgrenset eksporthistorikk
 - [x] Filtrerings- og DLE-regresjon: 16 tester grønne; utlogget direkteadresse sperret
-- [ ] Innlogget ende-til-ende: nedlasting, historikk og e-post — venter på innlogging i forhåndsvisningen (automatisk testinnlogging feilet)
+- [x] Innlogget tilsynsnedlasting og historikk verifisert
+- [ ] Generell dokumentasjonse-post: faktisk mottak — trenger avtalt testmottaker og tillatelse til sending
 
 ## DLE / ekstern opplasting
 - [x] Separate filer, kategorivalg og samlet/separat PDF per post

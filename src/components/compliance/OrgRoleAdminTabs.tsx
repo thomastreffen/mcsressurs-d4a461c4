@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,6 +163,8 @@ export function OrgRoleHistoryTab({
   if (rows.length === 0) return <Card><CardContent className="p-6 text-sm text-muted-foreground">Ingen endringer logget ennå. Fra nå logges alle opprettelser og endringer av roller.</CardContent></Card>;
 
   return (
+    <div className="space-y-3">
+    <div className="flex justify-end"><LocalExportMenu title="Organisasjon – historikk" module="organisation" rows={rows.map(r=>({'Dato':new Date(r.performed_at),'Rolle':r.payload?.title??roleTitle(r.entity_id??'')??'','Handling':ACTION[r.action]??r.action,'Utført av':r.performed_by_name??'System','Endringer':Object.entries(r.payload?.changes??{}).map(([k,v])=>`${FIELD_LABEL[k]??k}: ${fmt(k,v?.old)} → ${fmt(k,v?.new)}`).join('\n')}))}/></div>
     <Card>
       <CardContent className="divide-y p-0">
         {rows.map((r) => (
@@ -186,5 +189,6 @@ export function OrgRoleHistoryTab({
         ))}
       </CardContent>
     </Card>
+    </div>
   );
 }

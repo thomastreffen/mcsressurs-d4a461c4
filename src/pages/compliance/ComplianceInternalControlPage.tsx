@@ -6,6 +6,7 @@
  * Ingen modaler.
  */
 import { useEffect, useMemo, useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -173,6 +174,7 @@ export default function ComplianceInternalControlPage() {
         <Button size="sm" onClick={() => openEditor(null)}>
           <Plus className="mr-1 h-3.5 w-3.5" /> Ny internrevisjon
         </Button>
+        <LocalExportMenu title="Internkontroll / internrevisjon" module="hms" disabled={audits.isLoading} rows={(audits.data??[]).map(a=>({'Tittel':a.title,'Status':a.status,'Planlagt dato':a.planned_date?new Date(a.planned_date):null,'Gjennomført':a.performed_at?new Date(a.performed_at):null,'Ansvarlig':nameOf(a.responsible_person_id),'Områder':a.areas.join(', '),'Funn':a.findings,'Avvik':a.deviations,'Forbedringer':a.improvements,'Konklusjon':a.conclusion}))}/>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

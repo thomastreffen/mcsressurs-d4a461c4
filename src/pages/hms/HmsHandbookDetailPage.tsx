@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -620,6 +621,7 @@ export default function HmsHandbookDetailPage() {
         </TabsList>
 
         <TabsContent value="content" className="mt-4">
+          <div className="mb-3 flex justify-end"><LocalExportMenu title={`${handbook.title} – ${heading}`} module="hms" version={String(viewVersion?.version_number??'')} filters={{Kapittel:heading,Status:viewVersion?.status??''}} rows={activeChapter?[{'Kapittel':heading,'Innhold':body,'Obligatorisk':activeChapter.is_mandatory}]:[]}/></div>
           <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-4">
             <Card className="h-fit">
               <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">

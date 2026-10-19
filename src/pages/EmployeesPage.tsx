@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
@@ -102,6 +103,7 @@ export default function EmployeesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <LocalExportMenu title="Ansatte – ressurser" module="employees" disabled={loading} filters={{'Vis arkiverte':showArchived?'Ja':'Nei'}} rows={technicians.map(t=>({'Navn':t.name,'E-post':t.email,'Rolle / Fagbrev':t.trade_certificate_type,'Planleggbar':t.is_plannable_in_company,'Status':t.archived_at?'Arkivert':'Aktiv'}))}/>
           <Archive className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Vis arkiverte</span>
           <Switch checked={showArchived} onCheckedChange={setShowArchived} />
