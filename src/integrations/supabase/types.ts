@@ -3654,6 +3654,7 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string | null
+          delivery_metadata: Json
           email_body_snapshot: string | null
           exported_at: string | null
           id: string
@@ -3676,6 +3677,7 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by?: string | null
+          delivery_metadata?: Json
           email_body_snapshot?: string | null
           exported_at?: string | null
           id?: string
@@ -3698,6 +3700,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string | null
+          delivery_metadata?: Json
           email_body_snapshot?: string | null
           exported_at?: string | null
           id?: string
@@ -16301,6 +16304,10 @@ export type Database = {
       }
       apply_duplicate_schedule_blocks_cleanup: { Args: never; Returns: Json }
       backfill_commercial_cases_for_active: { Args: never; Returns: Json }
+      can_access_dle_package_file: {
+        Args: { _package: string }
+        Returns: boolean
+      }
       can_access_record: {
         Args: {
           _record_company_id: string
