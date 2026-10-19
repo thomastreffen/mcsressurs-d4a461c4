@@ -1718,6 +1718,7 @@ export function EventDrawer({
               </div>
 
               {eventType === "project" && (
+                <>
                 <Tabs value={mode} onValueChange={(v) => { if (v === "existing") setMode("existing"); }}>
                   <TabsList className="grid w-full grid-cols-2 h-8">
                     <TabsTrigger value="new" disabled title={ECONOMIC_PROJECT_HINT} className="gap-1 text-[11px] h-7">
@@ -1729,6 +1730,7 @@ export function EventDrawer({
                   </TabsList>
                 </Tabs>
                 <p className="text-[11px] text-muted-foreground mt-1">{ECONOMIC_PROJECT_HINT}.</p>
+                </>
               )}
             </section>
           )}
