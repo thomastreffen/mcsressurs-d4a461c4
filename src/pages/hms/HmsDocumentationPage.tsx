@@ -67,19 +67,32 @@ function DocumentationWorkspace() {
     setRecords(old=>({...old,...result}));setErrors(failures);setBusy(false);
   }
   function changeFilter(key:keyof ExportFilters,value:string){setFilters(old=>({...old,[key]:value}));clearReady();}
-  async function prepare() {
-    if(!activeCompanyId||!user||!canExport||!selected.length)return;
-    if(filters.from&&filters.to&&filters.from>filters.to){toast.error('Fra-dato må være før til-dato');return;}
-    if(selected.some(f=>f.category==='attachments')&&!filters.project){toast.error('Velg prosjekt for prosjektspesifikk dokumentasjon');return;}
+  // Prepares a fresh export for the chosen action; returns null when validation fails.
+  async function prepare(act:string) {
+    if(!activeCompanyId||!user||!canExport||!selected.length)return null;
+    if(filters.from&&filters.to&&filters.from>filters.to){toast.error('Fra-dato må være før til-dato');return null;}
+    if(selected.some(f=>f.category==='attachments')&&!filters.project){toast.error('Velg prosjekt for prosjektspesifikk dokumentasjon');return null;}
+    const outputs=await prepareOutputs(selected,format,company,purpose,date);
+    const saved=await saveDocumentationExport({companyId:activeCompanyId,userId:user.id,actor:user.name??user.email??'Ukjent bruker',company,purpose,files:selected,outputs,format,action:act,subject,message,to,cc,filters});
+    const next={id:saved.id,outputs,sent:false,action:act};setReady(next);return next;
+  }
+  // Several files are bundled in one ZIP so the browser does not block multiple downloads.
+  async function downloadAll(r:{id:string;outputs:{name:string;blob:Blob}[]}){
+    if(r.outputs.length===1)await deliverDleBlob(r.outputs[0].blob,r.outputs[0].name);
+    else{const {default:JSZip}=await import('jszip');const zip=new JSZip();for(const o of r.outputs)zip.file(o.name,o.blob);await deliverDleBlob(await zip.generateAsync({type:'blob'}),`${slugForFile(company)}_${slugForFile(purpose)}_${date}.zip`);}
+    await markDocumentationDownloaded(r.id);
+  }
+  async function run(act:string){
+    setAction(act);
+    if(act!=='download'&&!to.trim()){toast.error('Fyll inn mottaker, og trykk knappen igjen');setTimeout(()=>document.getElementById('export-email')?.focus(),50);return;}
     setBusy(true);
     try{
-      const outputs=await prepareOutputs(selected,format,company,purpose,date);
-      const saved=await saveDocumentationExport({companyId:activeCompanyId,userId:user.id,actor:user.name??user.email??'Ukjent bruker',company,purpose,files:selected,outputs,format,action,subject,message,to,cc,filters});
-      setReady({id:saved.id,outputs,sent:false});await qc.invalidateQueries({queryKey:['documentation-history',activeCompanyId]});toast.success('Filene er klare');
-    }catch(e){toast.error(e instanceof Error?e.message:'Kunne ikke klargjøre eksporten');}finally{setBusy(false);}
+      const r=ready&&ready.action===act&&!ready.sent?ready:await prepare(act);if(!r)return;
+      if(act!=='email')await downloadAll(r);
+      if(act!=='download'){await sendDocumentationExport(r.id);setReady({...r,sent:true});toast.success('Microsoft har akseptert e-posten');}
+      await qc.invalidateQueries({queryKey:['documentation-history',activeCompanyId]});
+    }catch(e){toast.error(e instanceof Error?e.message:'Eksporten feilet');}finally{setBusy(false);}
   }
-  async function downloadAll(){if(!ready)return;for(const o of ready.outputs)await deliverDleBlob(o.blob,o.name);await markDocumentationDownloaded(ready.id);await qc.invalidateQueries({queryKey:['documentation-history',activeCompanyId]});}
-  async function finish(){if(!ready)return;setBusy(true);try{if(action!=='email')await downloadAll();if(action!=='download'){await sendDocumentationExport(ready.id);setReady({...ready,sent:true});toast.success('Microsoft har akseptert e-posten');}await qc.invalidateQueries({queryKey:['documentation-history',activeCompanyId]});}catch(e){toast.error(e instanceof Error?e.message:'Eksporten feilet');}finally{setBusy(false);}}
   async function historyDownload(file:any){try{const {data,error}=await supabase.storage.from(file.storage_bucket).createSignedUrl(file.file_path,60);if(error||!data)throw error??new Error('Ingen tilgang');const response=await fetch(data.signedUrl);if(!response.ok)throw new Error('Kunne ikke hente filen');await deliverDleBlob(await response.blob(),file.export_name);}catch(e){toast.error(e instanceof Error?e.message:'Kunne ikke laste ned');}}
   const statuses=[...new Set(Object.values(records).flatMap(list=>(list??[]).map(r=>r.status).filter((s):s is string=>!!s)))];
   const statusNames:Record<string,string>={draft:'Utkast',submitted:'Innsendt',approved:'Godkjent',rejected:'Avvist',open:'Åpen',closed:'Lukket',in_progress:'Under arbeid',reviewed:'Kontrollert'};
