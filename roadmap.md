@@ -62,3 +62,8 @@
 - [x] @nevning begrenset + avdelinger
 - [x] Nye Planlegging-filer i privat lager med signerte lenker
 - [ ] Flytte eldre Planlegging-filer fra åpent lager (venter på beslutning)
+
+## Tripletex-integrasjon (planlagt, ikke startet)
+- [ ] TPX-001 Avklaringer med ledelse/regnskap + testmiljø — venter på interne svar
+- [ ] TPX-002–018 Fase 0/1 (grunnmur, ID-mapping, kunder/ansatte/prosjekter) — starter etter TPX-001
+- [ ] TPX-019–020 Lesende Tripletex-assistent (MCP) — etter stabil ID-mapping
