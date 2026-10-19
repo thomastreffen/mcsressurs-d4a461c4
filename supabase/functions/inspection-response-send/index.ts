@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const packageId: string | undefined = body.package_id;
-    const generated: { export_name: string; content: string }[] = Array.isArray(body.generated) ? body.generated : [];
+    const generated: { export_name: string; content?: string; content_base64?: string; mime_type?: string }[] = Array.isArray(body.generated) ? body.generated : [];
     if (!packageId) return json({ ok: false, message: "Mangler svarpakke" }, 400);
 
     const admin = createClient(url, service);
@@ -111,7 +111,18 @@ Deno.serve(async (req) => {
 
     // Systemgenererte oversikter (kompetanseoversikt, dokumentmanifest) kommer som tekst fra klienten
     for (const g of generated) {
-      const bytes = new TextEncoder().encode(g.content);
+      // A generated file must be present in the stored, company-scoped manifest.
+      if (!(attachments ?? []).some((a) => a.export_name === g.export_name && !a.file_path)) {
+        return json({ ok: false, message: "Generert fil finnes ikke i valgt dokumentmanifest" }, 400);
+      }
+      let bytes: Uint8Array;
+      try {
+        bytes = g.content_base64
+          ? Uint8Array.from(atob(g.content_base64), (c) => c.charCodeAt(0))
+          : new TextEncoder().encode(g.content ?? "");
+      } catch {
+        return json({ ok: false, message: "Ugyldig filinnhold" }, 400);
+      }
       if (total + bytes.byteLength > MAX_TOTAL_ATTACHMENTS) {
         skipped.push(g.export_name);
         continue;
@@ -120,10 +131,12 @@ Deno.serve(async (req) => {
       graphAttachments.push({
         "@odata.type": "#microsoft.graph.fileAttachment",
         name: g.export_name,
-        contentType: g.export_name.endsWith(".csv") ? "text/csv" : "text/plain",
+        contentType: g.mime_type ?? (g.export_name.endsWith(".csv") ? "text/csv" : "text/plain"),
         contentBytes: encodeBase64(bytes),
       });
     }
+
+    if (skipped.length) return json({ ok: false, message: `Ingen e-post sendt. Følgende vedlegg kunne ikke legges ved: ${skipped.join(", ")}` }, 400);
 
     const tokenResult = await getGraphToken();
     if (tokenResult.error) {

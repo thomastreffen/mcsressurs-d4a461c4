@@ -241,6 +241,9 @@ export function ResponsePackageTab({ inspection, findings, evidence, actions, co
               <Button size="sm" disabled={chosenFindings.length === 0} onClick={goToPreview}>
                 <Eye className="mr-1.5 h-3.5 w-3.5" /> Forhåndsvis svar
               </Button>
+              <Button size="sm" variant="outline" onClick={goToPreview}>
+                <FileText className="mr-1.5 h-3.5 w-3.5" /> DLE / ekstern opplasting
+              </Button>
             </div>
           )}
           {blocking.length > 0 && (

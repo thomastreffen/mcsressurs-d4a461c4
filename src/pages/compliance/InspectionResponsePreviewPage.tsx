@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusBadge";
+import { DleExportPanel } from "@/components/compliance/DleExportPanel";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Download, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import JSZip from "jszip";
@@ -224,6 +225,8 @@ export default function InspectionResponsePreviewPage() {
           {inspection.data.title} · {chosenFindings.length} avvik · {chosenAttachments.filter((c) => c.kind !== "reference").length} vedlegg
         </p>
       </div>
+
+      {id && <DleExportPanel key={`${activeCompany?.id}:${id}`} inspectionId={id} attachments={candidates} initialEmail={inspection.data.contact_email ?? ""} />}
 
       {chosenFindings.length === 0 && (
         <Card><CardContent className="p-6 text-sm text-muted-foreground">
