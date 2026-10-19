@@ -1,5 +1,11 @@
 # Roadmap
 
+## Dokumentasjon / Eksport
+- [ ] Fast HMS-inngang, innholdsvalg, enkeltposter og relevante filtre
+- [ ] Nedlasting, e-post og kombinert handling med filforhåndsvisning
+- [ ] DLE-/revisjonsmaler og selskapsavgrenset eksporthistorikk
+- [ ] Verifiser nedlasting, historikk, tilgang og eksisterende DLE-regresjon
+
 ## DLE / ekstern opplasting
 - [x] Separate filer, kategorivalg og samlet/separat PDF per post
 - [x] Enkeltnedlasting, strukturert ZIP og ryddige eksportnavn
