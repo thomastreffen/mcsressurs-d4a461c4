@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
 type Status = {
@@ -38,6 +39,7 @@ async function call(action: string, event_id: string, extra: Record<string, unkn
 }
 
 export function TripletexProjectPanel({ eventId }: { eventId: string }) {
+  const navigate = useNavigate();
   const [st, setSt] = useState<Status | null>(null);
   const [preview, setPreview] = useState<any>(null);
   const [busy, setBusy] = useState<string | null>(null);

@@ -84,7 +84,7 @@ import CustomerNewPage from "./pages/CustomerNewPage";
 import CustomerDetailPage from "./pages/CustomerDetailPage";
 import CustomerImportPage from "./pages/CustomerImportPage";
 import ProjectNewPage from "./pages/ProjectNewPage";
-import TripletexImportPage from "./pages/TripletexImportPage";
+import TripletexProjectImportPage from "./pages/TripletexProjectImportPage";
 import ProjectSettingsPage from "./pages/ProjectSettingsPage";
 import ConversationNewPage from "./pages/ConversationNewPage";
 import ConversationDetailPage from "./pages/ConversationDetailPage";
@@ -299,7 +299,7 @@ const App = () => (
               <Route path="/tasks" element={<Navigate to="/overview" replace />} />
               <Route path="/projects" element={<JobsPage />} />
               <Route path="/projects/new" element={<ProjectNewPage />} />
-              <Route path="/projects/import-tripletex" element={<TripletexImportPage />} />
+              <Route path="/projects/import-tripletex" element={<TripletexProjectImportPage />} />
               <Route path="/projects/:id" element={<JobDetail />} />
               <Route path="/projects/:id/settings" element={<ProjectSettingsPage />} />
               <Route path="/projects/:id/conversations/new" element={<ConversationNewPage />} />
