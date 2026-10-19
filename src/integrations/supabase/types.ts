@@ -15372,6 +15372,51 @@ export type Database = {
         }
         Relationships: []
       }
+      tripletex_health_checks: {
+        Row: {
+          checked_at: string
+          checked_by: string | null
+          company_id: number | null
+          company_name: string | null
+          environment: string
+          http_status: number | null
+          id: string
+          latency_ms: number | null
+          message: string | null
+          project_sample_count: number | null
+          request_id: string | null
+          status: string
+        }
+        Insert: {
+          checked_at?: string
+          checked_by?: string | null
+          company_id?: number | null
+          company_name?: string | null
+          environment?: string
+          http_status?: number | null
+          id?: string
+          latency_ms?: number | null
+          message?: string | null
+          project_sample_count?: number | null
+          request_id?: string | null
+          status: string
+        }
+        Update: {
+          checked_at?: string
+          checked_by?: string | null
+          company_id?: number | null
+          company_name?: string | null
+          environment?: string
+          http_status?: number | null
+          id?: string
+          latency_ms?: number | null
+          message?: string | null
+          project_sample_count?: number | null
+          request_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       tripletex_import_runs: {
         Row: {
           company_id: string
