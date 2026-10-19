@@ -28,7 +28,7 @@ import { ImageLightbox } from "@/components/ImageLightbox";
 import { ProjectAccessDrawer } from "@/components/project/ProjectAccessDrawer";
 import { ChangeOrderTab } from "@/components/change-orders/ChangeOrderTab";
 import { Loader2 } from "lucide-react";
-import { resolveFinancialProjectNumber } from "@/lib/project-reference";
+import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { toast } from "sonner";
 import type { OutlookSyncStatus } from "@/lib/mock-data";
 
@@ -89,15 +89,9 @@ export default function JobDetail() {
 
     setTechnicianNames(techs.map((t: any) => t.name));
 
-    // TPX-F4.1: display-only project reference (own or financial parent)
-    let parentRow: any = null;
-    if ((data as any).parent_project_id && (data as any).entity_type !== "financial_project") {
-      const { data: p } = await (supabase as any).from("events")
-        .select("id, entity_type, project_number, parent_project_id")
-        .eq("id", (data as any).parent_project_id).maybeSingle();
-      parentRow = p ?? null;
-    }
-    setFinancialProjectNumber(resolveFinancialProjectNumber(data as any, parentRow));
+    // TPX-F4.1a: display-only project reference, requires active Tripletex link (server-side)
+    const refs = await fetchFinancialProjectNumbers([data.id]);
+    setFinancialProjectNumber(refs.get(data.id) ?? null);
 
     setJob({
       id: data.id,
