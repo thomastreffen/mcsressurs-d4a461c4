@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
@@ -170,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     console.log("[Auth] Signing out...");
     // Clear state immediately
+    userRef.current = null;
     setUser(null);
     setSession(null);
     // Drop ALL user-scoped React Query cache so stale unread badges/counters
@@ -209,8 +210,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isSuperAdmin = user?.role === "super_admin";
 
+  const value = useMemo(
+    () => ({ session, user, loading, isAdmin, isSuperAdmin, signOut }),
+    [session, user, loading, isAdmin, isSuperAdmin, signOut]
+  );
+
   return (
-    <AuthContext.Provider value={{ session, user, loading, isAdmin, isSuperAdmin, signOut }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
