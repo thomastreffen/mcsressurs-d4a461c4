@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-type Row = { technician_id: string; name: string; email: string | null; state: "not_linked" | "ready" | "participant" | "error" | "wrong_company"; employee_link: { tripletex_id: number; number: string | null } | null; last_error: string | null };
+type Row = { technician_id: string; name: string; email: string | null; state: "not_linked" | "ready" | "participant" | "error" | "wrong_company" | "identity_unresolved"; employee_link: { tripletex_id: number; number: string | null } | null; last_error: string | null };
 type Status = { relevant: boolean; is_self?: boolean; financial_project?: { project_number: string | null }; project_link?: { tripletex_id: number; number: string | null } | null; participants_known?: boolean; technicians?: Row[] };
-type TtEmp = { id: number; firstName?: string; lastName?: string; employeeNumber?: string | null; email?: string | null; linked_to?: string | null };
+type TtEmp = { id: number; firstName?: string; lastName?: string; employeeNumber?: string | null; email?: string | null; linked_to?: string | null; linked_to_self?: boolean };
 
-const LABEL: Record<Row["state"], string> = { not_linked: "Ikke koblet ansatt", ready: "Klar for Tripletex", participant: "Deltaker", error: "Feil", wrong_company: "Annet selskap" };
+const LABEL: Record<Row["state"], string> = { not_linked: "Ikke koblet ansatt", ready: "Klar for Tripletex", participant: "Deltaker", error: "Feil", wrong_company: "Annet selskap", identity_unresolved: "Ansattidentitet mangler" };
 const ERR: Record<string, string> = { timeout: "Tripletex svarte ikke i tide – prøv igjen, det blir ikke dobbel deltaker.", tripletex_rejected: "Tripletex avviste deltakeren.", verify_failed: "Deltakeren kunne ikke bekreftes etter lagring." };
 
 async function call(action: string, event_id: string, extra: Record<string, unknown> = {}) {
@@ -39,6 +39,7 @@ export function TripletexParticipantsPanel({ eventId }: { eventId: string }) {
   const pnum = st.project_link?.number ?? st.financial_project?.project_number ?? "";
 
   const describe = (r: Row) => {
+    if (r.state === "identity_unresolved") return `${r.name}: Ansattidentitet må kobles i Hub før Tripletex kan brukes.`;
     if (r.state === "not_linked") return `${r.name} er ikke koblet til en Tripletex-ansatt.`;
     if (r.state === "wrong_company") return `${r.name} er ikke ansatt i samme selskap som Tripletex-tilkoblingen.`;
     if (r.state === "participant") return `${r.name} er deltaker på prosjekt ${pnum} (ansatt ${r.employee_link?.tripletex_id}).`;
@@ -92,7 +93,7 @@ export function TripletexParticipantsPanel({ eventId }: { eventId: string }) {
                 {results?.map((e) => (
                   <div key={e.id} className="flex items-center justify-between gap-2 rounded border p-2 text-xs">
                     <span>{[e.firstName, e.lastName].filter(Boolean).join(" ")} · ID {e.id}{e.employeeNumber ? ` · nr. ${e.employeeNumber}` : ""}{e.email ? ` · ${e.email}` : ""}</span>
-                    {e.linked_to && e.linked_to !== r.technician_id
+                    {e.linked_to && !e.linked_to_self
                       ? <Badge variant="secondary">Koblet til annen</Badge>
                       : <Button size="sm" variant="outline" disabled={!!busy} onClick={() => link(r, e.id)}>Velg</Button>}
                   </div>
