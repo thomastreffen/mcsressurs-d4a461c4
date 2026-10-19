@@ -15,6 +15,7 @@ import { getNextReminderInfo } from "@/hooks/useApprovalSummaries";
 import type { DayCapacity } from "@/hooks/useCapacity";
 import type { ScheduleBlock } from "@/hooks/useScheduleBlocks";
 import { getResourceCardTitle, extractOrderRef } from "@/lib/resource-card-title";
+import { formatProjectLabel } from "@/lib/project-reference";
 
 import {
   filterScheduleBlocksByTechnician,
@@ -472,7 +473,7 @@ export const ResourceCalendar = memo(function ResourceCalendar({
         sourceOrderNumber: blockOrderRef,
         fallbackRef: block.job_number_resolved || block.internal_number,
       });
-
+      const projectRef = block.financial_project_number ?? (assignmentMeta?.calendarEvent as any)?.financialProjectNumber ?? null;
 
       const normalizedTitle = displayTitle.trim().toLowerCase();
       const dedupKey = block.project_id
@@ -501,14 +502,14 @@ export const ResourceCalendar = memo(function ResourceCalendar({
         title: masked
           ? "Opptatt"
           : (isLinkedToProject
-              ? getResourceCardTitle({
+              ? formatProjectLabel(projectRef, getResourceCardTitle({
                   eventTitle: calEvent?.title ?? block.job_title,
                   parentTitle: block.project_title,
                   blockTitle: block.title,
                   outlookSubject: block.outlook_subject,
                   sourceOrderNumber: blockOrderRef,
                   fallbackRef: block.job_number_resolved || block.internal_number,
-                })
+                }))
               : displayTitle),
 
         start: block.start_at,
@@ -537,7 +538,7 @@ export const ResourceCalendar = memo(function ResourceCalendar({
           calendarEvent: masked ? undefined : (calEvent ?? undefined),
           customer: calEvent?.customer ?? undefined,
           status: calEvent?.status ?? undefined,
-          jobNumber: calEvent ? ((calEvent as any).projectNumber || calEvent.internalNumber || calEvent.jobNumber || null) : null,
+          jobNumber: calEvent ? (projectRef || (calEvent as any).projectNumber || calEvent.internalNumber || calEvent.jobNumber || null) : null,
           techNames: assignmentMeta?.technicianNames ?? undefined,
           isMultiTech: assignmentMeta?.isMultiTech ?? false,
           baseColor: useTechColor ? techColor : (isLinkedToProject ? fallbackColors.bg : BUSY_GRAY),

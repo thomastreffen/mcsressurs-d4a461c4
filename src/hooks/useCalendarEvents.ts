@@ -1,3 +1,4 @@
+import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek, differenceInMinutes } from "date-fns";
@@ -236,6 +237,11 @@ export function useCalendarEvents(
           technicians,
         };
       });
+
+      try {
+        const refs = await fetchFinancialProjectNumbers(mapped.map((e) => e.id));
+        for (const e of mapped) (e as any).financialProjectNumber = refs.get(e.id) ?? null;
+      } catch { /* display-only enrichment */ }
 
       console.log(
         `[Calendar] Fetched ${mapped.length} unique events (tech: ${technicianId ?? "ALL"}, company: ${companyId ?? "ALL"}, scope-techs: ${Array.isArray(scopedTechnicianIds) ? scopedTechnicianIds.length : "ALL"}, week: ${weekStartISO.slice(0, 10)})`
