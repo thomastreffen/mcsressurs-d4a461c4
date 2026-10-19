@@ -1,0 +1,6 @@
+ALTER TABLE public.compliance_response_packages ADD COLUMN IF NOT EXISTS delivery_metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
+CREATE OR REPLACE FUNCTION public.can_access_dle_package_file(_package text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT EXISTS (SELECT 1 FROM public.compliance_response_packages p WHERE p.id::text=_package AND p.created_by=auth.uid() AND public.has_company_access(auth.uid(),p.company_id,'hms','edit')) $$;
+REVOKE ALL ON FUNCTION public.can_access_dle_package_file(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.can_access_dle_package_file(text) TO authenticated;
+CREATE POLICY dle_exports_insert ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id='dle-exports' AND public.can_access_dle_package_file((storage.foldername(name))[1]));
+CREATE POLICY dle_exports_select ON storage.objects FOR SELECT TO authenticated USING (bucket_id='dle-exports' AND public.can_access_dle_package_file((storage.foldername(name))[1]));

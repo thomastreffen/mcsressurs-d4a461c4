@@ -5,7 +5,12 @@
 - [x] Enkeltnedlasting, strukturert ZIP og ryddige eksportnavn
 - [x] Implementert valgt e-postutsendelse og filbasert revisjonsspor
 - [x] Verifisert eksport med ekte innlogging, nedlastede PDF-er, ZIP og bortvalg; 7 tester grønne
-- [ ] Reell e-postlevering ikke testet (ingen ekstern testutsendelse utført)
+- [x] Microsoft aksepterte sending: én fil (Thomas, Rune kopi), flere filer og ZIP (begge Til)
+- [x] Stor ufarlig test-PDF sendt som syvdagers signert lenke; korrekt filstørrelse, offentlig tilgang og annen pakke sperret
+- [x] Dokumentversjoner og mottaker/bruker/firma/leveringsmåte i historikken; 11 tester grønne
+- [x] Fem tilgjengelige kategori-PDF-er nedlastet; Thomas HMS-eksport tillatt, Emil/Eirik nektet via serverens tilgangssjekker
+- [ ] Thomas bekrefter faktisk innboksmottak, vedleggsinnhold og lenke fra de fire testmeldingene
+- [ ] Ekte SJA, vernerunde og SDS verifiseres når dokumentasjon finnes (ingen registrert nå)
 
 ## Fase 2 – modultilgang og tenant-isolasjon
 - [x] Sentral sjekk i meny, ruter og handlinger

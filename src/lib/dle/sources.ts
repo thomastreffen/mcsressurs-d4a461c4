@@ -37,10 +37,12 @@ export async function loadDleRecords(category: DleCategory, company: string, att
     const handbooks = await rows("hms_handbooks", company, "id,title,current_version_id,status");
     const versions = handbooks.map((h: any) => h.current_version_id).filter(Boolean);
     if (!versions.length) return [];
+    const { data: versionRows, error: versionError } = await sb.from("hms_handbook_versions").select("id,version_number").in("id", versions);
+    if (versionError) throw versionError;
     const { data, error } = await sb.from("hms_handbook_sections").select("id,heading,body,ordering,version_id").in("version_id", versions).order("ordering");
     if (error) throw error;
     return (data ?? []).filter((s: any) => category !== "fse" || /fse|elsikkerhet|strømulykke|arbeid.*spenning/i.test(s.heading)).map((s: any) => ({
-      id: s.id, title: s.heading, sections: [section(handbooks.find((h: any) => h.current_version_id === s.version_id)?.title ?? "Håndbok", s.body)],
+      id: s.id, title: s.heading, version: `v${versionRows?.find((v: any) => v.id === s.version_id)?.version_number ?? "?"}`, sections: [section(handbooks.find((h: any) => h.current_version_id === s.version_id)?.title ?? "Håndbok", s.body)],
     }));
   }
   if (category === "competence") {
@@ -54,7 +56,7 @@ export async function loadDleRecords(category: DleCategory, company: string, att
   }
   if (category === "chemicals" || category === "sds") {
     const chemicals = await rows("hms_chemicals", company, "id,product_name,supplier,usage_area,h_statements,p_statements,ppe_requirements,first_aid,storage_requirements,waste_handling,sds_filename,sds_revision_date,sds_path");
-    return chemicals.filter((c: any) => category !== "sds" || c.sds_filename).map((c: any) => ({ id: c.id, title: category === "sds" ? `SDS ${c.product_name}${c.sds_revision_date ? ` rev${c.sds_revision_date}` : ""}` : c.product_name,
+    return chemicals.filter((c: any) => category !== "sds" || c.sds_filename).map((c: any) => ({ id: c.id, version: c.sds_revision_date ? `SDS ${c.sds_revision_date}` : undefined, title: category === "sds" ? `SDS ${c.product_name}${c.sds_revision_date ? ` rev${c.sds_revision_date}` : ""}` : c.product_name,
       original: category === "sds" ? { chemicalId: c.id, filename: c.sds_filename, mime: "application/pdf" } : undefined,
       sections: [section("Leverandør", c.supplier), section("Bruksområde", c.usage_area), section("Fareutsagn", (c.h_statements ?? []).join("\n")), section("Sikkerhetsutsagn", (c.p_statements ?? []).join("\n")), section("Verneutstyr", c.ppe_requirements), section("Førstehjelp", c.first_aid), section("Lagring", c.storage_requirements), section("Avfall", c.waste_handling)],
     }));
@@ -68,7 +70,7 @@ export async function loadDleRecords(category: DleCategory, company: string, att
   if (!selected.length) return [];
   const { data: answers, error } = await sb.from("hms_submission_answers").select("submission_id,item_id,value").in("submission_id", selected.map((s: any) => s.id));
   if (error) throw error;
-  return selected.map((s: any) => ({ id: s.id, title: s.title ?? s.template_snapshot?.name ?? "Skjema", sections: [section("Dato / status", `${s.submitted_at?.slice(0, 10) ?? ""} / ${s.status}`), section("Sted", s.location), ...(s.template_snapshot?.sections ?? []).flatMap((part: any) => (part.items ?? []).map((item: any) => {
+  return selected.map((s: any) => ({ id: s.id, version: `Mal v${s.template_snapshot?.template_version ?? "?"} / ${s.submitted_at ?? "dato ikke registrert"}`, title: s.title ?? s.template_snapshot?.name ?? "Skjema", sections: [section("Dato / status", `${s.submitted_at?.slice(0, 10) ?? ""} / ${s.status}`), section("Sted", s.location), ...(s.template_snapshot?.sections ?? []).flatMap((part: any) => (part.items ?? []).map((item: any) => {
     const value = (answers ?? []).find((a: any) => a.submission_id === s.id && a.item_id === item.id)?.value;
     return section(item.label, typeof value === "object" && value !== null ? JSON.stringify(value) : value);
   }))] }));
