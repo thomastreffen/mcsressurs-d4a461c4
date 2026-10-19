@@ -21,7 +21,7 @@ import { prepareOutputs, saveDocumentationExport, sendDocumentationExport, markD
 import { INSPECTION_EXPORT_DEFAULTS, suggestedFindingIds, findingExportRecords } from '@/lib/documentation/inspection';
 
 export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
-  const {user}=useAuth();const {activeCompanyId,activeCompany}=useCompanyContext();const access=useCompanyModuleAccess();const qc=useQueryClient();
+  const {user}=useAuth();const {activeCompanyId,activeCompany,companies,setActiveCompanyId}=useCompanyContext();const access=useCompanyModuleAccess();const qc=useQueryClient();
   const inspection=useInspection(inspectionId);const findings=useFindings(inspectionId);const evidence=useFindingEvidence(inspectionId);const actions=useInspectionActions(inspectionId);
   const {candidates,loading}=useAttachmentCandidates(findings.data??[],evidence.data??[],actions.data??[]);
   const [choices,setChoices]=useState<Set<string>>(new Set());const [files,setFiles]=useState<DleFile[]>([]);const [removed,setRemoved]=useState<Set<string>>(new Set());
@@ -29,14 +29,15 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const [action,setAction]=useState('download');const [to,setTo]=useState('');const [cc,setCc]=useState('');const [subject,setSubject]=useState('');const [message,setMessage]=useState('');const [sent,setSent]=useState(false);
   const initialized=useRef(false);const alive=useRef(true);useEffect(()=>()=>{alive.current=false;},[]);
   const allowed=(key:string)=>access.can(key==='chart'||key==='matrix'?'organisation':key==='fse_training'||key==='competence'?'employees':'hms');
-  useEffect(()=>{if(initialized.current||!inspection.data||!findings.data||access.loading)return;initialized.current=true;setChoices(new Set([...INSPECTION_EXPORT_DEFAULTS.filter(allowed),...suggestedFindingIds(findings.data).map(id=>`finding:${id}`)]));setTo(inspection.data.contact_email??'');setSubject(`Dokumentasjon – ${inspection.data.title}`);},[inspection.data,findings.data,access.loading]);
+  useEffect(()=>{if(initialized.current||!inspection.data||inspection.data.company_id!==activeCompanyId||!findings.data||access.loading)return;initialized.current=true;setChoices(new Set([...INSPECTION_EXPORT_DEFAULTS.filter(allowed),...suggestedFindingIds(findings.data).map(id=>`finding:${id}`)]));setTo(inspection.data.contact_email??'');setSubject(`Dokumentasjon – ${inspection.data.title}`);},[inspection.data,findings.data,access.loading,activeCompanyId]);
+  if(inspection.data && inspection.data.company_id !== activeCompanyId) return <div className="space-y-3"><h2 className="text-xl font-semibold">Eksport fra tilsynssak</h2><p className="text-sm text-muted-foreground">Velg sakens firma før dokumentasjonen hentes.</p>{companies.some(c=>c.id===inspection.data?.company_id) && <Button onClick={()=>{if(inspection.data)setActiveCompanyId(inspection.data.company_id);}}>Bytt til {companies.find(c=>c.id===inspection.data?.company_id)?.name ?? 'sakens firma'}</Button>}</div>;
   if(!access.can('hms','edit'))return <p className="text-sm text-muted-foreground">Du har ikke tilgang til eksport i dette firmaet.</p>;
   const company=activeCompany?.name??'Firma';const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Oslo'});
   const options=[{key:'chart',label:'Organisasjonskart'},{key:'matrix',label:'Ansvarsmatrise'},{key:'fse_training',label:'FSE-opplæring'},{key:'competence',label:'Kompetanseoversikt'},{key:'internal_control',label:'Internkontroll'},...(findings.data??[]).map(f=>({key:`finding:${f.id}`,label:`Dokumentasjon knyttet til funn ${f.finding_number}`}))];
   const selected=files.filter(f=>!removed.has(f.key));
   function reset(){setReviewed(false);setFiles([]);setSent(false);}
   async function review() {
-    if(!activeCompanyId)return;setBusy(true);const result:DleFile[]=[];const gaps:string[]=[];
+    if(!activeCompanyId||inspection.data?.company_id!==activeCompanyId)return;setBusy(true);const result:DleFile[]=[];const gaps:string[]=[];
     try {
       for(const option of options.filter(o=>choices.has(o.key)&&allowed(o.key))) {
         let records:DleRecord[]=[];let category: DleFile['category']='roles';
@@ -59,13 +60,13 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
     }catch(e){toast.error(e instanceof Error?e.message:'Kunne ikke hente dokumentasjon');}finally{if(alive.current)setBusy(false);}
   }
   async function deliver() {
-    if(!activeCompanyId||!user||!inspection.data||!selected.length)return;setBusy(true);
+    if(!activeCompanyId||!user||!inspection.data||inspection.data.company_id!==activeCompanyId||!selected.length)return;setBusy(true);
     try {
       const outputs=await prepareOutputs(selected,'files',company,'DLE-tilsyn',date);
       const saved=await saveDocumentationExport({companyId:activeCompanyId,userId:user.id,actor:user.name,company,purpose:`DLE-tilsyn – ${inspection.data.title}`,files:selected,outputs,format:'files',action,subject,message,to,cc,filters:{inspection_id:inspectionId,finding_ids:[...choices].filter(k=>k.startsWith('finding:')).map(k=>k.slice(8))}});
       if(action!=='download') await sendDocumentationExport(saved.id);
       if(action!=='email'){for(const output of outputs)await deliverDleBlob(output.blob,output.name);await markDocumentationDownloaded(saved.id);}
-      const {error}=await (supabase as any).from('compliance_inspection_events').insert({company_id:activeCompanyId,inspection_id:inspectionId,actor_user_id:user.id,event_type:action==='download'?'dle_exported':'dle_sent',summary:`${action==='download'?'Lastet ned':action==='both'?'Lastet ned og Microsoft aksepterte sending':'Microsoft aksepterte sending'}: ${selected.map(f=>f.name).join(', ')}`,payload:{export_id:saved.id,delivery:action,to,cc,files:selected.map(f=>({name:f.name,category:f.category,source_ids:f.records.map(r=>r.id)}))}});
+      const {error}=await (supabase as any).from('compliance_inspection_events').insert({company_id:activeCompanyId,inspection_id:inspectionId,actor_user_id:user.id,event_type:action==='download'?'dle_exported':'dle_sent',summary:`${action==='download'?'Lastet ned':action==='both'?'Lastet ned og Microsoft aksepterte sending':'Microsoft aksepterte sending'}: ${selected.map(f=>f.name).join(', ')}`,payload:{export_id:saved.id,delivery:action,actor_name:user.name,company_name:company,to,cc,files:selected.map(f=>({name:f.name,category:f.category,source_ids:f.records.map(r=>r.id),versions:f.records.map(r=>({title:r.title,version:r.version??'Snapshot '+date}))}))}});
       if(error)toast.error('Eksporten er levert, men sakshistorikken kunne ikke oppdateres');
       await Promise.all([qc.invalidateQueries({queryKey:['inspection-events',activeCompanyId,inspectionId]}),qc.invalidateQueries({queryKey:['documentation-history',activeCompanyId]})]);
       if(alive.current){setSent(true);toast.success(action==='download'?'Dokumentene er lastet ned':'Microsoft har akseptert e-posten');}
