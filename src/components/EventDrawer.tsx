@@ -1,3 +1,4 @@
+import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useProjectSuggestions, type ProjectSuggestion } from "@/hooks/useProjectSuggestions";
 import { ProjectSuggestionList } from "./ProjectSuggestionList";
@@ -210,6 +211,13 @@ export function EventDrawer({
   const [searchResults, setSearchResults] = useState<ExistingJob[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [parentProjectNumber, setParentProjectNumber] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open || !projectId) { setParentProjectNumber(null); return; }
+    let alive = true;
+    fetchFinancialProjectNumbers([projectId]).then((m) => { if (alive) setParentProjectNumber(m.get(projectId) ?? null); });
+    return () => { alive = false; };
+  }, [open, projectId]);
   const [selectedJobSnapshot, setSelectedJobSnapshot] = useState<ExistingJob | null>(null);
 
   // Conflicts
@@ -307,7 +315,8 @@ export function EventDrawer({
       const nextStartTime = preselectedStart ? format(preselectedStart, "HH:mm") : "08:00";
       const nextEndTime = preselectedEnd ? format(preselectedEnd, "HH:mm") : "16:00";
 
-      setTitle(projectTitle || "");
+      // Child under a parent project: job name is entered separately, never the parent title/number.
+      setTitle(projectId ? "" : (projectTitle || ""));
       setCustomer("");
       setAddress("");
       setDescription("");
@@ -1782,9 +1791,18 @@ export function EventDrawer({
 
           {/* Project info banner */}
           {projectId && !isEditing && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <p className="text-sm font-medium">{projectTitle}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Velg tid og montører</p>
+            <div className="space-y-3">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3" data-testid="parent-project-context">
+                <p className="text-sm font-medium">
+                  {parentProjectNumber ? `Prosjektnr. ${parentProjectNumber} · ` : ""}{projectTitle}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">Jobben planlegges under dette prosjektet</p>
+              </div>
+              <div>
+                <Label className="text-xs">Jobb / oppdrag</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1"
+                  placeholder="F.eks. Montere 800A bryter" />
+              </div>
             </div>
           )}
 
