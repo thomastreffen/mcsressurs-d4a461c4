@@ -1,4 +1,7 @@
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
+import { UnifiedProjectPicker } from "@/components/resource-plan/UnifiedProjectPicker";
+import { checkParentOpenForNewJob, ECONOMIC_PROJECT_HINT } from "@/lib/parent-open-gate";
+import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useProjectSuggestions, type ProjectSuggestion } from "@/hooks/useProjectSuggestions";
 import { ProjectSuggestionList } from "./ProjectSuggestionList";
@@ -169,6 +172,7 @@ export function EventDrawer({
   const navigate = useNavigate();
   const { syncCreate, syncUpdate } = useCalendarSync();
   const { activeCompanyId, isAllCompanies, companies } = useCompanyContext();
+  const { isSuperAdmin } = useAuth();
   const { settings: reminderSettings } = useReminderSettings();
   const isEditing = !!editEvent;
 
@@ -326,7 +330,8 @@ export function EventDrawer({
       setEndTime(nextEndTime);
       setEndDate(nextDate ? autoAdjustEndDate(nextDate, nextStartTime, nextEndTime) : "");
       setTechIds(preselectedTechId ? [preselectedTechId] : []);
-      setMode(projectId ? "existing" : "new");
+      // Economic projects are owned by Tripletex: project type always starts in existing/search.
+      setMode("existing");
       setEventType("project");
       setSelectedJobId(projectId || null);
       setSelectedJobSnapshot(null);
@@ -1110,7 +1115,17 @@ export function EventDrawer({
            updateOutlook: false,
            changeSet: detectedChanges,
          });
+      } else if (eventType === "project" && mode === "new") {
+        toast.error(ECONOMIC_PROJECT_HINT);
+        setSaving(false);
+        return;
       } else if (mode === "existing" && selectedJobId) {
+        const gate = await checkParentOpenForNewJob(selectedJobId, selectedCompanyId ?? activeCompanyId);
+        if (!gate.ok) {
+          toast.error(gate.message);
+          setSaving(false);
+          return;
+        }
         // Plan a NEW work-visit activity (child event) on an existing parent project.
         // The parent project is context only — we do NOT inherit its old technicians/state.
         if (!date) {
@@ -1685,7 +1700,7 @@ export function EventDrawer({
                   variant={eventType === "project" ? "default" : "ghost"}
                   size="sm"
                   className="h-9 text-xs rounded-md flex-1 gap-1.5"
-                  onClick={() => { setEventType("project"); setMode("new"); }}
+                  onClick={() => { setEventType("project"); setMode("existing"); }}
                 >
                   <FolderKanban className="h-3.5 w-3.5" />
                   Prosjekt
@@ -1703,9 +1718,9 @@ export function EventDrawer({
               </div>
 
               {eventType === "project" && (
-                <Tabs value={mode} onValueChange={(v) => setMode(v as "new" | "existing")}>
+                <Tabs value={mode} onValueChange={(v) => { if (v === "existing") setMode("existing"); }}>
                   <TabsList className="grid w-full grid-cols-2 h-8">
-                    <TabsTrigger value="new" className="gap-1 text-[11px] h-7">
+                    <TabsTrigger value="new" disabled title={ECONOMIC_PROJECT_HINT} className="gap-1 text-[11px] h-7">
                       <Plus className="h-3 w-3" />Nytt prosjekt
                     </TabsTrigger>
                     <TabsTrigger value="existing" className="gap-1 text-[11px] h-7">
@@ -1727,7 +1742,7 @@ export function EventDrawer({
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-primary mb-0.5">Valgt prosjekt</p>
                     <p className="text-sm font-medium truncate">{selectedJobSnapshot.title}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {selectedJobSnapshot.internal_number} · {selectedJobSnapshot.customer || "Ingen kunde"}
+                      {selectedJobSnapshot.internal_number ? `${selectedJobSnapshot.internal_number} · ` : ""}{selectedJobSnapshot.customer || "Ingen kunde"}
                     </p>
                   </div>
                   <Button
@@ -1748,43 +1763,25 @@ export function EventDrawer({
               )}
 
               {!selectedJobSnapshot && (
-                <>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Søk prosjekt (tittel, kunde, nr)..."
-                      className="pl-9"
-                    />
-                  </div>
-                  {searchLoading && (
-                    <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
-                  )}
-                  {searchResults.length > 0 && (
-                    <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border border-border p-1">
-                      {searchResults.map((job) => (
-                        <button key={job.id} type="button"
-                          onClick={() => {
-                            console.info("[resource-plan:select-existing-project]", { id: job.id, title: job.title });
-                            setSelectedJobId(job.id);
-                            setSelectedJobSnapshot(job);
-                            setTitle(job.title);
-                            if (job.customer) setCustomer(job.customer);
-                          }}
-                          className={cn(
-                            "w-full text-left rounded-md px-3 py-2 text-sm transition-colors",
-                            selectedJobId === job.id ? "bg-primary/10 border border-primary/30" : "hover:bg-muted"
-                          )}>
-                          <p className="font-medium truncate">{job.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {job.internal_number} · {job.customer || "Ingen kunde"}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
+                <UnifiedProjectPicker
+                  companyId={selectedCompanyId ?? activeCompanyId}
+                  canUseTripletex={isSuperAdmin}
+                  onSelected={({ eventId, label, customer: cust }) => {
+                    console.info("[resource-plan:select-financial-project]", { id: eventId });
+                    setSelectedJobId(eventId);
+                    setSelectedJobSnapshot({ id: eventId, title: label, customer: cust, start_time: "", end_time: "", status: "", internal_number: null, parent_project_id: null } as ExistingJob);
+                    setTitle("");
+                    if (cust) setCustomer(cust);
+                  }}
+                />
+              )}
+
+              {selectedJobSnapshot && (
+                <div>
+                  <Label className="text-xs">Jobb / oppdrag</Label>
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1"
+                    placeholder="F.eks. Montere 800A bryter" />
+                </div>
               )}
             </section>
           )}
