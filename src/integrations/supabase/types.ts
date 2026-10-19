@@ -13275,6 +13275,7 @@ export type Database = {
       }
       planning_projects: {
         Row: {
+          billing_model: string | null
           budget_value: number | null
           company_id: string | null
           contract_form: string
@@ -13283,10 +13284,12 @@ export type Database = {
           created_by: string | null
           customer_contact_id: string | null
           customer_id: string | null
+          customer_reference: string | null
           deleted_at: string | null
           deleted_by: string | null
           department_id: string | null
           description: string | null
+          economic_state: string
           estimated_hours: number | null
           estimated_material_cost: number | null
           expected_end: string | null
@@ -13300,11 +13303,15 @@ export type Database = {
           name: string
           owner_user_id: string | null
           period_label: string | null
+          project_manager_person_id: string | null
+          ready_for_invoicing_at: string | null
+          ready_for_invoicing_by: string | null
           status: string
           updated_at: string
           visibility: string
         }
         Insert: {
+          billing_model?: string | null
           budget_value?: number | null
           company_id?: string | null
           contract_form?: string
@@ -13313,10 +13320,12 @@ export type Database = {
           created_by?: string | null
           customer_contact_id?: string | null
           customer_id?: string | null
+          customer_reference?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           department_id?: string | null
           description?: string | null
+          economic_state?: string
           estimated_hours?: number | null
           estimated_material_cost?: number | null
           expected_end?: string | null
@@ -13330,11 +13339,15 @@ export type Database = {
           name: string
           owner_user_id?: string | null
           period_label?: string | null
+          project_manager_person_id?: string | null
+          ready_for_invoicing_at?: string | null
+          ready_for_invoicing_by?: string | null
           status?: string
           updated_at?: string
           visibility?: string
         }
         Update: {
+          billing_model?: string | null
           budget_value?: number | null
           company_id?: string | null
           contract_form?: string
@@ -13343,10 +13356,12 @@ export type Database = {
           created_by?: string | null
           customer_contact_id?: string | null
           customer_id?: string | null
+          customer_reference?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           department_id?: string | null
           description?: string | null
+          economic_state?: string
           estimated_hours?: number | null
           estimated_material_cost?: number | null
           expected_end?: string | null
@@ -13360,6 +13375,9 @@ export type Database = {
           name?: string
           owner_user_id?: string | null
           period_label?: string | null
+          project_manager_person_id?: string | null
+          ready_for_invoicing_at?: string | null
+          ready_for_invoicing_by?: string | null
           status?: string
           updated_at?: string
           visibility?: string
@@ -15372,6 +15390,68 @@ export type Database = {
         }
         Relationships: []
       }
+      tripletex_connections: {
+        Row: {
+          capabilities: string[]
+          company_id: string
+          created_at: string
+          disabled_reason: string | null
+          enabled_at: string | null
+          enabled_by: string | null
+          environment: string
+          expected_tripletex_company_id: number | null
+          id: string
+          last_health_at: string | null
+          last_health_request_id: string | null
+          last_health_status: string | null
+          mode: string
+          secret_name: string
+          updated_at: string
+        }
+        Insert: {
+          capabilities?: string[]
+          company_id: string
+          created_at?: string
+          disabled_reason?: string | null
+          enabled_at?: string | null
+          enabled_by?: string | null
+          environment: string
+          expected_tripletex_company_id?: number | null
+          id?: string
+          last_health_at?: string | null
+          last_health_request_id?: string | null
+          last_health_status?: string | null
+          mode?: string
+          secret_name: string
+          updated_at?: string
+        }
+        Update: {
+          capabilities?: string[]
+          company_id?: string
+          created_at?: string
+          disabled_reason?: string | null
+          enabled_at?: string | null
+          enabled_by?: string | null
+          environment?: string
+          expected_tripletex_company_id?: number | null
+          id?: string
+          last_health_at?: string | null
+          last_health_request_id?: string | null
+          last_health_status?: string | null
+          mode?: string
+          secret_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tripletex_connections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tripletex_health_checks: {
         Row: {
           checked_at: string
@@ -15471,6 +15551,7 @@ export type Database = {
       tripletex_links: {
         Row: {
           company_id: string
+          connection_id: string | null
           created_at: string
           created_by: string | null
           environment: string
@@ -15489,6 +15570,7 @@ export type Database = {
         }
         Insert: {
           company_id: string
+          connection_id?: string | null
           created_at?: string
           created_by?: string | null
           environment: string
@@ -15507,6 +15589,7 @@ export type Database = {
         }
         Update: {
           company_id?: string
+          connection_id?: string | null
           created_at?: string
           created_by?: string | null
           environment?: string
@@ -15523,7 +15606,77 @@ export type Database = {
           tripletex_version?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tripletex_links_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "tripletex_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tripletex_operations: {
+        Row: {
+          actor: string | null
+          attempts: number
+          connection_id: string
+          created_at: string
+          error_code: string | null
+          http_status: number | null
+          id: string
+          idempotency_key: string
+          mcs_entity_id: string | null
+          mcs_entity_type: string | null
+          operation: string
+          payload_hash: string | null
+          request_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actor?: string | null
+          attempts?: number
+          connection_id: string
+          created_at?: string
+          error_code?: string | null
+          http_status?: number | null
+          id?: string
+          idempotency_key: string
+          mcs_entity_id?: string | null
+          mcs_entity_type?: string | null
+          operation: string
+          payload_hash?: string | null
+          request_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actor?: string | null
+          attempts?: number
+          connection_id?: string
+          created_at?: string
+          error_code?: string | null
+          http_status?: number | null
+          id?: string
+          idempotency_key?: string
+          mcs_entity_id?: string | null
+          mcs_entity_type?: string | null
+          operation?: string
+          payload_hash?: string | null
+          request_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tripletex_operations_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "tripletex_connections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tripletex_project_mappings: {
         Row: {

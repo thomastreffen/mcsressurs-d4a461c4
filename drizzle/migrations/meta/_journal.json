@@ -239,6 +239,13 @@
       "when": 1792410095556,
       "tag": "0033_tripletex_links",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792411108813,
+      "tag": "0034_tripletex_connections_foundation",
+      "breakpoints": true
     }
   ]
 }
