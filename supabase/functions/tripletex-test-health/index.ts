@@ -47,25 +47,29 @@ Deno.serve(async (req) => {
     company_id: number | null; company_name: string | null; projects: { id: number; number: string; name: string }[];
   } = { status: "ok", http_status: null, request_id: null, message: "", company_id: null, company_name: null, projects: [] };
 
-  const consumer = Deno.env.get("TRIPLETEX_TEST_CONSUMER_TOKEN");
-  const employee = Deno.env.get("TRIPLETEX_TEST_EMPLOYEE_TOKEN");
+  const apiToken = Deno.env.get("TRIPLETEX_TEST_API_TOKEN");
   const expected = Deno.env.get("TRIPLETEX_TEST_EXPECTED_COMPANY_ID");
 
   try {
-    if (!consumer || !employee) {
+    if (!apiToken) {
       result.status = "not_configured";
-      result.message = "Tripletex test-nøkler er ikke lagt inn.";
+      result.message = "TRIPLETEX_TEST_API_TOKEN er ikke lagt inn.";
     } else {
-      // 1) Create short-lived session token (auth only, no business data is changed).
+      // 1) Exchange internal-integration JWT (refresh token) for a short-lived session token.
+      // Auth only — no business data is changed. Expires at midnight the next day.
       const exp = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-      const qs = new URLSearchParams({ consumerToken: consumer, employeeToken: employee, expirationDate: exp });
-      const sRes = await fetch(`${TRIPLETEX_BASE}/token/session/:create?${qs}`, { method: "PUT", signal: AbortSignal.timeout(15000) });
+      const sRes = await fetch(`${TRIPLETEX_BASE}/token/session/:createFromRefreshToken`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ refreshToken: apiToken, expirationDate: exp }),
+        signal: AbortSignal.timeout(15000),
+      });
       result.http_status = sRes.status; result.request_id = reqId(sRes);
       const sBody: any = await sRes.json().catch(() => null);
       const session: string | undefined = sBody?.value?.token;
       if (sRes.status === 401 || sRes.status === 403 || (sRes.status >= 400 && sRes.status < 500)) {
         result.status = "auth_failed";
-        result.message = "Tripletex avviste nøklene (sjekk at de gjelder testmiljøet).";
+        result.message = "Tripletex avviste API-nøkkelen (sjekk at den er laget i testmiljøet).";
       } else if (!sRes.ok || !session) {
         result.status = "api_error";
         result.message = `Tripletex svarte med feil ved innlogging (HTTP ${sRes.status}).`;
