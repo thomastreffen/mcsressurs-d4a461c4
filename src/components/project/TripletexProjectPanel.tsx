@@ -96,15 +96,24 @@ export function TripletexProjectPanel({ eventId }: { eventId: string }) {
           <p className="text-foreground">Koblet til Tripletex TEST · prosjekt <span className="font-mono">{st.project_link!.tripletex_number}</span> · intern ID <span className="font-mono">{st.project_link!.tripletex_id}</span>
             {st.project_link!.last_verified_at && <span className="text-muted-foreground"> · verifisert {format(new Date(st.project_link!.last_verified_at), "dd.MM.yyyy HH:mm")}</span>}</p>
         )}
+        {linked && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate(`/projects/new?parent=${eventId}`)}>Opprett jobb / serviceoppdrag under prosjektet</Button>
+            <span className="text-xs text-muted-foreground">Jobber blir kun i Hub – ingen nye Tripletex-prosjekter.</span>
+          </div>
+        )}
         {st.last_operation && (
           <p className="text-muted-foreground">Siste handling: {st.last_operation.operation} – {st.last_operation.status === "succeeded" ? "fullført" : st.last_operation.status === "failed" ? `feilet${st.last_operation.error_code && ERR[st.last_operation.error_code] ? ` (${ERR[st.last_operation.error_code]})` : ""}` : st.last_operation.status}</p>
         )}
         {st.connection && !linked && (
           st.connection.mode !== "write_enabled"
             ? <p className="text-muted-foreground">Tilkoblingen er ikke åpnet for skriving.</p>
-            : <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={openCreate} disabled={!!busy}>{busy === "preview" && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Opprett i Tripletex TEST</Button>
-                <Button size="sm" variant="outline" onClick={openLink} disabled={!!busy}>{busy === "search" && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Koble til eksisterende i Tripletex TEST</Button>
+            : <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Ikke koblet – prosjektet er kun i Hub og synkes ikke med Tripletex.</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={openLink} disabled={!!busy}>{busy === "search" && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Koble til eksisterende i Tripletex TEST</Button>
+                  <Button size="sm" variant="ghost" onClick={openCreate} disabled={!!busy}>{busy === "preview" && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Reserve: opprett i Tripletex TEST</Button>
+                </div>
               </div>
         )}
 
