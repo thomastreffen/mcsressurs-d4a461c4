@@ -16869,6 +16869,10 @@ export type Database = {
         Args: { _source_id: string; _source_kind: string }
         Returns: string
       }
+      get_active_tripletex_project_id: {
+        Args: { _company_id: string; _event_id: string }
+        Returns: number
+      }
       get_attachment_by_token: {
         Args: { _attachment_id: string; _token: string }
         Returns: {
@@ -17474,6 +17478,16 @@ export type Database = {
         }[]
       }
       scan_resource_plan_ghosts: { Args: never; Returns: Json }
+      search_linked_financial_projects: {
+        Args: { _company_id: string; _q: string }
+        Returns: {
+          customer: string
+          event_id: string
+          project_number: string
+          title: string
+          tripletex_project_id: number
+        }[]
+      }
       send_planning_wp_to_resource_plan: {
         Args: { _wp_id: string }
         Returns: Json
