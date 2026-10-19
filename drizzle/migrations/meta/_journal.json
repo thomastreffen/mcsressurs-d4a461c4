@@ -253,6 +253,13 @@
       "when": 1792412074290,
       "tag": "0035_tripletex_participants_f3",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792412091210,
+      "tag": "0036_tripletex_participant_caps",
+      "breakpoints": true
     }
   ]
 }
