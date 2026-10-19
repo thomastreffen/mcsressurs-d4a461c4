@@ -12,6 +12,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { formatJobSchedule } from "../_shared/job-time.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -129,12 +130,9 @@ Deno.serve(async (req) => {
     const subject = `[${taskRef}] ${task.title || "Oppgave"}`;
     const replyToAddress = `task-thread+${thread!.thread_token}@${DOMAIN}`;
 
-    const startStr = task.start_time
-      ? new Date(task.start_time).toLocaleDateString("nb-NO", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-      : "";
-    const endStr = task.end_time
-      ? new Date(task.end_time).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })
-      : "";
+    const schedule = formatJobSchedule(task.start_time, task.end_time);
+    const startStr = task.start_time ? `${schedule.startDate} ${schedule.startTime}` : "";
+    const endStr = task.end_time ? schedule.endTime : "";
 
     const bodyHtml = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; padding: 20px;">
