@@ -191,10 +191,10 @@ export function ProjectPlanTab({
             </p>
           </div>
           {isAdmin && (
-            <Button size="sm" variant="outline" className="rounded-xl gap-1.5 shrink-0"
+            <Button size="sm" className="rounded-xl gap-1.5 shrink-0"
               onClick={() => setEventDrawerOpen(true)}>
               <CalendarPlus className="h-3.5 w-3.5" />
-              Planlegg ressurs
+              Planlegg jobb / serviceoppdrag
             </Button>
           )}
         </div>
@@ -254,9 +254,9 @@ export function ProjectPlanTab({
             )}
           </h3>
           {isAdmin && (
-            <Button size="sm" className="gap-1.5 rounded-xl" onClick={() => setCreateDrawerOpen(true)}>
+            <Button size="sm" variant="outline" className="gap-1.5 rounded-xl" onClick={() => setCreateDrawerOpen(true)}>
               <Plus className="h-3.5 w-3.5" />
-              Ny oppgave
+              Ny intern oppgave
             </Button>
           )}
         </div>
@@ -428,31 +428,8 @@ function CreateTaskDrawer({
       return;
     }
 
-    // 2. If time + resources → also create a resource event linked to task
-    if (scheduledDate && startTime && endTime && techIds.length > 0) {
-      const startISO = new Date(`${scheduledDate}T${startTime}`).toISOString();
-      const endISO = new Date(`${scheduledDate}T${endTime}`).toISOString();
-      const { data: session } = await supabase.auth.getSession();
-      const currentUserId = session?.session?.user?.id;
-
-      const { data: eventData } = await supabase.from("events").insert({
-        title: `${title.trim()}`,
-        start_time: startISO,
-        end_time: endISO,
-        technician_id: techIds[0],
-        status: "requested" as any,
-        created_by: currentUserId || null,
-        task_id: taskData.id,
-        company_id: activeCompanyId,
-      } as any).select("id").single();
-
-      if (eventData) {
-        await supabase.from("event_technicians").insert(
-          techIds.map((tid) => ({ event_id: eventData.id, technician_id: tid }))
-        );
-        await supabase.functions.invoke("create-approval", { body: { job_id: eventData.id } });
-      }
-    }
+    // Internal sub-task only: never creates a resource-plan event.
+    // Field work is planned via EventDrawer ("Planlegg jobb / serviceoppdrag").
 
     // 3. Upload file if present
     if (file) {
@@ -470,10 +447,7 @@ function CreateTaskDrawer({
       }
     }
 
-    const planned = scheduledDate && startTime && endTime && techIds.length > 0;
-    toast.success(planned ? "Oppgave opprettet og planlagt" : "Oppgave opprettet", {
-      description: planned ? `${title} er tildelt ${techIds.length} montør(er)` : undefined,
-    });
+    toast.success("Intern oppgave opprettet");
     setSaving(false);
     onCreated();
     // Don't auto-close per spec
@@ -485,10 +459,10 @@ function CreateTaskDrawer({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5 text-primary" />
-            Ny oppgave
+            Ny intern oppgave
           </SheetTitle>
           <SheetDescription>
-            Opprett oppgave og planlegg i ett steg
+            Intern deloppgave/sjekkpunkt. Feltarbeid planlegges med «Planlegg jobb / serviceoppdrag».
           </SheetDescription>
         </SheetHeader>
 
