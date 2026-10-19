@@ -361,5 +361,138 @@ Feature flags = `mode` og `enabled_entities` i `tripletex_connections`, pluss en
 | TPX-017 | Utrullingstrinn 4–6 for MCS Service | 009–015, 016 | Kriteriene i 6 er oppfylt |
 | TPX-018 | Utrulling til neste selskap | 017 | Kriteriene i 6 er oppfylt for det selskapet |
 
+Endringer etter MCP-vurderingen står i 9.7.
+
+## 9. Tripletex MCP som eget arkitekturlag
+
+### 9.1 Prinsipp – bekreftet, med én presisering
+**API = deterministisk infrastruktur. MCP = fleksibelt intelligens- og arbeidslag.** Prinsippet holder for MCS. Grunnen er at MCS allerede lever av stabile koblinger (prosjektnummer, Ressursplan, idempotent opprettelse), og at dagens data viser at vi ikke engang har stabile Tripletex-ID-er ennå.
+
+Presisering: MCP skal **lese og foreslå** i stor bredde, men **skrive** bare via den samme kontrollerte veien som API-integrasjonen (kø, idempotens, kobling). MCP blir altså aldri en snarvei rundt `tripletex_links`. Dette er den eneste regelen som gjør at MCP ikke kan ødelegge dataintegriteten.
+
+### 9.2 Beslutningsmatrise
+
+| Use case | Mekanisme | Begrunnelse |
+|---|---|---|
+| Kunder: kobling, innlesing av Tripletex-eide felt | **API** | Stabil ID og kontinuerlig synk |
+| Kunder: kontaktpersoner, tagger, CRM | **Kun MCS** | Operative data |
+| Ansatte: ansattnummer og kobling | **API** | Brukes av timeimport og arbeidstidskontroll |
+| Ansatte: kompetanse, HMS, tilgang | **Kun MCS** | Skal aldri til Tripletex |
+| Ansatte: lønn, sensitive HR-data | **Ingen av delene** | Hentes ikke, verken via API eller MCP |
+| Prosjekter: kobling, nummer og ID tilbake | **API** | Må være idempotent |
+| Prosjektopprettelse i Tripletex | **API**, utløst av bruker. MCP kan **fylle ut utkastet** | Dublettvern og retry krever kø |
+| Arbeidspakker, plan, bemanning | **Kun MCS** | Operativt |
+| Timer: løpende import til arbeidstidskontroll | **API** (Fase 2) | Masseflyt i bakgrunnen |
+| Timer: «hvem har ført timer på prosjekt X denne uka?» | **MCP** | Ad hoc-spørsmål |
+| Prosjektøkonomi: fast nøkkeltall-linje i Planlegging (budsjett mot faktisk) | **API** med enkel mellomlagring | Alltid samme tall, testbart |
+| Prosjektøkonomi: forklaring, avvik, forecast-drøfting | **MCP** | Analyse i naturlig språk |
+| Fakturastatus på prosjekt/kunde (merke) | **API**, lest på forespørsel | Lite og stabilt |
+| Utestående fordringer: «hvilke kunder skylder mest?» | **MCP** | Analyse, ingen kopi i MCS |
+| Fakturagrunnlag fra godkjent servicejournal | **API** (Fase 4) | Sporbarhet og idempotens |
+| Opprettelse av ordre/fakturakladd | **API**. MCP kan foreslå linjer og tekst, brukeren godkjenner, så sender API-et | Ingen AI-skriving uten kø |
+| Avvikskontroll (f.eks. prosjekt i MCS uten timer i Tripletex) | **Hybrid:** faste kontroller via API/database, forklaring og funn i grensetilfeller via MCP | Faste regler skal gi samme svar hver gang |
+| BI-lignende spørsmål og naturlig språk | **MCP** | Erstatter egne rapporter |
+| Avklaringskø (usikre treff) | **API**. MCP kan foreslå valg med begrunnelse | Endelig kobling må bekreftes av menneske |
+
+### 9.3 Når MCP IKKE skal brukes
+MCP brukes aldri til:
+- å opprette, endre eller fjerne koblinger mellom MCS og Tripletex
+- kontinuerlig eller planlagt synk og bakgrunnsjobber
+- masseoppdateringer (mer enn én post per godkjent handling)
+- noe som krever idempotens, retry eller dublettvern
+- tall som vises fast i MCS-skjermbilder (de skal være reproduserbare)
+- å skrive data til MCS-tabeller
+- å hente lønn, personnummer, kontonummer eller andre sensitive HR-felt
+- å kjøre handlinger uten at en innlogget bruker har bedt om dem og godkjent dem
+
+Tommelfingerregel: **skal svaret være likt i morgen, eller skal noe lagres, bruk API. Skal en person forstå, utforske eller få et utkast, bruk MCP.**
+
+### 9.4 Hva MCP lar oss forenkle eller droppe
+
+| Område | Uten MCP | Med MCP |
+|---|---|---|
+| `tripletex-search` (TPX-006/013) | Eget søk med filtre | Beholdes enkelt (kun nummer/navn/orgnr). Fritt søk tas av assistenten |
+| Fase 3 prosjektøkonomi | Egne rapporter, drilldown og forecast-skjermer | Bare én fast nøkkeltall-linje via API. Resten (forklaring, drilldown, «hvorfor») via MCP. **Fase 3 blir mye mindre** |
+| Utestående fordringer / kundeøkonomi | Egen side med aldersfordeling | **Bygges ikke.** MCP-spørsmål fra kundekortet |
+| Avviksrapporter | Mange egne kontroller | Bare 3–5 faste kontroller. Resten ad hoc |
+| Ledelsesrapporter / BI | Egen dashbordmodul | **Utsettes på ubestemt tid** |
+| `tripletex_remote_cache` | Bred kopi for oppslag | Avgrenses til det matching trenger |
+| Fakturagrunnlag (Fase 4) | Egen redigering av linjer | API-sending beholdes; utkast til linjer og tekst lages av assistenten |
+
+Det som **ikke** blir mindre: Fase 0, ID-mapping, kø, «Opprett i Tripletex» og innlesing i Fase 1. Det er nettopp grunnmuren MCP trenger for å gi korrekte svar (MCP må vite hvilket Tripletex-prosjekt «dette MCS-prosjektet» er).
+
+### 9.5 AI/MCP i MCS-brukeropplevelsen (senere)
+- **«Spør om økonomi»** i et sidepanel på prosjekt, planleggingsprosjekt og kundekort. Konteksten er låst til objektet: assistenten får den koblede Tripletex-ID-en fra `tripletex_links`, ikke fritekst.
+- Forslag til spørsmål: «Hvordan ligger vi an mot budsjett?», «Hvilke timer mangler?», «Er det utestående på denne kunden?»
+- **Utkast, ikke handlinger:** assistenten kan lage et utkast til prosjektopprettelse, fakturakladd eller svar til kunde. Utkastet åpnes i den vanlige MCS-flyten, der brukeren ser feltene og trykker «Opprett» selv. Da går handlingen via API-køen.
+- **Analyse på lederside:** fri spørsmålsrute for brukere med økonomitilgang, med kilde og tidspunkt på hvert svar («Tall fra Tripletex 19.10 kl. 09:12»).
+- Ingen chat-boble overalt, ingen sosiale funksjoner. Følger eksisterende regel: egen side eller sidepanel, ikke modal.
+
+### 9.6 Sikkerhetsmodell for MCP (adskilt fra API)
+- **Egen tilgang:** ny modulkode `tripletex_ai` (nivå `view`) i tillegg til økonomitilgang. Sjekkes på serveren før hvert kall. Uten tilgang finnes assistenten ikke i UI.
+- **MCS bestemmer omfanget, ikke AI-en:** en serverfunksjon (`tripletex-assistant`) står mellom brukeren og MCP. Den løser selskap på serveren, kontrollerer `has_company_access`, og sender bare de verktøyene og Tripletex-ID-ene brukeren har lov til. Modellen får aldri MCP-tilgang direkte fra nettleseren.
+- **Verktøyhviteliste:** i første versjon bare lesende MCP-verktøy. Skrivende verktøy er sperret i MCS-laget, ikke bare i ledeteksten.
+- **Minst mulig tilgang i Tripletex:** egen integrasjonsbruker og eget token for MCP, med bare lesetilgang. Det er adskilt fra API-integrasjonens token, slik at det kan trekkes tilbake uten å stoppe synken.
+- **Godkjenning:** alt som ville endret noe, blir et utkast i MCS som brukeren må sende selv (9.5).
+- **Revisjonslogg:** egen tabell `tripletex_ai_log` med bruker, selskap, objekt, spørsmål (kortet ned), verktøy brukt, Tripletex-ID-er berørt og tidspunkt. Hele svar med persondata lagres ikke. Synlig på `/admin/tripletex`.
+- **Forsvar mot ledetekstinjeksjon:** tekst fra Tripletex (beskrivelser, notater) behandles som data. Verktøyhvitelisten gjør at slik tekst ikke kan utløse handlinger.
+- **Personvern:** ansattspørsmål avgrenses til timer og prosjekt. Lønnsrelaterte verktøy er aldri på hvitelisten.
+- **Av/på:** egen bryter per selskap (`ai_mode`), uavhengig av API-modusen.
+
+### 9.7 Når MCP kommer inn – anbefaling
+**Ikke i Fase 0/1 som funksjon.** MCP bør komme etter at ID-mappingen er stabil (etter utrullingstrinn 4). Før det kan ikke assistenten svare sikkert på «dette prosjektet», og den vil friste til å gjøre oppslag og koblinger som skal gå via API.
+
+**Men reserver arkitekturen nå:** `tripletex_ai`-modulkode, `ai_mode` på tilkoblingen, plass til `tripletex-assistant` i funksjonslisten, og at `tripletex_links` gir én funksjon «finn Tripletex-ID for dette MCS-objektet» som både API-merker og senere assistent bruker.
+
+**Reviderte faser**
+- Fase 0/1: uendret innhold, med bare reservasjonene over.
+- **Fase 1.5 (ny, liten):** lesende assistent på prosjekt og kunde, kun for pilotbrukere med økonomitilgang.
+- Fase 2: timer via API (uendret).
+- Fase 3: **krympet.** Én fast nøkkeltall-linje via API, resten via assistenten.
+- Fase 4: fakturagrunnlag via API, med utkast fra assistenten.
+
+**Endringer i TPX-listen**
+- TPX-002: legg til modulkoden `tripletex_ai` og feltet `ai_mode` (reservert, ikke i bruk).
+- TPX-009–011: avgrens `tripletex_remote_cache` til feltene som brukes til matching.
+- TPX-013: søk i koblingsvisningen begrenses til nummer, navn og orgnr.
+- **Ny TPX-019 – Lesende Tripletex-assistent (Fase 1.5).** Avhenger av 017 og egen avklaring av MCP-tilgang. Ferdig når: kun hvitelistede lesende verktøy, tilgangen kontrolleres på serveren, revisjonsloggen fylles, en test viser at en bruker i ett selskap ikke får svar om et annet selskap, og en test viser at injisert tekst ikke utløser handlinger.
+- **Ny TPX-020 – Utkast fra assistenten til eksisterende flyter** («Opprett i Tripletex», senere fakturakladd). Avhenger av 015 og 019. Ferdig når: utkastet åpner den vanlige flyten, og ingenting sendes uten at brukeren trykker selv.
+
+### 9.8 Målarkitektur
+
+```text
++--------------------------------------------------------------+
+| MCS OPERATIVT LAG (master for operativt arbeid)               |
+| Planlegging, Ressursplan, prosjekter, arbeidspakker, HMS,     |
+| kompetanse, kunder/CRM, servicejournal, fakturagrunnlag-utkast|
+| Tilgang: has_company_access / check_permission_v2 / RLS       |
++----------------------+-------------------------+-------------+
+                       |                         |
+         faste merker, |                         | spørsmål og utkast
+         knapper       |                         | (sidepanel)
+                       v                         v
++------------------------------+   +----------------------------+
+| TRIPLETEX API-LAG            |   | AI / MCP-LAG               |
+| (deterministisk)             |   | (fleksibelt, lesende)      |
+| tripletex_links (ID-mapping) |   | tripletex-assistant        |
+| kø, idempotens, retry,       |-->| - henter Tripletex-ID fra  |
+| dødkø, sync-logg, avklaring  |ID | tripletex_links            |
+| tripletex-sync-worker        |   | - verktøyhviteliste        |
+| tripletex-actions            |<--| - tripletex_ai_log         |
+| eget token (les/skriv)       |utkast via vanlig flyt         |
++--------------+---------------+   | eget token (kun lesing)    |
+               |                   +-------------+--------------+
+               v                                 v
++--------------------------------------------------------------+
+| TRIPLETEX (master for økonomi, regnskap, lønn, faktura)       |
+| REST API                         Tripletex MCP                |
++--------------------------------------------------------------+
+```
+
+### 9.9 Kort anbefaling
+- **Bygg først:** Fase 0 og Fase 1 slik de står (TPX-001 til 018). Grunnmuren er forutsetningen for at både merker og AI-svar blir riktige.
+- **Reserver for MCP:** modulkode og bryter, én felles funksjon som gir Tripletex-ID for et MCS-objekt, og en tydelig regel om at all skriving går via API-køen.
+- **Bygg bevisst ikke nå:** assistent, skrivende MCP-verktøy, BI-dashbord, egne sider for utestående og detaljerte økonomirapporter. Mye av dette skal aldri bygges som egen kode, men løses av assistenten i Fase 1.5 og senere.
+
 ## Teknisk notat
 Ingen kodeendringer, migreringer eller installasjoner er gjort. Alle tall i avsnitt 0 og 3 kommer fra spørringer som bare leser data, kjørt 19.10.2026.
