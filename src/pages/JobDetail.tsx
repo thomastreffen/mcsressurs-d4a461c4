@@ -28,6 +28,7 @@ import { ImageLightbox } from "@/components/ImageLightbox";
 import { ProjectAccessDrawer } from "@/components/project/ProjectAccessDrawer";
 import { ChangeOrderTab } from "@/components/change-orders/ChangeOrderTab";
 import { Loader2 } from "lucide-react";
+import { resolveFinancialProjectNumber } from "@/lib/project-reference";
 import { toast } from "sonner";
 import type { OutlookSyncStatus } from "@/lib/mock-data";
 
@@ -48,6 +49,7 @@ export default function JobDetail() {
 
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
+  const [financialProjectNumber, setFinancialProjectNumber] = useState<string | null>(null);
   const [technicianNames, setTechnicianNames] = useState<string[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -86,6 +88,16 @@ export default function JobDetail() {
       .map((et: any) => et.technicians);
 
     setTechnicianNames(techs.map((t: any) => t.name));
+
+    // TPX-F4.1: display-only project reference (own or financial parent)
+    let parentRow: any = null;
+    if ((data as any).parent_project_id && (data as any).entity_type !== "financial_project") {
+      const { data: p } = await (supabase as any).from("events")
+        .select("id, entity_type, project_number, parent_project_id")
+        .eq("id", (data as any).parent_project_id).maybeSingle();
+      parentRow = p ?? null;
+    }
+    setFinancialProjectNumber(resolveFinancialProjectNumber(data as any, parentRow));
 
     setJob({
       id: data.id,
@@ -151,6 +163,7 @@ export default function JobDetail() {
           jobNumber={job.jobNumber ?? null}
           internalNumber={job.internalNumber ?? null}
           projectNumber={(job as any).projectNumber ?? null}
+          financialProjectNumber={financialProjectNumber}
           title={job.title}
           customer={job.customer}
           address={job.address}
@@ -240,7 +253,7 @@ export default function JobDetail() {
           {activeTab === "materiell" && (
             <MaterialTab
               jobId={id!}
-              jobNumber={job.jobNumber ?? job.projectNumber ?? job.internalNumber}
+              jobNumber={financialProjectNumber ?? job.jobNumber ?? job.projectNumber ?? job.internalNumber}
               customer={job.customer}
               address={job.address}
               plannedAt={job.start}
