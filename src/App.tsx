@@ -71,6 +71,7 @@ import IntegrationHealthPage from "./pages/IntegrationHealthPage";
 import RegulationPage from "./pages/RegulationPage";
 import FagInsightsPage from "./pages/FagInsightsPage";
 import SystemHealthPage from "./pages/SystemHealthPage";
+import TripletexTestHealthPage from "./pages/TripletexTestHealthPage";
 import DataIntegrityPage from "./pages/DataIntegrityPage";
 import ContractsPage from "./pages/ContractsPage";
 import ContractDetail from "./pages/ContractDetail";
@@ -519,6 +520,14 @@ const App = () => (
                 element={
                   <ProtectedRoute requiredRoles={["super_admin"]}>
                     <FagInsightsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/tripletex-test"
+                element={
+                  <ProtectedRoute requiredRoles={["super_admin"]}>
+                    <TripletexTestHealthPage />
                   </ProtectedRoute>
                 }
               />
