@@ -376,6 +376,7 @@ export function AppSidebar() {
                             <NavItem item={{ title: "Innsendinger", url: "/hms/submissions", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
                             <NavItem item={{ title: "Mobil utfylling", url: "/hms/mobile", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
                             <NavItem item={{ title: "Importbatcher", url: "/hms/import/batches", icon: FileText }} isActive={isActive} collapsed={collapsed} />
+                            {companyAccess.can("hms", "edit") && <NavItem item={{ title: "Dokumentasjon / Eksport", url: "/hms/documentation", icon: FileText }} isActive={isActive} collapsed={collapsed} />}
                             <NavItem item={{ title: "Rapporter", url: "/hms/reports", icon: BarChart3 }} isActive={isActive} collapsed={collapsed} />
                             <NavItem item={{ title: "Bransjeområder", url: "/hms/areas", icon: ClipboardList }} isActive={isActive} collapsed={collapsed} />
                           </>

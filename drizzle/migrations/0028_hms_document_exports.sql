@@ -1,0 +1,12 @@
+CREATE TABLE public.hms_document_exports (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid NOT NULL REFERENCES public.internal_companies(id), created_by uuid NOT NULL DEFAULT auth.uid(), client_request_id uuid NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now(), purpose text NOT NULL, status text NOT NULL DEFAULT 'prepared' CHECK (status IN ('prepared','sending','sent','failed','downloaded')), subject text, recipient_email text, cc_emails text[] NOT NULL DEFAULT '{}', email_body_snapshot text, delivery_metadata jsonb NOT NULL DEFAULT '{}', files jsonb NOT NULL DEFAULT '[]', events jsonb NOT NULL DEFAULT '[]', downloaded_at timestamptz, sent_at timestamptz, sent_by uuid, send_error text
+);
+GRANT SELECT, INSERT, UPDATE ON public.hms_document_exports TO authenticated;
+GRANT ALL ON public.hms_document_exports TO service_role;
+ALTER TABLE public.hms_document_exports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY hms_exports_read ON public.hms_document_exports FOR SELECT TO authenticated USING (public.has_company_access(auth.uid(),company_id,'hms','edit'));
+CREATE POLICY hms_exports_create ON public.hms_document_exports FOR INSERT TO authenticated WITH CHECK (created_by=auth.uid() AND public.has_company_access(auth.uid(),company_id,'hms','edit') AND status='prepared' AND sent_at IS NULL AND sent_by IS NULL);
+CREATE POLICY hms_exports_update ON public.hms_document_exports FOR UPDATE TO authenticated USING (created_by=auth.uid() AND status IN ('prepared','downloaded','failed') AND public.has_company_access(auth.uid(),company_id,'hms','edit')) WITH CHECK (created_by=auth.uid() AND status IN ('prepared','downloaded','failed') AND sent_at IS NULL AND sent_by IS NULL AND public.has_company_access(auth.uid(),company_id,'hms','edit'));
+CREATE OR REPLACE FUNCTION public.can_access_dle_package_file(_package text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT EXISTS (SELECT 1 FROM public.compliance_response_packages p WHERE p.id::text=_package AND p.created_by=auth.uid() AND public.has_company_access(auth.uid(),p.company_id,'hms','edit')) OR EXISTS (SELECT 1 FROM public.hms_document_exports e WHERE e.id::text=_package AND e.created_by=auth.uid() AND public.has_company_access(auth.uid(),e.company_id,'hms','edit')) $$;
+REVOKE ALL ON FUNCTION public.can_access_dle_package_file(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.can_access_dle_package_file(text) TO authenticated;

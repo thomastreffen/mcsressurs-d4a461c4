@@ -197,6 +197,20 @@
       "when": 1792390161472,
       "tag": "0027_dle_delivery_metadata_and_private_files",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792393946843,
+      "tag": "0028_hms_document_exports",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792394217460,
+      "tag": "0029_documentation_download_audit",
+      "breakpoints": true
     }
   ]
 }

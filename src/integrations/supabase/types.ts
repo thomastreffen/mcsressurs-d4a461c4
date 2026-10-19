@@ -7635,6 +7635,77 @@ export type Database = {
         }
         Relationships: []
       }
+      hms_document_exports: {
+        Row: {
+          cc_emails: string[]
+          client_request_id: string
+          company_id: string
+          created_at: string
+          created_by: string
+          delivery_metadata: Json
+          downloaded_at: string | null
+          email_body_snapshot: string | null
+          events: Json
+          files: Json
+          id: string
+          purpose: string
+          recipient_email: string | null
+          send_error: string | null
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          cc_emails?: string[]
+          client_request_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string
+          delivery_metadata?: Json
+          downloaded_at?: string | null
+          email_body_snapshot?: string | null
+          events?: Json
+          files?: Json
+          id?: string
+          purpose: string
+          recipient_email?: string | null
+          send_error?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          cc_emails?: string[]
+          client_request_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          delivery_metadata?: Json
+          downloaded_at?: string | null
+          email_body_snapshot?: string | null
+          events?: Json
+          files?: Json
+          id?: string
+          purpose?: string
+          recipient_email?: string | null
+          send_error?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hms_document_exports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hms_handbook_acknowledgements: {
         Row: {
           ack_scope: string | null
@@ -16969,6 +17040,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _auth_user_id: string }; Returns: boolean }
+      mark_documentation_downloaded: {
+        Args: { _export_id: string }
+        Returns: undefined
+      }
       mark_messages_read_by_token: {
         Args: {
           _message_ids: string[]

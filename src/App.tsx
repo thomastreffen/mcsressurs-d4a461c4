@@ -129,6 +129,7 @@ import HmsRulesetsPage from "./pages/hms/HmsRulesetsPage";
 import HmsOvertimePage from "./pages/hms/HmsOvertimePage";
 import HmsImportBatchesPage from "./pages/hms/HmsImportBatchesPage";
 import HmsReportsPage from "./pages/hms/HmsReportsPage";
+import HmsDocumentationPage from "./pages/hms/HmsDocumentationPage";
 import HmsIncidentReportPage from "./pages/hms/HmsIncidentReportPage";
 import HmsIncidentsListPage from "./pages/hms/HmsIncidentsListPage";
 import HmsIncidentDetailPage from "./pages/hms/HmsIncidentDetailPage";
@@ -790,6 +791,7 @@ const App = () => (
                   <HmsPage><HmsImportBatchesPage /></HmsPage>
                 </ProtectedRoute>
               } />
+              <Route path="/hms/documentation" element={<ProtectedRoute requiredPermission="hms.manage"><HmsPage><HmsDocumentationPage /></HmsPage></ProtectedRoute>} />
               <Route path="/hms/reports" element={
                 <ProtectedRoute requiredPermission="hms.view">
                   <HmsPage><HmsReportsPage /></HmsPage>
