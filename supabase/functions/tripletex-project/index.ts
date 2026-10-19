@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
     if (action === "create") {
       if (body.confirm_pm_fallback !== true) throw new GuardError("pm_unconfirmed", "Bekreft prosjektleder (testbruker) før opprettelse.");
       const s = await openSession(conn);
-      const r = await runCreate({ conn, ev, customerTtId: custLink?.tripletex_id ?? null, pmId: s.employeeId ?? null, name: ev.title, store: dbStore(db, conn, ev, user.id), tt: ttApi(s.call) });
+      const r = await runCreate({ conn, ev, customerTtId: custLink?.tripletex_id ?? null, pmId: s.employeeId ?? null, name: (ev.project_number && ev.title.startsWith(ev.project_number + " ")) ? ev.title.slice(ev.project_number.length + 1).trim() : ev.title, store: dbStore(db, conn, ev, user.id), tt: ttApi(s.call) });
       console.log(JSON.stringify({ fn: "tripletex-project", action, key: createKey(conn.id, ev.id), result: r.result }));
       if (r.result === "created" || r.result === "adopted") await logActivity(db, ev.id, user.id, "tripletex_project_created", `Prosjekt ${r.number} opprettet i Tripletex TEST (ID ${r.tripletex_id})`);
       return json(r);
