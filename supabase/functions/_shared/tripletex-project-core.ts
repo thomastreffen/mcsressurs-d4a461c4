@@ -50,12 +50,11 @@ export type CreateResult =
 export async function runCreate(a: { conn: Connection; ev: EventRow; customerTtId: number | null; pmId: number | null; name: string; store: Store; tt: TtApi }): Promise<CreateResult> {
   const { conn, ev, store, tt } = a;
   assertProjectWritable(conn, ev, { capability: "projects_write" });
+  const existing = await store.getProjectLink(ev.id);
+  if (existing?.status === "active" && existing.tripletex_id) return { result: "already_linked", tripletex_id: existing.tripletex_id, number: existing.tripletex_number ?? "" };
   assertCreateInputs(ev, a.customerTtId, a.pmId);
   const customerTtId = a.customerTtId!;
   const number = ev.project_number!.trim();
-
-  const existing = await store.getProjectLink(ev.id);
-  if (existing?.status === "active" && existing.tripletex_id) return { result: "already_linked", tripletex_id: existing.tripletex_id, number: existing.tripletex_number ?? number };
 
   const key = createKey(conn.id, ev.id);
   let op = await store.getOp(key);
