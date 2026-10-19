@@ -15,6 +15,7 @@ import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
 import { useResponsePackageMutations } from "@/hooks/useResponsePackages";
 import { slugForFile, escapeHtml, type AttachmentCandidate } from "@/lib/response-package";
 import { DLE_CATEGORIES, buildDleFiles, deliverDleBlob, type DleCategory, type DleFile, type DleRecord } from "@/lib/dle/export";
+import { parseDleRecipients } from "@/lib/dle/delivery";
 import { loadDleRecords, prepareDleFile } from "@/lib/dle/sources";
 
 export function DleExportPanel({ inspectionId, attachments, initialEmail }: { inspectionId: string; attachments: AttachmentCandidate[]; initialEmail: string }) {
@@ -34,11 +35,13 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
   const [busy, setBusy] = useState("");
   const [error, setError] = useState<Partial<Record<DleCategory, string>>>({});
   const [email, setEmail] = useState(initialEmail);
+  const [cc, setCc] = useState("");
+  const [emailFormat, setEmailFormat] = useState("files");
   const [zipReady, setZipReady] = useState<{ blob: Blob; files: DleFile[] } | null>(null);
   const company = activeCompany?.name ?? "Firma";
   const date = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
   useEffect(() => {
-    setRecords({}); setEnabled(new Set()); setExcluded(new Set()); setBlobs({}); setZipReady(null); setError({}); setBusy(""); setEmail(initialEmail);
+    setRecords({}); setEnabled(new Set()); setExcluded(new Set()); setBlobs({}); setZipReady(null); setError({}); setBusy(""); setEmail(initialEmail); setCc("");
   }, [scope, initialEmail]);
   const files = useMemo(() => DLE_CATEGORIES.flatMap((c) => enabled.has(c.key) ? buildDleFiles(c.key, records[c.key] ?? [], separate[c.key] ?? false, company, date) : []), [enabled, records, separate, company, date]);
   const selected = files.filter((f) => !excluded.has(f.key));
@@ -46,7 +49,7 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
   const allowedCategory = (category: DleCategory) => access.can(category === "chart" || category === "matrix" || category === "roles" ? "organisation" : category === "competence" ? "employees" : "hms");
 
   async function toggleCategory(category: DleCategory, checked: boolean) {
-    if (!activeCompanyId || !allowedCategory(category)) return;
+    if (!canExport || !activeCompanyId || !allowedCategory(category)) return;
     setZipReady(null);
     if (!checked) { setEnabled((old) => { const next = new Set(old); next.delete(category); return next; }); return; }
     setEnabled((old) => new Set(old).add(category));
@@ -70,7 +73,7 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
     const { error: logError } = await (supabase as any).from("compliance_inspection_events").insert({
       company_id: activeCompanyId, inspection_id: inspectionId, actor_user_id: user?.id,
       event_type: event, summary: `${event === "dle_generated" ? "Generert" : "Eksportert"} for DLE-tilsyn: ${list.map((f) => f.name).join(", ")}`,
-      payload: { purpose: "DLE-tilsyn", delivery, company_name: company, files: list.map((f) => ({ name: f.name, category: f.category, source_ids: f.records.map((r) => r.id) })) },
+      payload: { purpose: "DLE-tilsyn", delivery, actor_name: user?.user_metadata?.full_name ?? user?.email, company_name: company, files: list.map((f) => ({ name: f.name, category: f.category, source_ids: f.records.map((r) => r.id), versions: f.records.map((r) => ({ title: r.title, version: r.version ?? "Snapshot " + date })) })) },
     });
     if (logError) throw new Error("Kunne ikke lagre revisjonssporet. Prøv igjen.");
     qc.invalidateQueries({ queryKey: ["inspection-events", activeCompanyId, inspectionId] });
@@ -110,31 +113,40 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
     finally { if (currentScope.current === origin) setBusy(""); }
   }
   async function sendFiles() {
-    if (!email.trim() || !selected.length) return;
+    if (!canExport || !activeCompanyId || !selected.length) return;
     const origin = scope; setBusy("send"); let packageId: string | null = null;
     try {
-      const generated: { export_name: string; content_base64: string; mime_type: string }[] = [];
-      const candidates: (AttachmentCandidate & { export_name: string })[] = [];
-      let total = 0;
-      for (const file of selected) {
-        const blob = blobs[file.key] ?? await prepareDleFile(file, company, date);
-        total += blob.size;
-        if (total > 12 * 1024 * 1024) throw new Error("Valgte filer er for store for én e-post. Velg færre filer eller bruk ZIP.");
-        const bytes = new Uint8Array(await blob.arrayBuffer());
-        let binary = ""; for (const byte of bytes) binary += String.fromCharCode(byte);
-        generated.push({ export_name: file.name, content_base64: btoa(binary), mime_type: blob.type || "application/pdf" });
-        candidates.push({ key: file.key, finding_id: null, kind: "generated", evidence_id: null, document_id: null, file_name: file.name, mime_type: blob.type, file_size: blob.size, storage_bucket: null, file_path: null, source_kind: file.category, source_label: DLE_CATEGORIES.find((c) => c.key === file.category)?.label ?? "Dokument", date, status_label: "Generert", status_tone: "ok", title: file.name, export_name: file.name });
+      const to = parseDleRecipients(email), copies = parseDleRecipients(cc);
+      if (!to.length) throw new Error("Mottaker mangler");
+      let outputs: { name: string; blob: Blob; source: DleFile }[] = [];
+      for (const file of selected) outputs.push({ name: file.name, blob: blobs[file.key] ?? await prepareDleFile(file, company, date), source: file });
+      if (emailFormat === "zip") {
+        const zip = new JSZip(); outputs.forEach((o) => zip.file(o.source.path, o.blob));
+        outputs = [{ name: `${slugForFile(company)}_DLE_${date}.zip`, blob: await zip.generateAsync({ type: "blob", compression: "STORE" }), source: selected[0] }];
       }
       if (currentScope.current !== origin) return;
+      const candidates = outputs.map((o, i) => ({ key: `delivery-${i}`, finding_id: null, kind: "generated" as const, evidence_id: null, document_id: null, file_name: o.name, mime_type: o.blob.type, file_size: o.blob.size, storage_bucket: "dle-exports", file_path: null, source_kind: o.source.category, source_label: "DLE-tilsyn", date, status_label: "Klargjort", status_tone: "ok" as const, title: o.name, export_name: o.name }));
       const manifest = candidates.map((c) => ({ export_name: c.export_name, title: c.title, source_label: c.source_label, reference_only: false }));
-      const text = `Dokumentasjon for DLE-tilsyn – ${company}\n\n${selected.map((f) => f.name).join("\n")}`;
+      const text = `Dokumentasjon for DLE-tilsyn – ${company}\n\n${outputs.map((o) => o.name).join("\n")}`;
       const html = `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
-      const pkg = await finalize.mutateAsync({ inspection_id: inspectionId, mode: "export", subject: `DLE-tilsyn – ${company}`, recipient_name: "", recipient_email: email.trim(), cc: [], intro: text, closing: "", findings: [], attachments: candidates, manifest, email_text: text, email_html: html });
+      const pkg = await finalize.mutateAsync({ inspection_id: inspectionId, mode: "export", subject: `DLE-tilsyn – ${company}`, recipient_name: "", recipient_email: to.join(";"), cc: copies, intro: text, closing: "", findings: [], attachments: candidates, manifest, email_text: text, email_html: html });
       packageId = pkg.id;
-      const { data, error: sendError } = await supabase.functions.invoke("inspection-response-send", { body: { package_id: pkg.id, generated, html, subject: pkg.subject } });
+      for (let i = 0; i < outputs.length; i++) {
+        if (currentScope.current !== origin) throw new Error("Selskap endret. Sending avbrutt.");
+        const output = outputs[i];
+        const path = `${pkg.id}/${crypto.randomUUID()}/${output.name}`;
+        const { error: uploadError } = await supabase.storage.from("dle-exports").upload(path, output.blob, { contentType: output.blob.type });
+        if (uploadError) throw uploadError;
+        const { error: updateError } = await (supabase as any).from("compliance_response_package_attachments").update({ file_path: path }).eq("package_id", pkg.id).eq("export_name", output.name);
+        if (updateError) throw updateError;
+      }
+      const metadata = { to, cc: copies, format: emailFormat, purpose: "DLE-tilsyn", company_name: company, actor_name: user?.user_metadata?.full_name ?? user?.email, files: selected.map((f) => ({ name: f.name, versions: f.records.map((r) => ({ id: r.id, title: r.title, version: r.version ?? "Snapshot " + date })) })) };
+      const { error: metadataError } = await (supabase as any).from("compliance_response_packages").update({ delivery_metadata: metadata }).eq("id", pkg.id);
+      if (metadataError) throw metadataError;
+      const { data, error: sendError } = await supabase.functions.invoke("inspection-response-send", { body: { package_id: pkg.id } });
       if (sendError || !data?.ok) throw new Error(data?.message ?? sendError?.message ?? "Utsendelsen feilet");
-      await audit("dle_exported", selected, "email");
-      toast.success(`${selected.length} filer sendt til ${email}`);
+      qc.invalidateQueries({ queryKey: ["inspection-events", activeCompanyId, inspectionId] });
+      toast.success(`Microsoft har akseptert sending til ${to.join(", ")}`);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Kunne ikke sende filene";
       if (packageId) await markSendFailed.mutateAsync({ id: packageId, error: message });
@@ -163,8 +175,10 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
     </div>
     <div className="flex flex-wrap items-end gap-3">
       {zipReady ? <Button variant="outline" disabled={!!busy || !canExport} onClick={() => { void deliverDleBlob(zipReady.blob, `${slugForFile(company)}_DLE_${date}.zip`); void audit("dle_exported", zipReady.files, "zip").catch((e) => toast.error(e.message)); }}><Download className="mr-2 h-4 w-4" />Last ned alle som ZIP</Button> : <Button variant="outline" disabled={!selected.length || !!busy || !canExport} onClick={() => void prepareZip()}>{busy === "zip" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Generer ZIP</Button>}
-      <div className="min-w-0 flex-1 space-y-1"><Label htmlFor="dle-email">E-postmottaker</Label><Input id="dle-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-      <Button disabled={!selected.length || !!busy || !canExport || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)} onClick={() => void sendFiles()}>{busy === "send" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Send valgte filer ({selected.length})</Button>
+      <div className="min-w-0 flex-1 space-y-1"><Label htmlFor="dle-email">Til</Label><Input id="dle-email" type="text" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+      <div className="min-w-0 flex-1 space-y-1"><Label htmlFor="dle-cc">Kopi</Label><Input id="dle-cc" value={cc} onChange={(e) => setCc(e.target.value)} /></div>
+      <Select value={emailFormat} onValueChange={setEmailFormat}><SelectTrigger className="w-40" aria-label="E-postformat"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="files">Enkeltfiler</SelectItem><SelectItem value="zip">Samlet ZIP</SelectItem></SelectContent></Select>
+      <Button disabled={!selected.length || !!busy || !canExport || !email.trim()} onClick={() => void sendFiles()}>{busy === "send" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Send valgte filer ({selected.length})</Button>
     </div>
   </section>;
 }
