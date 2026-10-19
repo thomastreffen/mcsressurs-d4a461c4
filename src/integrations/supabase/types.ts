@@ -15468,6 +15468,63 @@ export type Database = {
         }
         Relationships: []
       }
+      tripletex_links: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          environment: string
+          id: string
+          last_verified_at: string | null
+          link_source: string
+          mcs_entity_id: string
+          mcs_entity_type: string
+          status: string
+          tripletex_company_id: number
+          tripletex_id: number | null
+          tripletex_name: string | null
+          tripletex_number: string | null
+          tripletex_version: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          environment: string
+          id?: string
+          last_verified_at?: string | null
+          link_source: string
+          mcs_entity_id: string
+          mcs_entity_type: string
+          status?: string
+          tripletex_company_id: number
+          tripletex_id?: number | null
+          tripletex_name?: string | null
+          tripletex_number?: string | null
+          tripletex_version?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          environment?: string
+          id?: string
+          last_verified_at?: string | null
+          link_source?: string
+          mcs_entity_id?: string
+          mcs_entity_type?: string
+          status?: string
+          tripletex_company_id?: number
+          tripletex_id?: number | null
+          tripletex_name?: string | null
+          tripletex_number?: string | null
+          tripletex_version?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tripletex_project_mappings: {
         Row: {
           company_id: string
