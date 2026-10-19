@@ -136,6 +136,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    for (const a of attachments ?? []) {
+      if (!a.file_path && !generated.some((g) => g.export_name === a.export_name)) skipped.push(a.export_name);
+    }
     if (skipped.length) return json({ ok: false, message: `Ingen e-post sendt. Følgende vedlegg kunne ikke legges ved: ${skipped.join(", ")}` }, 400);
 
     const tokenResult = await getGraphToken();
