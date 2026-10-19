@@ -51,10 +51,16 @@ export function LocalExportMenu({ title, module, rows, columns, filters = {}, ve
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Kunne ikke klargjøre eksporten.'); }
     finally { setBusy(false); }
   };
-  const download = () => {
+  const download = async () => {
     if (!prepared || !sameContext || !allowed) return;
-    void deliverDleBlob(prepared.blob,prepared.name).catch(()=>toast.error('Nedlastingen kunne ikke startes.'));
-    void markDocumentationDownloaded(prepared.id).catch(()=>toast.error('Filen er lastet ned, men historikken kunne ikke oppdateres.'));
+    try {
+      await deliverDleBlob(prepared.blob,prepared.name);
+    } catch {
+      toast.error('Nedlastingen kunne ikke startes.');
+      return;
+    }
+    try { await markDocumentationDownloaded(prepared.id); }
+    catch { toast.error('Filen er lastet ned, men historikken kunne ikke oppdateres.'); }
   };
   const send = async () => {
     if (!prepared || !sameContext || !allowed) return;
