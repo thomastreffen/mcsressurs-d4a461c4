@@ -44,6 +44,8 @@ export interface PStore {
 export interface PTtApi {
   getEmployee(id: number): Promise<TtEmployee | null>;
   listParticipantEmployeeIds(projectId: number): Promise<number[]>;
+  /** Tripletex master status: Project.isClosed (documented boolean). Must throw on read failure. */
+  getProjectClosed(projectId: number): Promise<boolean | null>;
   addParticipant(body: Record<string, unknown>): Promise<{ ok: boolean; status: number; id?: number; request_id?: string | null }>;
 }
 
@@ -80,6 +82,11 @@ export async function runAddParticipant(a: { conn: Connection; job: JobRow; pare
   const el = await store.getLink("employee", who.personId);
   if (el?.status !== "active" || !el.tripletex_id) throw new GuardError("employee_not_linked", "Montøren er ikke koblet til en Tripletex-ansatt.");
   const pid = pl.tripletex_id, eid = el.tripletex_id;
+  // Closed-project guard: Tripletex is master. Unknown/failed read fails closed.
+  let closed: boolean | null;
+  try { closed = await tt.getProjectClosed(pid); } catch { closed = null; }
+  if (closed === null) throw new GuardError("project_status_unknown", "Kunne ikke bekrefte at prosjektet er åpent i Tripletex.");
+  if (closed) throw new GuardError("project_closed", "Prosjektet er avsluttet i Tripletex.");
 
   const key = participantKey(conn.id, pid, eid);
   let op = await store.getOp(key);

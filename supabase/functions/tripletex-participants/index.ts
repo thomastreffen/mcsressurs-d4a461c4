@@ -19,6 +19,12 @@ function ttApi(call: TtCall): PTtApi {
       if (!x.r.ok) throw new Error(`participants ${x.r.status}`);
       return (x.b?.value?.participants ?? []).map((p: any) => p?.employee?.id).filter(Boolean);
     },
+    getProjectClosed: async (pid) => {
+      const x = await call("GET", `/project/${pid}?fields=id,isClosed`);
+      if (!x.r.ok) throw new Error(`project ${x.r.status}`);
+      const v = x.b?.value?.isClosed;
+      return typeof v === "boolean" ? v : null;
+    },
     addParticipant: async (body) => { const x = await call("POST", "/project/participant?fields=id", body); return { ok: x.r.ok, status: x.r.status, id: x.b?.value?.id, request_id: x.request_id }; },
   };
 }
@@ -93,8 +99,16 @@ Deno.serve(async (req) => {
     if (action === "status") {
       const pl = await store.getLink("project", fp.id);
       let participants: number[] | null = null;
+      let projectClosed: boolean | null = null;
       if (pl?.status === "active" && pl.tripletex_id) {
-        try { const s = await openSession(conn); participants = await ttApi(s.call).listParticipantEmployeeIds(pl.tripletex_id); } catch { participants = null; }
+        try {
+          const s = await openSession(conn);
+          const x = await s.call("GET", `/project/${pl.tripletex_id}?fields=id,isClosed,endDate,participants(id,employee(id))`);
+          if (x.r.ok) {
+            participants = (x.b?.value?.participants ?? []).map((p: any) => p?.employee?.id).filter(Boolean);
+            projectClosed = typeof x.b?.value?.isClosed === "boolean" ? x.b.value.isClosed : null;
+          }
+        } catch { participants = null; }
       }
       const rows = [];
       for (const t of techs) {
@@ -107,7 +121,7 @@ Deno.serve(async (req) => {
         const state = !sameCompany ? "wrong_company" : el?.status !== "active" ? "not_linked" : isP ? "participant" : op?.status === "failed" ? "error" : "ready";
         rows.push({ technician_id: t.id, person_id: idn.personId, name: t.name, email: t.email, state, employee_link: el?.status === "active" ? { tripletex_id: el.tripletex_id, number: el.tripletex_number } : null, last_error: op?.status === "failed" ? op.error_code : null });
       }
-      return json({ relevant: true, is_self: fp.id === job.id, financial_project: { id: fp.id, project_number: fp.project_number }, project_link: pl?.status === "active" ? { tripletex_id: pl.tripletex_id, number: pl.tripletex_number } : null, participants_known: participants !== null, technicians: rows, connection: { mode: conn.mode, capabilities: conn.capabilities } });
+      return json({ relevant: true, is_self: fp.id === job.id, financial_project: { id: fp.id, project_number: fp.project_number }, project_link: pl?.status === "active" ? { tripletex_id: pl.tripletex_id, number: pl.tripletex_number } : null, participants_known: participants !== null, project_closed: projectClosed, technicians: rows, connection: { mode: conn.mode, capabilities: conn.capabilities } });
     }
 
     if (!techId || !techs.some((t: any) => t.id === techId)) throw new GuardError("not_assigned", "Montøren er ikke tildelt denne jobben i ressursplanen.");

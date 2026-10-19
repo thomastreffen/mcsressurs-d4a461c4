@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Row = { technician_id: string; name: string; email: string | null; state: "not_linked" | "ready" | "participant" | "error" | "wrong_company" | "identity_unresolved"; employee_link: { tripletex_id: number; number: string | null } | null; last_error: string | null };
-type Status = { relevant: boolean; is_self?: boolean; financial_project?: { project_number: string | null }; project_link?: { tripletex_id: number; number: string | null } | null; participants_known?: boolean; technicians?: Row[] };
+type Status = { relevant: boolean; is_self?: boolean; financial_project?: { project_number: string | null }; project_link?: { tripletex_id: number; number: string | null } | null; participants_known?: boolean; project_closed?: boolean | null; technicians?: Row[] };
 type TtEmp = { id: number; firstName?: string; lastName?: string; employeeNumber?: string | null; email?: string | null; linked_to?: string | null; linked_to_self?: boolean };
 
 const LABEL: Record<Row["state"], string> = { not_linked: "Ikke koblet ansatt", ready: "Klar for Tripletex", participant: "Deltaker", error: "Feil", wrong_company: "Annet selskap", identity_unresolved: "Ansattidentitet mangler" };
@@ -65,6 +65,8 @@ export function TripletexParticipantsPanel({ eventId }: { eventId: string }) {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {!st.project_link && <p className="text-muted-foreground">Prosjektet må kobles til Tripletex TEST før montører kan legges til.</p>}
+        {st.project_link && st.project_closed === true && <p className="font-medium">Prosjekt avsluttet i Tripletex – montører kan ikke legges til.</p>}
+        {st.project_link && st.project_closed === null && st.participants_known && <p className="text-destructive">Fikk ikke bekreftet at prosjektet er åpent i Tripletex.</p>}
         {st.project_link && st.participants_known === false && <p className="text-destructive">Fikk ikke lest deltakere fra Tripletex nå.</p>}
         {st.technicians.map((r) => (
           <div key={r.technician_id} className="rounded-md border p-3 space-y-2">
@@ -78,7 +80,7 @@ export function TripletexParticipantsPanel({ eventId }: { eventId: string }) {
                 {busy === `s${r.technician_id}` && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}Koble ansatt
               </Button>
             )}
-            {(r.state === "ready" || r.state === "error") && st.project_link && (
+            {(r.state === "ready" || r.state === "error") && st.project_link && st.project_closed === false && (
               <Button size="sm" disabled={!!busy} onClick={() => add(r)}>
                 {busy === `a${r.technician_id}` && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}Legg montør til i Tripletex TEST
               </Button>
