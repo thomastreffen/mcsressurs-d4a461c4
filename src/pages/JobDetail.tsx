@@ -15,6 +15,7 @@ import { MaterialTab } from "@/components/material/MaterialTab";
 import { ProjectScheduleSheet } from "@/components/project/ProjectScheduleSheet";
 import { SourceMetadataSection } from "@/components/SourceMetadataBadge";
 import { TripletexProjectPanel } from "@/components/project/TripletexProjectPanel";
+import { TripletexParticipantsPanel } from "@/components/project/TripletexParticipantsPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Job, Attachment } from "@/lib/mock-data";
@@ -187,6 +188,7 @@ export default function JobDetail() {
                 onNavigateTab={setActiveTab}
               />
               {isSuperAdmin && <TripletexProjectPanel eventId={job.id} />}
+              {isSuperAdmin && <TripletexParticipantsPanel eventId={job.id} />}
               {/* Source metadata – collapsible section at bottom of home */}
               {(externalTripletexId || activeCompany?.name) && (
                 <Card className="rounded-2xl border-border/50">
