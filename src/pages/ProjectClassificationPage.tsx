@@ -41,8 +41,9 @@ export default function ProjectClassificationPage() {
     const { error } = await supabase.from("events").update(patch).eq("id", r.id);
     if (error) return toast.error(error.message);
     await supabase.from("activity_log").insert({
-      entity_type: "event", entity_id: r.id, action: "classification_changed",
-      payload: { summary: `Klassifisert som ${ENTITY_LABELS[entity_type]}`, old: r.entity_type, new: entity_type, parent_project_id: parent ?? null },
+      entity_type: "event", entity_id: r.id, action: "classification_changed", performed_by: u.user?.id,
+      description: `Klassifisert som ${ENTITY_LABELS[entity_type]} (var ${ENTITY_LABELS[r.entity_type]})`,
+      metadata: { old: r.entity_type, new: entity_type, parent_project_id: parent ?? null },
     } as never);
     toast.success("Lagret");
     setMoving(null);
