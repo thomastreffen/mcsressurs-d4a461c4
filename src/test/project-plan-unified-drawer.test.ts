@@ -7,7 +7,9 @@ const drawer = readFileSync("src/components/EventDrawer.tsx", "utf8");
 
 function createTaskDrawerBody() {
   const i = plan.indexOf("function CreateTaskDrawer");
-  return plan.slice(i);
+  const rest = plan.slice(i);
+  const end = rest.indexOf("\n}\n");
+  return end > 0 ? rest.slice(0, end) : rest;
 }
 
 describe("Project plan uses the resource-plan EventDrawer", () => {
@@ -41,5 +43,12 @@ describe("Project plan uses the resource-plan EventDrawer", () => {
 
   it("resource-plan label still resolves '<nr> · <job>'", () => {
     expect(formatProjectLabel("1", "Montere kurs")).toBe("1 · Montere kurs");
+  });
+
+  it("internal task UI has no date/start/end or technician booking", () => {
+    const body = createTaskDrawerBody();
+    expect(body).not.toMatch(/type="date"|type="time"|scheduled_date|start_time|end_time/);
+    expect(body).not.toMatch(/TechnicianMultiSelect|Montør\(er\)|Tildel ressurser|Ressursplan|Planlegging \\(valgfritt\\)|Opprett oppgave og planlegg/);
+    expect(body).toContain("Intern deloppgave/sjekkpunkt");
   });
 });
