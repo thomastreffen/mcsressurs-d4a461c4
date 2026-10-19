@@ -1,5 +1,11 @@
 # Roadmap
 
+## Lokal eksportstandard
+- [ ] Gjenbrukbar Eksporter / Del med PDF, Excel, CSV, kolonnevalg og e-post med filforhåndsvisning
+- [ ] Lokal eksport for organisasjonens faner, ansatte, kompetanse, håndbok, stoffkartotek, SJA, avvik, vernerunder, Ressursplan og tilsyn/revisjon
+- [ ] Modul-/selskapsavgrenset levering og revisjonsspor uten utvidede rettigheter
+- [ ] Tester av datatyper, filtre og tilgang; innlogget nedlasting og eksportflyt
+
 ## Dokumentasjon / Eksport
 - [x] Tilsynseksport: valgt sak, forslag til organisasjon/FSE/kompetanse/internkontroll/funn 6–7 og tre leveringsvalg; innlogget forhåndsvisning, nedlasting og historikk verifisert
 - [x] Fast HMS-inngang, innholdsvalg, enkeltposter og relevante filtre
