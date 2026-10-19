@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { GuardError, type Connection } from "../_shared/tripletex-guard.ts";
 import { openSession, type TtCall } from "../_shared/tripletex-session.ts";
-import { runImport, assertImportAllowed, decideCustomer, importKey, normOrg, shellTitle, type IStore, type ITtApi, type TtImportProject } from "../_shared/tripletex-import-core.ts";
+import { runImport, assertImportAllowed, decideCustomer, importKey, normOrg, shellTitle, openStatus, type IStore, type ITtApi, type TtImportProject } from "../_shared/tripletex-import-core.ts";
 
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const UUID = /^[0-9a-f-]{36}$/;
@@ -58,12 +58,14 @@ Deno.serve(async (req) => {
   if (!user) return json({ error: "Unauthorized" }, 401);
   const db = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   const { data: isSuper } = await db.rpc("has_role", { _user_id: user.id, _role: "super_admin" });
-  if (!isSuper) return json({ error: "Forbidden" }, 403);
 
   const body = await req.json().catch(() => ({}));
   const action = String(body?.action ?? "");
   const companyId = String(body?.company_id ?? "");
   if (!UUID.test(companyId)) return json({ error: "Velg selskap først" }, 400);
+  // project_open_status is read-only and gated by the caller's own RLS on the Hub event;
+  // every other action (Tripletex search/preview/import) stays super_admin only.
+  if (!isSuper && action !== "project_open_status") return json({ error: "Forbidden" }, 403);
 
   try {
     const { data: connData } = await db.from("tripletex_connections").select("*").eq("company_id", companyId).eq("environment", "test").maybeSingle();
@@ -71,6 +73,19 @@ Deno.serve(async (req) => {
     const conn = connData as Connection;
     assertImportAllowed(conn, companyId);
     const store = dbStore(db, conn, user.id);
+
+    if (action === "project_open_status") {
+      const eventId = String(body.event_id ?? "");
+      if (!UUID.test(eventId)) return json({ error: "Ugyldig prosjekt" }, 400);
+      // Caller must be able to see the event themselves (RLS) and it must belong to this company.
+      const { data: ev } = await uc.from("events").select("id,company_id,entity_type").eq("id", eventId).maybeSingle();
+      if (!ev || ev.company_id !== companyId || ev.entity_type !== "financial_project") return json({ status: "not_linked" });
+      const { data: lk } = await db.from("tripletex_links").select("tripletex_id").eq("connection_id", conn.id).eq("mcs_entity_type", "project").eq("mcs_entity_id", eventId).eq("status", "active").maybeSingle();
+      if (!lk?.tripletex_id) return json({ status: "not_linked" });
+      const s = await openSession(conn);
+      const p = await ttApi(s.call).getProject(Number(lk.tripletex_id));
+      return json({ status: openStatus(p?.isClosed) });
+    }
 
     if (action === "search") {
       const q = String(body.query ?? "").trim().slice(0, 80);

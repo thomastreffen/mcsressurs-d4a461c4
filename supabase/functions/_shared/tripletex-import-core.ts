@@ -99,3 +99,8 @@ export async function runImport(a: { conn: Connection; sourceCompanyId: string; 
     throw e;
   }
 }
+
+/** Tripletex Project.isClosed is canonical; anything but a boolean fails closed. endDate is never used. */
+export function openStatus(isClosed: unknown): "open" | "closed" | "unknown" {
+  return isClosed === false ? "open" : isClosed === true ? "closed" : "unknown";
+}
