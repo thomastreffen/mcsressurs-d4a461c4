@@ -25,6 +25,7 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
   const { finalize, markSendFailed } = useResponsePackageMutations();
   const scope = `${user?.id}:${activeCompanyId}:${inspectionId}`;
   const currentScope = useRef(scope); currentScope.current = scope;
+  useEffect(() => () => { currentScope.current = "unmounted"; }, []);
   const [records, setRecords] = useState<Partial<Record<DleCategory, DleRecord[]>>>({});
   const [enabled, setEnabled] = useState<Set<DleCategory>>(new Set());
   const [separate, setSeparate] = useState<Partial<Record<DleCategory, boolean>>>({});
@@ -157,7 +158,7 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
       {files.map((file) => <div key={file.key} className="flex flex-wrap items-center gap-3 border-b py-2">
         <Checkbox aria-label={`Velg ${file.name}`} checked={!excluded.has(file.key)} disabled={!!busy} onCheckedChange={(checked) => { setExcluded((old) => { const next = new Set(old); checked ? next.delete(file.key) : next.add(file.key); return next; }); setZipReady(null); }} />
         <div className="min-w-0 flex-1"><p className="break-all text-sm">{file.name}</p><p className="text-xs text-muted-foreground">{file.path.split("/")[0]} · {file.records.length} {file.records.length === 1 ? "post" : "poster"}{file.records[0]?.original ? " · Originalfil" : ""}</p></div>
-        {blobs[file.key] ? <Button size="sm" variant="outline" disabled={!!busy || excluded.has(file.key)} onClick={() => void download(file)}><Download className="mr-1.5 h-4 w-4" />Last ned</Button> : <Button size="sm" variant="outline" disabled={!!busy || excluded.has(file.key)} onClick={() => void prepare(file)}>{busy === file.key && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{file.records[0]?.original ? "Klargjør originalfil" : "Generer fil"}</Button>}
+        {blobs[file.key] ? <Button size="sm" variant="outline" disabled={!canExport || !!busy || excluded.has(file.key)} onClick={() => void download(file)}><Download className="mr-1.5 h-4 w-4" />Last ned</Button> : <Button size="sm" variant="outline" disabled={!canExport || !!busy || excluded.has(file.key)} onClick={() => void prepare(file)}>{busy === file.key && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{file.records[0]?.original ? "Klargjør originalfil" : "Generer fil"}</Button>}
       </div>)}
     </div>
     <div className="flex flex-wrap items-end gap-3">
