@@ -73,7 +73,7 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
     const { error: logError } = await (supabase as any).from("compliance_inspection_events").insert({
       company_id: activeCompanyId, inspection_id: inspectionId, actor_user_id: user?.id,
       event_type: event, summary: `${event === "dle_generated" ? "Generert" : "Eksportert"} for DLE-tilsyn: ${list.map((f) => f.name).join(", ")}`,
-      payload: { purpose: "DLE-tilsyn", delivery, actor_name: user?.user_metadata?.full_name ?? user?.email, company_name: company, files: list.map((f) => ({ name: f.name, category: f.category, source_ids: f.records.map((r) => r.id), versions: f.records.map((r) => ({ title: r.title, version: r.version ?? "Snapshot " + date })) })) },
+      payload: { purpose: "DLE-tilsyn", delivery, actor_name: user?.name ?? user?.email, company_name: company, files: list.map((f) => ({ name: f.name, category: f.category, source_ids: f.records.map((r) => r.id), versions: f.records.map((r) => ({ title: r.title, version: r.version ?? "Snapshot " + date })) })) },
     });
     if (logError) throw new Error("Kunne ikke lagre revisjonssporet. Prøv igjen.");
     qc.invalidateQueries({ queryKey: ["inspection-events", activeCompanyId, inspectionId] });
@@ -140,7 +140,7 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
         const { error: updateError } = await (supabase as any).from("compliance_response_package_attachments").update({ file_path: path }).eq("package_id", pkg.id).eq("export_name", output.name);
         if (updateError) throw updateError;
       }
-      const metadata = { to, cc: copies, format: emailFormat, purpose: "DLE-tilsyn", company_name: company, actor_name: user?.user_metadata?.full_name ?? user?.email, files: selected.map((f) => ({ name: f.name, versions: f.records.map((r) => ({ id: r.id, title: r.title, version: r.version ?? "Snapshot " + date })) })) };
+      const metadata = { to, cc: copies, format: emailFormat, purpose: "DLE-tilsyn", company_name: company, actor_name: user?.name ?? user?.email, files: selected.map((f) => ({ name: f.name, versions: f.records.map((r) => ({ id: r.id, title: r.title, version: r.version ?? "Snapshot " + date })) })) };
       const { error: metadataError } = await (supabase as any).from("compliance_response_packages").update({ delivery_metadata: metadata }).eq("id", pkg.id);
       if (metadataError) throw metadataError;
       const { data, error: sendError } = await supabase.functions.invoke("inspection-response-send", { body: { package_id: pkg.id } });
