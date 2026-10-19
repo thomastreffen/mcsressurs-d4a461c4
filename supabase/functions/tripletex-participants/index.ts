@@ -1,10 +1,11 @@
 // TPX-F3: Hub technician -> Tripletex TEST employee link and project participant. super_admin only, TEST only.
-// Resource-plan source: event_technicians (event_id -> technicians.id). No calendar writes to Tripletex.
+// Resource-plan source: event_technicians (event_id -> technicians.id), resolved to canonical people.id via
+// technicians.user_id -> user_accounts.auth_user_id -> person_id. No calendar writes to Tripletex.
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { assertAllowed, GuardError, type Connection } from "../_shared/tripletex-guard.ts";
 import { openSession, type TtCall } from "../_shared/tripletex-session.ts";
-import { runAddParticipant, runLinkEmployee, resolveFinancialProject, assertChain, participantKey, type JobRow, type PStore, type PTtApi, type Link } from "../_shared/tripletex-participant-core.ts";
+import { runAddParticipant, runLinkEmployee, resolveFinancialProject, assertChain, participantKey, resolveAssigneeIdentity, type Identity, type JobRow, type PStore, type PTtApi, type Link } from "../_shared/tripletex-participant-core.ts";
 
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const EMP_FIELDS = "id,firstName,lastName,employeeNumber,email,version";
@@ -35,9 +36,9 @@ function dbStore(db: SupabaseClient, conn: Connection, actor: string): PStore {
     updateOp: async (k, p) => { await db.from("tripletex_operations").update({ ...p, updated_at: new Date().toISOString() }).eq("idempotency_key", k); },
     getLink: getLink as any,
     findActiveByTripletexId: async (type, tid) => (await db.from("tripletex_links").select(sel).eq("connection_id", conn.id).eq("mcs_entity_type", type).eq("tripletex_id", tid).eq("status", "active").maybeSingle()).data as any,
-    saveEmployeeLink: async (techId, e) => {
-      const row = { connection_id: conn.id, company_id: conn.company_id, environment: conn.environment, tripletex_company_id: conn.expected_tripletex_company_id, mcs_entity_type: "employee", mcs_entity_id: techId, tripletex_id: e.id, tripletex_number: e.employeeNumber ?? null, tripletex_name: [e.firstName, e.lastName].filter(Boolean).join(" ") || null, tripletex_version: e.version ?? null, link_source: "manual", status: "active", created_by: actor, last_verified_at: new Date().toISOString() };
-      const cur = await getLink("employee", techId);
+    saveEmployeeLink: async (personId, e) => {
+      const row = { connection_id: conn.id, company_id: conn.company_id, environment: conn.environment, tripletex_company_id: conn.expected_tripletex_company_id, mcs_entity_type: "employee", mcs_entity_id: personId, tripletex_id: e.id, tripletex_number: e.employeeNumber ?? null, tripletex_name: [e.firstName, e.lastName].filter(Boolean).join(" ") || null, tripletex_version: e.version ?? null, link_source: "manual", status: "active", created_by: actor, last_verified_at: new Date().toISOString() };
+      const cur = await getLink("employee", personId);
       const { error } = cur ? await db.from("tripletex_links").update(row).eq("id", cur.id) : await db.from("tripletex_links").insert(row);
       if (error) throw new GuardError("link_conflict", "Koblingen er i konflikt med en eksisterende ansattkobling.");
     },
@@ -80,7 +81,14 @@ Deno.serve(async (req) => {
     const store = dbStore(db, conn, user.id);
     const { data: assigns } = await db.from("event_technicians").select("technician_id, technicians(id,name,email,deleted_at)").eq("event_id", job.id);
     const techs = (assigns ?? []).map((a: any) => a.technicians).filter((t: any) => t && !t.deleted_at);
-    const companiesOf = async (id: string) => ((await db.from("employment_profiles").select("company_id").eq("person_id", id).is("archived_at", null)).data ?? []).map((r: any) => r.company_id);
+    // Deterministic identity: never by name/e-mail, never by shared UUID alone.
+    const identityOf = async (id: string): Promise<Identity> => {
+      const { data: t } = await db.from("technicians").select("id,user_id,deleted_at").eq("id", id).maybeSingle();
+      const { data: acc } = t?.user_id ? await db.from("user_accounts").select("person_id").eq("auth_user_id", t.user_id).maybeSingle() : { data: null };
+      const { data: same } = await db.from("people").select("id").eq("id", id).maybeSingle();
+      const companies = acc?.person_id ? ((await db.from("employment_profiles").select("company_id").eq("person_id", acc.person_id).is("archived_at", null)).data ?? []).map((r: any) => r.company_id) : [];
+      return resolveAssigneeIdentity(id, { technician: t as any, account: acc as any, peopleRowWithTechnicianId: !!same, activeEmploymentCompanyIds: companies });
+    };
 
     if (action === "status") {
       const pl = await store.getLink("project", fp.id);
@@ -90,22 +98,25 @@ Deno.serve(async (req) => {
       }
       const rows = [];
       for (const t of techs) {
-        const el = await store.getLink("employee", t.id);
+        const idn = await identityOf(t.id);
+        if (idn.status !== "resolved") { rows.push({ technician_id: t.id, name: t.name, email: t.email, state: "identity_unresolved", identity_reason: idn.reason, employee_link: null, last_error: null }); continue; }
+        const el = await store.getLink("employee", idn.personId);
         const op = el?.tripletex_id && pl?.tripletex_id ? await store.getOp(participantKey(conn.id, pl.tripletex_id, el.tripletex_id)) : null;
         const isP = !!(el?.tripletex_id && participants?.includes(el.tripletex_id));
-        const sameCompany = (await companiesOf(t.id)).includes(conn.company_id);
+        const sameCompany = idn.companyIds.includes(conn.company_id);
         const state = !sameCompany ? "wrong_company" : el?.status !== "active" ? "not_linked" : isP ? "participant" : op?.status === "failed" ? "error" : "ready";
-        rows.push({ technician_id: t.id, name: t.name, email: t.email, state, employee_link: el?.status === "active" ? { tripletex_id: el.tripletex_id, number: el.tripletex_number } : null, last_error: op?.status === "failed" ? op.error_code : null });
+        rows.push({ technician_id: t.id, person_id: idn.personId, name: t.name, email: t.email, state, employee_link: el?.status === "active" ? { tripletex_id: el.tripletex_id, number: el.tripletex_number } : null, last_error: op?.status === "failed" ? op.error_code : null });
       }
       return json({ relevant: true, is_self: fp.id === job.id, financial_project: { id: fp.id, project_number: fp.project_number }, project_link: pl?.status === "active" ? { tripletex_id: pl.tripletex_id, number: pl.tripletex_number } : null, participants_known: participants !== null, technicians: rows, connection: { mode: conn.mode, capabilities: conn.capabilities } });
     }
 
     if (!techId || !techs.some((t: any) => t.id === techId)) throw new GuardError("not_assigned", "Montøren er ikke tildelt denne jobben i ressursplanen.");
-    const techCompanies = await companiesOf(techId);
+    const identity = await identityOf(techId);
+    if (identity.status !== "resolved") throw new GuardError("employee_identity_unresolved", "Ansattidentitet må kobles i Hub før Tripletex kan brukes.");
 
     if (action === "search_employees") {
       assertAllowed(conn, { capability: "employees_read" });
-      assertChain(conn, job as JobRow, fp, techCompanies, { write: false, capability: "employees_read" });
+      assertChain(conn, job as JobRow, fp, identity.companyIds, { write: false, capability: "employees_read" });
       const q = String(body.query ?? "").trim().slice(0, 80);
       if (q.length < 2) return json({ results: [] });
       const param = q.includes("@") ? `email=${encodeURIComponent(q)}` : /^\d+$/.test(q) ? `employeeNumber=${q}` : (() => { const [f, ...l] = q.split(/\s+/); return `firstName=${encodeURIComponent(f)}${l.length ? `&lastName=${encodeURIComponent(l.join(" "))}` : ""}`; })();
@@ -114,23 +125,23 @@ Deno.serve(async (req) => {
       const results = (x.b?.values ?? []) as any[];
       const ids = results.map((r) => r.id);
       const { data: taken } = ids.length ? await db.from("tripletex_links").select("tripletex_id,mcs_entity_id").eq("connection_id", conn.id).eq("mcs_entity_type", "employee").eq("status", "active").in("tripletex_id", ids) : { data: [] };
-      return json({ results: results.map((r) => ({ ...r, linked_to: (taken ?? []).find((t: any) => t.tripletex_id === r.id)?.mcs_entity_id ?? null })) });
+      return json({ results: results.map((r) => ({ ...r, linked_to: (taken ?? []).find((t: any) => t.tripletex_id === r.id)?.mcs_entity_id ?? null, linked_to_self: (taken ?? []).some((t: any) => t.tripletex_id === r.id && t.mcs_entity_id === identity.personId) })) });
     }
 
     if (action === "link_employee") {
       const tid = Number(body.tripletex_employee_id);
       if (!Number.isInteger(tid) || tid <= 0) return json({ error: "Ugyldig ansatt" }, 400);
-      assertChain(conn, job as JobRow, fp, techCompanies, { write: true, capability: "employees_read" });
+      assertChain(conn, job as JobRow, fp, identity.companyIds, { write: true, capability: "employees_read" });
       const s = await openSession(conn);
-      const r = await runLinkEmployee({ conn, technicianId: techId, technicianCompanyIds: techCompanies, tripletexEmployeeId: tid, store, tt: ttApi(s.call) });
-      await db.from("tripletex_operations").insert({ connection_id: conn.id, operation: "link_employee", idempotency_key: `link_employee:${conn.id}:${techId}:${Date.now()}`, mcs_entity_type: "employee", mcs_entity_id: techId, status: "succeeded", actor: user.id, attempts: 1 });
+      const r = await runLinkEmployee({ conn, identity, tripletexEmployeeId: tid, store, tt: ttApi(s.call) });
+      await db.from("tripletex_operations").insert({ connection_id: conn.id, operation: "link_employee", idempotency_key: `link_employee:${conn.id}:${identity.personId}:${Date.now()}`, mcs_entity_type: "employee", mcs_entity_id: identity.personId, status: "succeeded", actor: user.id, attempts: 1 });
       if (r.result === "linked") await activity(db, job.id, user.id, "tripletex_employee_linked", `Montør koblet til Tripletex TEST-ansatt ID ${tid}`);
       return json(r);
     }
 
     if (action === "add_participant") {
       const s = await openSession(conn);
-      const r = await runAddParticipant({ conn, job: job as JobRow, parent: parent as JobRow | null, technicianId: techId, assigned: true, technicianCompanyIds: techCompanies, store, tt: ttApi(s.call) });
+      const r = await runAddParticipant({ conn, job: job as JobRow, parent: parent as JobRow | null, identity, assigned: true, store, tt: ttApi(s.call) });
       console.log(JSON.stringify({ fn: "tripletex-participants", action, result: r.result }));
       if (r.result === "added") await activity(db, job.id, user.id, "tripletex_participant_added", `Tripletex TEST-ansatt ${r.tripletex_employee_id} lagt til som deltaker på prosjekt ${fp.project_number ?? r.tripletex_project_id}`);
       return json(r);
