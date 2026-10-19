@@ -9,7 +9,8 @@
 - [x] Stor ufarlig test-PDF sendt som syvdagers signert lenke; korrekt filstørrelse, offentlig tilgang og annen pakke sperret
 - [x] Dokumentversjoner og mottaker/bruker/firma/leveringsmåte i historikken; 11 tester grønne
 - [x] Fem tilgjengelige kategori-PDF-er nedlastet; Thomas HMS-eksport tillatt, Emil/Eirik nektet via serverens tilgangssjekker
-- [ ] Thomas bekrefter faktisk innboksmottak, vedleggsinnhold og lenke fra de fire testmeldingene
+- [x] Thomas bekreftet innboksmottak av alle fire testmeldingene 2026-10-19
+- [ ] Bekreft at mottatte vedlegg åpnes og nedlastingslenken fungerer; mottak hos Rune er ikke bekreftet
 - [ ] Ekte SJA, vernerunde og SDS verifiseres når dokumentasjon finnes (ingen registrert nå)
 
 ## Fase 2 – modultilgang og tenant-isolasjon
