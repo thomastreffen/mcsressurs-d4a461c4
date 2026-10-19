@@ -138,6 +138,7 @@ interface MoreMenuItem {
 }
 
 const moreMenuItems: MoreMenuItem[] = [
+  { label: "Dokumentasjon / Eksport", icon: FileText, path: "/hms/documentation", moduleKey: "hms", modulePermission: "module.hms", requiredPermission: "hms.manage" },
   { label: "HMS & HR", icon: HardHat, path: "/hms", moduleKey: "hms", modulePermission: "module.hms" },
   { label: "Bestillinger", icon: ClipboardList, path: "/orders", moduleKey: "orders", modulePermission: "module.orders" },
   { label: "Fravær", icon: CalendarOff, path: "/absence", moduleKey: "absence", modulePermission: "module.absence" },
