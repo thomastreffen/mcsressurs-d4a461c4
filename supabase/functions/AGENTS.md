@@ -11,3 +11,9 @@
 - Stable Tripletex internal ID (`tripletex_links.tripletex_id`) remains the technical mapping key; internal Hub job IDs (JOB-xxxx) are secondary only.
 - Primary visible Tripletex project number applies only when the source financial project has an active Tripletex project-link in the same company; unlinked legacy projects (and their children) remain on fallback display. Resolved server-side by `get_visible_project_numbers` (invoker, events RLS) + `has_active_tripletex_project_link` (definer, returns only a boolean), so users need no tripletex_links access.
 - The number is resolved for display via `src/lib/project-reference.ts` (own `financial_project` or same-company `parent_project_id` parent), never copied into titles and never used as unique job identity. Jobs without a financial parent keep legacy display; no number is invented.
+
+## Resource-plan project selection (TPX-F4.2)
+- Tripletex is the economic project master and owns project numbers. Resource-plan `Prosjekt -> Eksisterende` searches actively linked Hub financial projects (`search_linked_financial_projects`, invoker + definer link helpers) plus Tripletex TEST on demand (`tripletex-import` search, super_admin), deduped only on stable Tripletex project ID.
+- Tripletex-only selection imports/links via the canonical F4 `tripletex-import` preview/import flow (explicit customer confirmation, idempotent shell) before child work is created; new child jobs under a linked parent require a fresh `isClosed === false` (`project_open_status`, caller RLS + same company), failing closed.
+- Active stable project link is the integration allow-list; never retro-auto-match legacy Hub rows on number/name.
+- Hub root economic project creation from the resource plan is disabled until an explicit Hub->Tripletex auto-number flow is verified and approved.
