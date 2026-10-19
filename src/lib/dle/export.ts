@@ -1,0 +1,101 @@
+import { jsPDF } from "jspdf";
+import { slugForFile } from "@/lib/response-package";
+
+export const DLE_CATEGORIES = [
+  { key: "chart", label: "Organisasjonskart", folder: "01_Organisasjon" },
+  { key: "matrix", label: "Ansvarsmatrise", folder: "01_Organisasjon" },
+  { key: "roles", label: "Roller og ansvar", folder: "01_Organisasjon" },
+  { key: "handbook", label: "HMS-håndbok", folder: "02_HMS" },
+  { key: "fse", label: "FSE og elsikkerhet", folder: "03_FSE" },
+  { key: "competence", label: "Kompetanseoversikt", folder: "04_Kompetanse" },
+  { key: "sja", label: "SJA", folder: "05_Risikovurdering_SJA" },
+  { key: "incidents", label: "Avvik og RUH", folder: "06_Avvik" },
+  { key: "rounds", label: "Vernerunder", folder: "02_HMS" },
+  { key: "chemicals", label: "Stoffkartotek", folder: "07_Stoffkartotek" },
+  { key: "sds", label: "Sikkerhetsdatablad (SDS)", folder: "08_SDS" },
+  { key: "attachments", label: "Vedlegg på tilsynssaken", folder: "09_Vedlegg" },
+] as const;
+export type DleCategory = typeof DLE_CATEGORIES[number]["key"];
+export interface DleRecord {
+  id: string;
+  title: string;
+  sections: { heading: string; text: string }[];
+  original?: { chemicalId?: string; bucket?: string; path?: string; filename: string; mime: string };
+}
+export interface DleFile {
+  key: string;
+  category: DleCategory;
+  name: string;
+  path: string;
+  records: DleRecord[];
+}
+
+export function externalText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/https?:\/\/\S+|\/(?:hms|compliance|jobs|planlegging)\/\S+/gi, "")
+    .replace(/\*\*/g, "")
+    .replace(/[^\u0020-\u00ff\n\r\t]/g, " ").trim();
+}
+
+export function buildDleFiles(category: DleCategory, records: DleRecord[], separate: boolean, company: string, date: string): DleFile[] {
+  const config = DLE_CATEGORIES.find((c) => c.key === category);
+  if (!config || !records.length) return [];
+  // Original files are never merged or converted.
+  const groups = separate || records.some((r) => r.original) ? records.map((r) => [r]) : [records];
+  const used = new Map<string, number>();
+  return groups.map((group) => {
+    const original = group[0]?.original;
+    const extension = original?.filename.split(".").pop()?.toLowerCase() || "pdf";
+    const title = group.length === 1 ? group[0].title : config.label;
+    const base = `${slugForFile(company)}_${slugForFile(title)}_${date}`;
+    const n = (used.get(base) ?? 0) + 1;
+    used.set(base, n);
+    const name = `${base}${n > 1 ? `_${n}` : ""}.${original ? extension : "pdf"}`;
+    return { key: `${category}:${group.map((r) => r.id).join(":")}`, category, name, path: `${config.folder}/${name}`, records: group };
+  });
+}
+
+export function generateDlePdf(file: DleFile, company: string, date: string): Blob {
+  const pdf = new jsPDF({ unit: "mm", format: "a4" });
+  let y = 20;
+  const write = (text: string, size = 10, bold = false) => {
+    pdf.setFont("helvetica", bold ? "bold" : "normal");
+    pdf.setFontSize(size);
+    const lines: string[] = pdf.splitTextToSize(externalText(text), 174);
+    for (const line of lines) {
+      if (y > 274) { pdf.addPage(); y = 20; }
+      pdf.text(line, 18, y);
+      y += size * 0.46 + 1;
+    }
+    y += 3;
+  };
+  const config = DLE_CATEGORIES.find((c) => c.key === file.category);
+  write(company, 16, true);
+  write(`${config?.label ?? "Dokumentasjon"} | ${date} | DLE-tilsyn`, 10);
+  for (const record of file.records) {
+    write(record.title, 13, true);
+    for (const section of record.sections) {
+      if (section.heading) write(section.heading, 11, true);
+      if (section.text) write(section.text);
+    }
+    y += 4;
+  }
+  const total = pdf.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    pdf.setPage(p); pdf.setFontSize(8); pdf.text(`${p} / ${total}`, 180, 289);
+  }
+  return pdf.output("blob");
+}
+
+export async function deliverDleBlob(blob: Blob, filename: string) {
+  const file = new File([blob], filename, { type: blob.type });
+  if (matchMedia("(pointer: coarse)").matches && navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: filename }); return; }
+    catch (error) { if (error instanceof DOMException && error.name === "AbortError") return; }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
