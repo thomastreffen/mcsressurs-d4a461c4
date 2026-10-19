@@ -13,6 +13,8 @@ import { FindingCard } from "@/components/compliance/FindingCard";
 import { FindingEvidencePanel } from "@/components/compliance/FindingEvidencePanel";
 import { FindingLinkSuggestions } from "@/components/compliance/FindingLinkSuggestions";
 import { InspectionReportCard } from "@/components/compliance/InspectionReportCard";
+import { InspectionExportTab } from "@/components/compliance/InspectionExportTab";
+import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
 import { ResponsePackageTab } from "@/components/compliance/ResponsePackageTab";
 
 import { ArrowLeft, Pencil, Plus, ListChecks, Mail, History, Trash2 } from "lucide-react";
@@ -41,6 +43,7 @@ export default function InspectionDetailPage() {
   const tab = params.get("tab") ?? "overview";
   const setTab = (v: string) => setParams((p) => { const n = new URLSearchParams(p); n.set("tab", v); return n; }, { replace: true });
 
+  const companyAccess = useCompanyModuleAccess();
   const { hasPermission } = usePermissions();
   const { isSuperAdmin, isAdmin } = useAuth();
   const { activeCompany } = useCompanyContext();
@@ -149,9 +152,12 @@ export default function InspectionDetailPage() {
           <TabsTrigger value="actions">Tiltak</TabsTrigger>
           <TabsTrigger value="documentation">Dokumentasjon</TabsTrigger>
           <TabsTrigger value="response">Svarpakke</TabsTrigger>
+          {companyAccess.can("hms", "edit") && <TabsTrigger value="export">Eksport</TabsTrigger>}
           <TabsTrigger value="correspondence">Korrespondanse</TabsTrigger>
           <TabsTrigger value="history">Historikk</TabsTrigger>
         </TabsList>
+
+        {companyAccess.can("hms", "edit") && <TabsContent value="export" className="mt-4"><InspectionExportTab key={`${activeCompany?.id}:${i.id}`} inspectionId={i.id} /></TabsContent>}
 
         {/* Oversikt */}
         <TabsContent value="overview" className="mt-4 space-y-4">
