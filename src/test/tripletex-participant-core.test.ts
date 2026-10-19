@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runAddParticipant, runLinkEmployee, type PStore, type PTtApi, type Link, type Op, type JobRow } from "../../supabase/functions/_shared/tripletex-participant-core";
+import { runAddParticipant, runLinkEmployee, resolveAssigneeIdentity, type Identity, type PStore, type PTtApi, type Link, type Op, type JobRow } from "../../supabase/functions/_shared/tripletex-participant-core";
 import type { Connection } from "../../supabase/functions/_shared/tripletex-guard";
 
 const C = "co-1";
@@ -11,7 +11,7 @@ function world(opts: { projectLinked?: boolean; employees?: Record<string, numbe
   const ops = new Map<string, Op>();
   const links: (Link & { type: string })[] = [];
   if (opts.projectLinked !== false) links.push({ id: "pl", type: "project", status: "active", tripletex_id: 500, tripletex_number: "60488", mcs_entity_id: "fp" });
-  for (const [t, e] of Object.entries(opts.employees ?? { t1: 11 })) links.push({ id: `el${t}`, type: "employee", status: "active", tripletex_id: e, tripletex_number: null, mcs_entity_id: t });
+  for (const [t, e] of Object.entries(opts.employees ?? { p1: 11 })) links.push({ id: `el${t}`, type: "employee", status: "active", tripletex_id: e, tripletex_number: null, mcs_entity_id: t });
   const participants: number[] = [];
   let posts = 0; let failNext = 0; let net = 0;
   const store: PStore = {
@@ -30,8 +30,9 @@ function world(opts: { projectLinked?: boolean; employees?: Record<string, numbe
   };
   return { store, tt, participants, ops, get posts() { return posts; }, get net() { return net; }, failOnce: () => { failNext = 1; } };
 }
+const who = (personId: string, companyIds = [C], technicianId = "t-" + personId): Identity => ({ status: "resolved", technicianId, personId, companyIds });
 const add = (w: ReturnType<typeof world>, o: Partial<Parameters<typeof runAddParticipant>[0]> = {}) =>
-  runAddParticipant({ conn: conn(), job: child, parent: fp, technicianId: "t1", assigned: true, technicianCompanyIds: [C], store: w.store, tt: w.tt, ...o });
+  runAddParticipant({ conn: conn(), job: child, parent: fp, identity: who("p1"), assigned: true, store: w.store, tt: w.tt, ...o });
 
 describe("TPX-F3 participant core", () => {
   it("rejects non-financial job without financial parent before network", async () => {
@@ -42,7 +43,7 @@ describe("TPX-F3 participant core", () => {
   it("rejects cross-company before network", async () => {
     const w = world();
     await expect(add(w, { job: { ...child, company_id: "other" } })).rejects.toMatchObject({ code: "company_mismatch" });
-    await expect(add(w, { technicianCompanyIds: ["other"] })).rejects.toMatchObject({ code: "employee_company" });
+    await expect(add(w, { identity: who("p1", ["other"]) })).rejects.toMatchObject({ code: "employee_company" });
     expect(w.net).toBe(0);
   });
   it("rejects environment != test", async () => {
@@ -61,9 +62,9 @@ describe("TPX-F3 participant core", () => {
     await expect(add(w)).rejects.toMatchObject({ code: "employee_not_linked" }); expect(w.posts).toBe(0);
   });
   it("blocks linking same Tripletex employee to two Hub employees", async () => {
-    const w = world({ employees: { t1: 11 } });
-    await expect(runLinkEmployee({ conn: conn(), technicianId: "t2", technicianCompanyIds: [C], tripletexEmployeeId: 11, store: w.store, tt: w.tt })).rejects.toMatchObject({ code: "already_linked_elsewhere" });
-    await expect(runLinkEmployee({ conn: conn(), technicianId: "t1", technicianCompanyIds: [C], tripletexEmployeeId: 12, store: w.store, tt: w.tt })).rejects.toMatchObject({ code: "employee_already_linked" });
+    const w = world({ employees: { p1: 11 } });
+    await expect(runLinkEmployee({ conn: conn(), identity: who("p2"), tripletexEmployeeId: 11, store: w.store, tt: w.tt })).rejects.toMatchObject({ code: "already_linked_elsewhere" });
+    await expect(runLinkEmployee({ conn: conn(), identity: who("p1"), tripletexEmployeeId: 12, store: w.store, tt: w.tt })).rejects.toMatchObject({ code: "employee_already_linked" });
   });
   it("same participant operation twice gives one participant", async () => {
     const w = world();
@@ -79,11 +80,50 @@ describe("TPX-F3 participant core", () => {
     expect(w.participants).toEqual([11]);
   });
   it("handles several technicians on the same job individually", async () => {
-    const w = world({ employees: { t1: 11, t2: 22 } });
-    expect((await add(w, { technicianId: "t1" })).result).toBe("added");
-    await expect(add(w, { technicianId: "t3" })).rejects.toMatchObject({ code: "employee_not_linked" });
-    expect((await add(w, { technicianId: "t2" })).result).toBe("added");
-    expect((await add(w, { technicianId: "t1" })).result).toBe("already_participant");
+    const w = world({ employees: { p1: 11, p2: 22 } });
+    expect((await add(w, { identity: who("p1") })).result).toBe("added");
+    await expect(add(w, { identity: who("p3") })).rejects.toMatchObject({ code: "employee_not_linked" });
+    expect((await add(w, { identity: who("p2") })).result).toBe("added");
+    expect((await add(w, { identity: who("p1") })).result).toBe("already_participant");
     expect(w.participants).toEqual([11, 22]);
+  });
+});
+
+describe("TPX-F3.1 canonical identity", () => {
+  const tech = (id: string, user_id: string | null = "u1") => ({ id, user_id, deleted_at: null });
+  it("technician.id == person.id still resolves", () => {
+    expect(resolveAssigneeIdentity("x", { technician: tech("x"), account: { person_id: "x" }, peopleRowWithTechnicianId: true, activeEmploymentCompanyIds: [C] })).toMatchObject({ status: "resolved", personId: "x" });
+  });
+  it("technician.id != person.id with explicit account chain uses canonical person", () => {
+    expect(resolveAssigneeIdentity("t9", { technician: tech("t9"), account: { person_id: "p9" }, peopleRowWithTechnicianId: false, activeEmploymentCompanyIds: [C] })).toMatchObject({ status: "resolved", personId: "p9" });
+  });
+  it("no deterministic relation is unresolved and blocked before network", async () => {
+    const noAcc = resolveAssigneeIdentity("t9", { technician: tech("t9"), account: null, peopleRowWithTechnicianId: true, activeEmploymentCompanyIds: [] });
+    expect(noAcc).toMatchObject({ status: "unresolved", reason: "no_user_account" });
+    expect(resolveAssigneeIdentity("t9", { technician: tech("t9", null), account: null, peopleRowWithTechnicianId: false, activeEmploymentCompanyIds: [] })).toMatchObject({ reason: "no_auth_user" });
+    const w = world();
+    await expect(add(w, { identity: noAcc })).rejects.toMatchObject({ code: "employee_identity_unresolved" });
+    await expect(runLinkEmployee({ conn: conn(), identity: noAcc, tripletexEmployeeId: 11, store: w.store, tt: w.tt })).rejects.toMatchObject({ code: "employee_identity_unresolved" });
+    expect(w.net).toBe(0);
+  });
+  it("shared UUID pointing at a different person than the account chain is never picked", () => {
+    expect(resolveAssigneeIdentity("t9", { technician: tech("t9"), account: { person_id: "p9" }, peopleRowWithTechnicianId: true, activeEmploymentCompanyIds: [C] })).toMatchObject({ status: "unresolved", reason: "id_conflict" });
+  });
+  it("cross-company employment is blocked before network", async () => {
+    const w = world();
+    const idn = resolveAssigneeIdentity("t9", { technician: tech("t9"), account: { person_id: "p1" }, peopleRowWithTechnicianId: false, activeEmploymentCompanyIds: ["other"] });
+    await expect(add(w, { identity: idn })).rejects.toMatchObject({ code: "employee_company" });
+    expect(w.net).toBe(0);
+  });
+  it("employee-link lookup uses canonical person id, not technician id", async () => {
+    const w = world({ employees: { "t-res": 99, p1: 11 } }); // decoy link keyed by technician id
+    const idn = resolveAssigneeIdentity("t-res", { technician: tech("t-res"), account: { person_id: "p1" }, peopleRowWithTechnicianId: false, activeEmploymentCompanyIds: [C] });
+    expect(await add(w, { identity: idn })).toMatchObject({ result: "added", tripletex_employee_id: 11 });
+    expect(w.participants).toEqual([11]);
+  });
+  it("identity ignores name and e-mail entirely", () => {
+    const f = { technician: tech("t9"), account: { person_id: "p9" }, peopleRowWithTechnicianId: false, activeEmploymentCompanyIds: [C] };
+    const withNoise = { ...f, technician: { ...f.technician, name: "Ola", email: "ola@x.no" } } as any;
+    expect(resolveAssigneeIdentity("t9", withNoise)).toEqual(resolveAssigneeIdentity("t9", f));
   });
 });
