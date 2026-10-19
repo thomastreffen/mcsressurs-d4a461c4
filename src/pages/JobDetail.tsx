@@ -14,6 +14,7 @@ import { JobEmailTab } from "@/components/project/JobEmailTab";
 import { MaterialTab } from "@/components/material/MaterialTab";
 import { ProjectScheduleSheet } from "@/components/project/ProjectScheduleSheet";
 import { SourceMetadataSection } from "@/components/SourceMetadataBadge";
+import { TripletexProjectPanel } from "@/components/project/TripletexProjectPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Job, Attachment } from "@/lib/mock-data";
@@ -33,7 +34,7 @@ export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const { hasPermission } = usePermissions();
   const { activeCompany } = useCompanyContext();
   const canEditPlan = hasPermission("projects.edit_plan");
@@ -185,6 +186,7 @@ export default function JobDetail() {
                 }))}
                 onNavigateTab={setActiveTab}
               />
+              {isSuperAdmin && <TripletexProjectPanel eventId={job.id} />}
               {/* Source metadata – collapsible section at bottom of home */}
               {(externalTripletexId || activeCompany?.name) && (
                 <Card className="rounded-2xl border-border/50">
