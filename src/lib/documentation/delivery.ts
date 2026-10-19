@@ -1,9 +1,8 @@
 import JSZip from 'jszip';
 import { supabase } from '@/integrations/supabase/client';
-import { buildDleFiles, generateDlePdf, type DleFile } from '@/lib/dle/export';
+import { generateDlePdf, type DleFile } from '@/lib/dle/export';
 import { prepareDleFile } from '@/lib/dle/sources';
 import { escapeHtml, slugForFile } from '@/lib/response-package';
-import type { ContentKey } from './catalog';
 import { parseDleRecipients } from '@/lib/dle/delivery';
 const sb = supabase as any;
 export type OutputFormat = 'files' | 'originals' | 'zip' | 'report';
@@ -49,6 +48,6 @@ export async function sendDocumentationExport(id:string) {
   return data;
 }
 export async function markDocumentationDownloaded(id:string) {
-  const {error}=await sb.from('hms_document_exports').update({downloaded_at:new Date().toISOString()}).eq('id',id);
+  const {error}=await supabase.rpc('mark_documentation_downloaded',{_export_id:id});
   if(error) throw error;
 }

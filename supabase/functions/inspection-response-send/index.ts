@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     const standalone = !!body.export_id;
     const packageId = body.export_id ?? body.package_id;
     const packageTable = standalone ? "hms_document_exports" : "compliance_response_packages";
-    const generated: { export_name: string; content?: string; content_base64?: string; mime_type?: string }[] = Array.isArray(body.generated) ? body.generated : [];
+    const generated: { export_name: string; content?: string; content_base64?: string; mime_type?: string }[] = !standalone && Array.isArray(body.generated) ? body.generated : [];
     if (!packageId) return json({ ok: false, message: "Mangler svarpakke" }, 400);
 
     const admin = createClient(url, service);

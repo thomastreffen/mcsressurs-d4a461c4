@@ -1,10 +1,11 @@
 # Roadmap
 
 ## Dokumentasjon / Eksport
-- [ ] Fast HMS-inngang, innholdsvalg, enkeltposter og relevante filtre
-- [ ] Nedlasting, e-post og kombinert handling med filforhåndsvisning
-- [ ] DLE-/revisjonsmaler og selskapsavgrenset eksporthistorikk
-- [ ] Verifiser nedlasting, historikk, tilgang og eksisterende DLE-regresjon
+- [x] Fast HMS-inngang, innholdsvalg, enkeltposter og relevante filtre
+- [x] Nedlasting, e-post og kombinert handling med filforhåndsvisning
+- [x] DLE-/revisjonsmaler og selskapsavgrenset eksporthistorikk
+- [x] Filtrerings- og DLE-regresjon: 16 tester grønne; utlogget direkteadresse sperret
+- [ ] Innlogget ende-til-ende: nedlasting, historikk og e-post — venter på innlogging i forhåndsvisningen (automatisk testinnlogging feilet)
 
 ## DLE / ekstern opplasting
 - [x] Separate filer, kategorivalg og samlet/separat PDF per post
