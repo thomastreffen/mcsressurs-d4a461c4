@@ -98,6 +98,7 @@ import InvoiceBasisPage from "./pages/InvoiceBasisPage";
 import ModuleManagementPage from "./pages/ModuleManagementPage";
 import TripletexImportPage from "./pages/TripletexImportPage";
 import ProjectDuplicatesPage from "./pages/ProjectDuplicatesPage";
+import ProjectClassificationPage from "./pages/ProjectClassificationPage";
 import ManagementPage from "./pages/ManagementPage";
 import AbsencePage from "./pages/AbsencePage";
 import MyDayPage from "./pages/MyDayPage";
@@ -574,6 +575,14 @@ const App = () => (
                 element={
                   <ProtectedRoute requiredRoles={["super_admin"]}>
                     <TripletexImportPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/prosjektklassifisering"
+                element={
+                  <ProtectedRoute requiredRoles={["super_admin"]}>
+                    <ProjectClassificationPage />
                   </ProtectedRoute>
                 }
               />
