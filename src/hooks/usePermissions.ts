@@ -55,8 +55,9 @@ export function usePermissions(): PermissionState {
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    // Only a new person/company context counts as loading (handled by
+    // contextLoading below). Re-checks for the same context run in the
+    // background and keep the current permissions on screen.
     try {
       // 1. Check for per-company role via user_memberships
       let membershipRoleId: string | null = null;
@@ -162,6 +163,7 @@ export function usePermissions(): PermissionState {
       }
 
       if (seq !== requestSeq.current) return;
+      setError(null);
       setPermissions(merged);
       setResolvedContextKey(`${user.id}:${activeCompanyId ?? "all"}`);
 
