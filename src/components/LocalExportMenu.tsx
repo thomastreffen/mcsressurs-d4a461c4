@@ -44,7 +44,7 @@ export function LocalExportMenu({ title, module, rows, columns, filters = {}, ve
     try {
       if (action === 'send' && !parseDleRecipients(to).length) throw new Error('Legg inn minst én mottaker.');
       parseDleRecipients(cc);
-      const snapshot = {...draft.snapshot, rows:selectExportRows(draft.snapshot.rows, selected, selectedColumns), columns:selectedColumns, chart: selected.length === draft.snapshot.rows.length ? draft.snapshot.chart : undefined};
+      const snapshot = {...draft.snapshot, rows:selectExportRows(draft.snapshot.rows, selected, selectedColumns), columns:selectedColumns, chart: selected.length === draft.snapshot.rows.length && selectedColumns.length === draft.snapshot.columns.length ? draft.snapshot.chart : undefined};
       const output = await generateLocalExport(snapshot, format);
       const saved = await saveDocumentationExport({companyId:draft.companyId,userId:draft.userId,actor:snapshot.actor,company:snapshot.company,purpose:snapshot.title,files:[],outputs:[output],format,action,subject,message,to:action==='send'?to:'',cc:action==='send'?cc:'',filters:{...snapshot.filters,columns:selectedColumns},sourceModule:module,sourcePage:draft.page,recordCount:snapshot.rows.length});
       setPrepared({id:saved.id,...output});
@@ -53,7 +53,7 @@ export function LocalExportMenu({ title, module, rows, columns, filters = {}, ve
   };
   const download = () => {
     if (!prepared || !sameContext || !allowed) return;
-    void deliverDleBlob(prepared.blob,prepared.name);
+    void deliverDleBlob(prepared.blob,prepared.name).catch(()=>toast.error('Nedlastingen kunne ikke startes.'));
     void markDocumentationDownloaded(prepared.id).catch(()=>toast.error('Filen er lastet ned, men historikken kunne ikke oppdateres.'));
   };
   const send = async () => {

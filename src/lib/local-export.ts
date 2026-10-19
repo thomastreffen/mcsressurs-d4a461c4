@@ -63,9 +63,12 @@ export function buildLocalPdf(snapshot: LocalExportSnapshot): Blob {
       seen.add(node.id);
       const x = 15 + Math.min(depth, 6) * 10;
       if (y > height - 45) { pdf.addPage(); y = 18; }
+      const top=y-5;
       write(node.title, 11, true, x, width - x - 20);
       write(node.people, 9, false, x, width - x - 20);
-      pdf.line(x, y, width - 15, y); y += 5;
+      pdf.rect(x-2,top,width-x-15,y-top);
+      if(depth>0){pdf.line(x-7,top-5,x-7,top+5);pdf.line(x-7,top+5,x-2,top+5);}
+      y += 7;
       snapshot.chart?.filter((n) => n.parentId === node.id).forEach((n) => branch(n, depth + 1));
     };
     snapshot.chart.filter((n) => !n.parentId || !snapshot.chart?.some((p) => p.id === n.parentId)).forEach((n) => branch(n, 0));
