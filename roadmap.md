@@ -3,7 +3,7 @@
 ## Klokkeslett hos montør
 - [x] Rett UTC/Oslo i forespørsler, påminnelser, oppdateringer og oppgavetråd uten å endre registrerte tidspunkt
 - [x] Test 06:00–14:00 i sommer- og vintertid, DST-overganger og montørspesifikke tidspunkt (7 tester)
-- [ ] Verifiser utsendingsinnhold og publiser korrigerte utsendingsfunksjoner
+- [x] E-postinnhold fra forespørsel/påminnelse/oppdatering verifisert som 06:00–14:00 sommer/vinter; fire korrigerte utsendingsfunksjoner satt i drift
 - [ ] Faktisk innboksmottak — krever avtalt testmottaker; ingen eksisterende oppdrag sendes på nytt automatisk
 
 ## Lokal eksportstandard
