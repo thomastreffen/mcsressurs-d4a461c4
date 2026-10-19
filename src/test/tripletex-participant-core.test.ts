@@ -13,7 +13,7 @@ function world(opts: { projectLinked?: boolean; employees?: Record<string, numbe
   if (opts.projectLinked !== false) links.push({ id: "pl", type: "project", status: "active", tripletex_id: 500, tripletex_number: "60488", mcs_entity_id: "fp" });
   for (const [t, e] of Object.entries(opts.employees ?? { p1: 11 })) links.push({ id: `el${t}`, type: "employee", status: "active", tripletex_id: e, tripletex_number: null, mcs_entity_id: t });
   const participants: number[] = [];
-  let posts = 0; let failNext = 0; let net = 0;
+  let posts = 0; let failNext = 0; let net = 0; let closed: boolean | null | "error" = false;
   const store: PStore = {
     getOp: async (k) => ops.get(k) ?? null,
     insertOp: async (k) => { if (!ops.has(k)) ops.set(k, { idempotency_key: k, status: "pending", attempts: 0, error_code: null }); },
@@ -25,10 +25,11 @@ function world(opts: { projectLinked?: boolean; employees?: Record<string, numbe
   };
   const tt: PTtApi = {
     getEmployee: async (id) => { net++; return { id }; },
+    getProjectClosed: async () => { net++; if (closed === "error") throw new Error("500"); return closed; },
     listParticipantEmployeeIds: async () => { net++; return [...participants]; },
     addParticipant: async (b: any) => { net++; posts++; if (failNext-- > 0) return { ok: false, status: 500 }; participants.push(b.employee.id); return { ok: true, status: 201, id: 1 }; },
   };
-  return { store, tt, participants, ops, get posts() { return posts; }, get net() { return net; }, failOnce: () => { failNext = 1; } };
+  return { store, tt, participants, ops, get posts() { return posts; }, get net() { return net; }, failOnce: () => { failNext = 1; }, setClosed: (v: boolean | null | "error") => { closed = v; } };
 }
 const who = (personId: string, companyIds = [C], technicianId = "t-" + personId): Identity => ({ status: "resolved", technicianId, personId, companyIds });
 const add = (w: ReturnType<typeof world>, o: Partial<Parameters<typeof runAddParticipant>[0]> = {}) =>
@@ -125,5 +126,32 @@ describe("TPX-F3.1 canonical identity", () => {
     const f = { technician: tech("t9"), account: { person_id: "p9" }, peopleRowWithTechnicianId: false, activeEmploymentCompanyIds: [C] };
     const withNoise = { ...f, technician: { ...f.technician, name: "Ola", email: "ola@x.no" } } as any;
     expect(resolveAssigneeIdentity("t9", withNoise)).toEqual(resolveAssigneeIdentity("t9", f));
+  });
+});
+
+describe("TPX-F3.2 closed-project guard", () => {
+  it("closed Tripletex project returns project_closed before participant POST", async () => {
+    const w = world(); w.setClosed(true);
+    await expect(add(w)).rejects.toMatchObject({ code: "project_closed" });
+    expect(w.posts).toBe(0);
+  });
+  it("open project keeps the existing participant flow", async () => {
+    const w = world(); w.setClosed(false);
+    expect((await add(w)).result).toBe("added");
+    expect((await add(w)).result).toBe("already_participant");
+    expect(w.posts).toBe(1);
+  });
+  it("existing participant on a closed project triggers no write", async () => {
+    const w = world(); expect((await add(w)).result).toBe("added");
+    w.setClosed(true);
+    await expect(add(w)).rejects.toMatchObject({ code: "project_closed" });
+    expect(w.posts).toBe(1);
+  });
+  it("status read error or missing isClosed fails closed", async () => {
+    const w = world(); w.setClosed("error");
+    await expect(add(w)).rejects.toMatchObject({ code: "project_status_unknown" });
+    w.setClosed(null);
+    await expect(add(w)).rejects.toMatchObject({ code: "project_status_unknown" });
+    expect(w.posts).toBe(0);
   });
 });
