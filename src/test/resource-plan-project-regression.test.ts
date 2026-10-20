@@ -3,6 +3,7 @@ const { rpc, invoke } = vi.hoisted(() => ({ rpc: vi.fn(), invoke: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, functions: { invoke } } }));
 import { searchHubPlanningProjects, fetchTripletexPlanningContext, canCreateHubRoot } from "@/lib/resource-plan-projects";
 import { mergeProjectResults, rowLabel } from "@/lib/project-picker";
+vi.mock("@/lib/invoke-session", () => ({ invokeWithSession: (...args: any[]) => invoke(...args) }));
 import { checkParentOpenForNewJob } from "@/lib/parent-open-gate";
 
 beforeEach(() => { rpc.mockReset(); invoke.mockReset(); });
