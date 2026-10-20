@@ -23,8 +23,8 @@ describe("Draft lifecycle", () => {
     expect(peekDraft(scope)).toBeNull();
   });
   it("partial save/reset immediately preserves only other unsaved chapters", () => {
-    const { result } = renderHook(() => useDraftAutosave({ scopeParts: scope, value: { a: "saved", b: "unsaved" }, enabled: true }));
-    act(() => result.current.persistDraft({ b: "unsaved" }));
+    const { result, rerender } = renderHook(({ value }) => useDraftAutosave({ scopeParts: scope, value, enabled: true }), { initialProps: { value: { a: "saved", b: "unsaved" } as Record<string, string> } });
+    act(() => { result.current.persistDraft({ b: "unsaved" }); rerender({ value: { b: "unsaved" } }); });
     expect(peekDraft(scope)).toEqual({ b: "unsaved" });
     act(() => vi.advanceTimersByTime(1000));
     expect(peekDraft(scope)).toEqual({ b: "unsaved" });
