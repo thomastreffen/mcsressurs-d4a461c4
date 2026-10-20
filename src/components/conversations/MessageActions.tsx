@@ -54,7 +54,7 @@ export function MessageActions({
     <>
       {/* Hover action bar */}
       <div className={cn(
-        "absolute -top-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 z-10",
+        "absolute -top-3 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity flex items-center gap-0.5 z-10",
         "bg-card border border-border/40 rounded-lg shadow-sm px-1 py-0.5",
         isOwn ? "right-0" : "left-0"
       )}>

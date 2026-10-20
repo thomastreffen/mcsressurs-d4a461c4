@@ -839,7 +839,7 @@ export function ThreadDetail({ threadId, threadTitle, threadType, projectId, com
                           <img src={URL.createObjectURL(f)} alt={f.name} className="h-full w-full object-cover" />
                           <button
                             onClick={() => removePendingFile(i)}
-                            className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-foreground/70 text-background flex items-center justify-center opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
                           >
                             <X className="h-2.5 w-2.5" />
                           </button>

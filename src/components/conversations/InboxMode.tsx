@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { type InboxItem } from "@/hooks/useInbox";
 
 const REASON_CONFIG: Record<string, { icon: typeof AtSign; label: string; color: string }> = {
-  mention: { icon: AtSign, label: "Nevnt", color: "text-blue-500" },
-  ai: { icon: Sparkles, label: "AI-forslag", color: "text-violet-500" },
-  pinned: { icon: Pin, label: "Festet", color: "text-amber-500" },
-  reply: { icon: Reply, label: "Svar til deg", color: "text-emerald-500" },
+  mention: { icon: AtSign, label: "Nevnt", color: "text-info" },
+  ai: { icon: Sparkles, label: "AI-forslag", color: "text-primary" },
+  pinned: { icon: Pin, label: "Festet", color: "text-warning" },
+  reply: { icon: Reply, label: "Svar til deg", color: "text-success" },
 };
 
 interface InboxModeProps {
@@ -32,8 +32,8 @@ export function InboxMode({ items, loading, onMarkHandled, onScrollToPost, onSwi
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-3">
-          <Check className="h-6 w-6 text-emerald-500" />
+        <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center mb-3">
+          <Check className="h-6 w-6 text-success" />
         </div>
         <h3 className="text-sm font-semibold text-foreground/80 mb-1">Alt håndtert!</h3>
         <p className="text-xs text-muted-foreground mb-4">Ingen meldinger krever oppfølging.</p>
@@ -81,7 +81,7 @@ export function InboxMode({ items, loading, onMarkHandled, onScrollToPost, onSwi
                 {item.suggested_actions && item.suggested_actions.length > 0 && (
                   <div className="flex gap-1 mt-1.5">
                     {item.suggested_actions.slice(0, 3).map((a: any, i: number) => (
-                      <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 border border-violet-200/50">
+                      <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                         {a.title}
                       </span>
                     ))}
@@ -91,7 +91,7 @@ export function InboxMode({ items, loading, onMarkHandled, onScrollToPost, onSwi
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-[10px] gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                className="h-11 md:h-7 text-xs md:text-[10px] gap-1 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity shrink-0"
                 onClick={(e) => {
                   e.stopPropagation();
                   onMarkHandled(item.id);
