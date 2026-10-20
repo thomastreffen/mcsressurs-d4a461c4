@@ -21,7 +21,7 @@ export function MobileProjectHome({ job, financialProjectNumber, technicianNames
   const navigate = useNavigate();
   const access = useCompanyModuleAccess();
   const { hasPermission } = usePermissions();
-  const { data: next } = useQuery({
+  const { data: next, isError: nextError, isFetching: nextLoading } = useQuery({
     queryKey: ["mobile-project-next", job.id],
     queryFn: async () => {
       const { data, error } = await supabase.from("schedule_blocks")
@@ -65,7 +65,7 @@ export function MobileProjectHome({ job, financialProjectNumber, technicianNames
         <h2 className="text-sm font-semibold text-muted-foreground">Neste aktivitet</h2>
         {next ? <Button variant="outline" className="h-auto w-full p-4 justify-start whitespace-normal text-left" onClick={() => onTabChange("plan")}>
           <div className="min-w-0 flex-1 space-y-1"><p className="text-base font-semibold break-words">{formatProjectLabel(financialProjectNumber, next.job?.title ?? next.title)}</p><p className="text-sm text-muted-foreground">{format(new Date(next.start_at), "EEE d. MMM · HH:mm", { locale: nb })}–{format(new Date(next.end_at), "HH:mm")}</p></div><ChevronRight />
-        </Button> : <p className="text-sm text-muted-foreground">Ingen kommende ressursbookinger.</p>}
+        </Button> : <p className="text-sm text-muted-foreground">{nextLoading ? "Henter neste aktivitet…" : nextError ? "Kunne ikke hente neste aktivitet." : "Ingen kommende ressursbookinger."}</p>}
         <Button className="w-full h-12" onClick={() => onTabChange("plan")}><CalendarDays />{hasPermission("projects.edit_plan") ? "Planlegg oppdrag" : "Se oppdrag og plan"}</Button>
       </section>
       <section className="space-y-3" aria-label="Prosjekthandlinger"><div className="grid grid-cols-2 gap-3">{actions.filter(a => a.key !== "plan").map(a => <Button key={a.key} variant="outline" className="min-h-20 h-auto flex-col gap-2 px-2 py-3 whitespace-normal" onClick={() => onTabChange(a.key)}><a.icon /><span>{a.label}</span></Button>)}</div></section>

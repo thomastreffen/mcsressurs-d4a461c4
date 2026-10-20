@@ -163,8 +163,9 @@ export default function JobsPage() {
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
   const tabCounts = useMemo(() => {
-    const counts: Record<StatusTab, number> = { requested: 0, scheduled: 0, in_progress: 0, completed: 0, archive: 0, all: jobs.length };
-    for (const j of jobs) {
+    const relevantJobs = isMobile && mobileScope === "mine" && !search.trim() ? jobs.filter(j => myRoles.has(j.id)) : jobs;
+    const counts: Record<StatusTab, number> = { requested: 0, scheduled: 0, in_progress: 0, completed: 0, archive: 0, all: relevantJobs.length };
+    for (const j of relevantJobs) {
       for (const [tab, statuses] of Object.entries(STATUS_TAB_MAP)) {
         if (tab !== "all" && statuses.includes(j.status)) {
           counts[tab as StatusTab]++;
@@ -172,7 +173,7 @@ export default function JobsPage() {
       }
     }
     return counts;
-  }, [jobs]);
+  }, [jobs, isMobile, mobileScope, search, relevance.data]);
 
   const filtered = useMemo(() => {
     let result = [...jobs];
