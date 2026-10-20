@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Ressursplan – entydig prosjektvelger
-- [ ] Grupper og ranger eksisterende picker, behold stabil-ID-deduplisering og lagringsregler
-- [ ] Verifiser scenarioer, regresjonstester og innlogget prosjektvalg uten opprettelse
+- [x] Grupper og ranger eksisterende picker, behold stabil-ID-deduplisering og lagringsregler
+- [x] 107 tester grønne; Test1/Test2-søk og Hub-only-valg verifisert innlogget, desktop/mobil kontrollert; ingen import/opprettelse
 
 ## Monitoring – automatikk og utkast
 - [x] Rett innboksskanningens HTTP-schema til net.http_post uten å endre 15-minuttersintervallet; oppdatert SDK fjerner getClaims-krasj
