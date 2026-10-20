@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { searchHubPlanningProjects } from "@/lib/resource-plan-projects";
 import {
   mergeProjectResults, tripletexSearchBy, rowLabel, canPlanNewJob,
   type PickerRow, type HubLinkedProject, type TripletexProjectHit,
@@ -36,7 +37,7 @@ interface Props {
 
 /**
  * Financial-project picker for the resource-plan EventDrawer.
- * Hub: only actively linked financial projects (DB resolver). Tripletex TEST: on-demand
+ * Hub: all eligible same-company parents (caller RLS). Tripletex TEST: additive on-demand
  * search + canonical F4 import (tripletex-import) incl. customer confirmation.
  */
 export function UnifiedProjectPicker({ companyId, canUseTripletex, onSelected }: Props) {
@@ -45,6 +46,7 @@ export function UnifiedProjectPicker({ companyId, canUseTripletex, onSelected }:
   const [rows, setRows] = useState<PickerRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [ttError, setTtError] = useState<string | null>(null);
+  const [hubError, setHubError] = useState<string | null>(null);
   const [active, setActive] = useState<Extract<PickerRow, { source: "tripletex" }> | null>(null);
   const [pv, setPv] = useState<Preview | null>(null);
   const [custQ, setCustQ] = useState("");
@@ -60,18 +62,22 @@ export function UnifiedProjectPicker({ companyId, canUseTripletex, onSelected }:
   };
 
   useEffect(() => {
-    if (!companyId) return;
+    setRows([]); setActive(null); setPv(null); setManualCust(null);
+    if (!companyId) { setLoading(false); return; }
     const term = q.trim();
     let alive = true;
     const h = setTimeout(async () => {
-      setLoading(true); setTtError(null);
-      const hubP = (supabase as any).rpc("search_linked_financial_projects", { _company_id: companyId, _q: term });
+      setLoading(true); setTtError(null); setHubError(null);
+      const hubP = searchHubPlanningProjects(companyId, term).catch((e) => {
+        if (alive) setHubError(e.message);
+        return [];
+      });
       const ttP = canUseTripletex && term.length >= 1
-        ? tt("search", { query: term, by: tripletexSearchBy(term), include_closed: showClosed }).catch((e) => { setTtError(e.message); return { results: [] }; })
+        ? tt("search", { query: term, by: tripletexSearchBy(term), include_closed: showClosed }).catch((e) => { if (alive) setTtError(e.message); return { results: [] }; })
         : Promise.resolve({ results: [] });
       const [hubR, ttR] = await Promise.all([hubP, ttP]);
       if (!alive) return;
-      setRows(mergeProjectResults((hubR.data ?? []) as HubLinkedProject[], (ttR.results ?? []) as TripletexProjectHit[]));
+      setRows(mergeProjectResults(hubR as HubLinkedProject[], (ttR.results ?? []) as TripletexProjectHit[]));
       setLoading(false);
     }, 300);
     return () => { alive = false; clearTimeout(h); };
@@ -165,11 +171,9 @@ export function UnifiedProjectPicker({ companyId, canUseTripletex, onSelected }:
           <Switch checked={showClosed} onCheckedChange={setShowClosed} /> Vis avsluttede
         </label>
       )}
-      {!canUseTripletex && (
-        <p className="text-[11px] text-muted-foreground">Viser prosjekter som er hentet fra Tripletex. Økonomiske prosjekter opprettes i Tripletex og hentes inn av administrator.</p>
-      )}
       {loading && <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>}
       {ttError && <p className="text-[11px] text-destructive">Tripletex TEST: {ttError}</p>}
+      {hubError && <p className="text-[11px] text-destructive">{hubError}</p>}
       {rows.length > 0 && (
         <div className="max-h-56 overflow-y-auto space-y-1 rounded-lg border border-border p-1">
           {rows.map((r) => {
@@ -181,7 +185,7 @@ export function UnifiedProjectPicker({ companyId, canUseTripletex, onSelected }:
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium truncate">{rowLabel(r)}</p>
                   {r.source === "hub"
-                    ? <Badge variant="secondary" className="text-[10px] shrink-0">Hub · koblet</Badge>
+                    ? <Badge variant="secondary" className="text-[10px] shrink-0">{r.linked ? "Hub · koblet" : "Hub · eksisterende"}</Badge>
                     : r.status === "closed"
                       ? <Badge variant="outline" className="text-[10px] shrink-0">Avsluttet i Tripletex</Badge>
                       : r.status === "unknown"

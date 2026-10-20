@@ -1,5 +1,5 @@
 /**
- * Unified financial-project picker (Hub-linked + Tripletex TEST on demand).
+ * Unified project picker (all eligible Hub parents + Tripletex TEST on demand).
  * Pure helpers – the stable Tripletex project ID is the only dedupe key.
  */
 export interface HubLinkedProject {
@@ -8,6 +8,7 @@ export interface HubLinkedProject {
   title: string;
   customer: string | null;
   tripletex_project_id: number | null;
+  internal_number?: string | null;
 }
 export interface TripletexProjectHit {
   id: number;
@@ -18,7 +19,7 @@ export interface TripletexProjectHit {
   linked_event_id?: string | null;
 }
 export type PickerRow =
-  | { source: "hub"; key: string; eventId: string; projectNumber: string | null; name: string; customer: string | null }
+  | { source: "hub"; key: string; eventId: string; projectNumber: string | null; name: string; customer: string | null; linked: boolean; internalNumber?: string | null }
   | { source: "tripletex"; key: string; tripletexId: number; projectNumber: string; name: string; customer: string | null; status: OpenStatus };
 
 export type OpenStatus = "open" | "closed" | "unknown";
@@ -43,14 +44,16 @@ export function cleanName(number: string | null | undefined, name: string): stri
 /**
  * Merges results. A Tripletex hit is dropped when the same stable Tripletex ID
  * is already actively linked to a Hub project (via hub row or linked_event_id).
- * Numbers and names are NEVER used for dedupe or auto-linking.
+ * Numbers and names are NEVER used for dedupe or auto-linking. Unlinked Hub
+ * projects remain eligible and independent even with matching numbers/names.
  */
 export function mergeProjectResults(hub: HubLinkedProject[], tt: TripletexProjectHit[]): PickerRow[] {
   const linkedTtIds = new Set(hub.map((h) => h.tripletex_project_id).filter((x): x is number => x != null));
   const hubEventIds = new Set(hub.map((h) => h.event_id));
   const rows: PickerRow[] = hub.map((h) => ({
     source: "hub", key: `hub:${h.event_id}`, eventId: h.event_id,
-    projectNumber: h.project_number, name: cleanName(h.project_number, h.title), customer: h.customer,
+    projectNumber: h.project_number, name: h.tripletex_project_id != null ? cleanName(h.project_number, h.title) : h.title, customer: h.customer,
+    linked: h.tripletex_project_id != null, internalNumber: h.internal_number,
   }));
   for (const t of tt) {
     if (linkedTtIds.has(t.id)) continue;
@@ -58,7 +61,7 @@ export function mergeProjectResults(hub: HubLinkedProject[], tt: TripletexProjec
       // Linked in Hub but not in this hub result list (e.g. other filter) – surface as Hub row.
       if (!hubEventIds.has(t.linked_event_id)) {
         rows.push({ source: "hub", key: `hub:${t.linked_event_id}`, eventId: t.linked_event_id,
-          projectNumber: t.number, name: cleanName(t.number, t.name), customer: t.customer?.name ?? null });
+          projectNumber: t.number, name: cleanName(t.number, t.name), customer: t.customer?.name ?? null, linked: true });
         hubEventIds.add(t.linked_event_id);
       }
       continue;
@@ -77,6 +80,10 @@ export function tripletexSearchBy(q: string): "number" | "name" | "customer" {
   return "name";
 }
 
-export function rowLabel(r: { projectNumber: string | null; name: string }): string {
+export function rowLabel(r: { projectNumber: string | null; name: string; source?: string; linked?: boolean; internalNumber?: string | null }): string {
+  if (r.source === "hub" && !r.linked) {
+    const reference = r.projectNumber || r.internalNumber;
+    return reference ? `${reference} · ${cleanName(reference, r.name)}` : r.name;
+  }
   return r.projectNumber ? `Prosjektnr. ${r.projectNumber} · ${r.name}` : r.name;
 }
