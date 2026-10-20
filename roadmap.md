@@ -5,7 +5,8 @@
 - [x] Postkontoret: liste -> detalj -> tilbake på telefon, filterchips, dvh; samtaledetalj med dvh og temafarger
 - [x] HMS: mobilkort for kjemikalier og ansatte, dvh og safe-area i skjema
 - [x] Bestillinger: større mobilkort, temafarger, touch-synlige handlinger
-- [ ] Fase 3: resterende HMS-tabeller (rapporter, AML, import), bestillingsdetalj, fysisk iPhone-test av tastatur
+- [x] HMS fase 3: /hms på telefon er den operative arbeidsflaten for alle (HmsHomePage-velger); AML-/arbeidstids- og overtidsvarsler flyttet til «Mer HMS» med diskrete tellere; desktop-oversikt uendret, «HMS-oversikt (admin)» nås via ?vis=oversikt
+- [ ] Fase 4: resterende HMS-tabeller (rapporter, import), bestillingsdetalj, fysisk iPhone-test av tastatur og sjekklisteflyt
 
 ## Første mobilbølge
 - [x] Mobilskall, rollebasert meny og safe-area; sekundære app-/kontohandlinger i Mer
