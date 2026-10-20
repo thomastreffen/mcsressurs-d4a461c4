@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { searchHubPlanningProjects } from "@/lib/resource-plan-projects";
 import {
-  mergeProjectResults, tripletexSearchBy, rowLabel, canPlanNewJob,
+  mergeProjectResults, tripletexSearchBy, rowLabel, rowStatusLabel, groupProjectResults, canPlanNewJob,
   type PickerRow, type HubLinkedProject, type TripletexProjectHit,
 } from "@/lib/project-picker";
 
@@ -142,8 +142,8 @@ export function UnifiedProjectPicker({ companyId, canUseTripletex, onSelected }:
               <div className="space-y-1">
                 <Input value={custQ} onChange={(e) => setCustQ(e.target.value)} placeholder="Velg annen Hub-kunde…" className="h-8 text-xs" />
                 {custHits.map((c) => (
-                  <button key={c.id} type="button" onClick={() => { setManualCust(c); setCustHits([]); setCustQ(""); }}
-                    className="w-full text-left rounded px-2 py-1 hover:bg-muted">{c.name}{c.org_number ? ` · ${c.org_number}` : ""}</button>
+                  <Button key={c.id} type="button" variant="ghost" onClick={() => { setManualCust(c); setCustHits([]); setCustQ(""); }}
+                    className="w-full justify-start h-auto whitespace-normal text-left rounded px-2 py-1">{c.name}{c.org_number ? ` · ${c.org_number}` : ""}</Button>
                 ))}
               </div>
             )}
@@ -175,27 +175,28 @@ export function UnifiedProjectPicker({ companyId, canUseTripletex, onSelected }:
       {ttError && <p className="text-[11px] text-destructive">Tripletex TEST: {ttError}</p>}
       {hubError && <p className="text-[11px] text-destructive">{hubError}</p>}
       {rows.length > 0 && (
-        <div className="max-h-56 overflow-y-auto space-y-1 rounded-lg border border-border p-1">
-          {rows.map((r) => {
-            const blocked = r.source === "tripletex" && !canPlanNewJob(r.status);
+        <div className="max-h-72 overflow-y-auto rounded-lg border border-border p-1">
+          {groupProjectResults(rows, q).map((group) => (
+            <section key={group.id} aria-label={group.label} className="mb-2 last:mb-0">
+              <h3 className="px-3 py-2 text-xs font-semibold text-muted-foreground">{group.label}</h3>
+              {group.rows.map((r) => {
+            const blocked = r.source === "tripletex" ? !canPlanNewJob(r.status) : r.linked && r.status === "closed";
             return (
-              <button key={r.key} type="button" disabled={blocked}
+              <Button key={r.key} type="button" variant="ghost" disabled={blocked}
                 onClick={() => r.source === "hub" ? onSelected({ eventId: r.eventId, label: rowLabel(r), customer: r.customer }) : pickTripletex(r)}
-                className={cn("w-full text-left rounded-md px-3 py-2 text-sm transition-colors", blocked ? "opacity-60 cursor-not-allowed" : "hover:bg-muted")}>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium truncate">{rowLabel(r)}</p>
-                  {r.source === "hub"
-                    ? <Badge variant="secondary" className="text-[10px] shrink-0">{r.linked ? "Hub · koblet" : "Hub · eksisterende"}</Badge>
-                    : r.status === "closed"
-                      ? <Badge variant="outline" className="text-[10px] shrink-0">Avsluttet i Tripletex</Badge>
-                      : r.status === "unknown"
-                        ? <Badge variant="outline" className="text-[10px] shrink-0">Status ukjent</Badge>
-                        : <Badge variant="outline" className="text-[10px] shrink-0 border-primary/40 text-primary">Tripletex TEST · hent inn</Badge>}
+                className={cn("w-full h-auto block whitespace-normal text-left rounded-md px-3 py-2 text-sm transition-colors", blocked && "opacity-60 cursor-not-allowed")}>
+                <div className="flex flex-col items-start gap-1">
+                  <p className="font-medium break-words max-w-full">{rowLabel(r)}</p>
+                  <p className="text-xs text-muted-foreground break-words max-w-full">{r.customer || "Ingen kunde"}</p>
+                  <Badge variant={r.source === "hub" && r.linked ? "secondary" : "outline"} className="text-[10px] max-w-full whitespace-normal text-left">
+                    {rowStatusLabel(r)}
+                  </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{r.customer || "Ingen kunde"}</p>
-              </button>
+              </Button>
             );
-          })}
+              })}
+            </section>
+          ))}
         </div>
       )}
       {!loading && q.trim() && rows.length === 0 && <p className="text-xs text-muted-foreground px-1">Ingen prosjekter funnet.</p>}

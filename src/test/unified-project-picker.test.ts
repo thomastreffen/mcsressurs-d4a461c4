@@ -31,7 +31,6 @@ describe("Unified financial project picker", () => {
   it("Tripletex-only project appears with Tripletex source", () => {
     const rows = mergeProjectResults([], [{ id: 777, number: "60521", name: "60521 Tavle", isClosed: false, customer: { name: "MCS ELEKTROTAVLER AS" } }]);
     expect(rows[0]).toMatchObject({ source: "tripletex", tripletexId: 777, name: "Tavle", status: "open" });
-    expect(picker).toContain("Tripletex TEST · hent inn");
   });
 
   it("dedupes on stable Tripletex ID only – same number different ID is kept", () => {
