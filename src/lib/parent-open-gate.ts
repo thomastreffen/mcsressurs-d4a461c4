@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { canPlanNewJob, type OpenStatus } from "@/lib/project-picker";
 
 export const ECONOMIC_PROJECT_HINT = "Økonomiske prosjekter opprettes i Tripletex og hentes inn her";
@@ -16,9 +15,18 @@ export function gateFromStatus(linked: boolean, status: OpenStatus | "not_linked
 
 /** Linked parents require a fresh Tripletex isClosed === false; read errors fail closed. */
 export async function checkParentOpenForNewJob(parentId: string, companyId: string | null): Promise<GateResult> {
-  const linked = (await fetchFinancialProjectNumbers([parentId])).has(parentId);
-  if (!linked) return gateFromStatus(false, null);
   try {
+    if (!companyId) return { ok: false, message: "Velg selskap før du planlegger" };
+    // Caller RLS + explicit company; do not infer link presence from a display number.
+    const { data: parents, error: parentError } = await supabase.rpc("resource_plan_parent_context", {
+      _event_id: parentId, _company_id: companyId,
+    });
+    const parent = parents?.[0];
+    if (parentError || !parent || parent.event_id !== parentId) {
+      return { ok: false, message: "Prosjektet er ikke tilgjengelig i valgt selskap" };
+    }
+    if (parent.linked === false) return gateFromStatus(false, null);
+    if (parent.linked !== true) return gateFromStatus(true, "unknown");
     const { data, error } = await supabase.functions.invoke("tripletex-import", {
       body: { action: "project_open_status", company_id: companyId, event_id: parentId },
     });

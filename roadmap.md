@@ -1,5 +1,10 @@
 # Roadmap
 
+## Ressursplan – Tripletex-additiv regresjonsretting
+- [x] Gjenopprett selskapsavgrenset Hub-prosjektsøk og Nytt prosjekt uten integrasjon
+- [x] Behold koblingsstyrt statusvakt, stabil-ID-deduplisering og F4-import
+- [x] Regresjonstester og innlogget skjermkontroll: BusBar Nytt prosjekt aktivt, MCS Service deaktivert, 60374 valgt; ingen faktisk opprettelse/utsending under kontrollen
+
 ## Klokkeslett hos montør
 - [x] Rett UTC/Oslo i forespørsler, påminnelser, oppdateringer og oppgavetråd uten å endre registrerte tidspunkt
 - [x] Test 06:00–14:00 i sommer- og vintertid, DST-overganger og montørspesifikke tidspunkt (7 tester)

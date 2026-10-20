@@ -1,6 +1,7 @@
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { UnifiedProjectPicker } from "@/components/resource-plan/UnifiedProjectPicker";
 import { checkParentOpenForNewJob, ECONOMIC_PROJECT_HINT } from "@/lib/parent-open-gate";
+import { canCreateHubRoot, fetchTripletexPlanningContext, type TripletexPlanningContext } from "@/lib/resource-plan-projects";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useProjectSuggestions, type ProjectSuggestion } from "@/hooks/useProjectSuggestions";
@@ -205,6 +206,24 @@ export function EventDrawer({
   const [submitted, setSubmitted] = useState(false);
   const [clientRequestId, setClientRequestId] = useState(() => crypto.randomUUID());
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const planningCompanyId = selectedCompanyId ?? activeCompanyId;
+  const [tripletexContext, setTripletexContext] = useState<TripletexPlanningContext | null>(null);
+  const [tripletexContextCompany, setTripletexContextCompany] = useState<string | null>(null);
+  const [tripletexContextError, setTripletexContextError] = useState<string | null>(null);
+  const currentTripletexContext = tripletexContextCompany === planningCompanyId ? tripletexContext : null;
+  const hubRootAllowed = canCreateHubRoot(currentTripletexContext);
+  useEffect(() => {
+    let alive = true;
+    setTripletexContext(null); setTripletexContextCompany(null); setTripletexContextError(null);
+    if (!projectId) { setSelectedJobId(null); setSelectedJobSnapshot(null); }
+    if (!open || !planningCompanyId) return;
+    fetchTripletexPlanningContext(planningCompanyId).then((context) => {
+      if (!alive) return;
+      setTripletexContext(context); setTripletexContextCompany(planningCompanyId);
+      if (context.economic_project_master) setMode("existing");
+    }).catch((e) => { if (alive) setTripletexContextError(e.message); });
+    return () => { alive = false; };
+  }, [open, planningCompanyId, projectId]);
   const [reminderConfig, setReminderConfig] = useState<ReminderConfig>({
     responseRequired: true,
     profile: "company_default",
@@ -1115,10 +1134,6 @@ export function EventDrawer({
            updateOutlook: false,
            changeSet: detectedChanges,
          });
-      } else if (eventType === "project" && mode === "new") {
-        toast.error(ECONOMIC_PROJECT_HINT);
-        setSaving(false);
-        return;
       } else if (mode === "existing" && selectedJobId) {
         const gate = await checkParentOpenForNewJob(selectedJobId, selectedCompanyId ?? activeCompanyId);
         if (!gate.ok) {
@@ -1140,6 +1155,7 @@ export function EventDrawer({
           .from("events")
           .select("company_id, title, customer, address, postal_code, city, location_details, site_contact_name, site_contact_phone, access_notes, map_link, description, customer_practical_info, source_order_form_id, project_number, internal_number")
           .eq("id", selectedJobId)
+          .eq("company_id", planningCompanyId ?? "")
           .single();
         if (parentErr || !parent) {
           toast.error("Kunne ikke hente prosjekt", { description: parentErr?.message });
@@ -1302,6 +1318,16 @@ export function EventDrawer({
           toast.error("Velg selskap før du oppretter oppdraget");
           setSaving(false);
           return;
+        }
+
+        if (!isTask) {
+          // Re-read local company configuration at save; never call Tripletex for Hub-only creation.
+          const context = await fetchTripletexPlanningContext(resolvedCompanyId);
+          if (!canCreateHubRoot(context)) {
+            toast.error(ECONOMIC_PROJECT_HINT);
+            setSaving(false);
+            return;
+          }
         }
 
         if (!title.trim() || (!isTask && techIds.length === 0) || !date) {
@@ -1719,9 +1745,9 @@ export function EventDrawer({
 
               {eventType === "project" && (
                 <>
-                <Tabs value={mode} onValueChange={(v) => { if (v === "existing") setMode("existing"); }}>
+                <Tabs value={mode} onValueChange={(v) => { if (v === "existing" || (v === "new" && hubRootAllowed)) setMode(v); }}>
                   <TabsList className="grid w-full grid-cols-2 h-8">
-                    <TabsTrigger value="new" disabled title={ECONOMIC_PROJECT_HINT} className="gap-1 text-[11px] h-7">
+                    <TabsTrigger value="new" disabled={!hubRootAllowed} title={currentTripletexContext?.economic_project_master ? ECONOMIC_PROJECT_HINT : undefined} className="gap-1 text-[11px] h-7">
                       <Plus className="h-3 w-3" />Nytt prosjekt
                     </TabsTrigger>
                     <TabsTrigger value="existing" className="gap-1 text-[11px] h-7">
@@ -1729,7 +1755,8 @@ export function EventDrawer({
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
-                <p className="text-[11px] text-muted-foreground mt-1">{ECONOMIC_PROJECT_HINT}.</p>
+                {currentTripletexContext?.economic_project_master && <p className="text-[11px] text-muted-foreground mt-1">{ECONOMIC_PROJECT_HINT}.</p>}
+                {tripletexContextError && <p className="text-[11px] text-destructive mt-1">{tripletexContextError}</p>}
                 </>
               )}
             </section>
@@ -1768,7 +1795,7 @@ export function EventDrawer({
               {!selectedJobSnapshot && (
                 <UnifiedProjectPicker
                   companyId={selectedCompanyId ?? activeCompanyId}
-                  canUseTripletex={isSuperAdmin}
+                  canUseTripletex={isSuperAdmin && currentTripletexContext?.test_search_enabled === true}
                   onSelected={({ eventId, label, customer: cust }) => {
                     console.info("[resource-plan:select-financial-project]", { id: eventId });
                     setSelectedJobId(eventId);

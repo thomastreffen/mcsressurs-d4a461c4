@@ -47,9 +47,10 @@ describe("Unified financial project picker", () => {
     expect(rows).toEqual([expect.objectContaining({ source: "hub", eventId: "ev-1" })]);
   });
 
-  it("number/name similarity never links a legacy Hub row (Hub list comes only from active-link resolver)", () => {
-    expect(picker).toContain('"search_linked_financial_projects"');
-    expect(drawer).not.toMatch(/\.ilike\("project_number"/);
+  it("number/name similarity never links an unlinked Hub row", () => {
+    const rows = mergeProjectResults([{ ...hub[0], tripletex_project_id: null }], [{ id: 210411444, number: "60488", name: "Montere 800A", isClosed: false }]);
+    expect(rows.map((r) => r.key)).toEqual(["hub:ev-60488", "tt:210411444"]);
+    expect(rows[0]).toMatchObject({ linked: false });
   });
 
   it("Tripletex-only selection uses canonical F4 import with explicit customer confirmation", () => {
@@ -71,16 +72,16 @@ describe("Unified financial project picker", () => {
   });
 
   it("linked parent: Tripletex read failure fails closed", async () => {
-    rpc.mockResolvedValueOnce({ data: [{ event_id: "p", project_number: "1" }], error: null });
+    rpc.mockResolvedValueOnce({ data: [{ event_id: "p", linked: true }], error: null });
     invoke.mockResolvedValueOnce({ data: null, error: new Error("boom") });
     expect((await checkParentOpenForNewJob("p", "c")).ok).toBe(false);
   });
 
   it("linked open parent passes; cross-company/unseen event -> not_linked fails", async () => {
-    rpc.mockResolvedValueOnce({ data: [{ event_id: "p", project_number: "1" }], error: null });
+    rpc.mockResolvedValueOnce({ data: [{ event_id: "p", linked: true }], error: null });
     invoke.mockResolvedValueOnce({ data: { status: "open" }, error: null });
     expect((await checkParentOpenForNewJob("p", "c")).ok).toBe(true);
-    rpc.mockResolvedValueOnce({ data: [{ event_id: "p", project_number: "1" }], error: null });
+    rpc.mockResolvedValueOnce({ data: [{ event_id: "p", linked: true }], error: null });
     invoke.mockResolvedValueOnce({ data: { status: "not_linked" }, error: null });
     expect((await checkParentOpenForNewJob("p", "other")).ok).toBe(false);
     expect(fn).toMatch(/ev\.company_id !== companyId/);
@@ -96,11 +97,6 @@ describe("Unified financial project picker", () => {
     expect(drawer).toContain("p_parent_id: selectedJobId");
     expect(drawer).toMatch(/setSelectedJobId\(eventId\);[\s\S]{0,300}setTitle\(""\)/);
     expect(formatProjectLabel("60521", "Montere tavle")).toBe("60521 · Montere tavle");
-  });
-
-  it("'Nytt prosjekt' cannot create a Hub root economic project", () => {
-    expect(drawer).toMatch(/TabsTrigger value="new" disabled/);
-    expect(drawer).toMatch(/eventType === "project" && mode === "new"\) \{\s*toast\.error\(ECONOMIC_PROJECT_HINT\)/);
   });
 
   it("search mode heuristic", () => {
