@@ -116,7 +116,7 @@ export function projectMatchRank(r: PickerRow, query: string): number {
 
 export function groupProjectResults(rows: PickerRow[], query: string): { id: string; label: string; rows: PickerRow[] }[] {
   const compare = (a: PickerRow, b: PickerRow) => projectMatchRank(a, query) - projectMatchRank(b, query)
-    || (a.projectNumber ?? a.internalNumber ?? "").localeCompare(b.projectNumber ?? b.internalNumber ?? "", "nb", { numeric: true })
+    || (a.projectNumber ?? (a.source === "hub" ? a.internalNumber : null) ?? "").localeCompare(b.projectNumber ?? (b.source === "hub" ? b.internalNumber : null) ?? "", "nb", { numeric: true })
     || a.name.localeCompare(b.name, "nb") || a.key.localeCompare(b.key);
   return [
     { id: "economic", label: "Økonomiske prosjekter", rows: rows.filter(isEconomicProject).sort(compare) },
