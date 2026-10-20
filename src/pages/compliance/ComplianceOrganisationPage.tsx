@@ -26,7 +26,7 @@ import { useOrgPeople } from "@/hooks/useOrgPeople";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
-import { useDraftAutosave, peekDraft, clearDraftByScope } from "@/hooks/useDraftAutosave";
+import { useDraftAutosave, peekDraft } from "@/hooks/useDraftAutosave";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/compliance";
@@ -107,6 +107,7 @@ export default function ComplianceOrganisationPage() {
   };
 
   const closeEditor = () => {
+    clearRoleDraft();
     setEditing(null);
     setAiDraft(false);
   };
@@ -467,7 +468,7 @@ export default function ComplianceOrganisationPage() {
               onClick={async () => {
                 const { created_at, updated_at, ...payload } = editing as any;
                 await save.mutateAsync(payload);
-                clearDraftByScope(roleDraftScope(editing?.id));
+                clearRoleDraft();
                 setEditing(null);
                 setAiDraft(false);
               }}

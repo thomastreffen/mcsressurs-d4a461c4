@@ -71,11 +71,20 @@ export default function HmsHandbookDetailPage() {
 
   const hasUnsavedChapterEdits = Object.keys(editedSections).length > 0;
   useUnsavedChangesGuard(hasUnsavedChapterEdits, "Du har ulagrede endringer i håndboken. Vil du forlate siden?");
-  const { restoreDraft: restoreHandbookDraft } = useDraftAutosave({
+  const { restoreDraft: restoreHandbookDraft, clearDraft: clearHandbookDraft, persistDraft: persistHandbookDraft } = useDraftAutosave({
     scopeParts: ["hms-handbook-edit", user?.id, activeCompanyId, id],
     value: editedSections,
     enabled: hasUnsavedChapterEdits,
   });
+
+  const removeChapterDraft = (chapterId: string) => {
+    setEditedSections((previous) => {
+      const remaining = { ...previous };
+      delete remaining[chapterId];
+      persistHandbookDraft(Object.keys(remaining).length ? remaining : null);
+      return remaining;
+    });
+  };
 
   // Restore an autosaved draft once per handbook (e.g. after a tab was closed with
   // edits still pending) — never overwrites edits the user is actively making.
@@ -290,6 +299,7 @@ export default function HmsHandbookDetailPage() {
   const startEdit = async () => {
     await ensureDraftMut.mutateAsync();
     setEditMode(true);
+    clearHandbookDraft();
     setEditedSections({});
   };
 
@@ -306,7 +316,7 @@ export default function HmsHandbookDetailPage() {
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["hms-handbook-sections", viewVersion?.id] });
-      setEditedSections((p) => { const c = { ...p }; delete c[variables.id]; return c; });
+      removeChapterDraft(variables.id);
       toast({ title: "Lagret" });
     },
     onError: (e: any) => toast({ title: "Feil", description: String(e.message || e), variant: "destructive" }),
@@ -706,7 +716,7 @@ export default function HmsHandbookDetailPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => setEditedSections((p) => { const c = { ...p }; delete c[activeChapter.id]; return c; })} disabled={!draftHas(activeChapter.id)}>Tilbakestill</Button>
+                        <Button size="sm" variant="ghost" onClick={() => removeChapterDraft(activeChapter.id)} disabled={!draftHas(activeChapter.id)}>Tilbakestill</Button>
                         <Button size="sm" onClick={() => saveSection.mutate({ id: activeChapter.id, heading, body })} disabled={!draftHas(activeChapter.id) || saveSection.isPending}>
                           Lagre
                         </Button>

@@ -130,7 +130,7 @@ export default function PlanningNewProjectPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
-      <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => confirmNavigation(() => navigate("/planlegging"))}>
+      <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => confirmNavigation(() => { clearDraft(); navigate("/planlegging"); })}>
         <ArrowLeft className="h-4 w-4" /> Planlegging
       </Button>
       <header>
@@ -236,7 +236,7 @@ export default function PlanningNewProjectPage() {
         </div>
 
           <div className="flex justify-end gap-2 border-t border-border/40 pt-4">
-            <Button type="button" variant="ghost" onClick={() => confirmNavigation(() => navigate("/planlegging"))}>Avbryt</Button>
+            <Button type="button" variant="ghost" onClick={() => confirmNavigation(() => { clearDraft(); navigate("/planlegging"); })}>Avbryt</Button>
             <Button type="submit" data-testid="planning-project-submit" disabled={createProject.isPending}>
               {createProject.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Opprett prosjekt
