@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Ressursplan – robust prosjektsøk
-- [ ] Felles søkenormalisering og token-matching for Hub og Tripletex uten endret identitet/import/lagring
-- [ ] Nye og eksisterende regresjonstester samt innlogget kontroll; ingen Tripletex-skriving eller produksjonskall
+- [x] Felles søkenormalisering/token-matching i picker og Tripletex med tilsvarende selskapsavgrenset SQL-søk før resultatgrenser; identitet/import/lagring uendret
+- [x] 145 tester besto (17 nye); innlogget test 1/test1/test-1/TEST 1/test/1 verifisert med én linked Test1 og separat Test 2; ingen Tripletex-skriving eller produksjonskall
 
 ## Ressursplan – innloggingsfeil
 - [x] Sesjonshydrering, delt fornyelse og én 401-retry kun for lesing; signing-key-kompatibel kontroll deployet for ms-calendar/tripletex-import
