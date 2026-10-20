@@ -9,6 +9,7 @@ import { Loader2, Plus, Search, Building2, Users, CalendarDays, User } from "luc
 import { usePlanningLookups, usePlanningProjects, type PlanningProject } from "@/hooks/usePlanning";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   PLANNING_STATUS_LABELS,
   PLANNING_STATUS_ORDER,
@@ -54,14 +55,16 @@ function StatusColumn({
   status,
   projects,
   children,
+  mobile,
 }: {
   status: PlanningStatus;
   projects: PlanningProject[];
   children: React.ReactNode;
+  mobile?: boolean;
 }) {
   return (
-    <div className="flex min-w-[300px] flex-1 flex-col gap-3">
-      <div className="flex items-center justify-between px-1">
+    <div className={mobile ? "flex flex-col gap-3" : "flex min-w-[300px] flex-1 flex-col gap-3"}>
+      <div className={mobile ? "hidden" : "flex items-center justify-between px-1"}>
         <h2 className="text-sm font-semibold text-foreground">{PLANNING_STATUS_LABELS[status]}</h2>
         <span className="text-xs text-muted-foreground">{projects.length}</span>
       </div>
@@ -82,6 +85,9 @@ export default function PlanningBoardPage() {
   const [status, setStatus] = useState(ALL);
   const [owner, setOwner] = useState(ALL);
   const [week, setWeek] = useState("");
+  const isMobile = useIsMobile();
+  const [mobileStatus, setMobileStatus] = useState<PlanningStatus | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const ids = useMemo(() => (projects ?? []).map((p) => p.id), [projects]);
   const { data: wpSummary } = useBoardWorkPackageSummary(ids);
@@ -118,31 +124,37 @@ export default function PlanningBoardPage() {
   const departments = (lookups?.departments ?? []).filter((d) => company === ALL || d.company_id === company);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
+    <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Planlegging</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="hidden text-sm text-muted-foreground sm:block">
             Felles inngang for jobber og prosjekter på vei inn – på tvers av selskaper og avdelinger.
           </p>
         </div>
-        <Button onClick={() => navigate("/planlegging/ny")} className="gap-2">
+        <Button onClick={() => navigate("/planlegging/ny")} className="h-11 gap-2 sm:h-10">
           <Plus className="h-4 w-4" />
           Nytt prosjekt
         </Button>
       </header>
 
       <Card className="p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[200px] flex-1">
+        <div className="flex flex-wrap items-center gap-2 [&_button[role=combobox]]:max-sm:h-11 [&_button[role=combobox]]:max-sm:flex-1 [&_button[role=combobox]]:max-sm:min-w-[45%]">
+          <div className="relative w-full flex-1 sm:min-w-[200px] sm:w-auto">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Søk prosjekt"
-              className="pl-9"
+              className="h-11 pl-9 sm:h-10"
             />
           </div>
+          {isMobile && (
+            <Button variant="outline" className="h-11 w-full" onClick={() => setFiltersOpen((v) => !v)}>
+              {filtersOpen ? "Skjul filtre" : "Flere filtre"}
+            </Button>
+          )}
+          {(!isMobile || filtersOpen) && (<>
           <Select value={company} onValueChange={(v) => { setCompany(v); setDepartment(ALL); }}>
             <SelectTrigger className="w-[170px]"><SelectValue placeholder="Selskap" /></SelectTrigger>
             <SelectContent>
@@ -186,8 +198,9 @@ export default function PlanningBoardPage() {
             value={week}
             onChange={(e) => setWeek(e.target.value.replace(/\D/g, ""))}
             placeholder="Uke"
-            className="w-[90px]"
+            className="h-11 w-full sm:h-10 sm:w-[90px]"
           />
+          </>)}
         </div>
       </Card>
 
@@ -206,12 +219,43 @@ export default function PlanningBoardPage() {
           </Button>
         </Card>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {PLANNING_STATUS_ORDER.map((s) => {
+        <div className={isMobile ? "space-y-3" : "flex gap-4 overflow-x-auto pb-4"}>
+          {isMobile && (() => {
+            const visible = PLANNING_STATUS_ORDER.filter((st) => !((st === "cancelled" || st === "completed") && !filtered.some((p) => p.status === st)));
+            const active = mobileStatus && visible.includes(mobileStatus) ? mobileStatus : (visible.find((st) => filtered.some((p) => p.status === st)) ?? visible[0]);
+            return (
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]" role="tablist" aria-label="Status">
+                {visible.map((st) => {
+                  const n = filtered.filter((p) => p.status === st).length;
+                  return (
+                    <button
+                      key={st}
+                      role="tab"
+                      aria-selected={st === active}
+                      onClick={() => setMobileStatus(st)}
+                      className={`flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm ${st === active ? "border-primary bg-primary/10 font-medium text-primary" : "border-border text-muted-foreground"}`}
+                    >
+                      {PLANNING_STATUS_LABELS[st]}
+                      <span className="tabular-nums text-xs">{n}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+          {PLANNING_STATUS_ORDER.filter((st) => {
+            if (!isMobile) return true;
+            const visible = PLANNING_STATUS_ORDER.filter((x) => !((x === "cancelled" || x === "completed") && !filtered.some((p) => p.status === x)));
+            const active = mobileStatus && visible.includes(mobileStatus) ? mobileStatus : (visible.find((x) => filtered.some((p) => p.status === x)) ?? visible[0]);
+            return st === active;
+          }).map((s) => {
             const list = filtered.filter((p) => p.status === s);
             if (list.length === 0 && (s === "cancelled" || s === "completed")) return null;
             return (
-              <StatusColumn key={s} status={s} projects={list}>
+              <StatusColumn key={s} status={s} projects={list} mobile={isMobile}>
+                {isMobile && list.length === 0 && (
+                  <Card className="p-6 text-center text-sm text-muted-foreground">Ingen prosjekter i denne statusen.</Card>
+                )}
                 {list.map((p) => {
                   const sum = wpSummary?.[p.id];
                   const cert = planningCertainty(p.status);
@@ -220,13 +264,13 @@ export default function PlanningBoardPage() {
                     <Card
                       key={p.id}
                       onClick={() => navigate(`/planlegging/${p.id}`)}
-                      className="cursor-pointer space-y-3 p-4 transition-all hover:border-border/70 hover:shadow-md"
+                      className="cursor-pointer space-y-3 p-4 transition-all active:bg-muted/40 hover:border-border/70 hover:shadow-md"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-semibold leading-tight text-foreground">{p.name}</h3>
                         <Badge variant={cert.tone === "success" ? "default" : "secondary"}>{cert.label}</Badge>
                       </div>
-                      <div className="space-y-1.5 text-xs text-muted-foreground">
+                      <div className="space-y-1.5 text-sm text-muted-foreground sm:text-xs">
                         <p className="flex items-center gap-1.5">
                           <Users className="h-3.5 w-3.5" />
                           {nameOf(lookups?.customers, p.customer_id) ?? "Kunde ikke satt"}
