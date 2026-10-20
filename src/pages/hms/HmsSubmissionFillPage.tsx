@@ -216,7 +216,7 @@ export default function HmsSubmissionFillPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/60">
         <div className="px-4 py-3 max-w-2xl mx-auto">
           <div className="flex items-center gap-2 mb-2">
@@ -328,7 +328,7 @@ export default function HmsSubmissionFillPage() {
       </div>
 
       {/* Bottom action bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border/60 px-4 py-2.5">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border/60 px-4 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
         <div className="max-w-2xl mx-auto flex items-center gap-2">
           <Button
             variant="outline"

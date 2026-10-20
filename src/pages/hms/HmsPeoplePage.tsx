@@ -315,7 +315,43 @@ export default function HmsPeoplePage() {
           Ingen ansatte å vise.
         </div>
       ) : (
-        <div className="rounded-lg border overflow-hidden">
+        <>
+        <div className="space-y-2 md:hidden">
+          {filtered.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => navigate(`/hms/people/${r.id}`)}
+              className="block w-full rounded-xl border border-border bg-card p-4 text-left active:bg-muted/40"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">{r.full_name}</p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {[r.company_name, r.department_name].filter(Boolean).join(" · ") || "-"}
+                  </p>
+                </div>
+                {r.archived_at ? (
+                  <Badge variant="outline" className="shrink-0 text-muted-foreground">Arkivert</Badge>
+                ) : r.is_active ? (
+                  <Badge variant="outline" className="shrink-0">Aktiv</Badge>
+                ) : (
+                  <Badge variant="outline" className="shrink-0">Inaktiv</Badge>
+                )}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1 text-xs">
+                {r.hms_card_number ? (
+                  <Badge variant="outline" className="text-xs">HMS-kort: {hmsCardStatus(r.hms_card_expires_at).label}</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs text-muted-foreground">HMS-kort ikke registrert</Badge>
+                )}
+                {r.is_plannable_resource && <Badge variant="secondary" className="text-xs">Planleggbar</Badge>}
+                {r.other_company_names.length > 0 && <Badge variant="outline" className="text-xs">Delt ressurs</Badge>}
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="hidden rounded-lg border overflow-hidden md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -400,6 +436,7 @@ export default function HmsPeoplePage() {
             </TableBody>
           </Table>
         </div>
+        </>
       )}
     </div>
   );

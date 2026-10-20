@@ -1,5 +1,12 @@
 # Roadmap
 
+## Mobil fase 2
+- [x] Planlegging: én status om gangen på telefon, sammenleggbare filtre, store knapper, sticky safe-area-handlinger; desktop-board uendret
+- [x] Postkontoret: liste -> detalj -> tilbake på telefon, filterchips, dvh; samtaledetalj med dvh og temafarger
+- [x] HMS: mobilkort for kjemikalier og ansatte, dvh og safe-area i skjema
+- [x] Bestillinger: større mobilkort, temafarger, touch-synlige handlinger
+- [ ] Fase 3: resterende HMS-tabeller (rapporter, AML, import), bestillingsdetalj, fysisk iPhone-test av tastatur
+
 ## Første mobilbølge
 - [x] Mobilskall, rollebasert meny og safe-area; sekundære app-/kontohandlinger i Mer
 - [x] Dagbasert telefonvisning i Ressursplan med eksisterende data og montørfokus i EventDrawer

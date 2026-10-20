@@ -136,7 +136,7 @@ export default function ConversationNewPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F6F7F9" }}>
+    <div className="min-h-dvh bg-muted/40">
       <div className="sticky top-0 z-30 border-b border-border/40 bg-background/95 backdrop-blur-sm">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 py-4 flex items-center gap-3">
           <button
@@ -151,7 +151,7 @@ export default function ConversationNewPage() {
       </div>
 
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
-        <div className="rounded-[14px] border border-[#E6E8EC] bg-card p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-6">
+        <div className="rounded-[14px] border border-border bg-card p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Tittel</label>
             <Input

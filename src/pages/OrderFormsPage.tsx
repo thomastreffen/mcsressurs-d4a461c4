@@ -471,15 +471,15 @@ export default function OrderFormsPage() {
                 className={`hover:shadow-md transition-shadow cursor-pointer group ${
                   isDimmed ? "opacity-60" : ""
                 } ${
-                  unread ? "border-l-4 border-l-green-500 bg-green-50/40"
-                  : isNew ? "border-l-4 border-l-blue-500"
-                  : isWaiting ? "border-l-4 border-l-amber-400"
-                  : isStale ? "border-l-4 border-l-orange-300"
+                  unread ? "border-l-4 border-l-success bg-success/5"
+                  : isNew ? "border-l-4 border-l-primary"
+                  : isWaiting ? "border-l-4 border-l-warning"
+                  : isStale ? "border-l-4 border-l-warning/50"
                   : ""
                 }`}
                 onClick={() => navigate(`/orders/${sub.id}`)}
               >
-                <CardContent className="p-3 sm:p-3.5">
+                <CardContent className="p-4 sm:p-3.5">
                   <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3">
                     <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
                       <QualityDot score={qs} />
@@ -489,12 +489,12 @@ export default function OrderFormsPage() {
                             {siteTitle}
                           </span>
                           {sub.priority !== "normal" && (
-                            <Badge variant="outline" className="text-[10px] font-semibold border-orange-200 text-orange-700 bg-orange-50">
+                            <Badge variant="outline" className="text-[10px] font-semibold border-warning/40 text-warning bg-warning/10">
                               {ORDER_PRIORITY_CONFIG[sub.priority]?.label || sub.priority}
                             </Badge>
                           )}
                           {unread && (
-                            <Badge variant="outline" className="text-[10px] font-semibold border-green-300 text-green-800 bg-green-100">
+                            <Badge variant="outline" className="text-[10px] font-semibold border-success/40 text-success bg-success/10">
                               <MessageSquare className="h-2.5 w-2.5 mr-0.5" />
                               Ny melding fra bestiller
                             </Badge>
@@ -509,17 +509,17 @@ export default function OrderFormsPage() {
                           {metaLine}
                         </p>
                         {/* Mobile-only meta row */}
-                        <div className="flex items-center gap-2 mt-1 sm:hidden flex-wrap">
-                          <Badge className={`text-[10px] ${sc?.color || ""}`}>
+                        <div className="flex items-center gap-2 mt-2 sm:hidden flex-wrap text-xs">
+                          <Badge className={`text-xs ${sc?.color || ""}`}>
                             {sc?.label || sub.status}
                           </Badge>
                           {sub._assignee_name && (
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
                               <User className="h-3 w-3" />
                               {sub._assignee_name}
                             </span>
                           )}
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             {format(new Date(sub.submitted_at), "d. MMM", { locale: nb })}
                           </span>
                         </div>
@@ -528,13 +528,13 @@ export default function OrderFormsPage() {
                     {/* Desktop-only right side */}
                     <div className="hidden sm:flex items-center gap-2 shrink-0">
                       {isWaiting && (
-                        <span className="text-[10px] text-amber-600 flex items-center gap-0.5">
+                        <span className="text-[10px] text-warning flex items-center gap-0.5">
                           <Clock className="h-3 w-3" />
                           Venter svar
                         </span>
                       )}
                       {isStale && !isWaiting && (
-                        <span className="text-[10px] text-orange-500 flex items-center gap-0.5">
+                        <span className="text-[10px] text-warning flex items-center gap-0.5">
                           <AlertCircle className="h-3 w-3" />
                           {daysSinceActivity}d
                         </span>
@@ -558,7 +558,7 @@ export default function OrderFormsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
                           onClick={(e) => handleSoftDelete(e, sub)}
                           disabled={deletingId === sub.id}
                           title="Flytt til papirkurv"

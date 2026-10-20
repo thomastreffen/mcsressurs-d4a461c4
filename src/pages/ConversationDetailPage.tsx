@@ -126,7 +126,7 @@ export default function ConversationDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: "#F6F7F9" }}>
+      <div className="flex items-center justify-center min-h-dvh bg-muted/40">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -134,7 +134,7 @@ export default function ConversationDetailPage() {
 
   if (!thread) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: "#F6F7F9" }}>
+      <div className="flex items-center justify-center min-h-dvh bg-muted/40">
         <p className="text-muted-foreground">Samtale ikke funnet</p>
       </div>
     );
@@ -149,7 +149,7 @@ export default function ConversationDetailPage() {
   const extraCount = Math.max(0, participants.length - 4);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F6F7F9" }}>
+    <div className="min-h-dvh flex flex-col bg-muted/40">
       {/* Compact header */}
       <div className="sticky top-0 z-30 border-b border-border/30 bg-card/95 backdrop-blur-sm">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 py-3">
@@ -157,7 +157,7 @@ export default function ConversationDetailPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate(`/projects/${projectId}`)}
-              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-muted/50 transition-colors cursor-pointer shrink-0"
+              className="flex items-center justify-center h-11 w-11 md:h-8 md:w-8 rounded-full hover:bg-muted/50 transition-colors cursor-pointer shrink-0"
             >
               <ArrowLeft className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -167,7 +167,7 @@ export default function ConversationDetailPage() {
                 <h1 className="text-base font-bold text-foreground truncate">{thread.title}</h1>
                 {thread.participants_only && <Lock className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />}
                 {category === "risk" && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
-                {category === "change" && <Repeat className="h-3.5 w-3.5 text-orange-500 shrink-0" />}
+                {category === "change" && <Repeat className="h-3.5 w-3.5 text-warning shrink-0" />}
                 {thread.is_formal_decision && <Gavel className="h-3.5 w-3.5 text-primary shrink-0" />}
                 {isClosed && <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
               </div>
@@ -199,7 +199,7 @@ export default function ConversationDetailPage() {
                   )}
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[340px] sm:w-[380px]">
+              <SheetContent side="right" className="w-full sm:w-[380px] pb-[max(1rem,env(safe-area-inset-bottom))]">
                 <div className="space-y-6 mt-4">
                   {/* Participants */}
                   <ThreadParticipants
@@ -302,7 +302,7 @@ export default function ConversationDetailPage() {
 
       {/* Thread posts - full height */}
       <div className="flex-1 mx-auto max-w-3xl w-full">
-        <div className="rounded-none sm:rounded-[14px] sm:border border-[#E6E8EC] bg-card sm:shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden sm:my-4 sm:mx-4 flex flex-col min-h-[calc(100vh-120px)]">
+        <div className="rounded-none sm:rounded-[14px] sm:border border-border bg-card sm:shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden sm:my-4 sm:mx-4 flex flex-col min-h-[calc(100dvh-120px)]">
           <ThreadDetail
             threadId={thread.id}
             threadTitle={thread.title}

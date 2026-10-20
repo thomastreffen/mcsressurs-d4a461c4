@@ -2431,7 +2431,7 @@ function AttachmentRow({
           }}
           aria-label={`Fjern ${label}`}
           title="Fjern vedlegg"
-          className="absolute top-1/2 -translate-y-1/2 right-1.5 h-8 min-w-8 px-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
+          className="absolute top-1/2 -translate-y-1/2 right-1.5 h-8 min-w-8 px-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:[@media(hover:none)]:opacity-100 transition-opacity cursor-pointer"
         >
           <X className="h-3.5 w-3.5" />
           <span className="ml-1 text-xs sm:hidden">Fjern</span>

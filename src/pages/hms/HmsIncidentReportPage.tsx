@@ -197,7 +197,7 @@ export default function HmsIncidentReportPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-background flex flex-col">
+      <div className="min-h-dvh bg-gradient-to-b from-success/10 to-background flex flex-col">
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center max-w-sm space-y-4">
             <div className="mx-auto h-16 w-16 rounded-full bg-emerald-500/10 grid place-items-center">
@@ -236,7 +236,7 @@ export default function HmsIncidentReportPage() {
 
   return (
     <div
-      className="min-h-screen bg-background"
+      className="min-h-dvh bg-background"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 160px)" }}
     >
       {/* Header */}

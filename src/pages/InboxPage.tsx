@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import DOMPurify from "dompurify";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
@@ -205,6 +207,8 @@ export default function InboxPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const mobileDetail = isMobile && !!selectedId;
   const [filter, setFilter] = useState<FilterType>("mine");
   const [search, setSearch] = useState("");
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
@@ -664,10 +668,10 @@ export default function InboxPage() {
   const unhandled24h = cases.filter((c) => c.status === "new" && differenceInHours(new Date(), new Date(c.created_at)) > 24).length;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100dvh-4rem)]">
       {/* KPI Dashboard */}
-      <div className="border-b border-border bg-card px-6 py-3">
-        <div className="flex items-center justify-between mb-3">
+      <div className={`border-b border-border bg-card px-4 md:px-6 py-3 ${mobileDetail ? "hidden" : ""}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               <Building2 className="h-5 w-5 text-primary" />
@@ -677,9 +681,9 @@ export default function InboxPage() {
               <p className="text-xs text-muted-foreground">Kommandosentral for alle saker</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={selectedMailbox} onValueChange={setSelectedMailbox}>
-              <SelectTrigger className="w-48 h-9 text-sm">
+              <SelectTrigger className="w-full sm:w-48 h-11 md:h-9 text-sm">
                 <SelectValue placeholder="Alle postbokser" />
               </SelectTrigger>
               <SelectContent>
@@ -717,7 +721,7 @@ export default function InboxPage() {
         </div>
 
         {/* KPI cards */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           <KpiCard label="Åpne saker" value={openCount} icon={Mail} />
           <KpiCard label="Kritiske" value={criticalCount} icon={AlertTriangle} variant={criticalCount > 0 ? "destructive" : "default"} />
           <KpiCard label="Over frist" value={overdueCount} icon={Timer} variant={overdueCount > 0 ? "warning" : "default"} />
@@ -728,7 +732,7 @@ export default function InboxPage() {
       {/* Main layout: filters | list | preview */}
       <div className="flex flex-1 min-h-0">
         {/* Left: Filters */}
-        <div className="w-56 shrink-0 border-r border-border bg-card p-3 space-y-1">
+        <div className="hidden md:block w-56 shrink-0 border-r border-border bg-card p-3 space-y-1">
           {FILTER_OPTIONS.map((f) => (
             <button
               key={f.key}
@@ -747,7 +751,21 @@ export default function InboxPage() {
         </div>
 
         {/* Center: Case list */}
-        <div className="w-[420px] shrink-0 border-r border-border flex flex-col">
+        <div className={`w-full md:w-[420px] shrink-0 md:border-r border-border flex-col ${mobileDetail ? "hidden" : "flex"}`}>
+          <div className="flex md:hidden gap-2 overflow-x-auto px-3 pt-3 [scrollbar-width:none]">
+            {FILTER_OPTIONS.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm ${
+                  filter === f.key ? "border-primary bg-primary/10 text-primary font-medium" : "border-border text-muted-foreground"
+                }`}
+              >
+                {f.label}
+                <span className="text-xs tabular-nums">{statusCounts[f.key]}</span>
+              </button>
+            ))}
+          </div>
           <div className="p-3 border-b border-border">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -755,7 +773,7 @@ export default function InboxPage() {
                 placeholder="Søk alle saker (tittel, saksnr, postboks)..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9"
+                className="pl-9 h-11 md:h-9"
               />
             </div>
             {isSearching && (
@@ -794,7 +812,7 @@ export default function InboxPage() {
                   <button
                     key={c.id}
                     onClick={() => openCase(c)}
-                    className={`w-full text-left p-3 hover:bg-muted/50 transition-colors ${
+                    className={`w-full text-left p-4 md:p-3 hover:bg-muted/50 transition-colors ${
                       selectedId === c.id ? "bg-primary/5 border-l-2 border-l-primary" : ""
                     } ${c.status === "new" ? "bg-primary/[0.02]" : ""}`}
                   >
@@ -922,7 +940,14 @@ export default function InboxPage() {
         </div>
 
         {/* Right: Detail view */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className={`flex-1 flex-col min-w-0 ${isMobile && !selectedId ? "hidden" : "flex"}`}>
+          {isMobile && selectedId && (
+            <div className="sticky top-0 z-10 flex items-center border-b border-border bg-card px-2 py-1">
+              <Button variant="ghost" className="h-11 gap-2" onClick={() => setSelectedId(null)}>
+                <ArrowLeft className="h-5 w-5" /> Alle saker
+              </Button>
+            </div>
+          )}
           {selectedCase ? (
             <CaseDetail
               caseData={selectedCase}
@@ -964,7 +989,7 @@ function KpiCard({ label, value, icon: Icon, variant = "default" }: {
   const colors = {
     default: "text-foreground",
     destructive: value > 0 ? "text-destructive" : "text-foreground",
-    warning: value > 0 ? "text-orange-600" : "text-foreground",
+    warning: value > 0 ? "text-warning" : "text-foreground",
   };
   return (
     <div className="rounded-lg border border-border bg-card/50 p-3">
