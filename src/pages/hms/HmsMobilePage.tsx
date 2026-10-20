@@ -163,7 +163,7 @@ export default function HmsMobilePage() {
                 <SecondaryRow icon={FlaskConical} label="Stoffkartotek (admin)" onClick={() => navigate("/hms/kjemikalier")} />
               </>
             )}
-            {!isMontor && <SecondaryRow icon={ShieldCheck} label="HMS-oversikt" onClick={() => navigate("/hms")} />}
+            {!isMontor && <SecondaryRow icon={ShieldCheck} label="HMS-oversikt (admin)" onClick={() => navigate("/hms?vis=oversikt")} />}
           </div>
         </div>
       ) : (
