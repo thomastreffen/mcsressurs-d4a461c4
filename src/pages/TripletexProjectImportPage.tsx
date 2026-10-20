@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,7 +46,7 @@ export default function TripletexProjectImportPage() {
   if (!isSuperAdmin) return <div className="p-8 text-muted-foreground">Kun tilgjengelig for superadmin.</div>;
 
   const call = async (action: string, extra: Record<string, unknown> = {}) => {
-    const { data, error } = await supabase.functions.invoke("tripletex-import", { body: { action, company_id: activeCompanyId, ...extra } });
+    const { data, error } = await invokeWithSession("tripletex-import", { body: { action, company_id: activeCompanyId, ...extra } });
     if (error) {
       let msg = "Noe gikk galt mot Tripletex.";
       try { const b = await (error as any).context?.json(); if (b?.error) msg = b.error; } catch { /* ignore */ }

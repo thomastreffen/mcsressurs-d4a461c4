@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -218,7 +219,7 @@ export function JobCalendarSync({
     setLoadingAvail(true);
     setAvailability(null);
     try {
-      const { data, error } = await supabase.functions.invoke("ms-calendar", {
+      const { data, error } = await invokeWithSession("ms-calendar", {
         body: { action: "availability", user_ids: userIds, start: jobStart.toISOString(), end: jobEnd.toISOString() },
       });
       if (error) throw error;
@@ -243,7 +244,7 @@ export function JobCalendarSync({
     setSyncing(true);
     try {
       // Pre-check availability
-      const { data: availData, error: availErr } = await supabase.functions.invoke("ms-calendar", {
+      const { data: availData, error: availErr } = await invokeWithSession("ms-calendar", {
         body: { action: "availability", user_ids: userIds, start: jobStart.toISOString(), end: jobEnd.toISOString() },
       });
 

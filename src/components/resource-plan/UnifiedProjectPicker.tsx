@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +55,7 @@ export function UnifiedProjectPicker({ companyId, canUseTripletex, onSelected }:
   const [busy, setBusy] = useState(false);
 
   const tt = async (action: string, extra: Record<string, unknown> = {}) => {
-    const { data, error } = await supabase.functions.invoke("tripletex-import", { body: { action, company_id: companyId, ...extra } });
+    const { data, error } = await invokeWithSession("tripletex-import", { body: { action, company_id: companyId, ...extra } });
     if (error) throw new Error((data as any)?.error ?? error.message);
     if ((data as any)?.error) throw new Error((data as any).error);
     return data as any;

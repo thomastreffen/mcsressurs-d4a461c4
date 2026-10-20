@@ -1,5 +1,8 @@
 # Roadmap
 
+## Ressursplan – innloggingsfeil
+- [ ] Rett og test sesjonskontroll for ms-calendar og tripletex-import uten svekket tilgang eller gjentatte writes
+
 ## Ressursplan – entydig prosjektvelger
 - [x] Grupper og ranger eksisterende picker, behold stabil-ID-deduplisering og lagringsregler
 - [x] 107 tester grønne; Test1/Test2-søk og Hub-only-valg verifisert innlogget, desktop/mobil kontrollert; ingen import/opprettelse

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { canPlanNewJob, type OpenStatus } from "@/lib/project-picker";
 
 export const ECONOMIC_PROJECT_HINT = "Økonomiske prosjekter opprettes i Tripletex og hentes inn her";
@@ -27,7 +28,7 @@ export async function checkParentOpenForNewJob(parentId: string, companyId: stri
     }
     if (parent.linked === false) return gateFromStatus(false, null);
     if (parent.linked !== true) return gateFromStatus(true, "unknown");
-    const { data, error } = await supabase.functions.invoke("tripletex-import", {
+    const { data, error } = await invokeWithSession("tripletex-import", {
       body: { action: "project_open_status", company_id: companyId, event_id: parentId },
     });
     if (error) return gateFromStatus(true, "unknown");
