@@ -1,5 +1,10 @@
 # Roadmap
 
+## Monitoring – automatikk og utkast
+- [ ] Verifiser og rett feil HTTP-kall i eksisterende innboksskanning uten å endre tidsplan
+- [ ] Verifiser og rett lagrede/forkastede utkast med regresjonstester
+- [ ] Kontroller resultat og oppdater begge monitoring-funn
+
 ## Ressursplan – Tripletex-additiv regresjonsretting
 - [x] Gjenopprett selskapsavgrenset Hub-prosjektsøk og Nytt prosjekt uten integrasjon
 - [x] Behold koblingsstyrt statusvakt, stabil-ID-deduplisering og F4-import
