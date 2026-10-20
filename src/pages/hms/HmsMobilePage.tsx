@@ -105,7 +105,6 @@ export default function HmsMobilePage() {
   if (tLoading || mLoading) return <HmsLoading label="Laster HMS…" />;
   if (tError) return <div className="p-4 text-base text-destructive">Kunne ikke laste HMS: {(tError as Error).message}</div>;
 
-  const canManage = hasPermission("hms.manage");
   const isMontor = user?.role === "montør";
 
   return (
@@ -147,6 +146,18 @@ export default function HmsMobilePage() {
             <SecondaryRow icon={ShieldAlert} label="Mine avvik / RUH" onClick={() => navigate("/hms/incidents?scope=mine")} />
             {canManage && (
               <>
+                <SecondaryRow
+                  icon={AlertTriangle}
+                  label="Arbeidstid og AML-varsler"
+                  hint={worktime?.openAlerts ? `${worktime.openAlerts} åpne` : undefined}
+                  onClick={() => navigate("/hms/aml")}
+                />
+                <SecondaryRow
+                  icon={Clock}
+                  label="Overtid til godkjenning"
+                  hint={worktime?.pendingOvertime ? `${worktime.pendingOvertime} venter` : undefined}
+                  onClick={() => navigate("/hms/overtid")}
+                />
                 <SecondaryRow icon={Inbox} label="Alle innsendinger" onClick={() => navigate("/hms/submissions")} />
                 <SecondaryRow icon={Users} label="Ansatte" onClick={() => navigate("/hms/people")} />
                 <SecondaryRow icon={FlaskConical} label="Stoffkartotek (admin)" onClick={() => navigate("/hms/kjemikalier")} />
