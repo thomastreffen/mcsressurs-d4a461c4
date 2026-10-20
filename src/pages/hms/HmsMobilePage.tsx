@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ShieldCheck, ClipboardList, FileCheck, BookOpen, ShieldAlert, Eye, HardHat, FlaskConical,
-  ChevronRight, ArrowLeft, Clock, Inbox, Users, Loader2, ListChecks,
+  ChevronRight, ArrowLeft, Clock, Inbox, Users, Loader2, ListChecks, AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
@@ -26,6 +26,7 @@ export default function HmsMobilePage() {
   const { user } = useAuth();
   const { activeCompanyId: cid } = useCompanyContext();
   const { hasPermission } = usePermissions();
+  const canManage = hasPermission("hms.manage");
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
