@@ -246,11 +246,12 @@ export default function HmsPeoplePage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4 max-w-7xl mx-auto">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Users className="h-5 w-5 text-muted-foreground" />
         <h1 className="text-xl font-semibold">Ansatte</h1>
         <span className="text-[11px] text-muted-foreground hidden sm:inline">{EMPLOYEE_BASIS_LABEL}</span>
         <span className="ml-auto text-xs text-muted-foreground">{filtered.length} av {rows.length}</span>
+        <span className="basis-full sm:hidden" aria-hidden />
         <LocalExportMenu title="Ansatte" module="employees" disabled={loading||!!error} filters={{Søk:q||'Alle',Status:activeFilter,Grunnlag:scopeFilter,...(canViewSecurity?{Sikkerhet:secFilter}:{})}} rows={filtered.map(r=>({'Navn':r.full_name,'E-post':r.email,'Telefon':r.phone,'Firma':r.company_name,'Delt ressurs':r.other_company_names.join(', '),'Avdeling':r.department_name,'Planleggbar':r.is_plannable_resource,'HMS-kort':r.hms_card_number,'HMS-kort gyldig til':r.hms_card_expires_at?new Date(r.hms_card_expires_at):null,...(canViewSecurity?{'Sikkerhet':({ok:'OK',missing:'Mangler',check:'Må sjekkes',unknown:'Ikke vurdert'})[securityBucket(r)]}:{}),'Status':r.archived_at?'Arkivert':r.is_active?'Aktiv':'Inaktiv'}))}/>
         <button
           type="button"

@@ -38,14 +38,17 @@ interface ActionRow {
 }
 
 export default function HmsOverviewPage() {
-  const { activeCompanyId } = useCompanyContext();
   const { user } = useAuth();
   const isMobile = useIsMobile();
-
-  // Montør on mobile → operative HMS flow
+  // Montør on phone → operative HMS flow (presentation only; same access).
   if (isMobile && user?.role === "montør") {
     return <Navigate to="/hms/mobile" replace />;
   }
+  return <HmsOverviewContent isMobile={isMobile} />;
+}
+
+function HmsOverviewContent({ isMobile }: { isMobile: boolean }) {
+  const { activeCompanyId } = useCompanyContext();
 
 
   const { data, isLoading } = useQuery({
@@ -245,6 +248,19 @@ export default function HmsOverviewPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
+      {isMobile && (
+        <Link
+          to="/hms/mobile"
+          className="flex min-h-[64px] items-center gap-3 rounded-2xl border-2 border-primary/30 bg-primary/5 p-4 active:scale-[0.99] transition-transform"
+        >
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary"><ShieldCheck className="h-5 w-5" /></span>
+          <span className="flex-1">
+            <span className="block text-base font-semibold">HMS i felt</span>
+            <span className="block text-sm text-muted-foreground">SJA, sjekkliste, avvik og håndbok</span>
+          </span>
+          <ArrowRight className="h-5 w-5 text-primary" />
+        </Link>
+      )}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">

@@ -1,55 +1,66 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useMemo } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ShieldCheck, ClipboardList, FileCheck, Plus, BookOpen, Clock, CheckCircle2, AlertTriangle, ShieldAlert, Eye } from "lucide-react";
+import {
+  ShieldCheck, ClipboardList, FileCheck, BookOpen, ShieldAlert, Eye, HardHat, FlaskConical,
+  ChevronRight, ArrowLeft, Clock, Inbox, Users, Loader2, ListChecks,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { usePermissions } from "@/hooks/usePermissions";
 import { startSubmission, STATUS_LABELS, type SubmissionStatus } from "@/lib/hms/submissions";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { nb } from "date-fns/locale";
 import { HmsLoading } from "@/components/hms/HmsContextGate";
+import { cn } from "@/lib/utils";
 
+type View = "home" | "sja" | "checklist" | "mine";
+
+/**
+ * Operativ HMS for felt (montør). Oppgave først: få store valg, ingen KPI-er.
+ * Samme data og RLS som før; adminvalg ligger under «Mer HMS» kun når rettigheten finnes.
+ */
 export default function HmsMobilePage() {
   const { user } = useAuth();
-  const { activeCompanyId } = useCompanyContext();
+  const { activeCompanyId: cid } = useCompanyContext();
+  const { hasPermission } = usePermissions();
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"start" | "mine" | "håndbok">("start");
+  const [params, setParams] = useSearchParams();
+  const startParam = params.get("start");
+  const view: View = startParam === "sja" || startParam === "checklist" ? startParam : params.get("view") === "mine" ? "mine" : "home";
+  const go = (v: View) => {
+    if (v === "home") setParams({});
+    else if (v === "mine") setParams({ view: "mine" });
+    else setParams({ start: v });
+    window.scrollTo({ top: 0 });
+  };
 
-  const cid = activeCompanyId;
-
-  const { data: templates, isLoading: templatesLoading, error: templatesError } = useQuery({
+  const { data: templates, isLoading: tLoading, error: tError } = useQuery({
     queryKey: ["hms-mobile-templates", cid],
     enabled: !!cid,
     queryFn: async () => {
-      const sb = supabase as any;
-      const { data } = await sb
+      const { data } = await (supabase as any)
         .from("hms_templates")
-        .select("id, name, kind, category, description, hms_areas")
+        .select("id, name, kind, category, description")
         .eq("company_id", cid)
         .eq("is_active", true)
         .is("deleted_at", null)
-        .order("kind", { ascending: true })
         .order("name", { ascending: true });
       return (data ?? []) as any[];
     },
   });
 
-  const { data: mySubmissions, isLoading: submissionsLoading, error: submissionsError } = useQuery({
+  const { data: mine, isLoading: mLoading } = useQuery({
     queryKey: ["hms-mobile-mine", cid, user?.id],
     enabled: !!cid && !!user?.id,
     queryFn: async () => {
-      const sb = supabase as any;
-      const { data } = await sb
+      const { data } = await (supabase as any)
         .from("hms_submissions")
-        .select("id, title, status, kind, submitted_at, created_at, updated_at, template_id")
+        .select("id, title, status, kind, submitted_at, updated_at")
         .eq("company_id", cid)
         .eq("submitted_by", user!.id)
         .is("deleted_at", null)
@@ -59,373 +70,185 @@ export default function HmsMobilePage() {
     },
   });
 
-  const { data: handbooks, isLoading: handbooksLoading, error: handbooksError } = useQuery({
-    queryKey: ["hms-mobile-handbooks", cid, user?.id],
-    enabled: !!cid && tab === "håndbok",
-    queryFn: async () => {
-      const sb = supabase as any;
-      const { data: hbs } = await sb
-        .from("hms_handbooks")
-        .select("id, title, description, kind, current_version_id")
-        .eq("company_id", cid)
-        .is("deleted_at", null)
-        .order("title", { ascending: true });
-      const list = (hbs ?? []) as any[];
-      const versionIds = list.map((h) => h.current_version_id).filter(Boolean);
-      if (!versionIds.length || !user?.id) {
-        return list.map((h) => ({ ...h, requires_ack: false, my_ack: null, version_number: null }));
-      }
-      const [{ data: vers }, { data: acks }] = await Promise.all([
-        sb.from("hms_handbook_versions")
-          .select("id, version_number, requires_acknowledgement").in("id", versionIds),
-        sb.from("hms_handbook_acknowledgements")
-          .select("version_id, acknowledged_at").in("version_id", versionIds).eq("user_id", user.id),
-      ]);
-      const vMap = new Map((vers ?? []).map((v: any) => [v.id, v]));
-      const aMap = new Map((acks ?? []).map((a: any) => [a.version_id, a.acknowledged_at]));
-      return list.map((h) => {
-        const v: any = h.current_version_id ? vMap.get(h.current_version_id) : null;
-        return {
-          ...h,
-          version_number: v?.version_number ?? null,
-          requires_ack: !!v?.requires_acknowledgement,
-          my_ack: h.current_version_id ? aMap.get(h.current_version_id) ?? null : null,
-        };
-      });
-    },
-  });
-
   const startMut = useMutation({
     mutationFn: async (templateId: string) => {
       if (!cid || !user) throw new Error("Mangler kontekst");
-      return startSubmission({
-        companyId: cid,
-        templateId,
-        userId: user.id,
-        userName: user.name || user.email,
-      });
+      return startSubmission({ companyId: cid, templateId, userId: user.id, userName: user.name || user.email });
     },
     onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: ["hms-mobile-mine"] });
       navigate(`/hms/mobile/fill/${id}`);
     },
-    onError: (e: any) => {
-      toast({ title: "Kunne ikke starte", description: e?.message ?? "Ukjent feil", variant: "destructive" });
-    },
+    onError: (e: any) => toast({ title: "Kunne ikke starte", description: e?.message ?? "Ukjent feil", variant: "destructive" }),
   });
 
-  const sjaTemplates = useMemo(() => (templates ?? []).filter((t) => t.kind === "sja"), [templates]);
-  const checklistTemplates = useMemo(() => (templates ?? []).filter((t) => t.kind === "checklist"), [templates]);
+  const sja = useMemo(() => (templates ?? []).filter((t) => t.kind === "sja"), [templates]);
+  const checklists = useMemo(() => (templates ?? []).filter((t) => t.kind === "checklist"), [templates]);
+  const drafts = (mine ?? []).filter((s) => s.status === "draft");
 
-  const drafts = (mySubmissions ?? []).filter((s) => s.status === "draft");
-  const others = (mySubmissions ?? []).filter((s) => s.status !== "draft");
-  const initialLoading = templatesLoading || submissionsLoading;
-  const initialError = templatesError || submissionsError;
+  if (tLoading || mLoading) return <HmsLoading label="Laster HMS…" />;
+  if (tError) return <div className="p-4 text-base text-destructive">Kunne ikke laste HMS: {(tError as Error).message}</div>;
 
-  useEffect(() => {
-    if (import.meta.env.DEV && !initialLoading && !initialError) {
-      console.debug("[HMS init] mobile cards built", {
-        companyId: cid,
-        templates: templates?.length ?? 0,
-        sja: sjaTemplates.length,
-        checklists: checklistTemplates.length,
-        mySubmissions: mySubmissions?.length ?? 0,
-      });
-    }
-  }, [checklistTemplates.length, cid, initialError, initialLoading, mySubmissions?.length, sjaTemplates.length, templates?.length]);
-
-  if (initialLoading) return <HmsLoading label="Laster HMS & HR…" />;
-  if (initialError) {
-    return (
-      <div className="p-4 max-w-2xl mx-auto text-sm text-destructive">
-        Kunne ikke laste HMS-mobil: {(initialError as Error).message}
-      </div>
-    );
-  }
+  const canManage = hasPermission("hms.manage");
+  const isMontor = user?.role === "montør";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 pb-20">
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/60">
-        <div className="px-4 py-3 max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary grid place-items-center">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">HMS</div>
-              <div className="text-sm font-semibold">Mobil</div>
-            </div>
-          </div>
-          {drafts.length > 0 && (
-            <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
-              {drafts.length} utkast
-            </Badge>
+    <div className="mx-auto max-w-xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4">
+      {view === "home" ? (
+        <div className="space-y-6">
+          <h1 className="text-2xl font-semibold tracking-tight">HMS</h1>
+
+          {drafts[0] && (
+            <Link
+              to={`/hms/mobile/fill/${drafts[0].id}`}
+              className="flex min-h-[72px] items-center gap-3 rounded-2xl bg-primary p-4 text-primary-foreground active:scale-[0.99] transition-transform"
+            >
+              <Clock className="h-6 w-6 shrink-0" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-semibold">Fortsett {drafts[0].kind === "sja" ? "SJA" : "sjekkliste"}</span>
+                <span className="block truncate text-sm opacity-90">{drafts[0].title || "Uten tittel"}</span>
+              </span>
+              <ChevronRight className="h-6 w-6" />
+            </Link>
           )}
+
+          <div className="space-y-3">
+            <ActionCard icon={ClipboardList} label="Start SJA" onClick={() => go("sja")} primary={!drafts[0]} />
+            <ActionCard icon={ListChecks} label="Utfør sjekkliste" onClick={() => go("checklist")} />
+            <ActionCard icon={ShieldAlert} label="Meld RUH / avvik" onClick={() => navigate("/hms/incidents/new")} tone="alert" />
+            <ActionCard icon={HardHat} label="Klar for arbeid" onClick={() => navigate("/hms/klar-for-arbeid")} />
+            <ActionCard icon={BookOpen} label="HMS-håndbok" onClick={() => navigate("/hms/handbok")} />
+            <ActionCard icon={FlaskConical} label="Kjemikalier" onClick={() => navigate("/hms/mine-kjemikalier")} />
+          </div>
+
+          <div className="space-y-1 pt-2">
+            <SecondaryRow icon={FileCheck} label="Mine innsendte" hint={drafts.length ? `${drafts.length} utkast` : undefined} onClick={() => go("mine")} />
+          </div>
+
+          <div className="space-y-1">
+            <div className="px-1 pb-1 text-sm font-medium text-muted-foreground">Mer HMS</div>
+            <SecondaryRow icon={Eye} label="HMS-observasjon" onClick={() => navigate("/hms/incidents/new?type=observation")} />
+            <SecondaryRow icon={ShieldAlert} label="Mine avvik / RUH" onClick={() => navigate("/hms/incidents?scope=mine")} />
+            {canManage && (
+              <>
+                <SecondaryRow icon={Inbox} label="Alle innsendinger" onClick={() => navigate("/hms/submissions")} />
+                <SecondaryRow icon={Users} label="Ansatte" onClick={() => navigate("/hms/people")} />
+                <SecondaryRow icon={FlaskConical} label="Stoffkartotek (admin)" onClick={() => navigate("/hms/kjemikalier")} />
+              </>
+            )}
+            {!isMontor && <SecondaryRow icon={ShieldCheck} label="HMS-oversikt" onClick={() => navigate("/hms")} />}
+          </div>
         </div>
-      </header>
+      ) : (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => go("home")}
+            className="-ml-2 flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-base text-muted-foreground active:bg-muted"
+          >
+            <ArrowLeft className="h-5 w-5" /> HMS
+          </button>
 
-      <div className="px-4 py-4 max-w-2xl mx-auto">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="start" className="text-xs">
-              <Plus className="h-3.5 w-3.5 mr-1" /> Start
-            </TabsTrigger>
-            <TabsTrigger value="mine" className="text-xs">
-              <FileCheck className="h-3.5 w-3.5 mr-1" /> Mine
-            </TabsTrigger>
-            <TabsTrigger value="håndbok" className="text-xs">
-              <BookOpen className="h-3.5 w-3.5 mr-1" /> Håndbok
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="start" className="space-y-4 mt-4">
-            {/* Quick actions grid – store touch-targets */}
-            <div className="grid grid-cols-2 gap-2">
-              <QuickAction
-                icon={<ShieldAlert className="h-5 w-5" />}
-                label="Meld avvik / RUH"
-                tone="rose"
-                onClick={() => navigate("/hms/incidents/new")}
-              />
-              <QuickAction
-                icon={<Eye className="h-5 w-5" />}
-                label="HMS-observasjon"
-                tone="amber"
-                onClick={() => navigate("/hms/incidents/new?type=observation")}
-              />
-              <QuickAction
-                icon={<ClipboardList className="h-5 w-5" />}
-                label="Start SJA"
-                tone="primary"
-                onClick={() => {
-                  const el = document.getElementById("sja-list");
-                  el?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-              />
-              <QuickAction
-                icon={<FileCheck className="h-5 w-5" />}
-                label="Sjekkliste"
-                tone="primary"
-                onClick={() => {
-                  const el = document.getElementById("checklist-list");
-                  el?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-              />
-              <QuickAction
-                icon={<BookOpen className="h-5 w-5" />}
-                label="Håndbøker"
-                tone="muted"
-                onClick={() => setTab("håndbok")}
-              />
-              <QuickAction
-                icon={<FileCheck className="h-5 w-5" />}
-                label="Mine innsendinger"
-                tone="muted"
-                onClick={() => setTab("mine")}
-              />
-            </div>
-
-            {drafts.length > 0 && (
-              <Card className="border-amber-200/60 bg-amber-50/30">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-amber-600" /> Fortsett utkast
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {drafts.slice(0, 3).map((d) => (
+          {view === "mine" ? (
+            <>
+              <h1 className="text-2xl font-semibold tracking-tight">Mine innsendte</h1>
+              {(mine ?? []).length === 0 ? (
+                <p className="py-10 text-center text-base text-muted-foreground">Ingen innsendinger ennå.</p>
+              ) : (
+                <div className="space-y-2">
+                  {(mine ?? []).map((s) => (
                     <Link
-                      key={d.id}
-                      to={`/hms/mobile/fill/${d.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg bg-background border border-border/60 active:scale-[0.99] transition-transform"
+                      key={s.id}
+                      to={`/hms/mobile/fill/${s.id}`}
+                      className="flex min-h-[64px] items-center gap-3 rounded-xl border bg-card p-4 active:scale-[0.99] transition-transform"
                     >
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{d.title || "Uten tittel"}</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          Sist endret {formatDistanceToNow(new Date(d.updated_at), { addSuffix: true, locale: nb })}
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-[10px]">Fortsett</Badge>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-base font-medium">{s.title || "Uten tittel"}</span>
+                        <span className="block text-sm text-muted-foreground">
+                          {s.kind === "sja" ? "SJA" : "Sjekkliste"} · {formatDistanceToNow(new Date(s.submitted_at || s.updated_at), { addSuffix: true, locale: nb })}
+                        </span>
+                      </span>
+                      <StatusText status={s.status} />
                     </Link>
                   ))}
-                </CardContent>
-              </Card>
-            )}
-
-            <div id="sja-list">
-              <SectionList
-                title="SJA"
-                icon={<ClipboardList className="h-4 w-4 text-primary" />}
-                items={sjaTemplates}
-                onPick={(id) => startMut.mutate(id)}
-                busy={startMut.isPending}
-              />
-            </div>
-
-            <div id="checklist-list">
-              <SectionList
-                title="Sjekklister"
-                icon={<FileCheck className="h-4 w-4 text-primary" />}
-                items={checklistTemplates}
-                onPick={(id) => startMut.mutate(id)}
-                busy={startMut.isPending}
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="mine" className="space-y-2 mt-4">
-            <Link
-              to="/hms/incidents?scope=mine"
-              className="flex items-center justify-between p-3 rounded-lg border border-rose-200 bg-rose-50/40 active:scale-[0.99] transition-transform"
-            >
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-rose-600" />
-                <span className="text-sm font-medium">Mine HMS-avvik / RUH</span>
-              </div>
-              <Badge variant="outline" className="text-[10px]">Åpne liste</Badge>
-            </Link>
-            {(mySubmissions ?? []).length === 0 && (
-              <div className="text-center text-sm text-muted-foreground py-12">
-                Du har ingen SJA/sjekklist-innsendinger ennå.
-              </div>
-            )}
-            {others.map((s) => (
-              <Link
-                key={s.id}
-                to={`/hms/mobile/fill/${s.id}`}
-                className="block p-3 rounded-lg border border-border/60 bg-card active:scale-[0.99] transition-transform"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{s.title || "Uten tittel"}</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      {s.kind?.toUpperCase()} · {formatDistanceToNow(new Date(s.submitted_at || s.updated_at), { addSuffix: true, locale: nb })}
-                    </div>
-                  </div>
-                  <StatusBadge status={s.status} />
                 </div>
-              </Link>
-            ))}
-          </TabsContent>
-
-          <TabsContent value="håndbok" className="space-y-2 mt-4">
-            {handbooksLoading ? (
-              <div className="space-y-2">
-                <div className="text-sm text-muted-foreground py-2">Laster håndbøker…</div>
-                <div className="h-16 rounded-lg bg-muted animate-pulse" />
-                <div className="h-16 rounded-lg bg-muted animate-pulse" />
-              </div>
-            ) : handbooksError ? (
-              <div className="text-center text-sm text-destructive py-12">
-                Kunne ikke laste håndbøker: {(handbooksError as Error).message}
-              </div>
-            ) : (handbooks ?? []).length === 0 && (
-              <div className="text-center text-sm text-muted-foreground py-12">
-                Ingen håndbøker funnet.
-              </div>
-            )}
-            {(handbooks ?? []).map((h) => {
-              const needsAck = h.requires_ack && !h.my_ack && h.version_number;
-              return (
-                <Link
-                  key={h.id}
-                  to={`/hms/handbooks/${h.id}`}
-                  className={`block p-3 rounded-lg border bg-card active:scale-[0.99] transition-transform ${needsAck ? "border-amber-300 bg-amber-50/40" : "border-border/60"}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium">{h.title}</div>
-                      {h.description && <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{h.description}</div>}
-                      <div className="text-[10px] text-muted-foreground mt-1">
-                        {h.version_number ? `v${h.version_number}` : "Ikke publisert"}
-                      </div>
-                    </div>
-                    {h.version_number && (
-                      h.my_ack ? (
-                        <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">Lest</Badge>
-                      ) : needsAck ? (
-                        <Badge className="text-[10px] bg-amber-600">Les og bekreft</Badge>
-                      ) : null
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
-}
-
-function SectionList({ title, icon, items, onPick, busy }: { title: string; icon: React.ReactNode; items: any[]; onPick: (id: string) => void; busy: boolean }) {
-  if (!items || items.length === 0) return null;
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        {icon} {title}
-      </div>
-      {items.map((t) => (
-        <button
-          key={t.id}
-          disabled={busy}
-          onClick={() => onPick(t.id)}
-          className="w-full text-left p-3 rounded-lg border border-border/60 bg-card hover:border-primary/40 active:scale-[0.99] transition-all disabled:opacity-50"
-        >
-          <div className="flex items-start gap-2">
-            <div className="h-9 w-9 rounded-md bg-primary/10 text-primary grid place-items-center shrink-0">
-              <Plus className="h-4 w-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium">{t.name}</div>
-              {t.description && (
-                <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{t.description}</div>
               )}
-              {t.hms_areas?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1.5">
-                  {t.hms_areas.slice(0, 3).map((a: string) => (
-                    <Badge key={a} variant="outline" className="text-[10px] py-0 px-1.5 h-4">{a}</Badge>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-semibold tracking-tight">{view === "sja" ? "Velg SJA" : "Velg sjekkliste"}</h1>
+              {(view === "sja" ? sja : checklists).length === 0 ? (
+                <p className="py-10 text-center text-base text-muted-foreground">
+                  Ingen {view === "sja" ? "SJA-maler" : "sjekklister"} er satt opp. Kontakt HMS-ansvarlig.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {(view === "sja" ? sja : checklists).map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      disabled={startMut.isPending}
+                      onClick={() => startMut.mutate(t.id)}
+                      className="flex min-h-[64px] w-full items-center gap-3 rounded-xl border bg-card p-4 text-left active:scale-[0.99] transition-transform disabled:opacity-60"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-base font-medium">{t.name}</span>
+                        {t.description && <span className="mt-0.5 block line-clamp-1 text-sm text-muted-foreground">{t.description}</span>}
+                      </span>
+                      {startMut.isPending && startMut.variables === t.id
+                        ? <Loader2 className="h-5 w-5 animate-spin" />
+                        : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                    </button>
                   ))}
                 </div>
               )}
-            </div>
-          </div>
-        </button>
-      ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: SubmissionStatus }) {
-  const cls =
-    status === "approved" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-    status === "rejected" ? "bg-rose-50 text-rose-700 border-rose-200" :
-    status === "submitted" ? "bg-blue-50 text-blue-700 border-blue-200" :
-    status === "draft" ? "bg-amber-50 text-amber-700 border-amber-200" :
-    "bg-muted text-muted-foreground border-border";
-  return <Badge variant="outline" className={`text-[10px] ${cls}`}>{STATUS_LABELS[status] ?? status}</Badge>;
-}
-
-function QuickAction({
-  icon, label, onClick, tone,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  tone: "primary" | "rose" | "amber" | "muted";
-}) {
-  const toneCls =
-    tone === "rose" ? "bg-rose-50 text-rose-700 border-rose-200 active:bg-rose-100" :
-    tone === "amber" ? "bg-amber-50 text-amber-800 border-amber-200 active:bg-amber-100" :
-    tone === "muted" ? "bg-card text-foreground border-border active:bg-muted" :
-    "bg-primary/5 text-primary border-primary/30 active:bg-primary/10";
+function ActionCard({
+  icon: Icon, label, onClick, primary, tone,
+}: { icon: React.ElementType; label: string; onClick: () => void; primary?: boolean; tone?: "alert" }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`min-h-[80px] rounded-xl border-2 px-3 py-3 flex flex-col items-start justify-between gap-2 text-left transition active:scale-[0.99] ${toneCls}`}
+      className={cn(
+        "flex min-h-[64px] w-full items-center gap-4 rounded-2xl border p-4 text-left active:scale-[0.99] transition-transform",
+        primary ? "border-primary/40 bg-primary/5" : tone === "alert" ? "border-destructive/30 bg-destructive/5" : "bg-card",
+      )}
     >
-      <span className="h-9 w-9 rounded-lg bg-background/60 grid place-items-center">{icon}</span>
-      <span className="text-sm font-semibold leading-tight">{label}</span>
+      <span className={cn(
+        "grid h-11 w-11 shrink-0 place-items-center rounded-xl",
+        tone === "alert" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary",
+      )}>
+        <Icon className="h-6 w-6" />
+      </span>
+      <span className="flex-1 text-lg font-semibold">{label}</span>
+      <ChevronRight className="h-5 w-5 text-muted-foreground" />
     </button>
   );
+}
+
+function SecondaryRow({ icon: Icon, label, hint, onClick }: { icon: React.ElementType; label: string; hint?: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex min-h-[48px] w-full items-center gap-3 rounded-lg px-2 text-left text-base active:bg-muted">
+      <Icon className="h-5 w-5 text-muted-foreground" />
+      <span className="flex-1">{label}</span>
+      {hint && <span className="text-sm text-muted-foreground">{hint}</span>}
+      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    </button>
+  );
+}
+
+function StatusText({ status }: { status: SubmissionStatus }) {
+  const cls =
+    status === "approved" ? "text-primary" :
+    status === "rejected" ? "text-destructive" :
+    "text-muted-foreground";
+  return <span className={cn("shrink-0 text-sm font-medium", cls)}>{STATUS_LABELS[status] ?? status}</span>;
 }
