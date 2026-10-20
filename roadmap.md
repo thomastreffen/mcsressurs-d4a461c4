@@ -1,5 +1,12 @@
 # Roadmap
 
+## Første mobilbølge
+- [ ] Mobilskall, rollebasert meny og safe-area
+- [ ] Dagbasert telefonvisning i Ressursplan med eksisterende arbeidsflyt
+- [ ] Mobil prosjektliste med Mine/Alle og kanonisk involvering
+- [ ] Mobil prosjekt-hjem og fullbredde store arbeidsflater
+- [ ] Tester og innlogget kontroll ved 390x844, 768x1024 og desktop
+
 ## Ressursplan – robust prosjektsøk
 - [x] Felles søkenormalisering/token-matching i picker og Tripletex med tilsvarende selskapsavgrenset SQL-søk før resultatgrenser; identitet/import/lagring uendret
 - [x] 145 tester besto (17 nye); innlogget test 1/test1/test-1/TEST 1/test/1 verifisert med én linked Test1 og separat Test 2; ingen Tripletex-skriving eller produksjonskall
