@@ -71,11 +71,11 @@ export default function HmsMobilePage() {
     },
   });
 
-  // Kompakt teller for admin: åpne AML-/arbeidstidsvarsler + overtid til godkjenning.
-  // Selve listene ligger på egne undersider — ikke i montørens førstebilde.
+  // Kompakt teller: åpne AML-/arbeidstidsvarsler + overtid til godkjenning.
+  // Selve listene ligger på egne undersider — ikke i førstebildet. RLS avgrenser innholdet.
   const { data: worktime } = useQuery({
     queryKey: ["hms-mobile-worktime-counts", cid],
-    enabled: !!cid && canManage,
+    enabled: !!cid,
     queryFn: async () => {
       const sb = supabase as any;
       const [alerts, overtime] = await Promise.all([
@@ -144,20 +144,20 @@ export default function HmsMobilePage() {
             <div className="px-1 pb-1 text-sm font-medium text-muted-foreground">Mer HMS</div>
             <SecondaryRow icon={Eye} label="HMS-observasjon" onClick={() => navigate("/hms/incidents/new?type=observation")} />
             <SecondaryRow icon={ShieldAlert} label="Mine avvik / RUH" onClick={() => navigate("/hms/incidents?scope=mine")} />
+            <SecondaryRow
+              icon={AlertTriangle}
+              label="Arbeidstid og AML-varsler"
+              hint={worktime?.openAlerts ? `${worktime.openAlerts} åpne` : undefined}
+              onClick={() => navigate("/hms/aml")}
+            />
+            <SecondaryRow
+              icon={Clock}
+              label="Overtid til godkjenning"
+              hint={worktime?.pendingOvertime ? `${worktime.pendingOvertime} venter` : undefined}
+              onClick={() => navigate("/hms/overtime")}
+            />
             {canManage && (
               <>
-                <SecondaryRow
-                  icon={AlertTriangle}
-                  label="Arbeidstid og AML-varsler"
-                  hint={worktime?.openAlerts ? `${worktime.openAlerts} åpne` : undefined}
-                  onClick={() => navigate("/hms/aml")}
-                />
-                <SecondaryRow
-                  icon={Clock}
-                  label="Overtid til godkjenning"
-                  hint={worktime?.pendingOvertime ? `${worktime.pendingOvertime} venter` : undefined}
-                  onClick={() => navigate("/hms/overtid")}
-                />
                 <SecondaryRow icon={Inbox} label="Alle innsendinger" onClick={() => navigate("/hms/submissions")} />
                 <SecondaryRow icon={Users} label="Ansatte" onClick={() => navigate("/hms/people")} />
                 <SecondaryRow icon={FlaskConical} label="Stoffkartotek (admin)" onClick={() => navigate("/hms/kjemikalier")} />
