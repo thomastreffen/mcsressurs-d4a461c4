@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { inheritProjectRelevance, type RelevantProject } from "@/lib/mobile-project-relevance";
 
@@ -8,9 +9,11 @@ const roleLabels: Record<string, string> = { owner: "Eier", manager: "Prosjektle
 /** Reads only already-visible project IDs. Auth UID, technician ID and person ID stay distinct. */
 export function useMobileProjectRelevance(projects: RelevantProject[], enabled: boolean) {
   const { user } = useAuth();
+  const access = useCompanyModuleAccess();
+  const canReadPlanning = access.can("planning");
   const scope = projects.map(p => `${p.id}:${p.companyId}:${p.parentId}`).sort().join("|");
   return useQuery({
-    queryKey: ["mobile-project-relevance", user?.id, scope],
+    queryKey: ["mobile-project-relevance", user?.id, scope, canReadPlanning],
     enabled: enabled && !!user && projects.length > 0,
     queryFn: async () => {
       if (!user) return new Map<string, string[]>();
@@ -33,7 +36,7 @@ export function useMobileProjectRelevance(projects: RelevantProject[], enabled: 
           techIds.length ? supabase.from("schedule_blocks").select("project_id,job_id").in("project_id", ids).in("technician_id", techIds).is("deleted_at", null) : Promise.resolve({ data: [], error: null }),
           techIds.length ? supabase.from("job_tasks").select("job_id,assigned_technician_ids").in("job_id", ids).overlaps("assigned_technician_ids", techIds) : Promise.resolve({ data: [], error: null }),
           supabase.from("tasks").select("linked_project_id,owner_user_id,assigned_user_id,task_assignees(user_id)").in("linked_project_id", ids),
-          supabase.from("planning_projects").select("id,linked_event_id,owner_user_id,planning_work_packages(responsible_person_id,linked_event_id),planning_tasks(assignee_person_id)").in("linked_event_id", ids).is("deleted_at", null),
+          canReadPlanning ? supabase.from("planning_projects").select("id,linked_event_id,owner_user_id,planning_work_packages(responsible_person_id,linked_event_id),planning_tasks(assignee_person_id)").in("linked_event_id", ids).is("deleted_at", null) : Promise.resolve({ data: [], error: null }),
         ]);
         for (const response of [members, assignments, blocks, jobTasks, tasks, planning]) {
           if (response.error) throw response.error;

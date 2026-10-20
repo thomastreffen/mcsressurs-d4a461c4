@@ -309,7 +309,7 @@ export function MobileTabBar() {
                       navigate(action.path);
                     }
                   }}
-                  className="flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80"
+                  className="h-auto min-h-16 shrink-0 justify-start flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80"
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <action.icon className="h-5 w-5" />
@@ -342,7 +342,7 @@ export function MobileTabBar() {
             <DrawerClose asChild>
               <Button variant="ghost"
                 onClick={() => { setMoreOpen(false); navigate("/notifications"); }}
-                className="flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80"
+                className="h-auto min-h-16 shrink-0 justify-start flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary relative">
                   <Bell className="h-5 w-5" />
@@ -368,7 +368,7 @@ export function MobileTabBar() {
                 <Button variant="ghost"
                   onClick={() => { setMoreOpen(false); navigate(item.path); }}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80",
+                    "h-auto min-h-16 shrink-0 justify-start flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80",
                     isActive(item.path) && "bg-primary/10"
                   )}
                 >

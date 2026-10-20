@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -87,7 +87,7 @@ export default function JobsPage() {
   const isMobile = useIsMobile();
   const { hasPermission } = usePermissions();
   const companyAccess = useCompanyModuleAccess();
-  const canBrowseAll = companyAccess.can("resource_plan") && (isAdmin || isSuperAdmin || hasPermission("jobs.view"));
+  const canBrowseAll = (isAdmin || isSuperAdmin || hasPermission("jobs.view")) && (companyAccess.can("resource_plan") || companyAccess.can("planning") || companyAccess.can("finance"));
   const [mobileScope, setMobileScope] = useState<"mine" | "all">("mine");
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +99,7 @@ export default function JobsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sendingApproval, setSendingApproval] = useState<string | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
+  const fetchVersion = useRef(0);
   const relevance = useMobileProjectRelevance(jobs, isMobile);
   const myRoles = relevance.data ?? new Map<string, string[]>();
   useEffect(() => { setMobileScope("mine"); setPage(0); }, [activeCompanyId, user?.id]);
@@ -108,7 +109,9 @@ export default function JobsPage() {
   };
 
   const fetchJobs = useCallback(async () => {
+    const version = ++fetchVersion.current;
     setLoading(true);
+    setJobs([]);
     let query = supabase
       .from("events")
       .select(`
@@ -126,8 +129,10 @@ export default function JobsPage() {
 
     const { data } = await query;
 
+    if (version !== fetchVersion.current) return;
     if (data) {
       const refs = isMobile ? await fetchFinancialProjectNumbers(data.map(e => e.id)) : new Map<string, string>();
+      if (version !== fetchVersion.current) return;
       setJobs(
         data.map((e: any) => {
           const techs = (e.event_technicians || [])
