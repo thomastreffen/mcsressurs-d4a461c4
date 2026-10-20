@@ -2,6 +2,7 @@
  * Unified project picker (all eligible Hub parents + Tripletex TEST on demand).
  * Pure helpers – the stable Tripletex project ID is the only dedupe key.
  */
+import { rankProjectSearch } from "../../supabase/functions/_shared/project-search";
 export interface HubLinkedProject {
   event_id: string;
   project_number: string | null;
@@ -103,15 +104,7 @@ export function rowStatusLabel(r: PickerRow): string {
 
 /** Normalization is for ranking only; mergeProjectResults alone decides identity. */
 export function projectMatchRank(r: PickerRow, query: string): number {
-  const term = query.trim().toLocaleLowerCase("nb-NO");
-  if (!term) return 5;
-  const number = (r.projectNumber ?? "").trim().toLocaleLowerCase("nb-NO");
-  const name = cleanName(r.projectNumber, r.name).toLocaleLowerCase("nb-NO");
-  if (number === term) return 0;
-  if (name === term) return 1;
-  if (number.startsWith(term) || name.startsWith(term)) return 2;
-  if ((r.customer ?? "").toLocaleLowerCase("nb-NO").includes(term)) return 3;
-  return 4; // Includes org matches already selected by the caller-scoped search.
+  return rankProjectSearch(r.projectNumber, cleanName(r.projectNumber, r.name), r.customer, query);
 }
 
 export function groupProjectResults(rows: PickerRow[], query: string): { id: string; label: string; rows: PickerRow[] }[] {

@@ -302,6 +302,13 @@
       "when": 1792474391011,
       "tag": "0042_restore_hub_resource_project_selection",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792477718355,
+      "tag": "0043_resource_plan_normalized_project_search",
+      "breakpoints": true
     }
   ]
 }

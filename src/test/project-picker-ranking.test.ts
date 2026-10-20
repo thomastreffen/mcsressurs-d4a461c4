@@ -34,9 +34,9 @@ describe("Deterministic project picker ranking and identity", () => {
   it("repeated stable Tripletex ID creates only one import option", () => {
     expect(mergeProjectResults([], [test2, test2])).toHaveLength(1);
   });
-  it("customer matches rank after prefixes but before other search matches", () => {
+  it("exact customer matches rank with strong names before prefixes", () => {
     const rows = mergeProjectResults([], [{ ...test2, customer: { name: "Caverion" } }, { id: 103, number: "3", name: "Caverion tavle" }]);
-    expect(rows.map((r) => projectMatchRank(r, "caverion"))).toEqual([3, 2]);
+    expect(rows.map((r) => projectMatchRank(r, "caverion"))).toEqual([1, 2]);
   });
   it("confirmed closed status from matching stable ID is preserved on linked Hub row", () => {
     expect(mergeProjectResults([linked], [{ id: 101, number: "1", name: "Test1", isClosed: true }])[0]).toMatchObject({ linked: true, status: "closed" });
