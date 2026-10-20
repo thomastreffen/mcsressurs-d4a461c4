@@ -1573,7 +1573,7 @@ export function EventDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-[480px] flex flex-col overflow-y-auto">
+      <SheetContent mobileWorkspace className="sm:max-w-[480px] flex flex-col overflow-y-auto">
         <SheetHeader className="space-y-1">
           <SheetTitle className="flex items-center gap-2 text-base">
             {isEditing ? (

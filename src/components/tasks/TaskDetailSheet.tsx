@@ -68,7 +68,7 @@ export function TaskDetailSheet({ task, open, onOpenChange, onComplete, onDelete
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="sm:max-w-[480px] flex flex-col">
+        <SheetContent mobileWorkspace className="sm:max-w-[480px] flex flex-col">
           <SheetHeader>
             <SheetTitle className="text-left pr-8">{task.title}</SheetTitle>
           </SheetHeader>

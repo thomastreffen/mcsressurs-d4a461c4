@@ -195,7 +195,7 @@ export function JobQuickEditSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-[440px] flex flex-col">
+      <SheetContent mobileWorkspace className="sm:max-w-[440px] flex flex-col">
         <SheetHeader className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -236,7 +236,7 @@ export function JobQuickEditSheet({
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Tidspunkt
             </Label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 [&>div:first-child]:col-span-2 md:[&>div:first-child]:col-span-1">
               <div>
                 <Label className="text-xs">Dato</Label>
                 <Input
