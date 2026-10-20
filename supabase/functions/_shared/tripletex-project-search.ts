@@ -1,10 +1,13 @@
 import { matchesProjectSearch, rankProjectSearch } from "./project-search.ts";
-import type { TtCall } from "./tripletex-session.ts";
 import type { TtImportProject } from "./tripletex-import-core.ts";
+
+type ProjectSearchRead = (method: string, path: string) => Promise<{
+  r: { ok: boolean; status: number }; b: { values?: TtImportProject[] } | null;
+}>;
 
 /** Literal API filters exclude separator variants and cross-field tokens.
  * Page eligible TEST candidates, then match locally before the result limit. */
-export async function searchTripletexProjects(call: TtCall, query: string, includeClosed: boolean, fields: string): Promise<TtImportProject[]> {
+export async function searchTripletexProjects(call: ProjectSearchRead, query: string, includeClosed: boolean, fields: string): Promise<TtImportProject[]> {
   const candidates: TtImportProject[] = [];
   const count = 1000;
   for (let from = 0; ; from += count) {
