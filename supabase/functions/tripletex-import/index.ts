@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { GuardError, type Connection } from "../_shared/tripletex-guard.ts";
 import { openSession, type TtCall } from "../_shared/tripletex-session.ts";
+import { searchTripletexProjects } from "../_shared/tripletex-project-search.ts";
 import { runImport, assertImportAllowed, decideCustomer, importKey, normOrg, shellTitle, openStatus, type IStore, type ITtApi, type TtImportProject } from "../_shared/tripletex-import-core.ts";
 
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -90,24 +91,8 @@ Deno.serve(async (req) => {
 
     if (action === "search") {
       const q = String(body.query ?? "").trim().slice(0, 80);
-      const by = ["number", "name", "customer"].includes(body.by) ? body.by : "name";
-      const closed = body.include_closed === true ? "" : "&isClosed=false";
       const s = await openSession(conn);
-      let param = "";
-      if (q) {
-        if (by === "number") param = `&number=${encodeURIComponent(q)}`;
-        else if (by === "name") param = `&name=${encodeURIComponent(q)}`;
-        else {
-          const cp = /^\d{9}$/.test(q.replace(/\s/g, "")) ? `organizationNumber=${q.replace(/\s/g, "")}` : `name=${encodeURIComponent(q)}`;
-          const cx = await s.call("GET", `/customer?${cp}&count=10&fields=id`);
-          const ids = (cx.b?.values ?? []).map((c: any) => c.id);
-          if (!ids.length) return json({ results: [] });
-          param = `&customerId=${ids.join(",")}`;
-        }
-      }
-      const x = await s.call("GET", `/project?count=50${closed}${param}&fields=${FIELDS}`);
-      if (!x.r.ok) throw new Error(`search ${x.r.status}`);
-      const res = (x.b?.values ?? []) as TtImportProject[];
+      const res = await searchTripletexProjects(s.call, q, body.include_closed === true, FIELDS);
       const ids = res.map((r) => r.id);
       const { data: taken } = ids.length ? await db.from("tripletex_links").select("tripletex_id,mcs_entity_id").eq("connection_id", conn.id).eq("mcs_entity_type", "project").neq("status", "inactive").in("tripletex_id", ids) : { data: [] };
       return json({ results: res.map((r) => ({ ...r, linked_event_id: (taken ?? []).find((t: any) => t.tripletex_id === r.id)?.mcs_entity_id ?? null })) });
