@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
@@ -384,7 +385,7 @@ function AvailabilityTester({ addLog }: { addLog: (msg: string) => void }) {
       const start = `${testDate}T${testStart}:00`;
       const end = `${testDate}T${testEnd}:00`;
 
-      const { data, error } = await supabase.functions.invoke("ms-calendar", {
+      const { data, error } = await invokeWithSession("ms-calendar", {
         body: { action: "availability", user_ids: userIds, start, end },
       });
 

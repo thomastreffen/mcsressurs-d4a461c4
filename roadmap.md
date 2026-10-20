@@ -1,5 +1,9 @@
 # Roadmap
 
+## Ressursplan – innloggingsfeil
+- [x] Sesjonshydrering, delt fornyelse og én 401-retry kun for lesing; signing-key-kompatibel kontroll deployet for ms-calendar/tripletex-import
+- [x] 102 tester besto; ekte innlogget kalender og Test1/Test2-søk svarte 200 uten 401; ingen Tripletex-skriving eller produksjonskall
+
 ## Ressursplan – entydig prosjektvelger
 - [x] Grupper og ranger eksisterende picker, behold stabil-ID-deduplisering og lagringsregler
 - [x] 107 tester grønne; Test1/Test2-søk og Hub-only-valg verifisert innlogget, desktop/mobil kontrollert; ingen import/opprettelse

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { startOfWeek, endOfWeek, format } from "date-fns";
 import { parseUtc } from "@/lib/parse-utc";
 
@@ -80,7 +81,7 @@ export function useExternalBusy(technicianId: string | null, options?: UseExtern
       const startISO = weekStart.toISOString().replace("Z", "");
       const endISO = weekEnd.toISOString().replace("Z", "");
 
-      const { data, error: fnError } = await supabase.functions.invoke("ms-calendar", {
+      const { data, error: fnError } = await invokeWithSession("ms-calendar", {
         body: {
           action: "availability",
           user_ids: userIds,

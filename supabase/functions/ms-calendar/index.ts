@@ -1,10 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 
@@ -223,8 +218,9 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: { user: authUser }, error: userErr } = await supabaseAnon.auth.getUser(jwt);
-    if (userErr || !authUser) return respond({ error: "Invalid session" }, 401);
+    const { data: claimsData, error: claimsError } = await supabaseAnon.auth.getClaims(jwt);
+    if (claimsError || !claimsData?.claims?.sub) return respond({ error: "Invalid session" }, 401);
+    const authUser = { id: claimsData.claims.sub };
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,

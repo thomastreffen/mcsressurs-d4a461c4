@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { rpc, invoke } = vi.hoisted(() => ({ rpc: vi.fn(), invoke: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, functions: { invoke } } }));
+vi.mock("@/lib/invoke-session", () => ({ invokeWithSession: (...args: any[]) => invoke(...args) }));
 import { UnifiedProjectPicker } from "@/components/resource-plan/UnifiedProjectPicker";
 
 beforeEach(() => { rpc.mockReset(); invoke.mockReset(); });

@@ -8,6 +8,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import { mergeProjectResults, canPlanNewJob, openStatus, tripletexSearchBy, rowLabel } from "@/lib/project-picker";
+vi.mock("@/lib/invoke-session", () => ({ invokeWithSession: (...args: any[]) => invoke(...args) }));
 import { checkParentOpenForNewJob, gateFromStatus } from "@/lib/parent-open-gate";
 import { formatProjectLabel } from "@/lib/project-reference";
 import { openStatus as serverOpenStatus } from "../../supabase/functions/_shared/tripletex-import-core";
