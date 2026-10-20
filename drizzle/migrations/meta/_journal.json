@@ -295,6 +295,13 @@
       "when": 1792416900560,
       "tag": "0041_search_linked_financial_projects_org_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792474391011,
+      "tag": "0042_restore_hub_resource_project_selection",
+      "breakpoints": true
     }
   ]
 }

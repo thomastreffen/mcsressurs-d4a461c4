@@ -17463,6 +17463,13 @@ export type Database = {
         }
       }
       repair_resource_plan_ghosts: { Args: never; Returns: Json }
+      resource_plan_parent_context: {
+        Args: { _company_id: string; _event_id: string }
+        Returns: {
+          event_id: string
+          linked: boolean
+        }[]
+      }
       resource_plan_personnel: {
         Args: { _company_ids: string[] }
         Returns: {
@@ -17477,12 +17484,30 @@ export type Database = {
           user_id: string
         }[]
       }
+      resource_plan_tripletex_context: {
+        Args: { _company_id: string }
+        Returns: {
+          economic_project_master: boolean
+          test_search_enabled: boolean
+        }[]
+      }
       scan_resource_plan_ghosts: { Args: never; Returns: Json }
       search_linked_financial_projects: {
         Args: { _company_id: string; _q: string }
         Returns: {
           customer: string
           event_id: string
+          project_number: string
+          title: string
+          tripletex_project_id: number
+        }[]
+      }
+      search_resource_plan_projects: {
+        Args: { _company_id: string; _q: string }
+        Returns: {
+          customer: string
+          event_id: string
+          internal_number: string
           project_number: string
           title: string
           tripletex_project_id: number
