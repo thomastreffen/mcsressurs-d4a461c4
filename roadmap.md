@@ -1,9 +1,10 @@
 # Roadmap
 
 ## Monitoring – automatikk og utkast
-- [ ] Verifiser og rett feil HTTP-kall i eksisterende innboksskanning uten å endre tidsplan
-- [ ] Verifiser og rett lagrede/forkastede utkast med regresjonstester
-- [ ] Kontroller resultat og oppdater begge monitoring-funn
+- [x] Rett innboksskanningens HTTP-schema til net.http_post uten å endre 15-minuttersintervallet; oppdatert SDK fjerner getClaims-krasj
+- [ ] Innboksskanningens autentisering: eksisterende cron bruker anon-bearer og får 401; krever sikker systemautentisering, ikke svekket tilgangskontroll
+- [x] Rett lagrede/forkastede utkast; seks regresjonstester bestått og innlogget avbryt/gjenåpning verifisert
+- [ ] Oppdater monitoring-status når funn-ID-er er tilgjengelige (pending-listen returnerer ingen funn); cron ikke ferdig før autorisert kjøring er verifisert
 
 ## Ressursplan – Tripletex-additiv regresjonsretting
 - [x] Gjenopprett selskapsavgrenset Hub-prosjektsøk og Nytt prosjekt uten integrasjon
