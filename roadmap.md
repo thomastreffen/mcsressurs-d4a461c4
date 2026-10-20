@@ -1,5 +1,12 @@
 # Roadmap
 
+## Første mobilbølge
+- [x] Mobilskall, rollebasert meny og safe-area; sekundære app-/kontohandlinger i Mer
+- [x] Dagbasert telefonvisning i Ressursplan med eksisterende data og montørfokus i EventDrawer
+- [x] Mobil prosjektliste med Mine/Alle og kanonisk involvering, selskapsavgrenset arving og globalt tilgangsstyrt søk
+- [x] Mobil prosjekt-hjem og opt-in fullbredde store arbeidsflater med sticky safe-area-handlinger
+- [x] 230 tester grønne; innlogget 390x844, 768x1024 og 1280x1800 kontrollert; ekte MCS Service-blokk åpnet, BusBar plan/list/detail uten horisontal overflow, mobilskjema 390x844 uten overflow; ingen lagring eller backend-endringer
+
 ## Ressursplan – robust prosjektsøk
 - [x] Felles søkenormalisering/token-matching i picker og Tripletex med tilsvarende selskapsavgrenset SQL-søk før resultatgrenser; identitet/import/lagring uendret
 - [x] 145 tester besto (17 nye); innlogget test 1/test1/test-1/TEST 1/test/1 verifisert med én linked Test1 og separat Test 2; ingen Tripletex-skriving eller produksjonskall

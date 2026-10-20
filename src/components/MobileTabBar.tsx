@@ -25,6 +25,9 @@ import {
   ShieldAlert,
   Eye,
   FileCheck,
+  LogOut,
+  Download,
+  Info,
 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useActionRequired } from "@/hooks/useActionRequired";
@@ -34,6 +37,9 @@ import { useModuleVisibility } from "@/hooks/useModuleVisibility";
 import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
 import { moduleForMenu, moduleForPath } from "@/lib/company-module-access";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { InstallAppDialog } from "@/components/pwa/InstallAppDialog";
+import { PwaStatusDialog } from "@/components/pwa/PwaStatusDialog";
 import {
   Drawer,
   DrawerContent,
@@ -138,6 +144,9 @@ interface MoreMenuItem {
 }
 
 const moreMenuItems: MoreMenuItem[] = [
+  { label: "Planlegging", icon: CalendarDays, path: "/planlegging", moduleKey: "planning" },
+  { label: "Min håndbok", icon: BookOpen, path: "/hms/handbok", moduleKey: "self_service" },
+  { label: "Klar for arbeid", icon: HardHat, path: "/hms/klar-for-arbeid", moduleKey: "self_service" },
   { label: "Dokumentasjon / Eksport", icon: FileText, path: "/hms/documentation", moduleKey: "hms", modulePermission: "module.hms", requiredPermission: "hms.manage" },
   { label: "HMS & HR", icon: HardHat, path: "/hms", moduleKey: "hms", modulePermission: "module.hms" },
   { label: "Bestillinger", icon: ClipboardList, path: "/orders", moduleKey: "orders", modulePermission: "module.orders" },
@@ -155,7 +164,7 @@ const moreMenuItems: MoreMenuItem[] = [
 export function MobileTabBar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { hasPermission } = usePermissions();
   const { isModuleVisible } = useModuleVisibility();
   const companyAccess = useCompanyModuleAccess();
@@ -165,18 +174,21 @@ export function MobileTabBar() {
   const actionRequiredCount = useActionRequired();
   const [fabOpen, setFabOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
 
   const jobsDot = actionRequiredCount > 0;
   const isOnPlan = location.pathname === "/projects/plan";
   const isOnHms = location.pathname.startsWith("/hms");
 
-  const quickActions: QuickAction[] = isOnHms
-    ? [...hmsActions, ...baseQuickActions]
-    : isOnPlan
-    ? [planAction, ...baseQuickActions]
-    : isMontør
-    ? [...hmsActions.slice(0, 2), ...baseQuickActions]
-    : baseQuickActions;
+  const quickActions: QuickAction[] = isMontør
+    ? hmsActions
+    : isOnHms ? hmsActions
+    : isOnPlan ? [planAction]
+    : location.pathname.startsWith("/sales") ? baseQuickActions.slice(1, 3)
+    : location.pathname.startsWith("/contracts") ? baseQuickActions.slice(3)
+    : location.pathname === "/projects" ? baseQuickActions.slice(0, 1)
+    : [];
 
   const availableActions = quickActions.filter((action) => {
     const companyModule = action.path ? moduleForPath(action.path) : "resource_plan";
@@ -196,6 +208,8 @@ export function MobileTabBar() {
   };
 
   const visibleMoreItems = moreMenuItems.filter((item) => {
+    if (item.moduleKey === "self_service") return true;
+    if (isMontør && ["sales", "invoice_basis", "management"].includes(item.moduleKey)) return false;
     if (!canAccessModule(item.moduleKey, item.modulePermission)) return false;
     if (item.requiredPermission && !isAdmin && !hasPermission(item.requiredPermission)) return false;
     return true;
@@ -213,7 +227,7 @@ export function MobileTabBar() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card lg:hidden safe-area-bottom shadow-[0_-2px_12px_-3px_hsl(220_20%_20%/0.08)]">
+      <nav aria-label="Mobilnavigasjon" className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/60 bg-card md:hidden safe-area-bottom shadow-sm">
         <div className="flex items-stretch">
           {/* Min dag – for montører */}
           {isMontør && (
@@ -245,7 +259,7 @@ export function MobileTabBar() {
           )}
 
           {/* FAB center */}
-          <button
+          {availableActions.length > 0 && <Button variant="ghost"
             onClick={() => setFabOpen(true)}
             className="flex flex-1 items-center justify-center py-1"
             aria-label="Ny handling"
@@ -253,9 +267,9 @@ export function MobileTabBar() {
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25 -mt-4 transition-transform active:scale-95">
               <Plus className="h-6 w-6" strokeWidth={2.5} />
             </span>
-          </button>
+          </Button>}
 
-          {showPlan && (
+          {showPlan && !isMontør && (
             <TabButton
               label="Plan"
               icon={CalendarDays}
@@ -263,6 +277,8 @@ export function MobileTabBar() {
               onClick={() => navigate("/projects/plan")}
             />
           )}
+
+          {isMontør && <TabButton label="Varsler" icon={Bell} active={isActive("/notifications")} onClick={() => navigate("/notifications")} badge={unreadCount} />}
 
           {/* More – replaces Varsler as 5th tab, gives access to all other modules */}
           <TabButton
@@ -284,7 +300,7 @@ export function MobileTabBar() {
           <div className="flex flex-col gap-1 px-4 pb-6">
             {availableActions.map((action) => (
               <DrawerClose key={action.label} asChild>
-                <button
+                <Button variant="ghost"
                   onClick={() => {
                     setFabOpen(false);
                     if (action.onAction) {
@@ -293,7 +309,7 @@ export function MobileTabBar() {
                       navigate(action.path);
                     }
                   }}
-                  className="flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80"
+                  className="h-auto min-h-16 shrink-0 justify-start flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80"
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <action.icon className="h-5 w-5" />
@@ -302,7 +318,7 @@ export function MobileTabBar() {
                     <p className="text-sm font-medium text-foreground">{action.label}</p>
                     <p className="text-xs text-muted-foreground truncate">{action.description}</p>
                   </div>
-                </button>
+                </Button>
               </DrawerClose>
             ))}
           </div>
@@ -324,9 +340,9 @@ export function MobileTabBar() {
           >
             {/* Notifications always available */}
             <DrawerClose asChild>
-              <button
+              <Button variant="ghost"
                 onClick={() => { setMoreOpen(false); navigate("/notifications"); }}
-                className="flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80"
+                className="h-auto min-h-16 shrink-0 justify-start flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary relative">
                   <Bell className="h-5 w-5" />
@@ -340,7 +356,7 @@ export function MobileTabBar() {
                   <p className="text-sm font-medium text-foreground">Varsler</p>
                   {unreadCount > 0 && <p className="text-xs text-muted-foreground">{unreadCount} ulest</p>}
                 </div>
-              </button>
+              </Button>
             </DrawerClose>
 
             {visibleMoreItems.length > 0 && (
@@ -349,10 +365,10 @@ export function MobileTabBar() {
 
             {visibleMoreItems.map((item) => (
               <DrawerClose key={item.path} asChild>
-                <button
+                <Button variant="ghost"
                   onClick={() => { setMoreOpen(false); navigate(item.path); }}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80",
+                    "h-auto min-h-16 shrink-0 justify-start flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-secondary active:bg-secondary/80",
                     isActive(item.path) && "bg-primary/10"
                   )}
                 >
@@ -360,12 +376,19 @@ export function MobileTabBar() {
                     <item.icon className="h-5 w-5" />
                   </span>
                   <p className="text-sm font-medium text-foreground">{item.label}</p>
-                </button>
+                </Button>
               </DrawerClose>
             ))}
+            <div className="border-t border-border mt-3 pt-3 space-y-1">
+              <DrawerClose asChild><Button variant="ghost" className="w-full justify-start" onClick={() => setInstallOpen(true)}><Download />Installer app</Button></DrawerClose>
+              <DrawerClose asChild><Button variant="ghost" className="w-full justify-start" onClick={() => setStatusOpen(true)}><Info />App-status</Button></DrawerClose>
+              <DrawerClose asChild><Button variant="ghost" className="w-full justify-start" onClick={signOut}><LogOut />Logg ut</Button></DrawerClose>
+            </div>
           </div>
         </DrawerContent>
       </Drawer>
+      <InstallAppDialog open={installOpen} onOpenChange={setInstallOpen} />
+      <PwaStatusDialog open={statusOpen} onOpenChange={setStatusOpen} />
     </>
   );
 }
@@ -387,10 +410,10 @@ function TabButton({
   dot?: boolean;
 }) {
   return (
-    <button
+    <Button variant="ghost"
       onClick={onClick}
       className={cn(
-        "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors relative min-h-[52px] active:bg-secondary/50",
+        "flex flex-1 h-auto min-w-0 flex-col items-center gap-0.5 px-1 py-2 text-xs font-medium transition-colors relative min-h-[56px] active:bg-secondary/50",
         active ? "text-primary" : "text-muted-foreground"
       )}
     >
@@ -409,6 +432,6 @@ function TabButton({
         )}
       </div>
       {label}
-    </button>
+    </Button>
   );
 }

@@ -19,7 +19,7 @@ export function CompanySelector() {
   const displayValue = isAllCompanies ? "__all__" : (activeCompanyId || "");
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 min-w-0 w-full md:w-auto">
       {isAllCompanies ? (
         <Globe className="h-4 w-4 text-primary shrink-0" />
       ) : (
@@ -29,7 +29,7 @@ export function CompanySelector() {
         value={displayValue}
         onValueChange={(v) => setActiveCompanyId(v === "__all__" ? null : v)}
       >
-        <SelectTrigger className="w-[200px] h-8 text-xs">
+        <SelectTrigger className="w-full min-w-0 md:w-[200px] h-11 md:h-8 text-sm md:text-xs [&>span]:truncate">
           <SelectValue placeholder="Velg selskap" />
         </SelectTrigger>
         <SelectContent>

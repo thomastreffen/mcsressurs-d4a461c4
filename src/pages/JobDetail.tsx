@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ProjectHeader } from "@/components/project/ProjectHeader";
 import { ProjectSubnav } from "@/components/project/ProjectSubnav";
+import { MobileProjectHome } from "@/components/project/MobileProjectHome";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ProjectDashboard } from "@/components/project/ProjectDashboard";
 import { ProjectPlanTab } from "@/components/ProjectPlanTab";
 import { ThreadList } from "@/components/conversations/ThreadList";
@@ -34,6 +36,7 @@ import type { OutlookSyncStatus } from "@/lib/mock-data";
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isSuperAdmin } = useAuth();
@@ -135,7 +138,7 @@ export default function JobDetail() {
     );
   }
 
-  if (!job) {
+  if (!job || !id) {
     return (
       <div className="flex items-center justify-center p-20">
         <div className="text-center space-y-3">
@@ -151,7 +154,8 @@ export default function JobDetail() {
 
   return (
     <>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
+        {isMobile ? <MobileProjectHome job={job} financialProjectNumber={financialProjectNumber} technicianNames={technicianNames} activeTab={activeTab} onTabChange={setActiveTab} /> : <>
         {/* Compact Header */}
         <ProjectHeader
           jobNumber={job.jobNumber ?? null}
@@ -176,10 +180,11 @@ export default function JobDetail() {
 
         {/* Tab navigation */}
         <ProjectSubnav activeTab={activeTab} onTabChange={setActiveTab} />
+        </>}
 
         {/* Tab content */}
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 pb-28 md:pb-8">
-          {activeTab === "home" && (
+          {activeTab === "home" && !isMobile && (
             <div className="space-y-6">
               <ProjectDashboard
                 jobId={job.id}
@@ -231,22 +236,22 @@ export default function JobDetail() {
 
           {activeTab === "epost" && (
             <div className="space-y-6">
-              <ThreadList projectId={id!} />
-              <JobEmailTab jobId={id!} linkField="linked_project_id" />
+              <ThreadList projectId={id} />
+              <JobEmailTab jobId={id} linkField="linked_project_id" />
             </div>
           )}
 
           {activeTab === "dokumenter" && (
-            <DocsFilesRoom projectId={id!} jobId={id!} />
+            <DocsFilesRoom projectId={id} jobId={id} />
           )}
 
           {activeTab === "skjemaer" && (
-            <ProjectFormsTab projectId={id!} isAdmin={canEditPlan} />
+            <ProjectFormsTab projectId={id} isAdmin={canEditPlan} />
           )}
 
           {activeTab === "materiell" && (
             <MaterialTab
-              jobId={id!}
+              jobId={id}
               jobNumber={financialProjectNumber ?? job.jobNumber ?? job.projectNumber ?? job.internalNumber}
               customer={job.customer}
               address={job.address}
@@ -258,7 +263,7 @@ export default function JobDetail() {
 
           {activeTab === "servicearbeid" && (
             <ServiceJournal
-              projectId={id!}
+              projectId={id}
               projectTitle={job.title}
               customer={job.customer}
               address={job.address}
@@ -269,8 +274,8 @@ export default function JobDetail() {
 
           {activeTab === "risiko" && (
             <div className="space-y-6">
-              <JobRiskPanel jobId={id!} />
-              <ChangeOrderTab jobId={id!} customer={job.customer} baseAmount={null} currency="NOK" />
+              <JobRiskPanel jobId={id} />
+              <ChangeOrderTab jobId={id} customer={job.customer} baseAmount={null} currency="NOK" />
             </div>
           )}
 

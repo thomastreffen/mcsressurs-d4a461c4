@@ -6,6 +6,7 @@ import { TechnicianList } from "@/components/TechnicianList";
 import { StatusLegend } from "@/components/StatusLegend";
 import { ResourceCalendar } from "@/components/ResourceCalendar";
 import { TeamView, TEAM_STATUS_OPTIONS, type TeamStatusKey } from "@/components/resource-plan/TeamView";
+import { MobileResourceDayView } from "@/components/resource-plan/MobileResourceDayView";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Palette } from "lucide-react";
@@ -383,18 +384,18 @@ export default function ResourcePlan() {
 
   const goToPrev = useCallback(() => {
     setReferenceDate((d) => {
-      if (calendarView === "timeGridDay") return addDays(d, -1);
+      if (isMobile || calendarView === "timeGridDay") return addDays(d, -1);
       if (calendarView === "dayGridMonth") return addMonths(d, -1);
       return addWeeks(d, -1);
     });
-  }, [calendarView]);
+  }, [calendarView, isMobile]);
   const goToNext = useCallback(() => {
     setReferenceDate((d) => {
-      if (calendarView === "timeGridDay") return addDays(d, 1);
+      if (isMobile || calendarView === "timeGridDay") return addDays(d, 1);
       if (calendarView === "dayGridMonth") return addMonths(d, 1);
       return addWeeks(d, 1);
     });
-  }, [calendarView]);
+  }, [calendarView, isMobile]);
   const goToToday = useCallback(() => setReferenceDate(new Date()), []);
 
   const handleEventClick = useCallback((event: CalendarEvent, techId?: string) => {
@@ -741,8 +742,40 @@ export default function ResourcePlan() {
     : null;
 
   return (
-    <div className={cn("flex flex-1 overflow-hidden h-full", focusMode && "focus-mode")}>
-      <div className={cn("flex-1 overflow-y-auto relative", focusMode ? "p-2" : "p-2 sm:p-4 lg:p-6")}>
+    <div className={cn("flex flex-1 min-w-0", !isMobile && "overflow-hidden h-full", !isMobile && focusMode && "focus-mode")}>
+      <div className={cn("flex-1 min-w-0 relative", !isMobile && "overflow-y-auto", isMobile ? "p-4" : focusMode ? "p-2" : "p-2 sm:p-4 lg:p-6")}>
+        {isMobile ? (
+          <MobileResourceDayView
+            referenceDate={referenceDate}
+            technicians={technicians}
+            scheduleBlocks={scheduleBlocks}
+            absenceBlocks={absenceBlocks}
+            techCapacities={canReadBusy ? techCapacities : undefined}
+            visibleStatuses={visibleStatuses}
+            selectedTechId={selectedTechId}
+            onSelectTech={setSelectedTechId}
+            onPrev={goToPrev} onNext={goToNext} onToday={goToToday}
+            onToggleStatus={toggleStatus}
+            unplannedCount={unplannedCount} confirmationCount={confirmationCount}
+            onUnplanned={() => setUnplannedDrawerOpen(true)}
+            onConfirmations={() => navigate("/calendar/confirmations")}
+            onBlockClick={(block) => {
+              const ev = calEvents.find(e => e.id === (block.job_id ?? block.project_id));
+              if (ev) handleEventClick(ev, block.technician_id);
+              else setSelectedBlock(block);
+            }}
+            onCellCreate={canWriteEvents ? (techId, day) => {
+              setEditEvent(null);
+              setClickedTechId(techId);
+              setDropProjectId(null);
+              setDropProjectTitle(null);
+              const start = new Date(day); start.setHours(8, 0, 0, 0);
+              const end = new Date(day); end.setHours(16, 0, 0, 0);
+              setPreselectedStart(start); setPreselectedEnd(end);
+              setDrawerOpen(true);
+            } : undefined}
+          />
+        ) : <>
         {/* ═══ Ressursplan toppbar (ren, kompakt) ═══ */}
         <div className={cn(
           "flex items-center justify-between gap-3 mb-3 flex-wrap",
@@ -982,6 +1015,7 @@ export default function ResourcePlan() {
             }}
           />
         </div>
+        </>}
       </div>
 
 

@@ -190,9 +190,10 @@ export function ProjectScheduleSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
+        mobileWorkspace
         side={isMobile ? "bottom" : "right"}
         className={cn(
-          isMobile ? "max-h-[85vh] rounded-t-2xl" : "w-[420px] sm:max-w-[420px]"
+          isMobile ? "max-h-[100dvh] flex flex-col" : "w-[420px] sm:max-w-[420px]"
         )}
       >
         <SheetHeader>
@@ -200,7 +201,7 @@ export function ProjectScheduleSheet({
           <SheetDescription className="sr-only">Planlegg arbeidsøkt for prosjekt</SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-5 py-4 overflow-y-auto">
+        <div className="space-y-5 py-4 overflow-y-auto flex-1 min-h-0">
           {/* Project context */}
           <div className="rounded-xl border border-border/40 bg-muted/30 p-3 space-y-1">
             <p className="text-sm font-semibold truncate">{projectTitle}</p>

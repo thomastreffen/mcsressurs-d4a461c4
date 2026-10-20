@@ -189,14 +189,31 @@
     min-width: 44px;
   }
 
-  /* Exception for inline/icon elements that don't need full target */
-  .inline-flex > button,
-  span > button,
-  .text-\[10px\],
-  .text-\[11px\] {
-    min-height: unset;
-    min-width: unset;
+  /* Keep compact metadata, but never shrink an interactive touch target. */
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px;
   }
+
+  .mobile-shell-content { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .app-topbar { padding-top: calc(0.625rem + env(safe-area-inset-top, 0px)); }
+  [data-mobile-workspace] {
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+  }
+  [data-mobile-workspace] > button:last-child { top: calc(0.5rem + env(safe-area-inset-top, 0px)); }
+  [data-mobile-workspace] > :first-child { padding-right: 2.75rem; }
+  [data-mobile-workspace] input, [data-mobile-workspace] textarea { min-width: 0; }
+  [data-mobile-workspace] [data-workspace-footer] {
+    position: sticky; bottom: -1rem; z-index: 10; flex-shrink: 0;
+    background: hsl(var(--background)); padding: 0.75rem 0;
+  }
+  [data-mobile-workspace] [data-workspace-footer] button { white-space: normal; height: auto; min-height: 48px; }
 
   /* Shorter text line length on mobile */
   p, .text-sm, .text-xs {
