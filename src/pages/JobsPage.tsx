@@ -34,8 +34,17 @@ import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { SoftDeleteRowButton } from "@/components/shared/SoftDeleteRowButton";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
+import { useMobileProjectRelevance } from "@/hooks/useMobileProjectRelevance";
+import { MobileProjectList } from "@/components/project/MobileProjectList";
+import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 
 interface JobRow {
+  companyId: string | null;
+  parentId: string | null;
+  displayNumber: string;
   id: string;
   title: string;
   customer: string;
@@ -75,16 +84,24 @@ export default function JobsPage() {
   const navigate = useNavigate();
   const { user, isAdmin, isSuperAdmin } = useAuth();
   const { activeCompanyId, allowedCompanyIds } = useCompanyContext();
+  const isMobile = useIsMobile();
+  const { hasPermission } = usePermissions();
+  const companyAccess = useCompanyModuleAccess();
+  const canBrowseAll = companyAccess.can("resource_plan") && (isAdmin || isSuperAdmin || hasPermission("jobs.view"));
+  const [mobileScope, setMobileScope] = useState<"mine" | "all">("mine");
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<StatusTab>("requested");
+  const [activeTab, setActiveTab] = useState<StatusTab>(() => isMobile ? "all" : "requested");
   const [sortField, setSortField] = useState<"start" | "status" | "customer">("start");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sendingApproval, setSendingApproval] = useState<string | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
+  const relevance = useMobileProjectRelevance(jobs, isMobile);
+  const myRoles = relevance.data ?? new Map<string, string[]>();
+  useEffect(() => { setMobileScope("mine"); setPage(0); }, [activeCompanyId, user?.id]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -95,7 +112,7 @@ export default function JobsPage() {
     let query = supabase
       .from("events")
       .select(`
-        id, title, customer, address, start_time, end_time, status, job_number, internal_number,
+        id, title, customer, address, start_time, end_time, status, job_number, internal_number, company_id, parent_project_id,
         event_technicians(technician_id, technicians(name, color))
       `)
       .is("deleted_at", null)
@@ -110,6 +127,7 @@ export default function JobsPage() {
     const { data } = await query;
 
     if (data) {
+      const refs = isMobile ? await fetchFinancialProjectNumbers(data.map(e => e.id)) : new Map<string, string>();
       setJobs(
         data.map((e: any) => {
           const techs = (e.event_technicians || [])
@@ -117,6 +135,9 @@ export default function JobsPage() {
             .map((et: any) => et.technicians);
           return {
             id: e.id,
+            companyId: e.company_id,
+            parentId: e.parent_project_id,
+            displayNumber: refs.get(e.id) ?? getDisplayNumber(e.job_number, e.internal_number),
             title: e.title,
             customer: e.customer || "",
             address: e.address || "",
@@ -132,7 +153,7 @@ export default function JobsPage() {
       );
     }
     setLoading(false);
-  }, [activeCompanyId]);
+  }, [activeCompanyId, allowedCompanyIds.join("|"), isMobile]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -150,6 +171,7 @@ export default function JobsPage() {
 
   const filtered = useMemo(() => {
     let result = [...jobs];
+    if (isMobile && mobileScope === "mine" && !search.trim()) result = result.filter(j => myRoles.has(j.id));
 
     // Tab filter
     const tabStatuses = STATUS_TAB_MAP[activeTab];
@@ -167,6 +189,7 @@ export default function JobsPage() {
           j.address.toLowerCase().includes(q) ||
           (j.internalNumber || "").toLowerCase().includes(q) ||
           (j.jobNumber || "").toLowerCase().includes(q) ||
+          j.displayNumber.toLowerCase().includes(q) ||
           j.techNames.some((n) => n.toLowerCase().includes(q))
       );
     }
@@ -179,7 +202,7 @@ export default function JobsPage() {
       return dir * a.status.localeCompare(b.status);
     });
     return result;
-  }, [jobs, activeTab, search, sortField, sortDir]);
+  }, [jobs, activeTab, search, sortField, sortDir, isMobile, mobileScope, relevance.data]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -220,7 +243,7 @@ export default function JobsPage() {
           </h1>
           <p className="text-sm text-muted-foreground/70">{filtered.length} prosjekter</p>
         </div>
-        {isAdmin && (
+        {isAdmin && !isMobile && (
           <div className="flex items-center gap-2 self-start">
             <Button variant="outline" size="sm" onClick={() => setReassignOpen(true)} className="gap-1.5 rounded-xl text-xs">
               <ArrowRightLeft className="h-3.5 w-3.5" />
@@ -239,9 +262,14 @@ export default function JobsPage() {
         )}
       </div>
 
+      {isMobile && <div className="flex items-center gap-2" aria-label="Prosjektutvalg">
+        <Button variant={mobileScope === "mine" ? "default" : "outline"} className="flex-1" onClick={() => { setMobileScope("mine"); setPage(0); }}>Mine prosjekter</Button>
+        {canBrowseAll && <Button variant={mobileScope === "all" ? "default" : "outline"} className="flex-1" onClick={() => { setMobileScope("all"); setPage(0); }}>Alle</Button>}
+      </div>}
+
       {/* Status Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as StatusTab); setPage(0); setSelectedIds([]); }}>
-        <TabsList className="h-10 bg-secondary/40 rounded-xl gap-0.5 p-1">
+        <TabsList className="h-auto md:h-10 w-full md:w-auto flex-wrap md:flex-nowrap bg-secondary/40 rounded-lg gap-0.5 p-1">
           {(Object.keys(TAB_LABELS) as StatusTab[]).map((tab) => (
             <TabsTrigger
               key={tab}
@@ -269,9 +297,11 @@ export default function JobsPage() {
           className="pl-9 rounded-xl"
         />
       </div>
+      {isMobile && search.trim() && <p className="text-sm text-muted-foreground">Søker i alle tilgjengelige prosjekter</p>}
+      {isMobile && relevance.isError && <div className="text-sm text-destructive">Kunne ikke hente dine tilordninger. <Button variant="outline" onClick={() => relevance.refetch()}>Prøv igjen</Button></div>}
 
       {/* Table */}
-      {loading ? (
+      {loading || (isMobile && !search.trim() && mobileScope === "mine" && relevance.isFetching) ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -286,7 +316,7 @@ export default function JobsPage() {
               onCancel={() => setSelectedIds([])}
             />
           )}
-          <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-x-auto">
+          {isMobile ? <MobileProjectList projects={paged} roles={myRoles} onOpen={id => navigate(`/projects/${id}`)} /> : <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/30">
@@ -444,7 +474,7 @@ export default function JobsPage() {
                 )}
               </TableBody>
             </Table>
-          </div>
+          </div>}
 
           {/* Pagination */}
           {totalPages > 1 && (
