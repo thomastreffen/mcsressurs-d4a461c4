@@ -99,7 +99,7 @@ export default function PlanningProjectPage() {
             {project.description && <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>}
           </div>
           <Select value={project.status} onValueChange={changeStatus}>
-            <SelectTrigger className="w-[210px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-11 w-full sm:h-10 sm:w-[210px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               {PLANNING_STATUS_ORDER.map((s) => (
                 <SelectItem key={s} value={s}>{PLANNING_STATUS_LABELS[s]}</SelectItem>
@@ -130,7 +130,7 @@ export default function PlanningProjectPage() {
       </header>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="w-full justify-start overflow-x-auto">
+        <TabsList className="h-auto w-full justify-start overflow-x-auto [scrollbar-width:none] [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:[mask-image:none] [&>button]:min-h-10 [&>button]:shrink-0">
           <TabsTrigger value="oversikt">Oversikt</TabsTrigger>
           <TabsTrigger value="samtale">Samtale</TabsTrigger>
           <TabsTrigger value="arbeidspakker">Arbeidspakker</TabsTrigger>

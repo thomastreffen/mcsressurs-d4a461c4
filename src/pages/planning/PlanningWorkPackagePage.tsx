@@ -364,9 +364,9 @@ export default function PlanningWorkPackagePage() {
         </Section>
       )}
 
-      <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-background/95 py-3 backdrop-blur">
-        <Button variant="ghost" onClick={back}>Avbryt</Button>
-        <Button onClick={save} disabled={saveWorkPackage.isPending}>
+      <div className="sticky bottom-0 -mx-4 flex justify-end gap-2 border-t border-border bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:mx-0 sm:px-0">
+        <Button variant="ghost" className="h-11 flex-1 sm:h-10 sm:flex-none" onClick={back}>Avbryt</Button>
+        <Button className="h-11 flex-[2] sm:h-10 sm:flex-none" onClick={save} disabled={saveWorkPackage.isPending}>
           {isNew ? "Opprett arbeidspakke" : "Lagre"}
         </Button>
       </div>

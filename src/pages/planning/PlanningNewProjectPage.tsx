@@ -235,7 +235,7 @@ export default function PlanningNewProjectPage() {
           </div>
         </div>
 
-          <div className="flex justify-end gap-2 border-t border-border/40 pt-4">
+          <div className="sticky bottom-0 -mx-4 flex justify-end gap-2 border-t border-border/40 bg-background/95 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0 [&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-10 sm:[&>button]:flex-none">
             <Button type="button" variant="ghost" onClick={() => confirmNavigation(() => { clearDraft(); navigate("/planlegging"); })}>Avbryt</Button>
             <Button type="submit" data-testid="planning-project-submit" disabled={createProject.isPending}>
               {createProject.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
