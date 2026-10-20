@@ -109,7 +109,7 @@ export default function PlanningWorkPackagePage() {
   const isDirty = !!form && baseline !== null && JSON.stringify(form) !== baseline;
   const { confirmNavigation } = useUnsavedChangesGuard(isDirty, "Du har ulagrede endringer i arbeidspakken. Vil du forlate siden?");
 
-  const back = () => confirmNavigation(() => navigate(`/planlegging/${projectId}?tab=arbeidspakker`));
+  const back = () => confirmNavigation(() => { clearDraft(); navigate(`/planlegging/${projectId}?tab=arbeidspakker`); });
 
   if (isLoading || loadingChildren || !form) {
     if (!isLoading && !loadingChildren && !isNew && !existing) {

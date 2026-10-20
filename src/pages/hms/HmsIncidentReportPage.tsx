@@ -75,7 +75,7 @@ export default function HmsIncidentReportPage() {
 
   // Attachments (File objects) are never part of the draft — they can't survive
   // sessionStorage and must be re-picked if the tab was closed mid-report.
-  const isDirty = !!(title.trim() || description.trim() || location.trim() || proposedAction.trim());
+  const isDirty = !submitted && !!(title.trim() || description.trim() || location.trim() || proposedAction.trim());
   const { confirmNavigation: confirmBack } = useUnsavedChangesGuard(isDirty, "Du har et påbegynt avvik som ikke er sendt inn. Vil du forlate siden?");
   const draftScope = ["hms-incident-new", user?.id, activeCompanyId];
   const { restoreDraft: restoreIncidentDraft, clearDraft: clearIncidentDraft } = useDraftAutosave({
@@ -242,7 +242,7 @@ export default function HmsIncidentReportPage() {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/60">
         <div className="px-4 py-3 max-w-2xl mx-auto flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => confirmBack(() => navigate(-1))} aria-label="Tilbake">
+          <Button variant="ghost" size="icon" onClick={() => confirmBack(() => { clearIncidentDraft(); navigate(-1); })} aria-label="Tilbake">
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">

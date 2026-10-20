@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const PREFIX = "mcs-draft";
 
@@ -47,6 +47,11 @@ interface Options<T> {
 export function useDraftAutosave<T>({ scopeParts, value, enabled, debounceMs = 800 }: Options<T>) {
   const key = buildKey(scopeParts);
   const [hasDraft, setHasDraft] = useState(false);
+  const pendingWrite = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPendingWrite = useCallback(() => {
+    if (pendingWrite.current !== null) clearTimeout(pendingWrite.current);
+    pendingWrite.current = null;
+  }, []);
 
   useEffect(() => {
     try {
@@ -60,7 +65,8 @@ export function useDraftAutosave<T>({ scopeParts, value, enabled, debounceMs = 8
 
   useEffect(() => {
     if (!enabled) return;
-    const t = setTimeout(() => {
+    pendingWrite.current = setTimeout(() => {
+      pendingWrite.current = null;
       try {
         sessionStorage.setItem(key, JSON.stringify(value));
         setHasDraft(true);
@@ -68,7 +74,7 @@ export function useDraftAutosave<T>({ scopeParts, value, enabled, debounceMs = 8
         // sessionStorage unavailable (private mode / quota) — fail silently, no autosave
       }
     }, debounceMs);
-    return () => clearTimeout(t);
+    return cancelPendingWrite;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, value, enabled, debounceMs]);
 
@@ -81,14 +87,18 @@ export function useDraftAutosave<T>({ scopeParts, value, enabled, debounceMs = 8
     }
   }, [key]);
 
-  const clearDraft = useCallback(() => {
+  const persistDraft = useCallback((remaining: T | null) => {
+    cancelPendingWrite();
     try {
-      sessionStorage.removeItem(key);
+      if (remaining === null) sessionStorage.removeItem(key);
+      else sessionStorage.setItem(key, JSON.stringify(remaining));
     } catch {
       // ignore
     }
-    setHasDraft(false);
-  }, [key]);
+    setHasDraft(remaining !== null);
+  }, [key, cancelPendingWrite]);
 
-  return { hasDraft, restoreDraft, clearDraft };
+  const clearDraft = useCallback(() => persistDraft(null), [persistDraft]);
+
+  return { hasDraft, restoreDraft, clearDraft, persistDraft };
 }

@@ -15,3 +15,5 @@
 - Subdirectories have their own `AGENTS.md` (e.g. `supabase/functions/` for Tripletex); read it before changing files there.
 - Tripletex project-link controls integration behavior, not resource-plan eligibility. Existing Hub projects remain plan-able whether linked or unlinked. Tripletex-first root-project creation rules apply only to companies with an active Tripletex connection configured for that company. Why: additive integration must never block Hub-only dispatching.
 - Resource-plan project search and company integration context use caller-scoped RPCs; link presence for saving is checked independently of visible project numbers and an unreadable or cross-company parent is rejected. Why: a missing display number must neither trigger Tripletex for Hub-only work nor bypass a linked project's open-status guard.
+
+- Clear drafts/pending writes on save or confirmed discard; persist remaining chapter edits on partial save/reset. Why: saved/rejected edits must not return.
