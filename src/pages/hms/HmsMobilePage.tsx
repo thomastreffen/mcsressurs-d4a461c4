@@ -71,6 +71,21 @@ export default function HmsMobilePage() {
     },
   });
 
+  // Kompakt teller for admin: åpne AML-/arbeidstidsvarsler + overtid til godkjenning.
+  // Selve listene ligger på egne undersider — ikke i montørens førstebilde.
+  const { data: worktime } = useQuery({
+    queryKey: ["hms-mobile-worktime-counts", cid],
+    enabled: !!cid && canManage,
+    queryFn: async () => {
+      const sb = supabase as any;
+      const [alerts, overtime] = await Promise.all([
+        sb.from("worktime_alerts").select("id", { count: "exact", head: true }).eq("company_id", cid).eq("status", "open"),
+        sb.from("overtime_approvals").select("id", { count: "exact", head: true }).eq("company_id", cid).eq("status", "pending"),
+      ]);
+      return { openAlerts: alerts.count ?? 0, pendingOvertime: overtime.count ?? 0 };
+    },
+  });
+
   const startMut = useMutation({
     mutationFn: async (templateId: string) => {
       if (!cid || !user) throw new Error("Mangler kontekst");
