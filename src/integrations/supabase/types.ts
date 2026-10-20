@@ -17361,6 +17361,10 @@ export type Database = {
         Args: { _message_ids: string[]; _submission_id: string }
         Returns: Json
       }
+      matches_project_search: {
+        Args: { _fields: string[]; _query: string }
+        Returns: boolean
+      }
       my_company_module_access: {
         Args: never
         Returns: {
@@ -17374,6 +17378,7 @@ export type Database = {
           org_number: string
         }[]
       }
+      normalize_project_search: { Args: { _value: string }; Returns: string }
       order_submission_allows_public_child_insert: {
         Args: { _submission_id: string }
         Returns: boolean
