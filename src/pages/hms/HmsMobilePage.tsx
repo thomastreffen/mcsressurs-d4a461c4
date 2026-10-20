@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ShieldCheck, ClipboardList, FileCheck, BookOpen, ShieldAlert, Eye, HardHat, FlaskConical,
-  ChevronRight, ArrowLeft, Clock, Inbox, Users, Loader2, ListChecks,
+  ChevronRight, ArrowLeft, Clock, Inbox, Users, Loader2, ListChecks, AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
@@ -26,6 +26,7 @@ export default function HmsMobilePage() {
   const { user } = useAuth();
   const { activeCompanyId: cid } = useCompanyContext();
   const { hasPermission } = usePermissions();
+  const canManage = hasPermission("hms.manage");
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -70,6 +71,21 @@ export default function HmsMobilePage() {
     },
   });
 
+  // Kompakt teller: åpne AML-/arbeidstidsvarsler + overtid til godkjenning.
+  // Selve listene ligger på egne undersider — ikke i førstebildet. RLS avgrenser innholdet.
+  const { data: worktime } = useQuery({
+    queryKey: ["hms-mobile-worktime-counts", cid],
+    enabled: !!cid,
+    queryFn: async () => {
+      const sb = supabase as any;
+      const [alerts, overtime] = await Promise.all([
+        sb.from("worktime_alerts").select("id", { count: "exact", head: true }).eq("company_id", cid).eq("status", "open"),
+        sb.from("overtime_approvals").select("id", { count: "exact", head: true }).eq("company_id", cid).eq("status", "pending"),
+      ]);
+      return { openAlerts: alerts.count ?? 0, pendingOvertime: overtime.count ?? 0 };
+    },
+  });
+
   const startMut = useMutation({
     mutationFn: async (templateId: string) => {
       if (!cid || !user) throw new Error("Mangler kontekst");
@@ -89,7 +105,6 @@ export default function HmsMobilePage() {
   if (tLoading || mLoading) return <HmsLoading label="Laster HMS…" />;
   if (tError) return <div className="p-4 text-base text-destructive">Kunne ikke laste HMS: {(tError as Error).message}</div>;
 
-  const canManage = hasPermission("hms.manage");
   const isMontor = user?.role === "montør";
 
   return (
@@ -129,6 +144,18 @@ export default function HmsMobilePage() {
             <div className="px-1 pb-1 text-sm font-medium text-muted-foreground">Mer HMS</div>
             <SecondaryRow icon={Eye} label="HMS-observasjon" onClick={() => navigate("/hms/incidents/new?type=observation")} />
             <SecondaryRow icon={ShieldAlert} label="Mine avvik / RUH" onClick={() => navigate("/hms/incidents?scope=mine")} />
+            <SecondaryRow
+              icon={AlertTriangle}
+              label="Arbeidstid og AML-varsler"
+              hint={worktime?.openAlerts ? `${worktime.openAlerts} åpne` : undefined}
+              onClick={() => navigate("/hms/aml")}
+            />
+            <SecondaryRow
+              icon={Clock}
+              label="Overtid til godkjenning"
+              hint={worktime?.pendingOvertime ? `${worktime.pendingOvertime} venter` : undefined}
+              onClick={() => navigate("/hms/overtime")}
+            />
             {canManage && (
               <>
                 <SecondaryRow icon={Inbox} label="Alle innsendinger" onClick={() => navigate("/hms/submissions")} />
@@ -136,7 +163,7 @@ export default function HmsMobilePage() {
                 <SecondaryRow icon={FlaskConical} label="Stoffkartotek (admin)" onClick={() => navigate("/hms/kjemikalier")} />
               </>
             )}
-            {!isMontor && <SecondaryRow icon={ShieldCheck} label="HMS-oversikt" onClick={() => navigate("/hms")} />}
+            {!isMontor && <SecondaryRow icon={ShieldCheck} label="HMS-oversikt (admin)" onClick={() => navigate("/hms?vis=oversikt")} />}
           </div>
         </div>
       ) : (

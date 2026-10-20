@@ -116,6 +116,7 @@ import OrderFormPublicPage from "./pages/OrderFormPublicPage";
 import OrderFormsCatalogPage from "./pages/OrderFormsCatalogPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
 import HmsOverviewPage from "./pages/hms/HmsOverviewPage";
+import HmsHomePage from "./pages/hms/HmsHomePage";
 import HmsHandbooksPage from "./pages/hms/HmsHandbooksPage";
 import HmsHandbookDetailPage from "./pages/hms/HmsHandbookDetailPage";
 import HmsAmlPage from "./pages/hms/HmsAmlPage";
@@ -701,7 +702,7 @@ const App = () => (
               {/* HMS & HR module */}
               <Route path="/hms" element={
                 <ProtectedRoute requiredPermission="hms.view">
-                  <HmsPage><HmsOverviewPage /></HmsPage>
+                  <HmsPage><HmsHomePage /></HmsPage>
                 </ProtectedRoute>
               } />
               <Route path="/hms/handbok" element={
