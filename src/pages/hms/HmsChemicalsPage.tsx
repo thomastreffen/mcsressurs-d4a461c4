@@ -141,7 +141,38 @@ export default function HmsChemicalsPage() {
         )}
       </div>
 
-      <Card>
+      <div className="space-y-2 sm:hidden">
+        {isLoading ? (
+          <Skeleton className="h-20 w-full" />
+        ) : rows.length === 0 ? (
+          <Card className="p-6 text-center text-sm text-muted-foreground">Ingen kjemikalier registrert ennå.</Card>
+        ) : (
+          rows.map((c) => {
+            const sds = sdsState(c);
+            return (
+              <Link key={c.id} to={`/hms/kjemikalier/${c.id}`} className="block rounded-xl border border-border bg-card p-4 active:bg-muted/40">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">{c.product_name}</p>
+                    <p className="truncate text-sm text-muted-foreground">{c.supplier ?? c.manufacturer ?? "—"}</p>
+                  </div>
+                  <Badge variant="outline" className={cn("shrink-0 text-xs", CHEMICAL_STATUS_STYLES[c.status])}>
+                    {CHEMICAL_STATUS_LABELS[c.status] ?? c.status}
+                  </Badge>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <Badge variant={sds === "ok" ? "outline" : "destructive"} className="text-xs">{SDS_STATE_LABELS[sds]}</Badge>
+                  {c.is_high_risk && <Badge variant="destructive" className="text-xs">Høyrisiko</Badge>}
+                  {c.requires_sja && <Badge variant="outline" className="text-xs">SJA</Badge>}
+                  {c.requires_special_ppe && <Badge variant="outline" className="text-xs">Særskilt PVU</Badge>}
+                </div>
+              </Link>
+            );
+          })
+        )}
+      </div>
+
+      <Card className="hidden sm:block">
         <CardContent className="p-0">
           <Table>
             <TableHeader>

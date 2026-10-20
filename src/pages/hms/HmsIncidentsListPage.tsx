@@ -147,7 +147,7 @@ export default function HmsIncidentsListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-12">
+    <div className="min-h-dvh bg-background pb-12">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/60">
         <div className="px-4 lg:px-6 py-3 max-w-7xl mx-auto flex items-center gap-2">
           {isMobile && (
