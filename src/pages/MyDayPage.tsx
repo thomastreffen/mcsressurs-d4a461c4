@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useMyDay, type MyDayBlock } from "@/hooks/useMyDay";
+import { useMyJobUnreadMessages } from "@/hooks/useMyJobUnreadMessages";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -615,6 +616,10 @@ export default function MyDayPage() {
   const { todayBlocks, upcomingBlocks, loading, error, lastUpdated, refetch } = useMyDay();
   const [selectedBlock, setSelectedBlock] = useState<MyDayBlock | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const navigate = useNavigate();
+  const jobIds = [...todayBlocks, ...upcomingBlocks].map((b) => b.project_id).filter(Boolean) as string[];
+  const unreadMessages = useMyJobUnreadMessages(jobIds);
+  const titleFor = (id: string) => [...todayBlocks, ...upcomingBlocks].find((b) => b.project_id === id);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -714,6 +719,31 @@ export default function MyDayPage() {
                   </Button>
                 </CardContent>
               </Card>
+            )}
+
+            {unreadMessages.length > 0 && (
+              <section aria-label="Nye meldinger">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">Nye meldinger</h2>
+                <div className="space-y-2">
+                  {unreadMessages.map((m) => {
+                    const b = titleFor(m.projectId);
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => navigate(`/projects/${m.projectId}`)}
+                        className="w-full min-h-14 rounded-2xl border border-border bg-card px-4 py-3 text-left active:bg-muted/60"
+                      >
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 shrink-0 text-primary" />
+                          <span className="truncate text-sm font-semibold text-foreground">{b?.project_title || b?.title || "Oppdrag"}</span>
+                          <span className="ml-auto shrink-0 text-xs text-muted-foreground">{format(new Date(m.createdAt), "HH:mm")}</span>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground"><span className="font-medium text-foreground">{m.author}:</span> {m.preview}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
             )}
 
             {Object.keys(upcomingByDate).length > 0 && (
