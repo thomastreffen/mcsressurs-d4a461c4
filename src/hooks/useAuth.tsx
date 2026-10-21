@@ -21,6 +21,8 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  /** True once the DB role check for the current person has finished. */
+  roleReady: boolean;
   signOut: () => void;
 }
 
@@ -45,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleReady, setRoleReady] = useState(false);
   // Mirror of `user` so auth events can compare against the current person
   // without re-subscribing. Keeping the same object identity for the same
   // person is what stops the app shell from re-running every user-dependent
@@ -90,6 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (err) {
       console.warn("[Auth] Role fetch exception, keeping current role");
+    } finally {
+      if (userRef.current?.id === supaUser.id) setRoleReady(true);
     }
   }, []);
 
@@ -107,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!next?.user) {
       userRef.current = null;
       setUser(null);
+      setRoleReady(false);
       return;
     }
 
@@ -128,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // New person (first load or account switch)
     userRef.current = meta;
     setUser(meta);
+    setRoleReady(false);
     lastRoleCheck.current = Date.now();
     fetchRoleInBackground(next.user);
   }, [fetchRoleInBackground]);
@@ -211,8 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSuperAdmin = user?.role === "super_admin";
 
   const value = useMemo(
-    () => ({ session, user, loading, isAdmin, isSuperAdmin, signOut }),
-    [session, user, loading, isAdmin, isSuperAdmin, signOut]
+    () => ({ session, user, loading, isAdmin, isSuperAdmin, roleReady, signOut }),
+    [session, user, loading, isAdmin, isSuperAdmin, roleReady, signOut]
   );
 
   return (

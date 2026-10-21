@@ -228,7 +228,9 @@ export function AppSidebar() {
     // Additional action-level permission check
     if (item.requiredPermission && !isAdmin && !hasPermission(item.requiredPermission)) return false;
     return true;
-  });
+  }).map((item: any) =>
+    item.url === "/overview" && user?.role === "montør" ? { ...item, url: "/my-day", moduleKey: undefined, modulePermission: undefined } : item
+  );
 
   const filteredAdmin = adminItems.filter((item) => {
     if (!isModuleVisible(item.moduleKey)) return false;

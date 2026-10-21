@@ -43,7 +43,7 @@ export default function HubHome() {
     const justSignedIn = sessionStorage.getItem(POST_LOGIN_KEY) === "1";
     if (justSignedIn || pathname === "/login") {
       sessionStorage.removeItem(POST_LOGIN_KEY);
-      return <Navigate to="/overview" replace />;
+      return <Navigate to="/app" replace />;
     }
   }
 
@@ -117,7 +117,7 @@ export default function HubHome() {
               {session ? (
                 <>
                   <Link
-                    to="/overview"
+                    to="/app"
                     className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-hub-ink px-4 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90"
                   >
                     Gå til arbeidsflaten <ArrowRight className="h-4 w-4" />
