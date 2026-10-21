@@ -151,7 +151,7 @@ export default function ActivatePage() {
   };
 
   const handleGoToDashboard = () => {
-    navigate("/overview", { replace: true });
+    navigate("/app", { replace: true });
   };
 
   return (

@@ -19,6 +19,7 @@ import { PwaUpdateNotifier } from "@/components/pwa/PwaUpdateNotifier";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import OverviewPage from "./pages/OverviewPage";
+import { RoleHomeRedirect, OverviewForRole } from "@/components/RoleHome";
 import KpiDashboard from "./pages/KpiDashboard";
 import JobsPage from "./pages/JobsPage";
 import ResourcePlan from "./pages/ResourcePlan";
@@ -292,16 +293,16 @@ const App = () => (
               }
             >
               {/* Authenticated app root → dashboard (public marketing owns "/") */}
-              <Route path="/app" element={<Navigate to="/overview" replace />} />
-              <Route path="/overview" element={<OverviewPage />} />
+              <Route path="/app" element={<RoleHomeRedirect />} />
+              <Route path="/overview" element={<OverviewForRole><OverviewPage /></OverviewForRole>} />
               <Route path="/my-day" element={<MyDayPage />} />
               <Route path="/inbox" element={
                 <ProtectedRoute requiredPermission="postkontor.view">
                   <InboxPage />
                 </ProtectedRoute>
               } />
-              <Route path="/dashboard" element={<Navigate to="/overview" replace />} />
-              <Route path="/tasks" element={<Navigate to="/overview" replace />} />
+              <Route path="/dashboard" element={<RoleHomeRedirect />} />
+              <Route path="/tasks" element={<RoleHomeRedirect />} />
               <Route path="/projects" element={<JobsPage />} />
               <Route path="/projects/new" element={<ProjectNewPage />} />
               <Route path="/projects/import-tripletex" element={<TripletexProjectImportPage />} />
