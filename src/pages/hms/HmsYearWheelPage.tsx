@@ -64,6 +64,7 @@ export default function HmsYearWheelPage() {
   const [completing, setCompleting] = useState<any | null>(null);
   const [docText, setDocText] = useState("");
   const [submissionId, setSubmissionId] = useState("");
+  const [auditId, setAuditId] = useState("");
 
   const { data: activities, isLoading } = useQuery({
     queryKey: ["hms-year-activities", cid],
@@ -91,6 +92,15 @@ export default function HmsYearWheelPage() {
   });
 
   const nameOf = (id: string | null) => users?.find((u) => u.id === id)?.name ?? null;
+  const { data: audits } = useQuery({
+    queryKey: ["hms-year-completed-audits", cid], enabled: !!cid,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("compliance_audits").select("id, title")
+        .eq("company_id", cid ?? "").eq("status", "completed").is("deleted_at", null);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   const now = new Date();
 
   const counts = useMemo(() => {
@@ -154,7 +164,7 @@ export default function HmsYearWheelPage() {
       if (!user) throw new Error("Mangler bruker");
       if (!cid) throw new Error("Mangler selskap");
       const { error } = await supabase.rpc("hms_complete_year_activity", {
-        _company_id: cid, _activity_id: a.id, _documentation: docText, _submission_id: submissionId || null, _audit_id: null,
+        _company_id: cid, _activity_id: a.id, _documentation: docText, _submission_id: submissionId || null, _audit_id: auditId || null,
       });
       if (error) throw error;
     },
@@ -163,6 +173,7 @@ export default function HmsYearWheelPage() {
       setCompleting(null);
       setDocText("");
       setSubmissionId("");
+      setAuditId("");
       qc.invalidateQueries({ queryKey: ["hms-year-activities"] });
     },
     onError: (e: any) => toast({ title: "Feil", description: e?.message, variant: "destructive" }),
@@ -348,9 +359,16 @@ export default function HmsYearWheelPage() {
                 <SelectContent><SelectItem value="none">Ingen kobling</SelectItem>{(submissions ?? []).map(s => <SelectItem key={s.id} value={s.id}>{s.title || "Uten tittel"}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Koble gjennomført internrevisjon</Label>
+              <Select value={auditId || "none"} onValueChange={v => setAuditId(v === "none" ? "" : v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="none">Ingen kobling</SelectItem>{(audits ?? []).map(a => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <p className="text-xs text-muted-foreground">Neste forekomst beregnes fra planlagt frist, ikke gjennomføringsdato.</p>
             <div className="sticky bottom-0 -mx-6 border-t bg-background px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex gap-2">
-              <Button className="flex-1 min-h-11" disabled={completeMut.isPending || (!docText.trim() && !submissionId)} onClick={() => completeMut.mutate(completing)}>Merk gjennomført</Button>
+              <Button className="flex-1 min-h-11" disabled={completeMut.isPending || (!docText.trim() && !submissionId && !auditId)} onClick={() => completeMut.mutate(completing)}>Merk gjennomført</Button>
               <Button variant="outline" className="min-h-11" onClick={() => setCompleting(null)}>Avbryt</Button>
             </div>
           </div>
