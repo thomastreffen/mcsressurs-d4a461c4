@@ -13,6 +13,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePreviewMode } from "@/hooks/usePreviewMode";
+import { useMontorPreview } from "@/hooks/useMontorPreview";
 import { Button } from "@/components/ui/button";
 import { Bell, LogOut, Eye, Smartphone, Download, Info } from "lucide-react";
 import { CompanySelector } from "@/components/CompanySelector";
@@ -45,6 +46,7 @@ export function AppLayout() {
   const [installOpen, setInstallOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const { active: previewActive, realIsSuperAdmin } = usePreviewMode();
+  const montorPreview = useMontorPreview();
 
   // Show preview trigger only for real superadmins (not in preview mode context)
   const showPreviewButton = realIsSuperAdmin || (isSuperAdmin && !previewActive);
@@ -76,6 +78,12 @@ export function AppLayout() {
                 >
                   <Eye className="h-3.5 w-3.5" />
                   <span className="hidden lg:inline">Vis system som</span>
+                </Button>
+              )}
+              {montorPreview.canUse && !previewActive && (
+                <Button variant="ghost" size="sm" onClick={montorPreview.start} disabled={montorPreview.starting} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                  <Smartphone className="h-3.5 w-3.5" />
+                  <span className="hidden lg:inline">Test som montør</span>
                 </Button>
               )}
 
