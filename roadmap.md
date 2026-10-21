@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Oppdragsgodkjenning – 401 Invalid user
-- [ ] Signing-key-kompatibel validering og sesjonssikrede anrop uten mutasjonsretry
-- [ ] Regresjonstester og deployet autentisering kontrollert uten å sende eksisterende oppdrag på nytt
+- [x] Signing-key-kompatibel validering og alle ti godkjenningsanrop sesjonssikret uten mutasjonsretry
+- [x] 276 tester grønne, bygg OK; deployet tjeneste godtar ekte innlogging (400 Missing job_id uten skriving), avviser ugyldig bearer (401); ingen eksisterende oppdrag sendt på nytt
 
 ## Mobil fase 2
 - [x] Planlegging: én status om gangen på telefon, sammenleggbare filtre, store knapper, sticky safe-area-handlinger; desktop-board uendret

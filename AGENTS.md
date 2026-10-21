@@ -18,6 +18,6 @@
 
 - Clear drafts/pending writes on save or confirmed discard; persist remaining chapter edits on partial save/reset. Why: saved/rejected edits must not return.
 
-- Calendar/Tripletex calls use invokeWithSession: await hydration, pin bearer, share refresh; only allow-listed reads retry once on 401, never mutations/403. Why: no anonymous requests or replayed writes.
+- Calendar/Tripletex/approval calls use invokeWithSession: await hydration, pin bearer, share refresh; only allow-listed reads retry once on 401, never mutations/403. Why: no anonymous requests or replayed writes.
 
 - HMS control uses company-scoped RPCs/triggers for immutable signed versions/original risk, explicit residual decisions, atomic due-date recurrence and append-only audit; UI locking is insufficient.
