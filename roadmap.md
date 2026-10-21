@@ -109,3 +109,10 @@
 - [ ] TPX-001 Avklaringer med ledelse/regnskap + testmiljø — venter på interne svar
 - [ ] TPX-002–018 Fase 0/1 (grunnmur, ID-mapping, kunder/ansatte/prosjekter) — starter etter TPX-001
 - [ ] TPX-019–020 Lesende Tripletex-assistent (MCP) — etter stabil ID-mapping
+
+## HMS internkontrollsløyfe (fase 5)
+- [x] DB: hms_year_activities, hms_risk_register, hms_internal_reviews + hms_action_items-koblinger (source_type, risk_register_id, year_activity_id, internal_review_id), RLS etter hms-mønster
+- [x] Leder/admin: /hms/arshjul (frekvens, gjennomfør m/dok, auto neste forekomst), /hms/risiko (matrise, opprett tiltak), /hms/handlingsplan (alle kilder, status/forfalt), /hms/internkontroll (auto-snapshot, Ja/Nei/N/A, tiltak ved Nei, signering, eksport)
+- [x] Montørmobil: «Dette må du gjøre» (egne tiltak) + Mine tiltak med merk utført; adminmodulene kun under Mer HMS for hms.manage
+- [ ] Verifisering: tester, bygg, 390/768/desktop; testscenarier A-F fra kravspesifikasjon
+- [ ] Senere: DLE-pakkeintegrasjon for nye moduler, varsling ved tildelt tiltak, kobling risiko<->avvik fra avvikssiden
