@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveAppRole } from "@/hooks/usePreviewMode";
 import { homePathForRole } from "@/lib/home-route";
 
 function Spinner() {
@@ -14,14 +15,16 @@ function Spinner() {
 /** Redirects to the role's home once the DB role is confirmed (metadata role may be stale). */
 export function RoleHomeRedirect() {
   const { user, loading, roleReady } = useAuth();
+  const { role } = useEffectiveAppRole();
   if (loading || (user && !roleReady)) return <Spinner />;
-  return <Navigate to={homePathForRole(user?.role)} replace />;
+  return <Navigate to={homePathForRole(role)} replace />;
 }
 
 /** Montør never sees the leader overview; they are sent to Min dag. */
 export function OverviewForRole({ children }: { children: React.ReactNode }) {
   const { user, loading, roleReady } = useAuth();
+  const { role } = useEffectiveAppRole();
   if (loading || (user && !roleReady)) return <Spinner />;
-  if (homePathForRole(user?.role) === "/my-day") return <Navigate to="/my-day" replace />;
+  if (homePathForRole(role) === "/my-day") return <Navigate to="/my-day" replace />;
   return <>{children}</>;
 }

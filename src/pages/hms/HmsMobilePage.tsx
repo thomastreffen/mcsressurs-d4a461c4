@@ -8,6 +8,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveAppRole } from "@/hooks/usePreviewMode";
 import { usePermissions } from "@/hooks/usePermissions";
 import { startSubmission, STATUS_LABELS, type SubmissionStatus } from "@/lib/hms/submissions";
 import { useToast } from "@/hooks/use-toast";
@@ -139,7 +140,7 @@ export default function HmsMobilePage() {
   if (tLoading || mLoading) return <HmsLoading label="Laster HMS…" />;
   if (tError) return <div className="p-4 text-base text-destructive">Kunne ikke laste HMS: {(tError as Error).message}</div>;
 
-  const isMontor = user?.role === "montør";
+  const { isMontor } = useEffectiveAppRole();
 
   return (
     <div className="mx-auto max-w-xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4">
