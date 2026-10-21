@@ -87,6 +87,42 @@ export default function HmsMobilePage() {
     },
   });
 
+  // «Dette må du gjøre»: tiltak tildelt montøren fra HMS-handlingsplanen.
+  // Kun egne tiltak (RLS + assignee-filter) — aldri selskapets fulle plan.
+  const { data: myActions } = useQuery({
+    queryKey: ["hms-mobile-my-actions", cid, user?.id],
+    enabled: !!cid && !!user?.id,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("hms_action_items")
+        .select("id, title, description, status, priority, due_date")
+        .eq("company_id", cid)
+        .eq("assignee_user_id", user!.id)
+        .in("status", ["open", "in_progress", "waiting"])
+        .is("deleted_at", null)
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .limit(20);
+      return (data ?? []) as any[];
+    },
+  });
+
+  const doneMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from("hms_action_items").update({
+        status: "done",
+        completed_at: new Date().toISOString(),
+        completed_by: user!.id,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Tiltak merket utført" });
+      qc.invalidateQueries({ queryKey: ["hms-mobile-my-actions"] });
+    },
+    onError: (e: any) => toast({ title: "Feil", description: e?.message, variant: "destructive" }),
+  });
+
   const startMut = useMutation({
     mutationFn: async (templateId: string) => {
       if (!cid || !user) throw new Error("Mangler kontekst");
