@@ -114,13 +114,13 @@ export default function HmsActionPlanPage() {
 
   const doneMut = useMutation({
     mutationFn: async (id: string) => {
-      if (!user) throw new Error("Mangler bruker");
+      if (!user || !cid) throw new Error("Mangler kontekst");
       const { error } = await (supabase as any).from("hms_action_items").update({
         status: "done",
         completed_at: new Date().toISOString(),
         completed_by: user.id,
         updated_at: new Date().toISOString(),
-      }).eq("id", id);
+      }).eq("id", id).eq("company_id", cid).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
