@@ -64,7 +64,7 @@ export default function HmsMobilePage() {
         .from("hms_submissions")
         .select("id, title, status, kind, submitted_at, updated_at")
         .eq("company_id", cid)
-        .eq("submitted_by", user!.id)
+        .eq("submitted_by", user?.id)
         .is("deleted_at", null)
         .order("updated_at", { ascending: false })
         .limit(50);
@@ -93,27 +93,24 @@ export default function HmsMobilePage() {
     queryKey: ["hms-mobile-my-actions", cid, user?.id],
     enabled: !!cid && !!user?.id,
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("hms_action_items")
         .select("id, title, description, status, priority, due_date")
         .eq("company_id", cid)
-        .eq("assignee_user_id", user!.id)
+        .eq("assignee_user_id", user?.id)
         .in("status", ["open", "in_progress", "waiting"])
         .is("deleted_at", null)
         .order("due_date", { ascending: true, nullsFirst: false })
         .limit(20);
+      if (error) throw error;
       return (data ?? []) as any[];
     },
   });
 
   const doneMut = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from("hms_action_items").update({
-        status: "done",
-        completed_at: new Date().toISOString(),
-        completed_by: user!.id,
-        updated_at: new Date().toISOString(),
-      }).eq("id", id);
+      if (!cid || !user) throw new Error("Mangler kontekst");
+      const { error } = await supabase.rpc("hms_complete_own_action", { _company_id: cid, _action_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -188,7 +185,7 @@ export default function HmsMobilePage() {
               ))}
               {(myActions ?? []).length > 3 && (
                 <button type="button" onClick={() => go("tiltak")} className="flex min-h-[44px] w-full items-center justify-center rounded-lg text-sm font-medium text-primary active:bg-muted">
-                  Se alle mine tiltak ({myActions!.length})
+                  Se alle mine tiltak ({(myActions ?? []).length})
                 </button>
               )}
             </div>
@@ -205,7 +202,7 @@ export default function HmsMobilePage() {
 
           <div className="space-y-1 pt-2">
             <SecondaryRow icon={FileCheck} label="Mine innsendte" hint={drafts.length ? `${drafts.length} utkast` : undefined} onClick={() => go("mine")} />
-            <SecondaryRow icon={ListChecks} label="Mine tiltak" hint={(myActions ?? []).length ? `${myActions!.length} åpne` : undefined} onClick={() => go("tiltak")} />
+            <SecondaryRow icon={ListChecks} label="Mine tiltak" hint={(myActions ?? []).length ? `${(myActions ?? []).length} åpne` : undefined} onClick={() => go("tiltak")} />
           </div>
 
           <div className="space-y-1">

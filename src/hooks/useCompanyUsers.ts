@@ -25,7 +25,7 @@ export function useAssignableUsers() {
       const seen = new Set<string>();
       const out: CompanyUser[] = [];
       for (const r of data ?? []) {
-        const uid = r.user_id || r.user?.auth_user_id;
+        const uid = r.user?.auth_user_id;
         if (!uid || seen.has(uid)) continue;
         seen.add(uid);
         out.push({ id: uid, name: r.user?.person?.full_name || r.user?.person?.email || uid.slice(0, 8) });

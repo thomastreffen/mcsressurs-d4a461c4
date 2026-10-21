@@ -6978,6 +6978,7 @@ export type Database = {
         Row: {
           alert_id: string | null
           assignee_user_id: string | null
+          client_request_id: string | null
           company_id: string
           completed_at: string | null
           completed_by: string | null
@@ -7006,6 +7007,7 @@ export type Database = {
         Insert: {
           alert_id?: string | null
           assignee_user_id?: string | null
+          client_request_id?: string | null
           company_id: string
           completed_at?: string | null
           completed_by?: string | null
@@ -7034,6 +7036,7 @@ export type Database = {
         Update: {
           alert_id?: string | null
           assignee_user_id?: string | null
+          client_request_id?: string | null
           company_id?: string
           completed_at?: string | null
           completed_by?: string | null
@@ -8431,6 +8434,7 @@ export type Database = {
           deleted_by: string | null
           id: string
           period_year: number
+          previous_review_id: string | null
           signed_at: string | null
           signed_by: string | null
           status: string
@@ -8449,6 +8453,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           period_year: number
+          previous_review_id?: string | null
           signed_at?: string | null
           signed_by?: string | null
           status?: string
@@ -8467,6 +8472,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           period_year?: number
+          previous_review_id?: string | null
           signed_at?: string | null
           signed_by?: string | null
           status?: string
@@ -8474,7 +8480,15 @@ export type Database = {
           updated_at?: string
           version?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hms_internal_reviews_previous_review_id_fkey"
+            columns: ["previous_review_id"]
+            isOneToOne: false
+            referencedRelation: "hms_internal_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hms_readiness_overrides: {
         Row: {
@@ -8670,7 +8684,14 @@ export type Database = {
           new_measures: string | null
           next_review_date: string | null
           probability: number
+          residual_comment: string | null
+          residual_review_required: boolean
+          residual_reviewed_at: string | null
+          residual_reviewed_by: string | null
           responsible_user_id: string | null
+          rest_konsekvens: number | null
+          rest_sannsynlighet: number | null
+          rest_score: number | null
           score: number | null
           status: string
           updated_at: string
@@ -8693,7 +8714,14 @@ export type Database = {
           new_measures?: string | null
           next_review_date?: string | null
           probability?: number
+          residual_comment?: string | null
+          residual_review_required?: boolean
+          residual_reviewed_at?: string | null
+          residual_reviewed_by?: string | null
           responsible_user_id?: string | null
+          rest_konsekvens?: number | null
+          rest_sannsynlighet?: number | null
+          rest_score?: number | null
           score?: number | null
           status?: string
           updated_at?: string
@@ -8716,7 +8744,14 @@ export type Database = {
           new_measures?: string | null
           next_review_date?: string | null
           probability?: number
+          residual_comment?: string | null
+          residual_review_required?: boolean
+          residual_reviewed_at?: string | null
+          residual_reviewed_by?: string | null
           responsible_user_id?: string | null
+          rest_konsekvens?: number | null
+          rest_sannsynlighet?: number | null
+          rest_score?: number | null
           score?: number | null
           status?: string
           updated_at?: string
@@ -9176,8 +9211,11 @@ export type Database = {
           frequency: string
           id: string
           linked_audit_id: string | null
+          linked_risk_id: string | null
+          linked_submission_id: string | null
           linked_template_id: string | null
           name: string
+          previous_activity_id: string | null
           responsible_user_id: string | null
           status: string
           updated_at: string
@@ -9199,8 +9237,11 @@ export type Database = {
           frequency?: string
           id?: string
           linked_audit_id?: string | null
+          linked_risk_id?: string | null
+          linked_submission_id?: string | null
           linked_template_id?: string | null
           name: string
+          previous_activity_id?: string | null
           responsible_user_id?: string | null
           status?: string
           updated_at?: string
@@ -9222,13 +9263,38 @@ export type Database = {
           frequency?: string
           id?: string
           linked_audit_id?: string | null
+          linked_risk_id?: string | null
+          linked_submission_id?: string | null
           linked_template_id?: string | null
           name?: string
+          previous_activity_id?: string | null
           responsible_user_id?: string | null
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hms_year_activities_linked_risk_id_fkey"
+            columns: ["linked_risk_id"]
+            isOneToOne: false
+            referencedRelation: "hms_risk_register"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_year_activities_linked_submission_id_fkey"
+            columns: ["linked_submission_id"]
+            isOneToOne: false
+            referencedRelation: "hms_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_year_activities_previous_activity_id_fkey"
+            columns: ["previous_activity_id"]
+            isOneToOne: false
+            referencedRelation: "hms_year_activities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       image_text_extracts: {
         Row: {
@@ -17520,6 +17586,21 @@ export type Database = {
         Returns: Json
       }
       hms_chemical_open_by_token: { Args: { p_token: string }; Returns: Json }
+      hms_complete_own_action: {
+        Args: { _action_id: string; _company_id: string }
+        Returns: string
+      }
+      hms_complete_year_activity: {
+        Args: {
+          _activity_id: string
+          _audit_id?: string
+          _company_id: string
+          _documentation: string
+          _submission_id?: string
+        }
+        Returns: string
+      }
+      hms_control_snapshot: { Args: { _company_id: string }; Returns: Json }
       hms_handbook_ack_by_token: {
         Args: {
           p_confirmation_text?: string

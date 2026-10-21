@@ -3,10 +3,10 @@
 - Standalone documentation exports use hms_document_exports with owner-scoped private files and reuse inspection-response-send without fabricating inspection IDs; content-specific module checks remain independent. Why: one delivery engine and company-scoped history without coupling general exports to inspections.
 - InspectionExportTab reuses delivery/evidence and requires inspection company = active company. Why: no cross-company exports.
 - Planning staffing/date-deviation is derived live from events/event_technicians via `get_planning_wp_staffing`, never stored. Why: Ressursplan is source of truth.
-- RLS checks that test "no row exists" in another RLS-protected table must use a SECURITY DEFINER helper. Why: RLS hides rows and inverts the check.
+- Use SECURITY DEFINER for RLS-protected absence checks; hidden rows otherwise invert the result.
 - Employment (employment_profiles, one is_primary per person) and system access are separate; cross-company access goes only through company_module_access + has_company_access(uid, company, module, level). Why: membership must never imply employment or blanket access.
 - Company-module UI access uses the server-returned my_company_module_access matrix and CompanyModuleGate before mounting protected content; personnel for ResourcePlan uses resource_plan_personnel. Why: global roles and cached company selection must not widen module access or expose HR fields.
-- On `hms`/`compliance`/finance-gated tables, `phase2_module_view/insert/update/delete` are RESTRICTIVE policies that AND with every permissive SELECT policy on that table. Why: a new permissive self-service policy (own rows, published content, "any active company member") is silently vetoed unless the matching restrictive policy is widened (`ALTER POLICY ... USING (existing OR self_service_condition)`) too — always check `pg_policy.polpermissive` before adding a carve-out.
+- On HMS/compliance/finance tables, `phase2_module_view/insert/update/delete` are RESTRICTIVE and AND with permissive policies. Check `pg_policy.polpermissive`; self-service carve-outs must also widen the matching restrictive policy (`existing OR self_service_condition`). Why: permissive rules alone remain vetoed.
 - Self-service HMS pages (`/hms/handbok`, `/hms/mine-kjemikalier`, `/hms/klar-for-arbeid`) skip `HmsContextGate`/`CompanyModuleGate` entirely (see `HmsSelfServicePage` in `App.tsx`) and rely only on RLS (own rows, or "active member of company" for shared catalogs like chemicals/published handbooks). Why: these must stay open to every employee regardless of the hms.view/hms.manage company-module grant, which is an admin-only gate.
 - AuthProvider preserves user identity across auth re-emits; providers key on user.id and load only for a new person/company. Why: tab focus must not remount or redirect the shell.
 - LocalExportMenu receives explicit visible-row projections and frozen filter snapshots from each view; local exports reuse private documentation delivery with immutable source-module/company/owner scope and server-side view-level authorization. Why: exports must not query additional data or require unrelated HMS rights.
@@ -19,3 +19,5 @@
 - Clear drafts/pending writes on save or confirmed discard; persist remaining chapter edits on partial save/reset. Why: saved/rejected edits must not return.
 
 - Calendar/Tripletex calls use invokeWithSession: await hydration, pin bearer, share refresh; only allow-listed reads retry once on 401, never mutations/403. Why: no anonymous requests or replayed writes.
+
+- HMS control uses company-scoped RPCs/triggers for immutable signed versions/original risk, explicit residual decisions, atomic due-date recurrence and append-only audit; UI locking is insufficient.
