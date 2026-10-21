@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { Link } from "react-router-dom";
@@ -110,6 +111,7 @@ export default function HmsHandbooksPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
+      <HmsMobileBack />
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
@@ -122,7 +124,7 @@ export default function HmsHandbooksPage() {
             samles her.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <LocalExportMenu title="Håndbøker" module="hms" disabled={isLoading} rows={handbooks.map(h=>({'Tittel':h.title,'Beskrivelse':h.description,'Type':h.kind,'Oppdatert':new Date(h.updated_at)}))}/>
           <Button size="sm" variant="outline" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
             <Sparkles className="h-4 w-4 mr-1.5" />

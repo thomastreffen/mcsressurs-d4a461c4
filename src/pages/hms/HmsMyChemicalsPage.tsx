@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useState } from "react";
 import { Beaker, CheckCircle2, FileText, Loader2, ShieldAlert } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +36,7 @@ export default function HmsMyChemicalsPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
+      <HmsMobileBack />
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Kjemikalier</h1>
         <p className="text-sm text-muted-foreground">

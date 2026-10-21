@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useMemo, useState } from "react";
 import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { Link } from "react-router-dom";
@@ -102,6 +103,7 @@ export default function HmsChemicalsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
+      <HmsMobileBack />
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
@@ -113,7 +115,7 @@ export default function HmsChemicalsPage() {
             bekreftelser fra ansatte.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <LocalExportMenu title="Stoffkartotek" module="hms" disabled={isLoading} filters={{Søk:q||'Alle',Utvalg:filter}} rows={rows.map(c=>({'Produkt':c.product_name,'Leverandør':c.supplier??c.manufacturer,'Kategori':c.category,'SDS':SDS_STATE_LABELS[sdsState(c)],'Krav':[c.is_high_risk?'Høyrisiko':'',c.requires_training?'Opplæring':'',c.requires_acknowledgement?'Bekreftelse':'',c.requires_sja?'SJA':'',c.requires_special_ppe?'Særskilt PVU':''].filter(Boolean).join(', '),'Status':CHEMICAL_STATUS_LABELS[c.status]??c.status}))}/>
           <Button variant="outline" onClick={seedDemo} disabled={saveMut.isPending}>
             Legg inn epoxy-eksempel

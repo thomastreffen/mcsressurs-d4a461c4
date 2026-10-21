@@ -151,8 +151,8 @@ export default function HmsIncidentsListPage() {
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/60">
         <div className="px-4 lg:px-6 py-3 max-w-7xl mx-auto flex items-center gap-2">
           {isMobile && (
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Tilbake">
-              <ChevronLeft className="h-5 w-5" />
+            <Button variant="ghost" className="min-h-11 -ml-2 gap-1 px-2" onClick={() => navigate("/hms")}>
+              <ChevronLeft className="h-5 w-5" /> Tilbake
             </Button>
           )}
           <div className="flex-1 min-w-0">

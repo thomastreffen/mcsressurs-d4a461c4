@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
@@ -87,6 +88,7 @@ export default function HmsTemplatesPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
+      <HmsMobileBack />
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
@@ -97,7 +99,7 @@ export default function HmsTemplatesPage() {
             Maler tilpasset MCS Service: datacenter, næringsbygg, tavlemontasje, strømskinner og serviceoppdrag.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
@@ -124,7 +126,7 @@ export default function HmsTemplatesPage() {
             <TabsTrigger value="checklist">Sjekklister</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Søk navn..."

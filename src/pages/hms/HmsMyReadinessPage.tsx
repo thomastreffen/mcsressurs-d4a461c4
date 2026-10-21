@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CalendarDays, CheckCircle2, HelpCircle, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ export default function HmsMyReadinessPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4">
+      <HmsMobileBack />
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold">
           <ShieldCheck className="h-5 w-5 text-muted-foreground" />

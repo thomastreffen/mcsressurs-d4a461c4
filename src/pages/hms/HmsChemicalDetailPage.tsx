@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useEffect, useMemo, useState } from "react";
 import { CHEMICAL_AUDIENCE_TAGS } from "@/lib/hms/handbookPackage";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -175,6 +176,7 @@ export default function HmsChemicalDetailPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
+      <HmsMobileBack to="/hms/kjemikalier" label="Til kjemikalier" />
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="space-y-1">
           <Button variant="ghost" size="sm" asChild className="-ml-2">

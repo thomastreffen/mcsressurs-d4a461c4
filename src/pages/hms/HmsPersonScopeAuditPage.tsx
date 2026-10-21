@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -173,6 +174,7 @@ export default function HmsPersonScopeAuditPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4">
+      <HmsMobileBack to="/hms/people" label="Til ansatte" />
       <div className="flex items-center gap-2">
         <ShieldQuestion className="h-5 w-5 text-muted-foreground" />
         <h1 className="text-xl font-semibold">Kontroll av ansattgrunnlag</h1>
