@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { BookOpen, CheckCircle2, ChevronRight, ShieldCheck } from "lucide-react";
@@ -73,6 +74,7 @@ export default function HmsMyHandbookPage() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 sm:p-6 space-y-4">
+      <HmsMobileBack />
       <div className="space-y-1">
         <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5" /> HMS

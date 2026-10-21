@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -167,9 +168,10 @@ export default function HmsEmployeeAmlPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+      <HmsMobileBack to="/hms/aml" label="Til AML-varsler" />
       <div className="flex items-center gap-3 justify-between flex-wrap">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/hms/aml")}><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="hidden sm:inline-flex" onClick={() => navigate("/hms/aml")}><ArrowLeft className="h-4 w-4" /></Button>
           <div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
               <ShieldCheck className="h-3.5 w-3.5" /> AML-detalj

@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -79,6 +80,7 @@ export default function HmsMyHandbookReaderPage() {
   if (!data?.handbook || !data.version) {
     return (
       <div className="mx-auto max-w-md p-6">
+        <HmsMobileBack to="/hms/handbok" label="Til HMS-håndbok" />
         <Card className="border-dashed">
           <CardContent className="py-12 text-center space-y-2 text-sm text-muted-foreground">
             <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/40" />
@@ -99,8 +101,8 @@ export default function HmsMyHandbookReaderPage() {
     <div className="min-h-screen bg-muted/20 pb-28">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur px-4 py-3">
         <div className="mx-auto max-w-2xl space-y-1">
-          <Link to="/hms/handbok" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-3 w-3" /> Min HMS-håndbok
+          <Link to="/hms/handbok" className="inline-flex min-h-11 items-center gap-1.5 -ml-2 rounded-lg px-2 text-sm font-medium text-primary active:bg-muted">
+            <ArrowLeft className="h-5 w-5" /> Min HMS-håndbok
           </Link>
           <h1 className="text-lg font-semibold leading-tight">{data.handbook.title}</h1>
           <p className="text-xs text-muted-foreground">

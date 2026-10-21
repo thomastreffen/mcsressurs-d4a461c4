@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -263,8 +264,11 @@ export default function HmsIncidentDetailPage() {
     <div className="min-h-screen bg-background pb-12">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/60">
         <div className="px-4 lg:px-6 py-3 max-w-5xl mx-auto flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/hms/incidents")} aria-label="Tilbake">
+          <Button variant="ghost" size="icon" className="hidden sm:inline-flex" onClick={() => navigate("/hms/incidents")} aria-label="Tilbake">
             <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" className="sm:hidden min-h-11 -ml-2 gap-1 px-2" onClick={() => navigate("/hms/incidents")}>
+            <ChevronLeft className="h-5 w-5" /> Tilbake
           </Button>
           <div className="flex-1 min-w-0">
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground">HMS-avvik / RUH</div>

@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Upload, RefreshCw, FileSpreadsheet, AlertTriangle } from "lucide-react";
@@ -46,9 +47,10 @@ export default function HmsImportBatchesPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+      <HmsMobileBack />
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => nav("/hms")}><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="hidden sm:inline-flex" onClick={() => nav("/hms")}><ArrowLeft className="h-4 w-4" /></Button>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Importbatcher</h1>
             <p className="text-sm text-muted-foreground">Historikk og konflikthåndtering for arbeidstid-import.</p>

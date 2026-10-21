@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +47,7 @@ export default function HmsAreasPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
+      <HmsMobileBack />
       <div className="space-y-1">
         <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
           <ShieldCheck className="h-3.5 w-3.5" />

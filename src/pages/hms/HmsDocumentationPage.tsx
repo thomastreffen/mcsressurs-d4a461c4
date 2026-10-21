@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Send, FileCheck2, ChevronDown, ChevronRight, Check, Loader2, X, History } from 'lucide-react';
@@ -97,6 +98,7 @@ function DocumentationWorkspace() {
   const statuses=[...new Set(Object.values(records).flatMap(list=>(list??[]).map(r=>r.status).filter((s):s is string=>!!s)))];
   const statusNames:Record<string,string>={draft:'Utkast',submitted:'Innsendt',approved:'Godkjent',rejected:'Avvist',open:'Åpen',closed:'Lukket',in_progress:'Under arbeid',reviewed:'Kontrollert'};
   return <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+    <HmsMobileBack />
     <header className="space-y-2"><p className="text-xs font-medium uppercase text-muted-foreground">HMS & HR · {company}</p><h1 className="flex items-center gap-3 text-2xl font-semibold"><FileCheck2 className="h-7 w-7 text-primary"/>Dokumentasjon / Eksport</h1><p className="text-sm text-muted-foreground">DLE, revisjon og tilsyn</p></header>
     <Tabs defaultValue="export"><TabsList><TabsTrigger value="export">Ny eksport</TabsTrigger><TabsTrigger value="history"><History className="mr-2 h-4 w-4"/>Tidligere eksporter</TabsTrigger></TabsList>
     <TabsContent value="export" className="space-y-6 pt-4">

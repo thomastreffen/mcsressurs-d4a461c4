@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useEffect, useMemo, useState } from "react";
 import { LocalExportMenu } from '@/components/LocalExportMenu';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -490,6 +491,7 @@ export default function HmsHandbookDetailPage() {
   if (!handbook) {
     return (
       <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+        <HmsMobileBack to="/hms/handbooks" label="Til håndbøker" />
         <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
           <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/40" />
           <div className="font-medium text-foreground">Ikke funnet eller ingen tilgang</div>

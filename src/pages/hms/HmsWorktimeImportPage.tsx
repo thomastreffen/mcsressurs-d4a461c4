@@ -1,3 +1,4 @@
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import { useState, useMemo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -468,8 +469,9 @@ export default function HmsWorktimeImportPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+      <HmsMobileBack />
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/hms")}>
+        <Button variant="ghost" size="icon" className="hidden sm:inline-flex" onClick={() => navigate("/hms")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
