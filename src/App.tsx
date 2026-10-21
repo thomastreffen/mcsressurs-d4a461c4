@@ -852,6 +852,32 @@ const App = () => (
                   <HmsPage><HmsPersonDetailPage /></HmsPage>
                 </ProtectedRoute>
               } />
+              {/* Internkontrollsløyfe: årshjul, risikoregister, handlingsplan, årlig gjennomgang */}
+              <Route path="/hms/arshjul" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><HmsYearWheelPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/risiko" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><HmsRiskRegisterPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/handlingsplan" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><HmsActionPlanPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/internkontroll" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><HmsInternalReviewPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/internkontroll/:id" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><HmsInternalReviewPage /></HmsPage>
+                </ProtectedRoute>
+              } />
             </Route>
 
             <Route path="*" element={<NotFound />} />
