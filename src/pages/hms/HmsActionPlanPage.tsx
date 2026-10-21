@@ -115,6 +115,11 @@ export default function HmsActionPlanPage() {
   const doneMut = useMutation({
     mutationFn: async (id: string) => {
       if (!user || !cid) throw new Error("Mangler kontekst");
+      if (!canManage) {
+        const { error } = await supabase.rpc("hms_complete_own_action", { _company_id: cid, _action_id: id });
+        if (error) throw error;
+        return;
+      }
       const { error } = await (supabase as any).from("hms_action_items").update({
         status: "done",
         completed_at: new Date().toISOString(),

@@ -19,8 +19,10 @@ import { LocalExportMenu } from "@/components/LocalExportMenu";
 import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import {
   ACTIVITY_CATEGORY_LABEL, ACTIVITY_FREQUENCIES, ACTIVITY_STATE_LABEL, FREQUENCY_LABEL,
-  activityState, nextDueDate, type ActivityFrequency, type ActivityState,
+  activityState, activityDestination, type ActivityFrequency, type ActivityState,
 } from "@/lib/hms/internalControl";
+import { Link } from "react-router-dom";
+import { HmsControlHistory } from "@/components/hms/HmsControlHistory";
 import { format } from "date-fns";
 
 const STATE_STYLE: Record<ActivityState, string> = {
@@ -61,6 +63,7 @@ export default function HmsYearWheelPage() {
   const [form, setForm] = useState<ActivityForm | null>(null);
   const [completing, setCompleting] = useState<any | null>(null);
   const [docText, setDocText] = useState("");
+  const [submissionId, setSubmissionId] = useState("");
 
   const { data: activities, isLoading } = useQuery({
     queryKey: ["hms-year-activities", cid],
@@ -74,6 +77,16 @@ export default function HmsYearWheelPage() {
         .order("due_date", { ascending: true });
       if (error) throw error;
       return (data ?? []) as any[];
+    },
+  });
+
+  const { data: submissions } = useQuery({
+    queryKey: ["hms-year-completed-submissions", cid], enabled: !!cid,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("hms_submissions").select("id, title, submitted_at")
+        .eq("company_id", cid ?? "").in("status", ["submitted", "approved"]).is("deleted_at", null).order("submitted_at", { ascending: false }).limit(50);
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -121,7 +134,7 @@ export default function HmsYearWheelPage() {
       };
       const sb = supabase as any;
       if (f.id) {
-        const { error } = await sb.from("hms_year_activities").update(row).eq("id", f.id);
+        const { error } = await sb.from("hms_year_activities").update(row).eq("id", f.id).eq("company_id", cid).select("id").single();
         if (error) throw error;
       } else {
         const { error } = await sb.from("hms_year_activities").insert({ ...row, created_by: user.id });
@@ -139,36 +152,17 @@ export default function HmsYearWheelPage() {
   const completeMut = useMutation({
     mutationFn: async (a: any) => {
       if (!user) throw new Error("Mangler bruker");
-      const sb = supabase as any;
-      const { error } = await sb.from("hms_year_activities").update({
-        status: "done",
-        completed_at: new Date().toISOString(),
-        completed_by: user.id,
-        documentation: docText || null,
-        updated_at: new Date().toISOString(),
-      }).eq("id", a.id);
+      if (!cid) throw new Error("Mangler selskap");
+      const { error } = await supabase.rpc("hms_complete_year_activity", {
+        _company_id: cid, _activity_id: a.id, _documentation: docText, _submission_id: submissionId || null, _audit_id: null,
+      });
       if (error) throw error;
-      // Tilbakevendende aktivitet: legg inn neste forekomst automatisk.
-      if (a.frequency) {
-        const { error: e2 } = await sb.from("hms_year_activities").insert({
-          company_id: a.company_id,
-          name: a.name,
-          category: a.category,
-          responsible_user_id: a.responsible_user_id,
-          deputy_user_id: a.deputy_user_id,
-          frequency: a.frequency,
-          custom_interval_days: a.custom_interval_days,
-          due_date: nextDueDate(new Date(), a.frequency as ActivityFrequency, a.custom_interval_days),
-          status: "planned",
-          created_by: user.id,
-        });
-        if (e2) throw e2;
-      }
     },
     onSuccess: () => {
       toast({ title: "Gjennomført", description: "Neste forekomst er planlagt automatisk." });
       setCompleting(null);
       setDocText("");
+      setSubmissionId("");
       qc.invalidateQueries({ queryKey: ["hms-year-activities"] });
     },
     onError: (e: any) => toast({ title: "Feil", description: e?.message, variant: "destructive" }),
@@ -245,6 +239,7 @@ export default function HmsYearWheelPage() {
                       {nameOf(a.deputy_user_id) && ` · Stedfortreder: ${nameOf(a.deputy_user_id)}`}
                     </div>
                     {a.comment && <p className="mt-1 text-xs text-muted-foreground">{a.comment}</p>}
+                    {activityDestination(a) && <Link className="mt-2 inline-flex min-h-11 items-center text-sm text-primary underline" to={activityDestination(a)!}>Åpne eller start aktivitet</Link>}
                     {a.documentation && <p className="mt-1 text-xs">Dokumentasjon: {a.documentation}</p>}
                   </div>
                   <div className="flex gap-1.5">
@@ -260,6 +255,7 @@ export default function HmsYearWheelPage() {
                       due_date: a.due_date, comment: a.comment ?? "",
                     })}><Pencil className="h-4 w-4" /></Button>
                   </div>
+                  <HmsControlHistory entity="hms_year_activities" id={a.id} />
                 </CardContent>
               </Card>
             );
@@ -345,9 +341,16 @@ export default function HmsYearWheelPage() {
               <Label>Dokumentasjon / resultat</Label>
               <Textarea rows={4} value={docText} onChange={(e) => setDocText(e.target.value)} placeholder="Kort om hva som ble gjort, funn, referanse til dokument…" />
             </div>
-            <p className="text-xs text-muted-foreground">Neste forekomst planlegges automatisk ut fra frekvensen.</p>
+            <div className="space-y-1.5">
+              <Label>Koble gjennomført sjekkliste/SJA</Label>
+              <Select value={submissionId || "none"} onValueChange={v => setSubmissionId(v === "none" ? "" : v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="none">Ingen kobling</SelectItem>{(submissions ?? []).map(s => <SelectItem key={s.id} value={s.id}>{s.title || "Uten tittel"}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">Neste forekomst beregnes fra planlagt frist, ikke gjennomføringsdato.</p>
             <div className="sticky bottom-0 -mx-6 border-t bg-background px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex gap-2">
-              <Button className="flex-1 min-h-11" disabled={completeMut.isPending} onClick={() => completeMut.mutate(completing)}>Merk gjennomført</Button>
+              <Button className="flex-1 min-h-11" disabled={completeMut.isPending || (!docText.trim() && !submissionId)} onClick={() => completeMut.mutate(completing)}>Merk gjennomført</Button>
               <Button variant="outline" className="min-h-11" onClick={() => setCompleting(null)}>Avbryt</Button>
             </div>
           </div>
