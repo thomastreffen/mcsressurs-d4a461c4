@@ -16,7 +16,7 @@ import { nb } from "date-fns/locale";
 import { HmsLoading } from "@/components/hms/HmsContextGate";
 import { cn } from "@/lib/utils";
 
-type View = "home" | "sja" | "checklist" | "mine";
+type View = "home" | "sja" | "checklist" | "mine" | "tiltak";
 
 /**
  * Operativ HMS for felt (montør). Oppgave først: få store valg, ingen KPI-er.
@@ -32,10 +32,11 @@ export default function HmsMobilePage() {
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
   const startParam = params.get("start");
-  const view: View = startParam === "sja" || startParam === "checklist" ? startParam : params.get("view") === "mine" ? "mine" : "home";
+  const viewParam = params.get("view");
+  const view: View = startParam === "sja" || startParam === "checklist" ? startParam : viewParam === "mine" || viewParam === "tiltak" ? viewParam : "home";
   const go = (v: View) => {
     if (v === "home") setParams({});
-    else if (v === "mine") setParams({ view: "mine" });
+    else if (v === "mine" || v === "tiltak") setParams({ view: v });
     else setParams({ start: v });
     window.scrollTo({ top: 0 });
   };
