@@ -316,6 +316,13 @@
       "when": 1792568633974,
       "tag": "0044_hms_internal_control_loop",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1792570667419,
+      "tag": "0045_hms_internal_control_integrity",
+      "breakpoints": true
     }
   ]
 }
