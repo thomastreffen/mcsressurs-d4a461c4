@@ -221,7 +221,7 @@ export default function HmsRiskRegisterPage() {
                     <Button size="sm" variant="outline" disabled={actionMut.isPending || !!actionsError || actions.some(a => a.title === `Tiltak: ${r.hazard}` && a.description === (r.new_measures || `Korrigerende tiltak for risiko «${r.area}»: ${r.hazard}`))} onClick={() => actionMut.mutate(r)}>
                       <ListPlus className="h-4 w-4 mr-1" /> Opprett tiltak
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setForm({
+                    <Button size="sm" variant="ghost" aria-label="Rediger risiko" onClick={() => setForm({
                       id: r.id, area: r.area, hazard: r.hazard, event_description: r.event_description ?? "",
                       probability: r.probability, consequence: r.consequence,
                       existing_measures: r.existing_measures ?? "", new_measures: r.new_measures ?? "",
