@@ -145,6 +145,10 @@ import HmsChemicalsPage from "./pages/hms/HmsChemicalsPage";
 import HmsChemicalDetailPage from "./pages/hms/HmsChemicalDetailPage";
 import HmsMyChemicalsPage from "./pages/hms/HmsMyChemicalsPage";
 import HmsMyReadinessPage from "./pages/hms/HmsMyReadinessPage";
+import HmsYearWheelPage from "./pages/hms/HmsYearWheelPage";
+import HmsRiskRegisterPage from "./pages/hms/HmsRiskRegisterPage";
+import HmsActionPlanPage from "./pages/hms/HmsActionPlanPage";
+import HmsInternalReviewPage from "./pages/hms/HmsInternalReviewPage";
 import ChemicalPublicPage from "./pages/hms/ChemicalPublicPage";
 
 import HandbookPublicPage from "./pages/hms/HandbookPublicPage";
