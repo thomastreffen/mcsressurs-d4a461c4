@@ -6992,12 +6992,16 @@ export type Database = {
           due_date: string | null
           id: string
           incident_id: string | null
+          internal_review_id: string | null
           priority: string
           risk_item_id: string | null
+          risk_register_id: string | null
+          source_type: string | null
           status: string
           submission_id: string | null
           title: string
           updated_at: string
+          year_activity_id: string | null
         }
         Insert: {
           alert_id?: string | null
@@ -7016,12 +7020,16 @@ export type Database = {
           due_date?: string | null
           id?: string
           incident_id?: string | null
+          internal_review_id?: string | null
           priority?: string
           risk_item_id?: string | null
+          risk_register_id?: string | null
+          source_type?: string | null
           status?: string
           submission_id?: string | null
           title: string
           updated_at?: string
+          year_activity_id?: string | null
         }
         Update: {
           alert_id?: string | null
@@ -7040,12 +7048,16 @@ export type Database = {
           due_date?: string | null
           id?: string
           incident_id?: string | null
+          internal_review_id?: string | null
           priority?: string
           risk_item_id?: string | null
+          risk_register_id?: string | null
+          source_type?: string | null
           status?: string
           submission_id?: string | null
           title?: string
           updated_at?: string
+          year_activity_id?: string | null
         }
         Relationships: [
           {
@@ -7084,6 +7096,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "hms_action_items_internal_review_id_fkey"
+            columns: ["internal_review_id"]
+            isOneToOne: false
+            referencedRelation: "hms_internal_reviews"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "hms_action_items_risk_item_id_fkey"
             columns: ["risk_item_id"]
             isOneToOne: false
@@ -7091,10 +7110,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "hms_action_items_risk_register_id_fkey"
+            columns: ["risk_register_id"]
+            isOneToOne: false
+            referencedRelation: "hms_risk_register"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "hms_action_items_submission_id_fkey"
             columns: ["submission_id"]
             isOneToOne: false
             referencedRelation: "hms_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hms_action_items_year_activity_id_fkey"
+            columns: ["year_activity_id"]
+            isOneToOne: false
+            referencedRelation: "hms_year_activities"
             referencedColumns: ["id"]
           },
         ]
@@ -8386,6 +8419,63 @@ export type Database = {
           },
         ]
       }
+      hms_internal_reviews: {
+        Row: {
+          answers: Json
+          auto_snapshot: Json
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          period_year: number
+          signed_at: string | null
+          signed_by: string | null
+          status: string
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          answers?: Json
+          auto_snapshot?: Json
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          period_year: number
+          signed_at?: string | null
+          signed_by?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          answers?: Json
+          auto_snapshot?: Json
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          period_year?: number
+          signed_at?: string | null
+          signed_by?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       hms_readiness_overrides: {
         Row: {
           comment: string | null
@@ -8560,6 +8650,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      hms_risk_register: {
+        Row: {
+          area: string
+          chemical_ids: string[]
+          company_id: string
+          consequence: number
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          event_description: string | null
+          existing_measures: string | null
+          handbook_section_ids: string[]
+          hazard: string
+          hms_areas: string[]
+          id: string
+          new_measures: string | null
+          next_review_date: string | null
+          probability: number
+          responsible_user_id: string | null
+          score: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          chemical_ids?: string[]
+          company_id: string
+          consequence?: number
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          event_description?: string | null
+          existing_measures?: string | null
+          handbook_section_ids?: string[]
+          hazard: string
+          hms_areas?: string[]
+          id?: string
+          new_measures?: string | null
+          next_review_date?: string | null
+          probability?: number
+          responsible_user_id?: string | null
+          score?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          chemical_ids?: string[]
+          company_id?: string
+          consequence?: number
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          event_description?: string | null
+          existing_measures?: string | null
+          handbook_section_ids?: string[]
+          hazard?: string
+          hms_areas?: string[]
+          id?: string
+          new_measures?: string | null
+          next_review_date?: string | null
+          probability?: number
+          responsible_user_id?: string | null
+          score?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       hms_submission_answers: {
         Row: {
@@ -8993,6 +9155,78 @@ export type Database = {
           suggested_work_types?: string[]
           updated_at?: string
           version?: number
+        }
+        Relationships: []
+      }
+      hms_year_activities: {
+        Row: {
+          category: string
+          comment: string | null
+          company_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          custom_interval_days: number | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deputy_user_id: string | null
+          documentation: string | null
+          due_date: string
+          frequency: string
+          id: string
+          linked_audit_id: string | null
+          linked_template_id: string | null
+          name: string
+          responsible_user_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          comment?: string | null
+          company_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_interval_days?: number | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deputy_user_id?: string | null
+          documentation?: string | null
+          due_date: string
+          frequency?: string
+          id?: string
+          linked_audit_id?: string | null
+          linked_template_id?: string | null
+          name: string
+          responsible_user_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          comment?: string | null
+          company_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_interval_days?: number | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deputy_user_id?: string | null
+          documentation?: string | null
+          due_date?: string
+          frequency?: string
+          id?: string
+          linked_audit_id?: string | null
+          linked_template_id?: string | null
+          name?: string
+          responsible_user_id?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }

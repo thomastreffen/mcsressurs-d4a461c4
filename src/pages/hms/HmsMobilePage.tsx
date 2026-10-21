@@ -16,7 +16,7 @@ import { nb } from "date-fns/locale";
 import { HmsLoading } from "@/components/hms/HmsContextGate";
 import { cn } from "@/lib/utils";
 
-type View = "home" | "sja" | "checklist" | "mine";
+type View = "home" | "sja" | "checklist" | "mine" | "tiltak";
 
 /**
  * Operativ HMS for felt (montør). Oppgave først: få store valg, ingen KPI-er.
@@ -32,10 +32,11 @@ export default function HmsMobilePage() {
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
   const startParam = params.get("start");
-  const view: View = startParam === "sja" || startParam === "checklist" ? startParam : params.get("view") === "mine" ? "mine" : "home";
+  const viewParam = params.get("view");
+  const view: View = startParam === "sja" || startParam === "checklist" ? startParam : viewParam === "mine" || viewParam === "tiltak" ? viewParam : "home";
   const go = (v: View) => {
     if (v === "home") setParams({});
-    else if (v === "mine") setParams({ view: "mine" });
+    else if (v === "mine" || v === "tiltak") setParams({ view: v });
     else setParams({ start: v });
     window.scrollTo({ top: 0 });
   };
@@ -86,6 +87,42 @@ export default function HmsMobilePage() {
     },
   });
 
+  // «Dette må du gjøre»: tiltak tildelt montøren fra HMS-handlingsplanen.
+  // Kun egne tiltak (RLS + assignee-filter) — aldri selskapets fulle plan.
+  const { data: myActions } = useQuery({
+    queryKey: ["hms-mobile-my-actions", cid, user?.id],
+    enabled: !!cid && !!user?.id,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("hms_action_items")
+        .select("id, title, description, status, priority, due_date")
+        .eq("company_id", cid)
+        .eq("assignee_user_id", user!.id)
+        .in("status", ["open", "in_progress", "waiting"])
+        .is("deleted_at", null)
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .limit(20);
+      return (data ?? []) as any[];
+    },
+  });
+
+  const doneMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from("hms_action_items").update({
+        status: "done",
+        completed_at: new Date().toISOString(),
+        completed_by: user!.id,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Tiltak merket utført" });
+      qc.invalidateQueries({ queryKey: ["hms-mobile-my-actions"] });
+    },
+    onError: (e: any) => toast({ title: "Feil", description: e?.message, variant: "destructive" }),
+  });
+
   const startMut = useMutation({
     mutationFn: async (templateId: string) => {
       if (!cid || !user) throw new Error("Mangler kontekst");
@@ -127,6 +164,36 @@ export default function HmsMobilePage() {
             </Link>
           )}
 
+          {(myActions ?? []).length > 0 && (
+            <div className="space-y-2">
+              <div className="px-1 text-sm font-medium text-muted-foreground">Dette må du gjøre</div>
+              {(myActions ?? []).slice(0, 3).map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-2xl border border-amber-300/60 bg-amber-50/60 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+                  <ListChecks className="h-6 w-6 shrink-0 text-amber-600" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-base font-medium">{a.title}</span>
+                    <span className="block text-sm text-muted-foreground">
+                      {a.due_date ? `Frist ${new Date(a.due_date).toLocaleDateString("nb-NO")}` : "Ingen frist"}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={doneMut.isPending}
+                    onClick={() => doneMut.mutate(a.id)}
+                    className="min-h-[44px] shrink-0 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground active:scale-[0.98]"
+                  >
+                    Utført
+                  </button>
+                </div>
+              ))}
+              {(myActions ?? []).length > 3 && (
+                <button type="button" onClick={() => go("tiltak")} className="flex min-h-[44px] w-full items-center justify-center rounded-lg text-sm font-medium text-primary active:bg-muted">
+                  Se alle mine tiltak ({myActions!.length})
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="space-y-3">
             <ActionCard icon={ClipboardList} label="Start SJA" onClick={() => go("sja")} primary={!drafts[0]} />
             <ActionCard icon={ListChecks} label="Utfør sjekkliste" onClick={() => go("checklist")} />
@@ -138,6 +205,7 @@ export default function HmsMobilePage() {
 
           <div className="space-y-1 pt-2">
             <SecondaryRow icon={FileCheck} label="Mine innsendte" hint={drafts.length ? `${drafts.length} utkast` : undefined} onClick={() => go("mine")} />
+            <SecondaryRow icon={ListChecks} label="Mine tiltak" hint={(myActions ?? []).length ? `${myActions!.length} åpne` : undefined} onClick={() => go("tiltak")} />
           </div>
 
           <div className="space-y-1">
@@ -161,6 +229,10 @@ export default function HmsMobilePage() {
                 <SecondaryRow icon={Inbox} label="Alle innsendinger" onClick={() => navigate("/hms/submissions")} />
                 <SecondaryRow icon={Users} label="Ansatte" onClick={() => navigate("/hms/people")} />
                 <SecondaryRow icon={FlaskConical} label="Stoffkartotek (admin)" onClick={() => navigate("/hms/kjemikalier")} />
+                <SecondaryRow icon={ListChecks} label="HMS-handlingsplan" onClick={() => navigate("/hms/handlingsplan")} />
+                <SecondaryRow icon={ShieldCheck} label="HMS-årshjul" onClick={() => navigate("/hms/arshjul")} />
+                <SecondaryRow icon={AlertTriangle} label="Risikoregister" onClick={() => navigate("/hms/risiko")} />
+                <SecondaryRow icon={FileCheck} label="Internkontrollgjennomgang" onClick={() => navigate("/hms/internkontroll")} />
               </>
             )}
             {!isMontor && <SecondaryRow icon={ShieldCheck} label="HMS-oversikt (admin)" onClick={() => navigate("/hms?vis=oversikt")} />}
@@ -176,7 +248,37 @@ export default function HmsMobilePage() {
             <ArrowLeft className="h-5 w-5" /> HMS
           </button>
 
-          {view === "mine" ? (
+          {view === "tiltak" ? (
+            <>
+              <h1 className="text-2xl font-semibold tracking-tight">Mine tiltak</h1>
+              <p className="text-base text-muted-foreground">Tiltak fra HMS-handlingsplanen som er tildelt deg.</p>
+              {(myActions ?? []).length === 0 ? (
+                <p className="py-10 text-center text-base text-muted-foreground">Du har ingen åpne tiltak. Bra!</p>
+              ) : (
+                <div className="space-y-2">
+                  {(myActions ?? []).map((a) => (
+                    <div key={a.id} className="rounded-xl border bg-card p-4 space-y-2">
+                      <div className="text-base font-medium">{a.title}</div>
+                      {a.description && <p className="text-sm text-muted-foreground">{a.description}</p>}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          {a.due_date ? `Frist ${new Date(a.due_date).toLocaleDateString("nb-NO")}` : "Ingen frist"}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={doneMut.isPending}
+                          onClick={() => doneMut.mutate(a.id)}
+                          className="min-h-[44px] rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground active:scale-[0.98]"
+                        >
+                          Merk utført
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : view === "mine" ? (
             <>
               <h1 className="text-2xl font-semibold tracking-tight">Mine innsendte</h1>
               {(mine ?? []).length === 0 ? (

@@ -279,6 +279,10 @@ function HmsOverviewContent({ isMobile }: { isMobile: boolean }) {
             <Link to="/hms/mobile"><Smartphone className="h-3.5 w-3.5 mr-1" /> Mobil utfylling</Link>
           </Button>
           <Button asChild variant="outline" size="sm"><Link to="/hms/incidents">Avvik</Link></Button>
+          <Button asChild variant="outline" size="sm"><Link to="/hms/handlingsplan">Handlingsplan</Link></Button>
+          <Button asChild variant="outline" size="sm"><Link to="/hms/arshjul">Årshjul</Link></Button>
+          <Button asChild variant="outline" size="sm"><Link to="/hms/risiko">Risikoregister</Link></Button>
+          <Button asChild variant="outline" size="sm"><Link to="/hms/internkontroll">Internkontroll</Link></Button>
           <Button asChild variant="outline" size="sm"><Link to="/hms/reports">Rapporter</Link></Button>
           <Button asChild variant="outline" size="sm"><Link to="/hms/rulesets">Regelsett</Link></Button>
           <Button asChild size="sm"><Link to="/hms/aml">AML-status</Link></Button>

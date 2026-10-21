@@ -145,6 +145,10 @@ import HmsChemicalsPage from "./pages/hms/HmsChemicalsPage";
 import HmsChemicalDetailPage from "./pages/hms/HmsChemicalDetailPage";
 import HmsMyChemicalsPage from "./pages/hms/HmsMyChemicalsPage";
 import HmsMyReadinessPage from "./pages/hms/HmsMyReadinessPage";
+import HmsYearWheelPage from "./pages/hms/HmsYearWheelPage";
+import HmsRiskRegisterPage from "./pages/hms/HmsRiskRegisterPage";
+import HmsActionPlanPage from "./pages/hms/HmsActionPlanPage";
+import HmsInternalReviewPage from "./pages/hms/HmsInternalReviewPage";
 import ChemicalPublicPage from "./pages/hms/ChemicalPublicPage";
 
 import HandbookPublicPage from "./pages/hms/HandbookPublicPage";
@@ -846,6 +850,32 @@ const App = () => (
               <Route path="/hms/people/:id" element={
                 <ProtectedRoute requiredPermission="hms.view">
                   <HmsPage><HmsPersonDetailPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              {/* Internkontrollsløyfe: årshjul, risikoregister, handlingsplan, årlig gjennomgang */}
+              <Route path="/hms/arshjul" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><HmsYearWheelPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/risiko" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><HmsRiskRegisterPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/handlingsplan" element={
+                <ProtectedRoute requiredPermission="hms.view">
+                  <HmsPage><HmsActionPlanPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/internkontroll" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><HmsInternalReviewPage /></HmsPage>
+                </ProtectedRoute>
+              } />
+              <Route path="/hms/internkontroll/:id" element={
+                <ProtectedRoute requiredPermission="hms.manage">
+                  <HmsPage><HmsInternalReviewPage /></HmsPage>
                 </ProtectedRoute>
               } />
             </Route>
