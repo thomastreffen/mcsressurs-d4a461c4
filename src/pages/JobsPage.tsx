@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -223,7 +224,7 @@ export default function JobsPage() {
     if (!user) return;
     setSendingApproval(jobId);
     try {
-      const res = await supabase.functions.invoke("create-approval", {
+      const res = await invokeWithSession("create-approval", {
         body: { job_id: jobId },
       });
       if (res.error || res.data?.error) {

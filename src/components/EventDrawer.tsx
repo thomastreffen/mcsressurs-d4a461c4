@@ -46,6 +46,7 @@ import { JobStatusBadge, JobStatusGroup } from "./JobStatusBadge";
 import { useJobApprovals } from "@/hooks/useJobApprovals";
 import { getExecutionStatus, BILLING_STATUSES, ACCEPTANCE_STATUSES } from "@/lib/job-status";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -912,7 +913,7 @@ export function EventDrawer({
     }
 
     if (requiresApproval && techIds.length > 0) {
-      const { data: approvalResult, error: approvalError } = await supabase.functions.invoke("create-approval", {
+      const { data: approvalResult, error: approvalError } = await invokeWithSession("create-approval", {
         body: {
           job_id: editEvent.id,
           reminder_profile: reminderConfig.profile,
@@ -1251,7 +1252,7 @@ export function EventDrawer({
               metadata: { added_names: addedNames, date: r.date },
             } as any);
 
-            const { error: approvalErr } = await supabase.functions.invoke("create-approval", {
+            const { error: approvalErr } = await invokeWithSession("create-approval", {
               body: {
                 job_id: r.event_id,
                 technician_ids: techIds,
@@ -1512,7 +1513,7 @@ export function EventDrawer({
               await supabase.from("events").update({ status: "scheduled" } as any).eq("id", createdId);
               syncCreate(createdId);
             } else {
-              await supabase.functions.invoke("create-approval", {
+              await invokeWithSession("create-approval", {
                 body: {
                   job_id: createdId,
                   reminder_profile: reminderConfig.profile,
