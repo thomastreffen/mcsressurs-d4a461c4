@@ -115,7 +115,7 @@ export default function HmsChemicalsPage() {
             bekreftelser fra ansatte.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <LocalExportMenu title="Stoffkartotek" module="hms" disabled={isLoading} filters={{Søk:q||'Alle',Utvalg:filter}} rows={rows.map(c=>({'Produkt':c.product_name,'Leverandør':c.supplier??c.manufacturer,'Kategori':c.category,'SDS':SDS_STATE_LABELS[sdsState(c)],'Krav':[c.is_high_risk?'Høyrisiko':'',c.requires_training?'Opplæring':'',c.requires_acknowledgement?'Bekreftelse':'',c.requires_sja?'SJA':'',c.requires_special_ppe?'Særskilt PVU':''].filter(Boolean).join(', '),'Status':CHEMICAL_STATUS_LABELS[c.status]??c.status}))}/>
           <Button variant="outline" onClick={seedDemo} disabled={saveMut.isPending}>
             Legg inn epoxy-eksempel
