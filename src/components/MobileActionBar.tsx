@@ -25,6 +25,7 @@ import {
 } from "@/lib/job-status";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveAppRole } from "@/hooks/usePreviewMode";
 import { toast } from "sonner";
 import {
   ChevronRight,
@@ -56,7 +57,7 @@ export function MobileActionBar({
 }: MobileActionBarProps) {
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
-  const role = user?.role ?? "montør";
+  const role = useEffectiveAppRole().role ?? "montør";
 
   const [statusOpen, setStatusOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);

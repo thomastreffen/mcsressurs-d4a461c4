@@ -174,6 +174,7 @@ export function PreviewModeProvider({ children }: { children: ReactNode }) {
         appRole = r.appRole;
       } else {
         result = await fetchRolePermissions(newTarget.id);
+        if (newTarget.appRole) appRole = newTarget.appRole;
         // Derive effective role from module.admin permission
         if (result.permissions["scope.view.all"] && result.permissions["module.admin"]) {
           appRole = "super_admin";
@@ -249,4 +250,20 @@ export function usePreviewMode() {
   const ctx = useContext(PreviewModeContext);
   if (!ctx) throw new Error("usePreviewMode must be used within PreviewModeProvider");
   return ctx;
+}
+
+/**
+ * Effective app role for role-driven UI (home, navigation): the preview role while a
+ * superadmin previews, otherwise the real role. Never used for authorization writes.
+ */
+export function useEffectiveAppRole() {
+  const { user } = useAuth();
+  const ctx = useContext(PreviewModeContext);
+  const role: AppRole | null = ctx?.active && ctx.effectiveRole ? ctx.effectiveRole : user?.role ?? null;
+  return {
+    role,
+    isMontor: role === "montør",
+    isAdmin: role === "admin" || role === "super_admin",
+    isSuperAdmin: role === "super_admin",
+  };
 }

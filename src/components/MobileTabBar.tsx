@@ -27,11 +27,12 @@ import {
   FileCheck,
   LogOut,
   Download,
-  Info,
-} from "lucide-react";
+  Info, EyeOff } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useActionRequired } from "@/hooks/useActionRequired";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveAppRole } from "@/hooks/usePreviewMode";
+import { useMontorPreview } from "@/hooks/useMontorPreview";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useModuleVisibility } from "@/hooks/useModuleVisibility";
 import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
@@ -168,8 +169,8 @@ export function MobileTabBar() {
   const { hasPermission } = usePermissions();
   const { isModuleVisible } = useModuleVisibility();
   const companyAccess = useCompanyModuleAccess();
-  const isAdmin = user?.role === "super_admin" || user?.role === "admin";
-  const isMontør = user?.role === "montør";
+  const { isAdmin, isMontor: isMontør } = useEffectiveAppRole();
+  const montorPreview = useMontorPreview();
   const { unreadCount } = useNotifications();
   const actionRequiredCount = useActionRequired();
   const [fabOpen, setFabOpen] = useState(false);
@@ -381,6 +382,9 @@ export function MobileTabBar() {
             ))}
             <div className="border-t border-border mt-3 pt-3 space-y-1">
               <DrawerClose asChild><Button variant="ghost" className="w-full justify-start" onClick={() => setInstallOpen(true)}><Download />Installer app</Button></DrawerClose>
+              {montorPreview.canUse && (montorPreview.active
+                ? <DrawerClose asChild><Button variant="ghost" className="w-full justify-start" onClick={montorPreview.stop}><EyeOff />Avslutt forhåndsvisning</Button></DrawerClose>
+                : <DrawerClose asChild><Button variant="ghost" className="w-full justify-start" disabled={montorPreview.starting} onClick={montorPreview.start}><Eye />Test som montør</Button></DrawerClose>)}
               <DrawerClose asChild><Button variant="ghost" className="w-full justify-start" onClick={() => setStatusOpen(true)}><Info />App-status</Button></DrawerClose>
               <DrawerClose asChild><Button variant="ghost" className="w-full justify-start" onClick={signOut}><LogOut />Logg ut</Button></DrawerClose>
             </div>

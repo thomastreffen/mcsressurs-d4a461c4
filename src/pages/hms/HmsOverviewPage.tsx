@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveAppRole } from "@/hooks/usePreviewMode";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   ShieldCheck, AlertTriangle, Clock, Users,
@@ -39,9 +40,10 @@ interface ActionRow {
 
 export default function HmsOverviewPage() {
   const { user } = useAuth();
+  const { role: effectiveRole } = useEffectiveAppRole();
   const isMobile = useIsMobile();
   // Montør on phone → operative HMS flow (presentation only; same access).
-  if (isMobile && user?.role === "montør") {
+  if (isMobile && effectiveRole === "montør") {
     return <Navigate to="/hms/mobile" replace />;
   }
   return <HmsOverviewContent isMobile={isMobile} />;

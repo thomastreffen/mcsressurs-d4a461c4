@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eye, X, ChevronDown, ChevronUp, Shield, Lock, Unlock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMontorPreview } from "@/hooks/useMontorPreview";
 
 export function PreviewModeBanner() {
   const { active, target, permissions, permissionDetails, scope, deactivate, effectiveRole } = usePreviewMode();
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const { stop } = useMontorPreview();
 
   if (!active || !target) return null;
 
@@ -32,26 +34,27 @@ export function PreviewModeBanner() {
     <div className="sticky top-0 z-50">
       {/* Main banner */}
       <div className="bg-amber-500/15 border-b border-amber-500/30 backdrop-blur-sm">
-        <div className="flex items-center justify-between px-4 py-2">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 sm:px-4 sm:py-2">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-1.5 bg-amber-500/20 rounded-md px-2 py-1">
               <Eye className="h-4 w-4 text-amber-700 dark:text-amber-400" />
               <span className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-                Preview
+                <span className="sm:hidden">{effectiveRole === "montør" ? "Montørvisning" : "Preview"}</span>
+                <span className="hidden sm:inline">Preview</span>
               </span>
             </div>
-            <div className="text-sm">
+            <div className="hidden sm:block text-sm">
               <span className="text-muted-foreground">Du forhåndsviser som </span>
               <span className="font-semibold text-foreground">
                 {target.type === "user" ? target.label : `rolle "${target.label}"`}
               </span>
             </div>
             {effectiveRole && (
-              <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-700 dark:text-amber-400">
+              <Badge variant="outline" className="hidden sm:inline-flex text-[10px] border-amber-500/30 text-amber-700 dark:text-amber-400">
                 {effectiveRole}
               </Badge>
             )}
-            <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-700 dark:text-amber-400">
+            <Badge variant="outline" className="hidden sm:inline-flex text-[10px] border-amber-500/30 text-amber-700 dark:text-amber-400">
               Omfang: {scope}
             </Badge>
             <div className="hidden sm:flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400">
@@ -60,12 +63,13 @@ export function PreviewModeBanner() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setInspectorOpen(!inspectorOpen)}
-              className="gap-1.5 text-xs text-amber-700 dark:text-amber-400 hover:text-amber-800 hover:bg-amber-500/10"
+              aria-label="Tilgangsinspektør"
+              className="min-h-11 sm:min-h-9 gap-1.5 text-xs text-amber-700 dark:text-amber-400 hover:text-amber-800 hover:bg-amber-500/10"
             >
               <Shield className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Tilgangsinspektør</span>
@@ -74,11 +78,11 @@ export function PreviewModeBanner() {
             <Button
               variant="outline"
               size="sm"
-              onClick={deactivate}
-              className="gap-1.5 text-xs border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
+              onClick={stop}
+              className="min-h-11 sm:min-h-9 gap-1.5 text-xs border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
             >
               <X className="h-3.5 w-3.5" />
-              Avslutt preview
+              Avslutt<span className="hidden sm:inline"> preview</span>
             </Button>
           </div>
         </div>
