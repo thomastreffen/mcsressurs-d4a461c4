@@ -229,6 +229,10 @@ export default function HmsMobilePage() {
                 <SecondaryRow icon={Inbox} label="Alle innsendinger" onClick={() => navigate("/hms/submissions")} />
                 <SecondaryRow icon={Users} label="Ansatte" onClick={() => navigate("/hms/people")} />
                 <SecondaryRow icon={FlaskConical} label="Stoffkartotek (admin)" onClick={() => navigate("/hms/kjemikalier")} />
+                <SecondaryRow icon={ListChecks} label="HMS-handlingsplan" onClick={() => navigate("/hms/handlingsplan")} />
+                <SecondaryRow icon={ShieldCheck} label="HMS-årshjul" onClick={() => navigate("/hms/arshjul")} />
+                <SecondaryRow icon={AlertTriangle} label="Risikoregister" onClick={() => navigate("/hms/risiko")} />
+                <SecondaryRow icon={FileCheck} label="Internkontrollgjennomgang" onClick={() => navigate("/hms/internkontroll")} />
               </>
             )}
             {!isMontor && <SecondaryRow icon={ShieldCheck} label="HMS-oversikt (admin)" onClick={() => navigate("/hms?vis=oversikt")} />}
@@ -244,7 +248,37 @@ export default function HmsMobilePage() {
             <ArrowLeft className="h-5 w-5" /> HMS
           </button>
 
-          {view === "mine" ? (
+          {view === "tiltak" ? (
+            <>
+              <h1 className="text-2xl font-semibold tracking-tight">Mine tiltak</h1>
+              <p className="text-base text-muted-foreground">Tiltak fra HMS-handlingsplanen som er tildelt deg.</p>
+              {(myActions ?? []).length === 0 ? (
+                <p className="py-10 text-center text-base text-muted-foreground">Du har ingen åpne tiltak. Bra!</p>
+              ) : (
+                <div className="space-y-2">
+                  {(myActions ?? []).map((a) => (
+                    <div key={a.id} className="rounded-xl border bg-card p-4 space-y-2">
+                      <div className="text-base font-medium">{a.title}</div>
+                      {a.description && <p className="text-sm text-muted-foreground">{a.description}</p>}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          {a.due_date ? `Frist ${new Date(a.due_date).toLocaleDateString("nb-NO")}` : "Ingen frist"}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={doneMut.isPending}
+                          onClick={() => doneMut.mutate(a.id)}
+                          className="min-h-[44px] rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground active:scale-[0.98]"
+                        >
+                          Merk utført
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : view === "mine" ? (
             <>
               <h1 className="text-2xl font-semibold tracking-tight">Mine innsendte</h1>
               {(mine ?? []).length === 0 ? (
