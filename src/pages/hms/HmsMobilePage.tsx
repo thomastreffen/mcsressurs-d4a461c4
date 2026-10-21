@@ -164,6 +164,36 @@ export default function HmsMobilePage() {
             </Link>
           )}
 
+          {(myActions ?? []).length > 0 && (
+            <div className="space-y-2">
+              <div className="px-1 text-sm font-medium text-muted-foreground">Dette må du gjøre</div>
+              {(myActions ?? []).slice(0, 3).map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-2xl border border-amber-300/60 bg-amber-50/60 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+                  <ListChecks className="h-6 w-6 shrink-0 text-amber-600" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-base font-medium">{a.title}</span>
+                    <span className="block text-sm text-muted-foreground">
+                      {a.due_date ? `Frist ${new Date(a.due_date).toLocaleDateString("nb-NO")}` : "Ingen frist"}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={doneMut.isPending}
+                    onClick={() => doneMut.mutate(a.id)}
+                    className="min-h-[44px] shrink-0 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground active:scale-[0.98]"
+                  >
+                    Utført
+                  </button>
+                </div>
+              ))}
+              {(myActions ?? []).length > 3 && (
+                <button type="button" onClick={() => go("tiltak")} className="flex min-h-[44px] w-full items-center justify-center rounded-lg text-sm font-medium text-primary active:bg-muted">
+                  Se alle mine tiltak ({myActions!.length})
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="space-y-3">
             <ActionCard icon={ClipboardList} label="Start SJA" onClick={() => go("sja")} primary={!drafts[0]} />
             <ActionCard icon={ListChecks} label="Utfør sjekkliste" onClick={() => go("checklist")} />
@@ -175,6 +205,7 @@ export default function HmsMobilePage() {
 
           <div className="space-y-1 pt-2">
             <SecondaryRow icon={FileCheck} label="Mine innsendte" hint={drafts.length ? `${drafts.length} utkast` : undefined} onClick={() => go("mine")} />
+            <SecondaryRow icon={ListChecks} label="Mine tiltak" hint={(myActions ?? []).length ? `${myActions!.length} åpne` : undefined} onClick={() => go("tiltak")} />
           </div>
 
           <div className="space-y-1">
