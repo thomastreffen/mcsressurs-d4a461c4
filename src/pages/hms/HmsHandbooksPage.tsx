@@ -124,7 +124,7 @@ export default function HmsHandbooksPage() {
             samles her.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <LocalExportMenu title="Håndbøker" module="hms" disabled={isLoading} rows={handbooks.map(h=>({'Tittel':h.title,'Beskrivelse':h.description,'Type':h.kind,'Oppdatert':new Date(h.updated_at)}))}/>
           <Button size="sm" variant="outline" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
             <Sparkles className="h-4 w-4 mr-1.5" />
