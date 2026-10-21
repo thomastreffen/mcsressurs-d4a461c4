@@ -239,7 +239,7 @@ export default function HmsYearWheelPage() {
                       {nameOf(a.deputy_user_id) && ` · Stedfortreder: ${nameOf(a.deputy_user_id)}`}
                     </div>
                     {a.comment && <p className="mt-1 text-xs text-muted-foreground">{a.comment}</p>}
-                    {activityDestination(a) && <Link className="mt-2 inline-flex min-h-11 items-center text-sm text-primary underline" to={activityDestination(a)!}>Åpne eller start aktivitet</Link>}
+                    {activityDestination(a) && <Link className="mt-2 inline-flex min-h-11 items-center text-sm text-primary underline" to={activityDestination(a) ?? "/hms"}>Åpne eller start aktivitet</Link>}
                     {a.documentation && <p className="mt-1 text-xs">Dokumentasjon: {a.documentation}</p>}
                   </div>
                   <div className="flex gap-1.5">

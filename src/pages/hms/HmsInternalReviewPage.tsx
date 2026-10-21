@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck, Plus, ArrowLeft, CheckCircle2, ListPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,46 +13,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { LocalExportMenu } from "@/components/LocalExportMenu";
 import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
 import {
-  REVIEW_ANSWER_LABEL, REVIEW_CHECKPOINTS, type ReviewAnswer,
+  REVIEW_ANSWER_LABEL, REVIEW_CHECKPOINTS, reviewCanSign, type ControlAnswers, type ReviewAnswer,
 } from "@/lib/hms/internalControl";
 import { format } from "date-fns";
+import { HmsControlHistory } from "@/components/hms/HmsControlHistory";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 const sb = supabase as any;
 
-async function countOf(q: any): Promise<number> {
-  const { count, error } = await q;
-  if (error) return 0;
-  return count ?? 0;
-}
-
-/** Henter frosne systemfakta for gjennomgangen — mest mulig automatisk. */
 async function buildSnapshot(cid: string) {
-  const today = new Date().toISOString().slice(0, 10);
-  const yearStart = `${new Date().getFullYear()}-01-01`;
-  const [
-    yearActivitiesOverdue, openActions, overdueActions, openIncidents,
-    seriousIncidents, vernerunderDone, missingHandbookAcks, expiredFse,
-    expiredFirstAid, sdsMissing, risksNeedingReview,
-  ] = await Promise.all([
-    countOf(sb.from("hms_year_activities").select("id", { count: "exact", head: true }).eq("company_id", cid).eq("status", "planned").lt("due_date", today).is("deleted_at", null)),
-    countOf(sb.from("hms_action_items").select("id", { count: "exact", head: true }).eq("company_id", cid).in("status", ["open", "in_progress", "waiting"]).is("deleted_at", null)),
-    countOf(sb.from("hms_action_items").select("id", { count: "exact", head: true }).eq("company_id", cid).in("status", ["open", "in_progress", "waiting"]).lt("due_date", today).is("deleted_at", null)),
-    countOf(sb.from("hms_incidents").select("id", { count: "exact", head: true }).eq("company_id", cid).neq("status", "closed").is("deleted_at", null)),
-    countOf(sb.from("hms_incidents").select("id", { count: "exact", head: true }).eq("company_id", cid).in("severity", ["high", "critical"]).neq("status", "closed").is("deleted_at", null)),
-    countOf(sb.from("hms_year_activities").select("id", { count: "exact", head: true }).eq("company_id", cid).eq("category", "vernerunde").eq("status", "done").gte("completed_at", yearStart).is("deleted_at", null)),
-    countOf(sb.from("hms_handbook_recipients").select("id", { count: "exact", head: true }).eq("company_id", cid).is("acknowledged_at", null)),
-    countOf(sb.from("compliance_competences").select("id", { count: "exact", head: true }).eq("company_id", cid).ilike("name", "%fse%").lt("valid_until", today)),
-    countOf(sb.from("compliance_competences").select("id", { count: "exact", head: true }).eq("company_id", cid).ilike("name", "%førstehjelp%").lt("valid_until", today)),
-    countOf(sb.from("hms_chemicals").select("id", { count: "exact", head: true }).eq("company_id", cid).is("sds_file_path", null).is("deleted_at", null)),
-    countOf(sb.from("hms_risk_register").select("id", { count: "exact", head: true }).eq("company_id", cid).eq("status", "active").lt("next_review_date", today).is("deleted_at", null)),
-  ]);
-  return {
-    generatedAt: new Date().toISOString(),
-    yearActivitiesOverdue, openActions, overdueActions, openIncidents,
-    repeatedIncidents: 0, seriousIncidents, vernerunderDone, missingHandbookAcks,
-    expiredFse, expiredFirstAid, sdsMissing, risksNeedingReview,
-  } as Record<string, number | string>;
+  const { data, error } = await supabase.rpc("hms_control_snapshot", { _company_id: cid });
+  if (error) throw error;
+  return data;
 }
 
 const STATUS_LABEL: Record<string, string> = { draft: "Utkast", in_progress: "Pågår", completed: "Fullført" };
@@ -68,6 +41,7 @@ function ReviewList() {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["hms-internal-reviews", cid],
@@ -100,7 +74,8 @@ function ReviewList() {
       if (error) throw error;
       return data.id as string;
     },
-    onSuccess: () => {
+    onSuccess: (newId) => {
+      navigate(`/hms/internkontroll/${newId}`);
       toast({ title: "Gjennomgang opprettet", description: "Systemfakta er hentet inn automatisk." });
       qc.invalidateQueries({ queryKey: ["hms-internal-reviews"] });
     },
@@ -158,27 +133,29 @@ function ReviewDetail({ id }: { id: string }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
 
-  const { data: review, isLoading } = useQuery({
-    queryKey: ["hms-internal-review", id],
-    enabled: !!id,
+  const { data: review, isLoading, error: reviewError } = useQuery({
+    queryKey: ["hms-internal-review", id, cid],
+    enabled: !!id && !!cid,
     queryFn: async () => {
-      const { data, error } = await sb.from("hms_internal_reviews").select("*").eq("id", id).maybeSingle();
+      const { data, error } = await sb.from("hms_internal_reviews").select("*").eq("id", id).eq("company_id", cid).maybeSingle();
       if (error) throw error;
       return data as any;
     },
   });
 
-  const answers = (review?.answers ?? {}) as Record<string, { answer?: ReviewAnswer; comment?: string; action_item_id?: string }>;
-  const snapshot = (review?.auto_snapshot ?? {}) as Record<string, number | string>;
+  const answers = (review?.answers ?? {}) as ControlAnswers;
+  const snapshot = (review?.auto_snapshot ?? {}) as Record<string, unknown>;
   const locked = review?.status === "completed";
 
   const saveMut = useMutation({
     mutationFn: async (next: typeof answers) => {
+      if (!cid || !review || locked) throw new Error("Gjennomgangen kan ikke endres");
       const { error } = await sb.from("hms_internal_reviews").update({
         answers: next, updated_at: new Date().toISOString(),
-      }).eq("id", id);
+      }).eq("id", id).eq("company_id", cid).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hms-internal-review", id] }),
@@ -192,7 +169,7 @@ function ReviewDetail({ id }: { id: string }) {
 
   const actionMut = useMutation({
     mutationFn: async (cp: { key: string; label: string }) => {
-      if (!cid || !user) throw new Error("Mangler kontekst");
+      if (!cid || !user || locked) throw new Error("Mangler kontekst eller gjennomgangen er signert");
       const { data, error } = await sb.from("hms_action_items").insert({
         company_id: cid,
         title: `Internkontroll: ${cp.label}`,
@@ -204,10 +181,11 @@ function ReviewDetail({ id }: { id: string }) {
         created_by: user.id,
       }).select("id").single();
       if (error) throw error;
-      await sb.from("hms_internal_reviews").update({
+      const { error: saveError } = await sb.from("hms_internal_reviews").update({
         answers: { ...answers, [cp.key]: { ...answers[cp.key], answer: "no", comment: commentDrafts[cp.key] ?? answers[cp.key]?.comment, action_item_id: data.id } },
         updated_at: new Date().toISOString(),
-      }).eq("id", id);
+      }).eq("id", id).eq("company_id", cid).select("id").single();
+      if (saveError) throw saveError;
     },
     onSuccess: () => {
       toast({ title: "Tiltak opprettet", description: "Lagt til i HMS-handlingsplanen." });
@@ -218,14 +196,14 @@ function ReviewDetail({ id }: { id: string }) {
 
   const completeMut = useMutation({
     mutationFn: async () => {
-      if (!user) throw new Error("Mangler bruker");
+      if (!user || !cid || !reviewCanSign(snapshot, answers) || saveMut.isPending) throw new Error("Alle punkter og ukjente fakta må avklares før signering");
       const { error } = await sb.from("hms_internal_reviews").update({
         status: "completed",
         signed_by: user.id,
         signed_at: new Date().toISOString(),
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }).eq("id", id);
+      }).eq("id", id).eq("company_id", cid).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -235,7 +213,34 @@ function ReviewDetail({ id }: { id: string }) {
     onError: (e: any) => toast({ title: "Feil", description: e?.message, variant: "destructive" }),
   });
 
-  if (isLoading || !review) return <div className="p-6 text-center text-sm text-muted-foreground">Laster…</div>;
+  const revisionMut = useMutation({
+    mutationFn: async () => {
+      if (!cid || !user || !locked) throw new Error("Velg en signert gjennomgang");
+      const existing = await sb.from("hms_internal_reviews").select("id").eq("company_id", cid).eq("previous_review_id", id).maybeSingle();
+      if (existing.error) throw existing.error;
+      if (existing.data) return existing.data.id;
+      const { data, error } = await sb.from("hms_internal_reviews").insert({
+        company_id: cid, title: review.title, period_year: review.period_year,
+        status: "in_progress", previous_review_id: id, created_by: user.id,
+      }).select("id").single();
+      if (error) throw error;
+      return data.id;
+    },
+    onSuccess: newId => navigate(`/hms/internkontroll/${newId}`),
+    onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
+  });
+  const refreshMut = useMutation({
+    mutationFn: async () => {
+      if (!cid || locked) throw new Error("Signert gjennomgang er låst");
+      const fresh = await buildSnapshot(cid);
+      const { error } = await sb.from("hms_internal_reviews").update({ auto_snapshot: fresh }).eq("id", id).eq("company_id", cid).select("id").single();
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hms-internal-review", id] }),
+    onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
+  });
+  if (isLoading) return <div className="p-6 text-center text-sm text-muted-foreground">Laster…</div>;
+  if (reviewError || !review) return <div className="p-6"><HmsMobileBack to="/hms/internkontroll" label="Til gjennomganger" /><p role="alert">Gjennomgangen finnes ikke i valgt selskap eller kunne ikke hentes.</p></div>;
 
   const answered = REVIEW_CHECKPOINTS.filter((c) => answers[c.key]?.answer).length;
 
@@ -253,34 +258,40 @@ function ReviewDetail({ id }: { id: string }) {
         </div>
         <div className="flex gap-2 flex-wrap">
           <LocalExportMenu
-            title={review.title} module="hms"
+            title={review.title} module="hms" version={`Versjon ${review.version} · ${review.signed_at ? `Signert ${review.signed_at} av ${review.signed_by}` : "Utkast"}`}
             rows={REVIEW_CHECKPOINTS.map((c) => ({
               Kontrollpunkt: c.label,
-              Svar: answers[c.key]?.answer ? REVIEW_ANSWER_LABEL[answers[c.key].answer!] : "Ikke besvart",
+              Svar: answers[c.key]?.answer ? REVIEW_ANSWER_LABEL[answers[c.key]?.answer ?? "na"] : "Ikke besvart",
               Kommentar: answers[c.key]?.comment ?? "",
-              "Systemfakta": c.snapshotKey ? String(snapshot[c.snapshotKey] ?? "") : "",
+              "Systemfakta": c.snapshotKey ? (typeof snapshot[c.snapshotKey] === "number" ? String(snapshot[c.snapshotKey]) : "Kunne ikke kontrolleres") : "",
+              "Feil godkjent": answers[c.key]?.error_approved ? "Ja" : "Nei",
               "Tiltak opprettet": answers[c.key]?.action_item_id ? "Ja" : "Nei",
             }))}
           />
+          {locked && <Button variant="outline" disabled={revisionMut.isPending} onClick={() => revisionMut.mutate()}>Ny revisjon</Button>}
+          {!locked && <Button variant="outline" disabled={refreshMut.isPending || saveMut.isPending} onClick={() => refreshMut.mutate()}>Oppdater systemfakta</Button>}
           {!locked && (
-            <Button size="sm" disabled={answered < REVIEW_CHECKPOINTS.length || completeMut.isPending} onClick={() => completeMut.mutate()}>
+            <Button size="sm" disabled={!reviewCanSign(snapshot, answers) || completeMut.isPending || saveMut.isPending || actionMut.isPending} onClick={() => completeMut.mutate()}>
               <CheckCircle2 className="h-4 w-4 mr-1" /> Signer og fullfør
             </Button>
           )}
         </div>
       </div>
 
+      {review.previous_review_id && <Link className="text-sm text-primary underline" to={`/hms/internkontroll/${review.previous_review_id}`}>Åpne forrige signerte versjon</Link>}
+      {REVIEW_CHECKPOINTS.some(cp => cp.snapshotKey && typeof snapshot[cp.snapshotKey] !== "number") && <p role="alert" className="text-sm border border-destructive/40 p-3 text-destructive">Ett eller flere kontrollpunkter kunne ikke kontrolleres. Oppdater systemfakta eller kommenter og godkjenn hvert ukjent punkt før signering.</p>}
       {REVIEW_CHECKPOINTS.map((cp, i) => {
         const a = answers[cp.key];
         const snapVal = cp.snapshotKey ? snapshot[cp.snapshotKey] : undefined;
+        const unknown = !!cp.snapshotKey && typeof snapVal !== "number";
         return (
           <Card key={cp.key}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                 <span className="text-muted-foreground font-normal">{i + 1}.</span> {cp.label}
-                {snapVal !== undefined && (
+                {cp.snapshotKey && (
                   <Badge variant="outline" className={cn("text-[10px]", Number(snapVal) > 0 && "bg-amber-50 text-amber-700 border-amber-200")}>
-                    Systemet viser: {String(snapVal)}
+                    Systemet viser: {unknown ? "Kunne ikke kontrolleres" : String(snapVal)}
                   </Badge>
                 )}
                 {a?.action_item_id && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Tiltak opprettet</Badge>}
@@ -290,7 +301,7 @@ function ReviewDetail({ id }: { id: string }) {
               <div className="flex flex-wrap gap-2">
                 {(["yes", "no", "na"] as ReviewAnswer[]).map((v) => (
                   <Button
-                    key={v} size="sm" disabled={locked}
+                    key={v} size="sm" disabled={locked || saveMut.isPending}
                     variant={a?.answer === v ? "default" : "outline"}
                     className={cn("min-h-11", a?.answer === v && v === "no" && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
                     onClick={() => setAnswer(cp.key, v)}
@@ -304,10 +315,11 @@ function ReviewDetail({ id }: { id: string }) {
                   </Button>
                 )}
               </div>
+              {unknown && !locked && <label className="flex min-h-11 items-center gap-2 text-sm"><Checkbox checked={a?.error_approved === true} disabled={saveMut.isPending} onCheckedChange={value => saveMut.mutate({ ...answers, [cp.key]: { ...a, error_approved: value === true } })} />Jeg godkjenner manuell kontroll dokumentert i kommentaren</label>}
               {!locked && (
                 <Textarea
                   rows={2}
-                  placeholder="Kommentar (valgfritt)…"
+                  placeholder={unknown ? "Dokumenter manuell kontroll og begrunnelse…" : "Kommentar (valgfritt)…"}
                   defaultValue={a?.comment ?? ""}
                   onBlur={(e) => {
                     const v = e.target.value;
@@ -321,6 +333,7 @@ function ReviewDetail({ id }: { id: string }) {
           </Card>
         );
       })}
+      <HmsControlHistory entity="hms_internal_reviews" id={id} />
     </div>
   );
 }
