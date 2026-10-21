@@ -9,7 +9,7 @@ import { ArrowLeft } from "lucide-react";
  */
 export function HmsMobileBack({ to = "/hms", label = "Til HMS" }: { to?: string; label?: string }) {
   return (
-    <div className="sm:hidden -mx-1 mb-2">
+    <div className="md:hidden -mx-1 mb-2">
       <Link
         to={to}
         className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-primary active:bg-muted"
