@@ -7,9 +7,21 @@ import {
   nextDueDate,
   riskLevel,
   REVIEW_CHECKPOINTS,
+  reviewCanSign, repeatedIncidentCount, riskWorkflow, activityDestination,
 } from "@/lib/hms/internalControl";
 
 describe("nextDueDate", () => {
+  it("beholder årlig planlagt frist selv ved sen gjennomføring", () => {
+    expect(nextDueDate("2026-10-01", "annual")).toBe("2027-10-01");
+  });
+  it("beholder månedsslutt uten overflow", () => {
+    expect(nextDueDate("2026-01-31", "monthly")).toBe("2026-02-28");
+    expect(nextDueDate("2026-02-28", "monthly")).toBe("2026-03-31");
+  });
+  it("håndterer skuddår", () => {
+    expect(nextDueDate("2024-02-29", "annual")).toBe("2025-02-28");
+    expect(nextDueDate("2027-02-28", "annual")).toBe("2028-02-29");
+  });
   it("monthly legger til én måned", () => {
     expect(nextDueDate("2026-01-15", "monthly")).toBe("2026-02-15");
   });
@@ -27,6 +39,27 @@ describe("nextDueDate", () => {
   });
   it("custom uten intervall faller tilbake til 30 dager", () => {
     expect(nextDueDate("2026-01-15", "custom", null)).toBe("2026-02-14");
+  });
+});
+
+describe("internkontroll kvalitet", () => {
+  const answers = Object.fromEntries(REVIEW_CHECKPOINTS.map(c => [c.key, { answer: "yes" as const }]));
+  const snapshot = Object.fromEntries(REVIEW_CHECKPOINTS.filter(c => c.snapshotKey).map(c => [c.snapshotKey, 0]));
+  it("faktisk null avvik kan signeres", () => expect(reviewCanSign(snapshot, answers)).toBe(true));
+  it("query-feil blokkerer signering", () => expect(reviewCanSign({ ...snapshot, repeatedIncidents: null }, answers)).toBe(false));
+  it("feil må kommenteres OG godkjennes", () => {
+    const failed = { ...snapshot, repeatedIncidents: null };
+    expect(reviewCanSign(failed, { ...answers, repeated_incidents: { answer: "yes", comment: "Manuelt kontrollert" } })).toBe(false);
+    expect(reviewCanSign(failed, { ...answers, repeated_incidents: { answer: "yes", comment: "Manuelt kontrollert", error_approved: true } })).toBe(true);
+  });
+  it("beregner gjentakende avvik fra faktiske hendelser", () => {
+    expect(repeatedIncidentCount([{ incident_type: "deviation", title: "Epoxy" }, { incident_type: "deviation", title: " epoxy " }, { incident_type: "deviation", title: "Fall" }])).toBe(1);
+  });
+  it("ferdige tiltak lukker aldri risiko automatisk", () => {
+    expect(riskWorkflow({ status: "active", residual_review_required: true }, [{ status: "done" }])).toBe("Klar for ny vurdering");
+  });
+  it("koblet gjennomføring åpner opprinnelig innsending", () => {
+    expect(activityDestination({ category: "vernerunde", linked_submission_id: "sja-1" })).toBe("/hms/submissions/sja-1");
   });
 });
 

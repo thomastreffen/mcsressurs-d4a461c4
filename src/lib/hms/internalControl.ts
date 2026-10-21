@@ -43,23 +43,17 @@ function isoDate(d: Date): string {
 
 /** Neste forfallsdato etter gjennomføring, basert på frekvens. */
 export function nextDueDate(from: Date | string, frequency: ActivityFrequency, customIntervalDays?: number | null): string {
-  const d = toDate(from);
-  switch (frequency) {
-    case "monthly":
-      d.setMonth(d.getMonth() + 1);
-      break;
-    case "quarterly":
-      d.setMonth(d.getMonth() + 3);
-      break;
-    case "semiannual":
-      d.setMonth(d.getMonth() + 6);
-      break;
-    case "annual":
-      d.setFullYear(d.getFullYear() + 1);
-      break;
-    case "custom":
-      d.setTime(d.getTime() + Math.max(1, customIntervalDays ?? 30) * DAY_MS);
-      break;
+  const source = typeof from === "string" ? from.slice(0, 10) : `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}-${String(from.getDate()).padStart(2, "0")}`;
+  const d = new Date(`${source}T12:00:00Z`);
+  if (frequency === "custom") d.setUTCDate(d.getUTCDate() + Math.max(1, customIntervalDays ?? 30));
+  else {
+    const months = { monthly: 1, quarterly: 3, semiannual: 6, annual: 12 }[frequency];
+    const day = d.getUTCDate();
+    const wasMonthEnd = day === new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() + months);
+    const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+    d.setUTCDate(wasMonthEnd ? last : Math.min(day, last));
   }
   return isoDate(d);
 }
@@ -232,3 +226,37 @@ export const REVIEW_ANSWER_LABEL: Record<ReviewAnswer, string> = {
   no: "Nei",
   na: "Ikke relevant",
 };
+
+export type ControlAnswers = Record<string, { answer?: ReviewAnswer; comment?: string; error_approved?: boolean; action_item_id?: string }>;
+export function reviewCanSign(snapshot: Record<string, unknown>, answers: ControlAnswers): boolean {
+  return REVIEW_CHECKPOINTS.every(cp => {
+    const answer = answers[cp.key];
+    if (!answer?.answer) return false;
+    if (!cp.snapshotKey) return true;
+    return typeof snapshot[cp.snapshotKey] === "number" || (answer.error_approved === true && !!answer.comment?.trim());
+  });
+}
+
+/** Gjentakelse = ekstra hendelser i samme type + kjemikalie (eller normaliserte tittel), innen perioden. */
+export function repeatedIncidentCount(rows: { incident_type: string; chemical_id?: string | null; title: string }[]): number {
+  const groups = new Map<string, number>();
+  for (const r of rows) {
+    const key = `${r.incident_type}:${r.chemical_id || r.title.trim().toLocaleLowerCase("nb").replace(/\s+/g, " ")}`;
+    groups.set(key, (groups.get(key) ?? 0) + 1);
+  }
+  return [...groups.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+}
+
+export function riskWorkflow(risk: { status: string; residual_review_required?: boolean; rest_score?: number | null }, actions: { status: string }[]) {
+  if (actions.some(a => a.status !== "done")) return "Åpne tiltak – rest-risiko må vurderes";
+  if (risk.residual_review_required || (actions.length > 0 && risk.rest_score == null)) return "Klar for ny vurdering";
+  return RISK_STATUS_LABEL[risk.status] ?? risk.status;
+}
+
+export function activityDestination(a: { category: string; linked_template_id?: string | null; linked_audit_id?: string | null; linked_submission_id?: string | null; linked_risk_id?: string | null }): string | null {
+  if (a.linked_submission_id) return `/hms/submissions/${a.linked_submission_id}`;
+  if (a.linked_audit_id) return "/compliance/internkontroll";
+  if (a.linked_template_id) return `/hms/templates/${a.linked_template_id}`;
+  if (a.linked_risk_id) return "/hms/risiko";
+  return ({ vernerunde: "/hms/mobile?start=checklist", internrevisjon: "/compliance/internkontroll", ledelse: "/hms/internkontroll", risiko: "/hms/risiko", kompetanse: "/compliance/kompetanse", fse: "/compliance/kompetanse", forstehjelp: "/compliance/kompetanse", sds: "/hms/kjemikalier", handbok: "/hms/handbooks" } as Record<string, string>)[a.category] ?? null;
+}
