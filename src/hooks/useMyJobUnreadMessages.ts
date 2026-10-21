@@ -39,7 +39,7 @@ export function useMyJobUnreadMessages(projectIds: string[], limit = 3) {
         .select("id,thread_id,task_id,body,subject,author_name,author_user_id,created_at")
         .in("thread_id", threadIds)
         .is("deleted_at", null)
-        .neq("author_user_id", user.id)
+        .or(`author_user_id.is.null,author_user_id.neq.${user.id}`)
         .gt("created_at", oldest)
         .order("created_at", { ascending: false })
         .limit(50);
