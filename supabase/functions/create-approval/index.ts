@@ -1,5 +1,6 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
+import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -215,22 +216,19 @@ Deno.serve(async (req) => {
     );
 
     // Validate caller
-    const jwt = authHeader.replace("Bearer ", "");
     const supabaseAnon = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
+      { global: { headers: { Authorization: authHeader } }, auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { data: userData, error: userErr } = await supabaseAnon.auth.getUser(jwt);
-    if (userErr || !userData?.user) {
+    const callerUserId = await getApprovalCallerId(authHeader, supabaseAnon);
+    if (!callerUserId) {
       return new Response(JSON.stringify({ error: "Invalid user" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const callerUserId = userData.user.id;
 
     // Check admin role
     const { data: roleData } = await supabaseAdmin

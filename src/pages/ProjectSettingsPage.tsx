@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -169,7 +170,7 @@ export default function ProjectSettingsPage() {
       });
 
       if (notifyParticipants) {
-        await supabase.functions.invoke("create-approval", { body: { job_id: jobId } }).catch(() => {});
+        await invokeWithSession("create-approval", { body: { job_id: jobId } }).catch(() => {});
       }
 
       toast.success("Prosjekt oppdatert");

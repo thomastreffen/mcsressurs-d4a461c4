@@ -49,7 +49,7 @@ describe("Authenticated calendar and project requests", () => {
   await invokeWithSession("tripletex-import", { body: { action: "search" } });
   expect(invoke).toHaveBeenCalledTimes(1); expect(refreshSession).not.toHaveBeenCalled();
  });
- it.each([['tripletex-import', 'import'], ['ms-calendar', 'upsert_job_events']])("never replays %s %s", async (name, action) => {
+ it.each([['tripletex-import', 'import'], ['ms-calendar', 'upsert_job_events'], ['create-approval', undefined]])("never replays %s %s", async (name, action) => {
   invoke.mockResolvedValue(unauthorized);
   await invokeWithSession(name, { body: { action } });
   expect(invoke).toHaveBeenCalledTimes(1); expect(refreshSession).not.toHaveBeenCalled();
@@ -65,5 +65,15 @@ describe("Authenticated calendar and project requests", () => {
   await invokeWithSession("tripletex-import", { body: { action: "import" } });
   expect(invoke).toHaveBeenCalledTimes(1);
   expect(invoke.mock.calls[0][1].headers.Authorization).toBe("Bearer renewed");
+ });
+ it("pins a renewed bearer before sending an approval mutation", async () => {
+  getSession.mockResolvedValue(authResult({ ...session(), expires_at: Date.now()/1000 - 1 }));
+  await invokeWithSession("create-approval", { body: { job_id: "job" } });
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("create-approval", { body: { job_id: "job" }, headers: { Authorization: "Bearer renewed" } });
+ });
+ it("does not send approvals when signed out", async () => {
+  getSession.mockResolvedValue(authResult(null));
+  expect((await invokeWithSession("create-approval", { body: { job_id: "job" } })).error).toBeTruthy();
+  expect(invoke).not.toHaveBeenCalled();
  });
 });

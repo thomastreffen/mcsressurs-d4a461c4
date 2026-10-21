@@ -12,6 +12,7 @@ import { TechnicianMultiSelect } from "./TechnicianMultiSelect";
 import { FileUpload } from "./FileUpload";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { AlertTriangle, Bell, BellOff, Moon } from "lucide-react";
@@ -209,7 +210,7 @@ export function EditJobDialog({ open, onOpenChange, jobId, onSaved }: EditJobDia
       });
 
       if (notifyParticipants) {
-        const { error: approvalError } = await supabase.functions.invoke("create-approval", {
+        const { error: approvalError } = await invokeWithSession("create-approval", {
           body: { job_id: jobId },
         });
         if (approvalError) console.error("[EditJob] Approval re-trigger failed:", approvalError);

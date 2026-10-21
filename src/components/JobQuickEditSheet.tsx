@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { TechnicianMultiSelect } from "./TechnicianMultiSelect";
 import { JobStatusBadge } from "./JobStatusBadge";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -167,7 +168,7 @@ export function JobQuickEditSheet({
 
       // Trigger re-approval if technicians changed
       if (toAdd.length > 0) {
-        await supabase.functions.invoke("create-approval", {
+        await invokeWithSession("create-approval", {
           body: { job_id: job.id },
         });
       }
