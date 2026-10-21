@@ -18,6 +18,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDistanceToNow, format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { HmsMobileBack } from "@/components/hms/HmsMobileBack";
+import { groupIncidentHistory } from "@/lib/hms/incident-history";
 
 const SEV_LABEL: Record<string, string> = { low: "Lav", medium: "Middels", high: "Høy", critical: "Kritisk" };
 const SEV_TONE: Record<string, string> = {
@@ -58,21 +60,25 @@ export default function HmsIncidentsListPage() {
   const [search, setSearch] = useSearchParams();
 
   const [q, setQ] = useState(search.get("q") ?? "");
-  const [scope, setScope] = useState<"all" | "mine">((search.get("scope") as any) ?? "all");
+  const scope = search.get("scope") === "mine" ? "mine" : "all";
+  const personalMobile = isMobile && scope === "mine";
+  const [showSearch, setShowSearch] = useState(!!search.get("q"));
   const [statusF, setStatusF] = useState<string>(search.get("status") ?? "open_all");
   const [sevF, setSevF] = useState<string>(search.get("sev") ?? "all");
   const [typeF, setTypeF] = useState<string>(search.get("type") ?? "all");
   const highlightId = search.get("highlight");
+  const effectiveStatus = personalMobile && !search.has("status") ? "all" : statusF;
 
   const { data: incidents, isLoading } = useQuery({
     queryKey: ["hms-incidents-list", activeCompanyId],
     enabled: !!activeCompanyId,
     queryFn: async () => {
+      if (!activeCompanyId) return [];
       const sb = supabase as any;
       const { data } = await sb
         .from("hms_incidents")
         .select("id, title, description, severity, status, incident_type, location, occurred_at, created_at, reported_by, project_id, assigned_to, due_date, attachments")
-        .eq("company_id", activeCompanyId!)
+        .eq("company_id", activeCompanyId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(500);
@@ -118,8 +124,8 @@ export default function HmsIncidentsListPage() {
     const term = q.trim().toLowerCase();
     return (incidents ?? []).filter((i) => {
       if (scope === "mine" && i.reported_by !== user?.id && i.assigned_to !== user?.id) return false;
-      if (statusF === "open_all" && i.status === "closed") return false;
-      if (statusF !== "all" && statusF !== "open_all" && i.status !== statusF) return false;
+      if (effectiveStatus === "open_all" && i.status === "closed") return false;
+      if (effectiveStatus !== "all" && effectiveStatus !== "open_all" && i.status !== effectiveStatus) return false;
       if (sevF !== "all" && i.severity !== sevF) return false;
       if (typeF !== "all" && i.incident_type !== typeF) return false;
       if (term) {
@@ -128,7 +134,9 @@ export default function HmsIncidentsListPage() {
       }
       return true;
     });
-  }, [incidents, scope, statusF, sevF, typeF, q, user?.id, names, projects]);
+  }, [incidents, scope, effectiveStatus, sevF, typeF, q, user?.id, names, projects]);
+
+  const history = useMemo(() => groupIncidentHistory(filtered), [filtered]);
 
   const counts = useMemo(() => {
     const all = incidents ?? [];
@@ -142,14 +150,22 @@ export default function HmsIncidentsListPage() {
 
   const update = (k: string, v: string | null) => {
     const next = new URLSearchParams(search);
-    if (!v || v === "all" || v === "open_all") next.delete(k); else next.set(k, v);
+    if (!v || (k !== "status" && (v === "all" || v === "open_all"))) next.delete(k); else next.set(k, v);
     setSearch(next, { replace: true });
   };
 
   return (
     <div className="min-h-dvh bg-background pb-12">
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/60">
-        <div className="px-4 lg:px-6 py-3 max-w-7xl mx-auto flex items-center gap-2">
+      {personalMobile ? (
+        <header className="px-4 pt-3 pb-2 space-y-3">
+          <HmsMobileBack />
+          <h1 className="text-xl font-semibold">Mine avvik / RUH</h1>
+          <Button asChild className="min-h-12 w-full gap-2 text-base">
+            <Link to="/hms/incidents/new"><Plus className="h-5 w-5" />Meld avvik</Link>
+          </Button>
+        </header>
+      ) : <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/60">
+        <div className="px-4 lg:px-6 py-3 max-w-7xl mx-auto flex flex-wrap items-center gap-2">
           {isMobile && (
             <Button variant="ghost" className="min-h-11 -ml-2 gap-1 px-2" onClick={() => navigate("/hms")}>
               <ChevronLeft className="h-5 w-5" /> Tilbake
@@ -161,25 +177,36 @@ export default function HmsIncidentsListPage() {
               <ShieldAlert className="h-4 w-4 text-rose-600" /> HMS-avvik / RUH
             </div>
           </div>
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="max-md:min-h-11">
  
             <Link to="/hms/incidents/new"><Plus className="h-4 w-4 mr-1" /> Meld avvik</Link>
           </Button>
           <LocalExportMenu title="HMS-avvik / RUH" module="hms" disabled={isLoading} filters={{Søk:q||'Alle',Utvalg:scope,Status:statusF,Alvorlighet:sevF,Type:typeF}} rows={filtered.map(i=>({'Tittel':i.title,'Type':TYPE_LABEL[i.incident_type]??i.incident_type,'Alvorlighet':SEV_LABEL[i.severity]??i.severity,'Status':STATUS_LABEL[i.status]??i.status,'Sted':i.location,'Dato':i.occurred_at?new Date(i.occurred_at):new Date(i.created_at),'Rapportert av':names?.[i.reported_by]??'Ukjent','Ansvarlig':names?.[i.assigned_to]??'Ikke satt','Prosjekt':projects?.[i.project_id]?.title??'','Prosjektnummer':projects?.[i.project_id]?.number??'','Frist':i.due_date?new Date(i.due_date):null}))}/>
         </div>
-      </header>
+      </header>}
 
       <div className="px-4 lg:px-6 py-5 max-w-7xl mx-auto space-y-4">
         {/* KPI row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {!personalMobile && <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiTile label="Åpne" value={counts.open} tone={counts.open ? "warn" : "ok"} />
           <KpiTile label="Høy / kritisk åpen" value={counts.critical} tone={counts.critical ? "alert" : "ok"} />
           <KpiTile label="Uten ansvarlig" value={counts.unassigned} tone={counts.unassigned ? "warn" : "ok"} />
           <KpiTile label="Mine" value={counts.mine} tone="neutral" />
-        </div>
+        </div>}
 
         {/* Filters */}
-        <Card>
+        {personalMobile ? (
+          <div className="space-y-2">
+            <Button variant="ghost" className="min-h-11 gap-2 px-0" aria-expanded={showSearch} aria-controls="incident-history-search" onClick={() => setShowSearch((value) => !value)}>
+              <Search className="h-4 w-4" />Søk{q && " · aktivt"}
+            </Button>
+            {showSearch && <Input id="incident-history-search" aria-label="Søk i mine avvik" placeholder="Søk i mine avvik" value={q} onChange={(e) => { setQ(e.target.value); update("q", e.target.value); }} className="min-h-11 text-base" />}
+            {(search.has("status") || sevF !== "all" || typeF !== "all") && <Button variant="outline" className="min-h-11" onClick={() => {
+              setStatusF("all"); setSevF("all"); setTypeF("all");
+              const next = new URLSearchParams(search); ["status", "sev", "type"].forEach((key) => next.delete(key)); setSearch(next, { replace: true });
+            }}>Nullstill filtre</Button>}
+          </div>
+        ) : <Card>
           <CardContent className="p-3 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative flex-1 min-w-[220px]">
@@ -191,7 +218,7 @@ export default function HmsIncidentsListPage() {
                   className="pl-8"
                 />
               </div>
-              <Tabs value={scope} onValueChange={(v) => { setScope(v as any); update("scope", v); }}>
+              <Tabs value={scope} onValueChange={(v) => { update("scope", v); }}>
                 <TabsList>
                   <TabsTrigger value="all" className="text-xs">Alle</TabsTrigger>
                   <TabsTrigger value="mine" className="text-xs">Kun mine</TabsTrigger>
@@ -211,26 +238,33 @@ export default function HmsIncidentsListPage() {
                 options={[{ value: "all", label: "Alle" }, ...Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))]} />
             </div>
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Results */}
         {isLoading && <div className="text-sm text-muted-foreground py-12 text-center">Laster…</div>}
         {!isLoading && filtered.length === 0 && (
           <div className="text-center py-16 text-muted-foreground">
             <ShieldAlert className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <div className="text-sm">Ingen HMS-avvik matcher filtrene dine.</div>
-            <Button asChild variant="outline" className="mt-4"><Link to="/hms/incidents/new">Meld nytt avvik</Link></Button>
+            <div className="text-sm">{personalMobile && counts.mine === 0 ? "Du har ingen meldte avvik ennå." : "Ingen HMS-avvik matcher filtrene dine."}</div>
+            <Button asChild variant="outline" className="mt-4 min-h-11"><Link to="/hms/incidents/new">{personalMobile ? "Meld avvik" : "Meld nytt avvik"}</Link></Button>
           </div>
         )}
 
         {!isLoading && filtered.length > 0 && (
           <>
             {/* Mobile: card list */}
-            <div className="lg:hidden space-y-2">
+            {personalMobile ? <div className="space-y-6">
+              {([{ title: "Åpne", rows: history.open }, { title: "Lukkede", rows: history.closed }]).map((section) => section.rows.length > 0 && (
+                <section key={section.title} className="space-y-3">
+                  <h2 className="text-sm font-medium text-muted-foreground">{section.title} · {section.rows.length}</h2>
+                  {section.rows.map((incident) => <PersonalIncidentCard key={incident.id} i={incident} projects={projects} highlight={incident.id === highlightId} />)}
+                </section>
+              ))}
+            </div> : <div className="lg:hidden space-y-2">
               {filtered.map((i) => (
                 <IncidentCard key={i.id} i={i} names={names} projects={projects} highlight={i.id === highlightId} />
               ))}
-            </div>
+            </div>}
 
             {/* Desktop: table */}
             <div className="hidden lg:block">
@@ -312,6 +346,23 @@ export default function HmsIncidentsListPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function PersonalIncidentCard({ i, projects, highlight }: { i: any; projects?: Record<string, any>; highlight?: boolean }) {
+  const project = projects?.[i.project_id];
+  const context = [project?.number || project?.title, i.location].filter(Boolean).join(" · ");
+  const importantSeverity = i.severity === "high" || i.severity === "critical";
+  return (
+    <Link to={`/hms/incidents/${i.id}`} className={cn("block rounded-lg border border-border bg-card p-4 space-y-3 active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", highlight && "ring-2 ring-primary")}>
+      <h3 className="break-words text-base font-medium text-card-foreground">{i.title}</h3>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Badge variant="secondary" className="text-xs">{STATUS_LABEL[i.status] ?? i.status}</Badge>
+        <span className="text-muted-foreground">{format(new Date(i.occurred_at || i.created_at), "d. MMM yyyy", { locale: nb })}</span>
+        {importantSeverity && <span className="inline-flex items-center gap-1 text-destructive"><AlertTriangle className="h-4 w-4" />{SEV_LABEL[i.severity]}</span>}
+      </div>
+      {context && <p className="truncate text-sm text-muted-foreground">{context}</p>}
+    </Link>
   );
 }
 
