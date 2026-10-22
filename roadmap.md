@@ -4,7 +4,7 @@
 - [x] Fast regel lagret: ingen live testjobber eller utsending til ekte montører; kun isolerte/mockede tester eller verifisert trygg testressurs uten utsending
 - [x] Egne testjobber JOB-000405–409 identifisert ved eksakte UUID-er, client_request_id, skaper, selskap, tidspunkt og testspor; slettetriggere undersøkt
 - [x] Kun disse fem oppdragene soft-deletet via direkte dataendring; 13 bekreftelseslenker rotert/utløpt og påminnelser satt på pause uten statusendringer eller ny utsending
-- [ ] Verifiser at ingen aktive kalenderblokker/bekreftelser gjenstår, og at foreldreprosjektet er urørt
+- [x] Verifisert: fem oppdrag soft-deletet, null aktive kalenderblokker, null aktive bekreftelser; foreldreprosjekt JOB-000381 / 60521 urørt
 - [ ] Eventuelle Outlook-rester etter JOB-000405/406: krever separat, verifisert varslingfri fjerning; ingen avlysnings-/sletteutsending startet
 
 ## Ressursplan – presis opprettelsesvalidering
