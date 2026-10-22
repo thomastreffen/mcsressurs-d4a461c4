@@ -11,7 +11,7 @@ const BUCKET = "job-attachments";
 const PROJECT_COLS =
   "id,name,description,status,company_id,department_id,customer_id,customer_contact_id,owner_user_id,expected_start,expected_end,period_label,contract_form,invoicing_company_id,invoice_recipient,estimated_hours,linked_event_id,visibility,created_by,created_at,updated_at,deleted_at";
 const WP_COLS =
-  "id,planning_project_id,name,description,status,responsible_company_id,responsible_department_id,responsible_person_id,external_vendor_name,planned_start,planned_end,resource_count,estimated_hours,price_form,billing_from_company_id,billing_to_company_id,assignment_state,linked_event_id,comment,sort_order,created_by,created_at,updated_at";
+  "id,planning_project_id,name,description,status,responsible_company_id,responsible_department_id,responsible_person_id,external_vendor_name,planned_start,planned_end,resource_count,estimated_hours,price_form,billing_from_company_id,billing_to_company_id,assignment_state,linked_event_id,comment,sort_order,created_by,created_at,updated_at,shared_visibility";
 const PROJECT_FINANCE_KEYS = ["contract_value", "budget_value", "hourly_rate", "estimated_material_cost"] as const;
 const WP_FINANCE_KEYS = ["agreed_price", "hourly_rate"] as const;
 
@@ -71,6 +71,7 @@ export interface PlanningProject {
 }
 
 export interface PlanningWorkPackage {
+  shared_visibility?: string;
   id: string;
   planning_project_id: string;
   name: string;
@@ -96,6 +97,8 @@ export interface PlanningWorkPackage {
 }
 
 export interface PlanningTask {
+  shared_visibility?: string;
+  external_assignee_id?: string | null;
   id: string;
   planning_project_id: string;
   work_package_id: string | null;
@@ -130,6 +133,8 @@ export interface PlanningExternalRef {
 }
 
 export interface PlanningFile {
+  shared_visibility?: string;
+  storage_bucket?: string;
   id: string;
   category: string;
   display_name: string;
@@ -142,6 +147,8 @@ export interface PlanningFile {
 }
 
 export interface PlanningMessage {
+  channel?: string;
+  client_request_id?: string | null;
   id: string;
   author_id: string | null;
   author_name: string | null;

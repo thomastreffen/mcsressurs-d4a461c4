@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Trash2, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +11,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { usePlanningMutations, openPlanningFile, bucketForPath, type PlanningFile } from "@/hooks/usePlanning";
 import { DEFAULT_FILE_CATEGORIES } from "@/lib/planning";
+import { PlanningSharing } from "./PlanningSharing";
 
 const NEW_CATEGORY = "__new__";
 
@@ -89,7 +89,7 @@ export function PlanningFiles({ projectId, files }: { projectId: string; files: 
                 <Badge variant="secondary">{list.length}</Badge>
               </div>
               {list.map((f) => (
-                <Card key={f.id} className="flex items-center gap-3 p-3">
+                <Card key={f.id} className="flex flex-wrap items-center gap-3 p-3">
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
                     <button
@@ -106,6 +106,7 @@ export function PlanningFiles({ projectId, files }: { projectId: string; files: 
                       {f.original_file_name} · {f.uploaded_by_name ?? "Ukjent"} ·{" "}
                       {format(new Date(f.created_at), "d. MMM yyyy HH:mm", { locale: nb })}
                     </p>
+                    <PlanningSharing projectId={projectId} kind="file" id={f.id} visibility={f.shared_visibility} privateFile={f.storage_bucket === "planning-files" && f.storage_path.startsWith(`${projectId}/`)} />
                   </div>
                   <Button
                     variant="ghost"
@@ -121,11 +122,8 @@ export function PlanningFiles({ projectId, files }: { projectId: string; files: 
         </div>
       )}
 
-      <Dialog open={!!pending} onOpenChange={(v) => !v && setPending(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Last opp fil</DialogTitle>
-          </DialogHeader>
+      {pending && <section className="space-y-4 border-t border-border pt-4">
+          <h3 className="font-semibold">Last opp privat fil · Kun MCS</h3>
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground">Originalfil: {pending?.name}</p>
             <div className="space-y-1.5">
@@ -157,15 +155,14 @@ export function PlanningFiles({ projectId, files }: { projectId: string; files: 
               </div>
             )}
           </div>
-          <DialogFooter>
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="ghost" onClick={() => setPending(null)}>Avbryt</Button>
             <Button onClick={upload} disabled={uploadFile.isPending}>
               {uploadFile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Last opp
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+      </section>}
     </div>
   );
 }

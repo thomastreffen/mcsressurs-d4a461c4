@@ -15,6 +15,7 @@ import {
 import { CONTRACT_FORMS, formatMoney, formatPeriod, resourceNeedLabel, wpStatusLabel } from "@/lib/planning";
 import { WorkPackageStaffing } from "./WorkPackageStaffing";
 import { useSendWpToResourcePlan } from "./useSendWpToResourcePlan";
+import { PlanningSharing } from "./PlanningSharing";
 
 export function PlanningWorkPackages({
   project,
@@ -128,6 +129,7 @@ export function PlanningWorkPackages({
                   )}
                 </div>
                 {wp.comment && <p className="text-xs text-muted-foreground">{wp.comment}</p>}
+                <PlanningSharing projectId={project.id} kind="work_package" id={wp.id} visibility={wp.shared_visibility} />
               </Card>
             );
           })}

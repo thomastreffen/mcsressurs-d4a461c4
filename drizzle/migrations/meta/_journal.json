@@ -344,6 +344,27 @@
       "when": 1792654733807,
       "tag": "0048_planning_external_project_access",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1792660426164,
+      "tag": "0049_planning_external_flow_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792660532872,
+      "tag": "0050_planning_external_session_logout",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1792660770526,
+      "tag": "0051_planning_external_delivery_guard",
+      "breakpoints": true
     }
   ]
 }

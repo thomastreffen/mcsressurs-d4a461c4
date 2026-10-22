@@ -14,7 +14,7 @@ import { sanitizeStorageFileName } from "@/lib/storage-path";
 import { usePlanningLookups, usePlanningMutations, openPlanningFile, useEligibleParticipants, usePlanningMembers, type PlanningMessage } from "@/hooks/usePlanning";
 import { cn } from "@/lib/utils";
 
-export function PlanningThread({ projectId, messages }: { projectId: string; messages: PlanningMessage[] }) {
+export function PlanningThread({ projectId, messages, readOnly = false }: { projectId: string; messages: PlanningMessage[]; readOnly?: boolean }) {
   const { user } = useAuth();
   const { data: lookups } = usePlanningLookups();
   const { sendMessage } = usePlanningMutations(projectId);
@@ -68,6 +68,7 @@ export function PlanningThread({ projectId, messages }: { projectId: string; mes
   };
 
   const send = async () => {
+    if (readOnly) return;
     if (!body.trim() && attachments.length === 0) return;
     const lower = body.toLowerCase();
     const mentioned = mentionPeople.filter((p) => lower.includes(`@${p.name.toLowerCase()}`)).map((p) => p.id);
@@ -163,6 +164,7 @@ export function PlanningThread({ projectId, messages }: { projectId: string; mes
                   variant="ghost"
                   size="sm"
                   className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                  disabled={readOnly}
                   onClick={() => setReplyTo(m)}
                 >
                   <Reply className="h-3 w-3" /> Svar
@@ -173,7 +175,7 @@ export function PlanningThread({ projectId, messages }: { projectId: string; mes
         })}
       </div>
 
-      <Card className="space-y-2 p-3">
+      {!readOnly && <Card className="space-y-2 p-3">
         {replyTo && (
           <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs">
             <span className="truncate text-muted-foreground">
@@ -241,7 +243,7 @@ export function PlanningThread({ projectId, messages }: { projectId: string; mes
             <Send className="h-4 w-4" /> Send
           </Button>
         </div>
-      </Card>
+      </Card>}
     </div>
   );
 }

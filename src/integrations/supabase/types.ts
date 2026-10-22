@@ -17955,6 +17955,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      planning_external_logout: { Args: { _token: string }; Returns: undefined }
       planning_external_manager: {
         Args: { _project_id: string }
         Returns: boolean
