@@ -6,9 +6,10 @@
 - [x] 287 tester grønne; automatisk bygg OK
 
 ## Ressursplan – valgt eksisterende prosjekt og navnearv
-- [ ] Spor Eksisterende-valg til autentisert forelder og faktisk oppdragstittel; tydelig valgfritt eget navn
-- [ ] Test valgt prosjekt uten eget navn, tre datoer/montører og vedlegg; eksakt 60554 finnes foreløpig ikke i tilgjengelige data
-- [ ] Regresjonstester og automatisk bygg
+- [x] Eksisterende-valg bruker selectedJobId som identitet, valgfritt title og company-autorisert parent.title som fallback i payload; eget oppdragsnavn eksplisitt valgfritt
+- [x] Tilgjengelig eksisterende 60521 valgt uten eget navn: JOB-000407/408/409 lagret 9./10./11. november med Emil/Marcus/Mats, ni blokker gjenåpnet; vedlegg på hovedbesøket bekreftet. Andre gjennomkjøring gjenbrukte samme besøk via eksisterende duplicate-/idempotensregler.
+- [ ] Eksakt 60554/Ringnes-case ende til ende: prosjektet finnes ikke i tilgjengelige events eller picker; krever at det konkrete prosjektet blir tilgjengelig, ikke opprettet/matchet kunstig
+- [x] 289 tester grønne, inkludert 60554-navnearv og valgfri overstyring; automatisk bygg OK
 
 ## Ressursplan – testkobling må ikke blokkere opprettelse
 - [x] Økonomisk master kun ved aktiv produksjonskobling; frivillig TEST-søk beholdes (migrasjon 0047)
