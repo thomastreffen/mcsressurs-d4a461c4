@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { HubLinkedProject } from "@/lib/project-picker";
+import { format } from "date-fns";
 
 export type TripletexPlanningContext = { economic_project_master: boolean; test_search_enabled: boolean };
 
@@ -23,4 +24,16 @@ export function canCreateHubRoot(context: TripletexPlanningContext | null): bool
 /** Existing mode must never silently fall through to root creation. */
 export function requiresPlanningParent(isEditing: boolean, mode: "new" | "existing", parentId: string | null): boolean {
   return !isEditing && mode === "existing" && !parentId;
+}
+
+/** Normalize the controlled form once; validation and creation consume this same snapshot. */
+export function preparePlanningCreation(input: {
+  title: string; date: string; techIds: string[]; repeatEnabled: boolean; repeatDates: Date[];
+}, requireTitle: boolean, requireTechnicians: boolean) {
+  const title = input.title.trim();
+  const date = input.date;
+  const techIds = [...new Set(input.techIds)];
+  const dates = [...new Set([date, ...(input.repeatEnabled ? input.repeatDates.map(d => format(d, "yyyy-MM-dd")) : [])])];
+  const missingField = requireTitle && !title ? "title" : !date ? "date" : requireTechnicians && techIds.length === 0 ? "technicians" : null;
+  return { title, date, techIds, dates, missingField };
 }

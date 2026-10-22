@@ -1,7 +1,7 @@
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { UnifiedProjectPicker } from "@/components/resource-plan/UnifiedProjectPicker";
 import { checkParentOpenForNewJob, ECONOMIC_PROJECT_HINT } from "@/lib/parent-open-gate";
-import { canCreateHubRoot, fetchTripletexPlanningContext, requiresPlanningParent, type TripletexPlanningContext } from "@/lib/resource-plan-projects";
+import { canCreateHubRoot, fetchTripletexPlanningContext, preparePlanningCreation, requiresPlanningParent, type TripletexPlanningContext } from "@/lib/resource-plan-projects";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useProjectSuggestions, type ProjectSuggestion } from "@/hooks/useProjectSuggestions";
@@ -205,6 +205,7 @@ export function EventDrawer({
   const [repeatPickerOpen, setRepeatPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [creationError, setCreationError] = useState<{ field: string; message: string } | null>(null);
   const [clientRequestId, setClientRequestId] = useState(() => crypto.randomUUID());
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const planningCompanyId = selectedCompanyId ?? activeCompanyId;
@@ -360,6 +361,7 @@ export function EventDrawer({
     setSearchQuery("");
     setSearchResults([]);
     setSubmitted(false);
+    setCreationError(null);
     setClientRequestId(crypto.randomUUID());
     setFiles([]);
     setExistingAttachments([]);
@@ -1092,6 +1094,23 @@ export function EventDrawer({
   // Save: create or update
   const handleSave = async () => {
     if (saving || submitted || readOnly) return;
+    const creation = preparePlanningCreation({ title, date, techIds, repeatEnabled, repeatDates }, mode === "new", eventType !== "task");
+    if (!isEditing && creation.missingField) {
+      const field = creation.missingField;
+      const message = field === "title" ? "Fyll inn tittel på oppdraget" : field === "date" ? "Velg hoveddato for oppdraget" : "Velg minst én montør";
+      setCreationError({ field, message });
+      toast.error(message);
+      const target = document.getElementById(`planning-${field}`);
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+      target?.focus({ preventScroll: true });
+      return;
+    }
+    setCreationError(null);
+    await saveValidatedForm(creation);
+  };
+
+  const saveValidatedForm = async (creation: ReturnType<typeof preparePlanningCreation>) => {
+    const { title, date, techIds } = creation;
     if (requiresPlanningParent(isEditing, mode, selectedJobId)) {
       toast.error("Velg et eksisterende prosjekt fra listen før du planlegger oppdraget");
       return;
@@ -1169,13 +1188,7 @@ export function EventDrawer({
         }
 
         // Compute all planning dates (base + copy-to-dates), deduplicated by ISO date
-        const dateSet = new Set<string>([date]);
-        if (repeatEnabled && repeatDates.length > 0) {
-          for (const d of repeatDates) {
-            dateSet.add(format(d, "yyyy-MM-dd"));
-          }
-        }
-        const allDates: string[] = Array.from(dateSet);
+        const allDates = creation.dates;
 
         // Duplicate pre-check: same tech + same date + same start_time on an existing
         // active task under same parent project → ask user to confirm.
@@ -1335,11 +1348,6 @@ export function EventDrawer({
           }
         }
 
-        if (!title.trim() || (!isTask && techIds.length === 0) || !date) {
-          toast.error(isTask ? "Fyll inn tittel og dato" : "Fyll inn tittel, dato og minst én montør");
-          setSaving(false);
-          return;
-        }
         const { startISO, endISO } = normalizeOvernightDates(date, startTime, endDate, endTime);
 
         const { data: existing } = await supabase
@@ -1385,13 +1393,7 @@ export function EventDrawer({
 
           if (techIds.length > 0) {
             // Compute all planned dates: primary date + repeat dates (deduplicated by ISO)
-            const dateSet = new Set<string>([date]);
-            if (repeatEnabled && repeatDates.length > 0) {
-              for (const d of repeatDates) {
-                dateSet.add(format(d, "yyyy-MM-dd"));
-              }
-            }
-            const allDates: string[] = Array.from(dateSet);
+            const allDates = creation.dates;
 
             // event_technicians has UNIQUE (event_id, technician_id) → one row per tech.
             // For the assignment row itself we attach the primary-day window so the
@@ -1536,9 +1538,7 @@ export function EventDrawer({
           await supabase.from("events").update({ attachments: newUploads as any }).eq("id", createdId);
         }
 
-        const totalDaysSet = new Set<string>([date]);
-        if (repeatEnabled) for (const d of repeatDates) totalDaysSet.add(format(d, "yyyy-MM-dd"));
-        const totalDays = totalDaysSet.size;
+        const totalDays = creation.dates.length;
         toast.success(isTask ? "Oppgave opprettet" : "Hendelse opprettet og planlagt", {
           description: isTask
             ? `${title} er lagt til som oppgave.`
@@ -1954,6 +1954,7 @@ export function EventDrawer({
             <NewEventFields
               title={title}
               setTitle={setTitle}
+              titleError={creationError?.field === "title" && !title.trim() ? creationError.message : undefined}
               customer={customer}
               setCustomer={setCustomer}
               address={address}
@@ -2112,7 +2113,7 @@ export function EventDrawer({
             <div className="rounded-lg border border-border/40 bg-card p-3 space-y-2">
               <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Fra</Label>
               <div className="flex gap-2">
-                <Input type="date" value={date} onChange={(e) => handleDateChange(e.target.value)} className="flex-1 h-9" disabled={readOnly} />
+                <Input id="planning-date" type="date" value={date} onChange={(e) => handleDateChange(e.target.value)} className="flex-1 h-9" disabled={readOnly} aria-invalid={creationError?.field === "date" && !date} />
                 <TimeSelect value={startTime} onChange={handleStartTimeChange} className="w-[100px]" disabled={readOnly} />
               </div>
             </div>
@@ -2259,7 +2260,7 @@ export function EventDrawer({
           </section>
 
           {/* ═══ SECTION: RESSURSER ═══ */}
-          <section className="space-y-3">
+          <section id="planning-technicians" tabIndex={-1} className="space-y-3">
             <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               {eventType === "task" && !isEditing ? "Tildel montør (valgfritt)" : "Ressurser"}
             </h3>
@@ -2609,10 +2610,11 @@ export function EventDrawer({
 
 /* ── Extracted: New event fields with project suggestions ── */
 function NewEventFields({
-  title, setTitle, customer, setCustomer, address, setAddress, eventType, onLinkProject, onAddressSelect,
+  title, setTitle, titleError, customer, setCustomer, address, setAddress, eventType, onLinkProject, onAddressSelect,
 }: {
   title: string;
   setTitle: (v: string) => void;
+  titleError?: string;
   customer: string;
   setCustomer: (v: string) => void;
   address: string;
@@ -2627,13 +2629,17 @@ function NewEventFields({
     <section className="space-y-4">
       <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Oppdrag</h3>
       <div>
-        <Label className="text-xs">Tittel *</Label>
+        <Label htmlFor="planning-title" className="text-xs">Tittel *</Label>
         <Input
+          id="planning-title"
+          aria-invalid={!!titleError}
+          aria-describedby={titleError ? "planning-title-error" : undefined}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={eventType === "task" ? "F.eks. Bestille materialer" : "F.eks. Kabellegging 3. etg"}
           className="mt-1"
         />
+        {titleError && <p id="planning-title-error" className="mt-1 text-sm text-destructive">{titleError}</p>}
       </div>
 
       {/* Project suggestions */}

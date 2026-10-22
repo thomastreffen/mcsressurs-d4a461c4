@@ -1,5 +1,10 @@
 # Roadmap
 
+## Ressursplan – presis opprettelsesvalidering
+- [x] Ett normalisert skjema brukes i validering og opprettelse; konkret manglende felt vises og fokuseres. Reproduksjon med valgte datoer/montører identifiserte tom tittel, ikke stale dato-/montørstate.
+- [x] JOB-000406 opprettet og gjenåpnet i kalenderen 9./10./11. november med Emil, Marcus, Mats og validering-test.png; alle ni kalenderblokker bekreftet
+- [x] 287 tester grønne; automatisk bygg OK
+
 ## Ressursplan – testkobling må ikke blokkere opprettelse
 - [x] Økonomisk master kun ved aktiv produksjonskobling; frivillig TEST-søk beholdes (migrasjon 0047)
 - [x] Nytt prosjekt som kalenderstandard uten produksjonsmaster; tydelig validering ved manglende eksisterende prosjekt; flerdagsvalg og vedlegg beholdes

@@ -1,12 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const { rpc, invoke } = vi.hoisted(() => ({ rpc: vi.fn(), invoke: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, functions: { invoke } } }));
-import { searchHubPlanningProjects, fetchTripletexPlanningContext, canCreateHubRoot, requiresPlanningParent } from "@/lib/resource-plan-projects";
+import { searchHubPlanningProjects, fetchTripletexPlanningContext, canCreateHubRoot, preparePlanningCreation, requiresPlanningParent } from "@/lib/resource-plan-projects";
 import { mergeProjectResults, rowLabel } from "@/lib/project-picker";
 vi.mock("@/lib/invoke-session", () => ({ invokeWithSession: (...args: any[]) => invoke(...args) }));
 import { checkParentOpenForNewJob } from "@/lib/parent-open-gate";
 
 beforeEach(() => { rpc.mockReset(); invoke.mockReset(); });
+const creationInput = { title: "  Ny jobb  ", date: "2026-11-09", techIds: ["emil", "marcus", "mats"], repeatEnabled: true, repeatDates: [new Date(2026, 10, 10), new Date(2026, 10, 11)] };
+
+describe("Canonical planning creation state", () => {
+  it("accepts 9 November plus 10/11 November and all three selected technicians", () => {
+    expect(preparePlanningCreation(creationInput, true, true)).toEqual({ title: "Ny jobb", date: "2026-11-09", techIds: ["emil", "marcus", "mats"], dates: ["2026-11-09", "2026-11-10", "2026-11-11"], missingField: null });
+  });
+  it("identifies only the missing title when dates and technicians are selected", () => {
+    expect(preparePlanningCreation({ ...creationInput, title: "  " }, true, true).missingField).toBe("title");
+  });
+  it("requires the primary date even when repeat dates exist", () => {
+    expect(preparePlanningCreation({ ...creationInput, date: "" }, true, true).missingField).toBe("date");
+  });
+  it("requires a technician for projects", () => {
+    expect(preparePlanningCreation({ ...creationInput, techIds: [] }, true, true).missingField).toBe("technicians");
+  });
+  it("preserves optional technicians for internal tasks", () => {
+    expect(preparePlanningCreation({ ...creationInput, techIds: [] }, true, false).missingField).toBeNull();
+  });
+  it("ignores disabled repeats and deduplicates selected dates and technicians", () => {
+    expect(preparePlanningCreation({ ...creationInput, repeatEnabled: false }, true, true).dates).toEqual(["2026-11-09"]);
+    const result = preparePlanningCreation({ ...creationInput, techIds: ["emil", "emil", "marcus", "mats"], repeatDates: [...creationInput.repeatDates, new Date(2026, 10, 9)] }, true, true);
+    expect(result.techIds).toEqual(["emil", "marcus", "mats"]);
+    expect(result.dates).toEqual(["2026-11-09", "2026-11-10", "2026-11-11"]);
+  });
+});
 const legacy = { event_id: "hub-60374", project_number: "60374", title: "Hmv30", customer: "Kunde", tripletex_project_id: null };
 
 describe("Additive Tripletex resource planning", () => {
