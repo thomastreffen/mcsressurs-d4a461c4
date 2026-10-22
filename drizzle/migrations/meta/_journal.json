@@ -337,6 +337,13 @@
       "when": 1792649763495,
       "tag": "0047_tripletex_production_only_economic_master",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1792654733807,
+      "tag": "0048_planning_external_project_access",
+      "breakpoints": true
     }
   ]
 }
