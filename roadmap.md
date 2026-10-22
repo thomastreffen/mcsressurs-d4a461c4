@@ -1,9 +1,15 @@
 # Roadmap
 
 ## Ressursplan – presis opprettelsesvalidering
-- [x] Ett normalisert skjema brukes i validering og opprettelse; konkret manglende felt vises og fokuseres. Reproduksjon med valgte datoer/montører identifiserte tom tittel, ikke stale dato-/montørstate.
+- [x] Ett normalisert skjema brukes i validering og opprettelse; konkret manglende felt vises og fokuseres. Første reproduksjon dekket bare Nytt prosjekt med tom tittel, ikke brukerens Eksisterende-flyt.
 - [x] JOB-000406 opprettet og gjenåpnet i kalenderen 9./10./11. november med Emil, Marcus, Mats og validering-test.png; alle ni kalenderblokker bekreftet
 - [x] 287 tester grønne; automatisk bygg OK
+
+## Ressursplan – valgt eksisterende prosjekt og navnearv
+- [x] Eksisterende-valg bruker selectedJobId som identitet, valgfritt title og company-autorisert parent.title som fallback i payload; eget oppdragsnavn eksplisitt valgfritt
+- [x] Tilgjengelig eksisterende 60521 valgt uten eget navn: JOB-000407/408/409 lagret 9./10./11. november med Emil/Marcus/Mats, ni blokker gjenåpnet; vedlegg på hovedbesøket bekreftet. Andre gjennomkjøring gjenbrukte samme besøk via eksisterende duplicate-/idempotensregler.
+- [ ] Eksakt 60554/Ringnes-case ende til ende: prosjektet finnes ikke i tilgjengelige events eller picker; krever at det konkrete prosjektet blir tilgjengelig, ikke opprettet/matchet kunstig
+- [x] 289 tester grønne, inkludert 60554-navnearv og valgfri overstyring; automatisk bygg OK
 
 ## Ressursplan – testkobling må ikke blokkere opprettelse
 - [x] Økonomisk master kun ved aktiv produksjonskobling; frivillig TEST-søk beholdes (migrasjon 0047)

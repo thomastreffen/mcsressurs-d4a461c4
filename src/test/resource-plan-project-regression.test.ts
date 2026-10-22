@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const { rpc, invoke } = vi.hoisted(() => ({ rpc: vi.fn(), invoke: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, functions: { invoke } } }));
-import { searchHubPlanningProjects, fetchTripletexPlanningContext, canCreateHubRoot, preparePlanningCreation, requiresPlanningParent } from "@/lib/resource-plan-projects";
+import { searchHubPlanningProjects, fetchTripletexPlanningContext, canCreateHubRoot, preparePlanningCreation, requiresPlanningParent, resolvePlanningVisitTitle } from "@/lib/resource-plan-projects";
 import { mergeProjectResults, rowLabel } from "@/lib/project-picker";
 vi.mock("@/lib/invoke-session", () => ({ invokeWithSession: (...args: any[]) => invoke(...args) }));
 import { checkParentOpenForNewJob } from "@/lib/parent-open-gate";
@@ -10,6 +10,18 @@ beforeEach(() => { rpc.mockReset(); invoke.mockReset(); });
 const creationInput = { title: "  Ny jobb  ", date: "2026-11-09", techIds: ["emil", "marcus", "mats"], repeatEnabled: true, repeatDates: [new Date(2026, 10, 10), new Date(2026, 10, 11)] };
 
 describe("Canonical planning creation state", () => {
+  it("existing 60554 accepts a blank optional job title and inherits the authorized parent's name", () => {
+    const parent = { id: "ringnes-parent", title: "60554 MCS ELEKTROTAVLER AS - Ringnes bygg 25" };
+    const creation = preparePlanningCreation({ ...creationInput, title: "" }, false, true);
+    expect(requiresPlanningParent(false, "existing", parent.id)).toBe(false);
+    expect(creation.missingField).toBeNull();
+    expect(resolvePlanningVisitTitle(creation.title, parent.title)).toBe("60554 MCS ELEKTROTAVLER AS - Ringnes bygg 25");
+    expect(creation.dates).toEqual(["2026-11-09", "2026-11-10", "2026-11-11"]);
+    expect(creation.techIds).toEqual(["emil", "marcus", "mats"]);
+  });
+  it("an explicit optional job name overrides the parent name without changing parent selection", () => {
+    expect(resolvePlanningVisitTitle("  Montere bryter  ", "60554 MCS ELEKTROTAVLER AS - Ringnes bygg 25")).toBe("Montere bryter");
+  });
   it("accepts 9 November plus 10/11 November and all three selected technicians", () => {
     expect(preparePlanningCreation(creationInput, true, true)).toEqual({ title: "Ny jobb", date: "2026-11-09", techIds: ["emil", "marcus", "mats"], dates: ["2026-11-09", "2026-11-10", "2026-11-11"], missingField: null });
   });

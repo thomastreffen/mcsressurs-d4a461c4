@@ -1,7 +1,7 @@
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { UnifiedProjectPicker } from "@/components/resource-plan/UnifiedProjectPicker";
 import { checkParentOpenForNewJob, ECONOMIC_PROJECT_HINT } from "@/lib/parent-open-gate";
-import { canCreateHubRoot, fetchTripletexPlanningContext, preparePlanningCreation, requiresPlanningParent, type TripletexPlanningContext } from "@/lib/resource-plan-projects";
+import { canCreateHubRoot, fetchTripletexPlanningContext, preparePlanningCreation, requiresPlanningParent, resolvePlanningVisitTitle, type TripletexPlanningContext } from "@/lib/resource-plan-projects";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useProjectSuggestions, type ProjectSuggestion } from "@/hooks/useProjectSuggestions";
@@ -1094,6 +1094,10 @@ export function EventDrawer({
   // Save: create or update
   const handleSave = async () => {
     if (saving || submitted || readOnly) return;
+    if (requiresPlanningParent(isEditing, mode, selectedJobId)) {
+      toast.error("Velg et eksisterende prosjekt fra listen før du planlegger oppdraget");
+      return;
+    }
     const creation = preparePlanningCreation({ title, date, techIds, repeatEnabled, repeatDates }, mode === "new", eventType !== "task");
     if (!isEditing && creation.missingField) {
       const field = creation.missingField;
@@ -1231,7 +1235,7 @@ export function EventDrawer({
           {
             p_parent_id: selectedJobId,
             p_client_request_id: clientRequestId,
-            p_title: title.trim() || null,
+            p_title: resolvePlanningVisitTitle(title, parent.title),
             p_technician_ids: techIds,
             p_dates: dateEntries,
             p_extra: {},
@@ -1813,9 +1817,9 @@ export function EventDrawer({
 
               {selectedJobSnapshot && (
                 <div>
-                  <Label className="text-xs">Jobb / oppdrag</Label>
+                  <Label className="text-xs">Eget oppdragsnavn (valgfritt)</Label>
                   <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1"
-                    placeholder="F.eks. Montere 800A bryter" />
+                    placeholder={selectedJobSnapshot.title} />
                 </div>
               )}
             </section>
@@ -1831,9 +1835,9 @@ export function EventDrawer({
                 <p className="text-xs text-muted-foreground mt-0.5">Jobben planlegges under dette prosjektet</p>
               </div>
               <div>
-                <Label className="text-xs">Jobb / oppdrag</Label>
+                <Label className="text-xs">Eget oppdragsnavn (valgfritt)</Label>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1"
-                  placeholder="F.eks. Montere 800A bryter" />
+                  placeholder={projectTitle || "Prosjektets navn"} />
               </div>
             </div>
           )}
