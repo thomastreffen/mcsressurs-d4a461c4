@@ -1,10 +1,13 @@
 # Roadmap
 
 ## Ekstern kundereise – én inngang
-- [ ] Personbundet sikker inngang, Mine prosjekter og tilbakevei; gamle prosjektlenker beholdes
-- [ ] Ettersend tilgang uten duplikater, intern bekreftelse ved avslutning og enkel ny innlogging
-- [ ] Serverstyrt separat prosjekttilgang; isolerte API-/rolle-/reload-/mobiltester uten e-post
-- [ ] Rapporter gjennomført kontroll og åpne pilotrisikoer
+- [x] Personbundet sikker inngang på /ekstern, Mine prosjekter og tilbakevei; gamle prosjektlenker/sessions oppgraderes etter verifisering
+- [x] Ettersend tilgang på samme person/deltaker, intern inline-bekreftelse ved avslutning og enkel ny innlogging; avsluttede deltakere vises i intern historikk
+- [x] Faktisk engangsinnlogging, ett prosjekt direkte og to prosjektroller (supplier A/customer B), feil prosjekt/kanal, skjult innhold, private filnedlastinger, utlogging/revoke, direkte reload og 390×844/1280×1800 kontrollert uten e-post; tomt midlertidig prosjekt B arkivert og testinnlogginger fjernet, original A/tt urørt
+- [x] 303 automatiske tester besto; automatisk bygg OK; rapporter gjennomført kontroll og åpne pilotrisikoer
+- [ ] Ny /ekstern-flate i publisert løsning: krever eksplisitt publisering; ikke publisert i denne runden
+- [ ] Ny ettersendings-/innloggingsmail fra innboks gjennom publisert flate: ikke sendt i denne runden; må avtales før pilot
+- [ ] Ekstern pilot: vurder videresendbare personlige lenker, gjenbrukte e-postadresser og bredere misbruksvern for offentlig lenkebestilling; prosjektisolasjonen er kontrollert, ingen pilotklar-erklæring
 
 ## Planlegging – eksterne prosjektdeltakere
 - [x] Fullført påbegynt eksternflyt: prosjektinvitasjon, Microsoft-utsending, isolert prosjektrom, fire samtaler og deling
