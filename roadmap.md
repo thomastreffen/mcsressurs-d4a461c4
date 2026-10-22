@@ -1,5 +1,11 @@
 # Roadmap
 
+## Ekstern kundereise – én inngang
+- [ ] Personbundet sikker inngang, Mine prosjekter og tilbakevei; gamle prosjektlenker beholdes
+- [ ] Ettersend tilgang uten duplikater, intern bekreftelse ved avslutning og enkel ny innlogging
+- [ ] Serverstyrt separat prosjekttilgang; isolerte API-/rolle-/reload-/mobiltester uten e-post
+- [ ] Rapporter gjennomført kontroll og åpne pilotrisikoer
+
 ## Planlegging – eksterne prosjektdeltakere
 - [x] Fullført påbegynt eksternflyt: prosjektinvitasjon, Microsoft-utsending, isolert prosjektrom, fire samtaler og deling
 - [x] Token-/gruppe-/ID-/fil-/revoke-matrisen: 150 API-kontroller + 9 sluttkontroller; isolerte kunder/leverandører og to prosjekter, ingen invitasjonsutsending
