@@ -30,7 +30,6 @@ import { PlanningFiles } from "@/components/planning/PlanningFiles";
 import { PlanningContacts } from "@/components/planning/PlanningContacts";
 import { PlanningEconomy } from "@/components/planning/PlanningEconomy";
 import { PlanningConversations } from "@/components/planning/PlanningConversations";
-import { PlanningExternalParticipants } from "@/components/planning/PlanningExternalParticipants";
 
 export default function PlanningProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -177,7 +176,6 @@ export default function PlanningProjectPage() {
               contacts={children?.contacts ?? []}
               externalRefs={children?.externalRefs ?? []}
             />
-            <PlanningExternalParticipants projectId={project.id} projectName={project.name} />
           </TabsContent>
           <TabsContent value="historikk">
             <div className="space-y-4">

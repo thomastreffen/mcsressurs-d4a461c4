@@ -47,11 +47,11 @@ export function PlanningParticipants({ project }: { project: PlanningProject }) 
     <Card className="space-y-3 p-4">
       <div className="flex items-center gap-2">
         <Users className="h-4 w-4 text-muted-foreground" />
-        <h2 className="text-sm font-semibold text-foreground">Prosjektdeltakere</h2>
+        <h2 className="text-sm font-semibold text-foreground">Interne deltakere</h2>
         <span className="text-xs text-muted-foreground">{members.length}</span>
       </div>
       <p className="text-xs text-muted-foreground">
-        Interne brukere som følger prosjektet. Kunde og kundekontakter gir ikke tilgang.
+        Ansatte i MCS. Eksterne kunder og leverandører inviteres under «Eksterne deltakere».
       </p>
 
       <ul className="space-y-2">
