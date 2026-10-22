@@ -11,7 +11,7 @@
 - [x] Samtidig invitasjon/engangsaksept, null-parametre, utlogging og tilbakekalling avvist server-side; testdeltakere tilbakekalt, 8 testfiler fjernet og to isolerte prosjekter arkivert
 - [x] Én faktisk invitasjon kun til tt@mcsservice.no sendt 22.10.2026 kl. 09:52 UTC; Microsoft 202 / funksjon 200 ok; prosjekt 025618e0-be5d-40b9-907f-c438d46d6ce6 «TEST – ekstern invitasjon tt – 22.10.2026», supplier/standard; malens MCS/prosjekt/avsender/rolle/fragmentlenke kontrollert, ingen andre mottakere
 - [x] tt bekreftet korrekt innboksmottak 22.10.2026; publisert lenke viser 404
-- [ ] Rett/verifiser publisert eksternrute, direkte åpning/reload og isolert leverandørtilgang uten å bruke eksisterende engangstoken; behold eksisterende testprosjekt og kun tt ved nødvendig ny invitasjon
+- [x] 404 årsak: gammel publisert JS uten eksternrute; republisert og kontrollert faktisk publisert URL direkte/reload HTTP 200 med invitasjonsflate. 9 tester besto; publisert aksept/prosjekt/leverandør/reload/Leverandør+Alle kontrollert med eksplisitt mock, ikke ekte token. Ingen nye e-poster eller invitasjoner; tt-token fortsatt ubrukt
 - [ ] Bekreft åpning fra mottatt engangslenke (utløp 24.10.2026 kl. 09:52 UTC); deretter trygg opprydding av denne invitasjonen/prosjektet; fortsatt ikke pilotklar
 
 ## Ressursplan – stoppregel og sikker testopprydding
