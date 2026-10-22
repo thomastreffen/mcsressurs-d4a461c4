@@ -1,13 +1,15 @@
 # Roadmap
 
 ## Planlegging – eksterne prosjektdeltakere
-- [ ] Fullfør påbegynt eksternflyt: invitasjon/e-post, isolert prosjektrom, fire samtaler og deling; ingen nye funksjoner utenfor dette
-- [ ] Kjør hele token-/rolle-/ID-/fil-/revoke-matrisen med isolerte data uten reell e-post; faktisk mottak krever avtalt godkjenning
-- [ ] Prosjektbundet invitasjon og separat ekstern identitet uten Hub-medlemskap
-- [ ] Fire faste samtaler med serverstyrt gruppe- og meldingsmottakertilgang
-- [ ] Inline invitasjon, mottakeroversikt og egne eksterne prosjektflater
-- [ ] Aktiv deling av private filer, oppgaver og arbeidspakker
-- [ ] Isolerte sikkerhetstester og reelle rollebytter uten utsending; rapporter pilotrisiko
+- [x] Fullført påbegynt eksternflyt: prosjektinvitasjon, Microsoft-utsending, isolert prosjektrom, fire samtaler og deling
+- [x] Token-/gruppe-/ID-/fil-/revoke-matrisen: 150 API-kontroller + 9 sluttkontroller; isolerte kunder/leverandører og to prosjekter, ingen invitasjonsutsending
+- [x] Prosjektbundet invitasjon og separat ekstern identitet uten Hub-medlemskap
+- [x] Fire faste samtaler med serverstyrt gruppe- og meldingsmottakertilgang; standard Intern plan; avsender kan lese egne meldinger
+- [x] Inline invitasjon, mottakeroversikt og eget eksternt prosjektrom; mobil 390×844, nettbrett 768×1024, desktop 1280×1800
+- [x] Aktiv deling av private filer, oppgaver og arbeidspakker; offentlig legacy-fil avvist; 60-sekunders signert URL kontrollert inkludert utløp
+- [x] Reelle eksterne tokenbytter, internvisning av alle fire tråder, melding sendt og lest tilbake; 298 tester og automatisk bygg OK
+- [x] Samtidig invitasjon/engangsaksept, null-parametre, utlogging og tilbakekalling avvist server-side; testdeltakere tilbakekalt, 8 testfiler fjernet og to isolerte prosjekter arkivert
+- [ ] Faktisk invitasjonse-post → mottak → lenke fra innboksen: krever eksplisitt godkjenning og avtalt isolert testmottaker; ingen ekte utsending utført, ikke pilotklar
 
 ## Ressursplan – stoppregel og sikker testopprydding
 - [x] Fast regel lagret: ingen live testjobber eller utsending til ekte montører; kun isolerte/mockede tester eller verifisert trygg testressurs uten utsending
