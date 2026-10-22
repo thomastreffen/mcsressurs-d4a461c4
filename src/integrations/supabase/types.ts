@@ -13296,6 +13296,41 @@ export type Database = {
           },
         ]
       }
+      planning_external_login_links: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          participant_id: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          participant_id: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          participant_id?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_external_login_links_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "planning_external_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planning_external_participants: {
         Row: {
           accepted_at: string | null
@@ -13306,6 +13341,7 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           email: string
+          external_person_id: string | null
           id: string
           invite_expires_at: string | null
           invite_hash: string | null
@@ -13323,6 +13359,7 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           email: string
+          external_person_id?: string | null
           id?: string
           invite_expires_at?: string | null
           invite_hash?: string | null
@@ -13340,6 +13377,7 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           email?: string
+          external_person_id?: string | null
           id?: string
           invite_expires_at?: string | null
           invite_hash?: string | null
@@ -13350,10 +13388,67 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "planning_external_participants_external_person_id_fkey"
+            columns: ["external_person_id"]
+            isOneToOne: false
+            referencedRelation: "planning_external_people"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "planning_external_participants_planning_project_id_fkey"
             columns: ["planning_project_id"]
             isOneToOne: false
             referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_external_people: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      planning_external_portal_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          person_id: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          person_id: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          person_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_external_portal_sessions_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "planning_external_people"
             referencedColumns: ["id"]
           },
         ]
@@ -13405,6 +13500,7 @@ export type Database = {
           expires_at: string
           id: string
           participant_id: string
+          portal_session_id: string | null
           token_hash: string
         }
         Insert: {
@@ -13412,6 +13508,7 @@ export type Database = {
           expires_at?: string
           id?: string
           participant_id: string
+          portal_session_id?: string | null
           token_hash: string
         }
         Update: {
@@ -13419,6 +13516,7 @@ export type Database = {
           expires_at?: string
           id?: string
           participant_id?: string
+          portal_session_id?: string | null
           token_hash?: string
         }
         Relationships: [
@@ -13427,6 +13525,13 @@ export type Database = {
             columns: ["participant_id"]
             isOneToOne: false
             referencedRelation: "planning_external_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_external_sessions_portal_session_id_fkey"
+            columns: ["portal_session_id"]
+            isOneToOne: false
+            referencedRelation: "planning_external_portal_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -17917,6 +18022,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      planning_external_accept_login: {
+        Args: { _token: string }
+        Returns: Json
+      }
       planning_external_channel: {
         Args: { _channel: string; _project_id: string; _token: string }
         Returns: Json
@@ -17940,6 +18049,7 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           email: string
+          external_person_id: string | null
           id: string
           invite_expires_at: string | null
           invite_hash: string | null
@@ -17959,6 +18069,31 @@ export type Database = {
       planning_external_manager: {
         Args: { _project_id: string }
         Returns: boolean
+      }
+      planning_external_my_projects: { Args: { _token: string }; Returns: Json }
+      planning_external_open_project: {
+        Args: { _project_id: string; _token: string }
+        Returns: Json
+      }
+      planning_external_portal_logout: {
+        Args: { _token: string }
+        Returns: undefined
+      }
+      planning_external_portal_mint: {
+        Args: { _person: string }
+        Returns: string
+      }
+      planning_external_portal_person: {
+        Args: { _token: string }
+        Returns: string
+      }
+      planning_external_portal_upgrade: {
+        Args: { _token: string }
+        Returns: Json
+      }
+      planning_external_prepare_login: {
+        Args: { _email?: string; _participant_id?: string }
+        Returns: Json
       }
       planning_external_project: {
         Args: { _project_id: string; _token: string }

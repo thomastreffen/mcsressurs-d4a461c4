@@ -365,6 +365,13 @@
       "when": 1792660770526,
       "tag": "0051_planning_external_delivery_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1792671821846,
+      "tag": "0052_planning_external_person_portal",
+      "breakpoints": true
     }
   ]
 }
