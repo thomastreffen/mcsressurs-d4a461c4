@@ -26,6 +26,11 @@ export function requiresPlanningParent(isEditing: boolean, mode: "new" | "existi
   return !isEditing && mode === "existing" && !parentId;
 }
 
+/** Mirrors the work-visit RPC default using the authorized parent, never a search label. */
+export function resolvePlanningVisitTitle(title: string, parentTitle: string): string {
+  return title.trim() || parentTitle;
+}
+
 /** Normalize the controlled form once; validation and creation consume this same snapshot. */
 export function preparePlanningCreation(input: {
   title: string; date: string; techIds: string[]; repeatEnabled: boolean; repeatDates: Date[];

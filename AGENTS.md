@@ -16,6 +16,7 @@
 - Tripletex links control integration, not planning eligibility; Hub-only parents stay plan-able. Tripletex-first roots apply only to integrated companies. Shared separator/token search and equivalent SQL rank before limits; only stable active IDs dedupe, never normalized names/numbers. Why: robust discovery without auto-linking.
 - Resource-plan project search and company integration context use caller-scoped RPCs; economic-master and optional TEST-search flags are independent; existing-mode saves require an explicit parent, and link presence is checked independently of visible project numbers with unreadable/cross-company parents rejected. Why: discovery must not block Hub creation or bypass a linked project's open-status guard.
 - Resource-plan creation validates one normalized controlled-form snapshot and reuses its title, primary date, technicians and deduplicated planning dates for writes; missing fields receive specific errors and focus. Why: visible selections and persisted assignments must agree without ambiguous aggregate validation.
+- Existing-project work visits permit an optional job name and otherwise inherit the company-authorized parent's title, not the formatted search label. Why: selecting a project is sufficient naming context without confusing display references with event identity.
 
 - Clear drafts/pending writes on save or confirmed discard; persist remaining chapter edits on partial save/reset. Why: saved/rejected edits must not return.
 

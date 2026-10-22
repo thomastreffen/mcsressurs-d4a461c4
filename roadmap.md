@@ -1,9 +1,14 @@
 # Roadmap
 
 ## Ressursplan – presis opprettelsesvalidering
-- [x] Ett normalisert skjema brukes i validering og opprettelse; konkret manglende felt vises og fokuseres. Reproduksjon med valgte datoer/montører identifiserte tom tittel, ikke stale dato-/montørstate.
+- [x] Ett normalisert skjema brukes i validering og opprettelse; konkret manglende felt vises og fokuseres. Første reproduksjon dekket bare Nytt prosjekt med tom tittel, ikke brukerens Eksisterende-flyt.
 - [x] JOB-000406 opprettet og gjenåpnet i kalenderen 9./10./11. november med Emil, Marcus, Mats og validering-test.png; alle ni kalenderblokker bekreftet
 - [x] 287 tester grønne; automatisk bygg OK
+
+## Ressursplan – valgt eksisterende prosjekt og navnearv
+- [ ] Spor Eksisterende-valg til autentisert forelder og faktisk oppdragstittel; tydelig valgfritt eget navn
+- [ ] Test valgt prosjekt uten eget navn, tre datoer/montører og vedlegg; eksakt 60554 finnes foreløpig ikke i tilgjengelige data
+- [ ] Regresjonstester og automatisk bygg
 
 ## Ressursplan – testkobling må ikke blokkere opprettelse
 - [x] Økonomisk master kun ved aktiv produksjonskobling; frivillig TEST-søk beholdes (migrasjon 0047)
