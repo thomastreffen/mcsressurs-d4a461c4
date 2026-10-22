@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Ressursplan – presis opprettelsesvalidering
-- [ ] Valider synlige tittel-/dato-/montørfelt og bruk samme datogrunnlag ved lagring; vis og fokuser konkret manglende felt
-- [ ] Test ny jobb 9./10./11. november med Emil, Marcus, Mats og vedlegg; les tilbake alle ni kalenderblokker
-- [ ] Kjør regresjonstester og kontroller automatisk bygg
+- [x] Ett normalisert skjema brukes i validering og opprettelse; konkret manglende felt vises og fokuseres. Reproduksjon med valgte datoer/montører identifiserte tom tittel, ikke stale dato-/montørstate.
+- [x] JOB-000406 opprettet og gjenåpnet i kalenderen 9./10./11. november med Emil, Marcus, Mats og validering-test.png; alle ni kalenderblokker bekreftet
+- [x] 287 tester grønne; automatisk bygg OK
 
 ## Ressursplan – testkobling må ikke blokkere opprettelse
 - [x] Økonomisk master kun ved aktiv produksjonskobling; frivillig TEST-søk beholdes (migrasjon 0047)
