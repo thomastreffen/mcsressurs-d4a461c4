@@ -29,7 +29,8 @@ import { PlanningTasks } from "@/components/planning/PlanningTasks";
 import { PlanningFiles } from "@/components/planning/PlanningFiles";
 import { PlanningContacts } from "@/components/planning/PlanningContacts";
 import { PlanningEconomy } from "@/components/planning/PlanningEconomy";
-import { PlanningThread } from "@/components/planning/PlanningThread";
+import { PlanningConversations } from "@/components/planning/PlanningConversations";
+import { PlanningExternalParticipants } from "@/components/planning/PlanningExternalParticipants";
 
 export default function PlanningProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -152,7 +153,7 @@ export default function PlanningProjectPage() {
             />
           </TabsContent>
           <TabsContent value="samtale">
-            <PlanningThread projectId={project.id} messages={children?.messages ?? []} />
+            <PlanningConversations projectId={project.id} messages={children?.messages ?? []} />
           </TabsContent>
           <TabsContent value="arbeidspakker">
             <PlanningWorkPackages project={project} workPackages={children?.workPackages ?? []} />
@@ -176,6 +177,7 @@ export default function PlanningProjectPage() {
               contacts={children?.contacts ?? []}
               externalRefs={children?.externalRefs ?? []}
             />
+            <PlanningExternalParticipants projectId={project.id} projectName={project.name} />
           </TabsContent>
           <TabsContent value="historikk">
             <div className="space-y-4">

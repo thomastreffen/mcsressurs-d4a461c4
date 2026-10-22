@@ -18,6 +18,7 @@ import {
   type PlanningWorkPackage,
 } from "@/hooks/usePlanning";
 import { TASK_STATUSES, taskStatusLabel } from "@/lib/planning";
+import { PlanningSharing } from "./PlanningSharing";
 
 const NONE = "__none__";
 
@@ -161,7 +162,7 @@ export function PlanningTasks({
     }
     const patch: any = { ...draft };
     const id = patch.id;
-    for (const k of ["id", "planning_project_id", "created_at", "updated_at", "created_by", "completed_by"]) delete patch[k];
+    for (const k of ["id", "planning_project_id", "created_at", "updated_at", "created_by", "completed_by", "shared_visibility", "external_assignee_id"]) delete patch[k];
     try {
       await saveTask.mutateAsync({ id, patch });
       setEditingId(null);
@@ -190,6 +191,7 @@ export function PlanningTasks({
             {t.due_date && <span>· Frist {format(new Date(t.due_date), "d. MMM", { locale: nb })}</span>}
             {t.status !== "done" && t.status !== "open" && <Badge variant="outline">{taskStatusLabel(t.status)}</Badge>}
           </div>
+          <PlanningSharing projectId={projectId} kind="task" id={t.id} visibility={t.shared_visibility} assignee={t.external_assignee_id} />
         </div>
         <div className="flex">
           <Button variant="ghost" size="icon" aria-label="Rediger" onClick={() => setEditingId(t.id)}>

@@ -1,6 +1,8 @@
 # Roadmap
 
 ## Planlegging – eksterne prosjektdeltakere
+- [ ] Fullfør påbegynt eksternflyt: invitasjon/e-post, isolert prosjektrom, fire samtaler og deling; ingen nye funksjoner utenfor dette
+- [ ] Kjør hele token-/rolle-/ID-/fil-/revoke-matrisen med isolerte data uten reell e-post; faktisk mottak krever avtalt godkjenning
 - [ ] Prosjektbundet invitasjon og separat ekstern identitet uten Hub-medlemskap
 - [ ] Fire faste samtaler med serverstyrt gruppe- og meldingsmottakertilgang
 - [ ] Inline invitasjon, mottakeroversikt og egne eksterne prosjektflater

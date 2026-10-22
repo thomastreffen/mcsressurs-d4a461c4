@@ -1,0 +1,3 @@
+CREATE FUNCTION public.planning_external_logout(_token text) RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path=public AS $$ DELETE FROM public.planning_external_sessions WHERE token_hash=encode(extensions.digest(_token,'sha256'),'hex') AND length(_token)>=40 $$;
+REVOKE ALL ON FUNCTION public.planning_external_logout(text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.planning_external_logout(text) TO anon,authenticated;

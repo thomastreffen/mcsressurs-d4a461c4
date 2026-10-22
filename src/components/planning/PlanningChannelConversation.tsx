@@ -36,8 +36,7 @@ export function PlanningChannelConversation({ projectId, channel, token, readOnl
     },
   });
   const audience = query.data?.audience ?? [];
-  const externalKey = audience.filter(p => p.kind === "external").map(p => p.id).sort().join(",");
-  useEffect(() => { setSelected(externalKey ? externalKey.split(",") : []); }, [externalKey]);
+  useEffect(() => { setSelected([]); setReply(null); setBody(""); }, [projectId, channel, token]);
   const receiving = chosenRecipients(audience, selected);
   const excluded = excludedRecipients(audience, selected);
   const send = async () => {
@@ -62,6 +61,8 @@ export function PlanningChannelConversation({ projectId, channel, token, readOnl
         <ul className="space-y-2">{audience.map(p => <li key={p.kind + p.id}>{p.name} · {p.company_name || (p.kind === "internal" ? "MCS" : CHANNEL_LABELS[p.participant_type ?? "supplier"])}</li>)}</ul>
         {!token && <p className="mt-2 text-muted-foreground">Autoriserte MCS-planleggere og prosjektadministratorer kan også lese prosjektets samtaler.</p>}
       </details>
+      <p className="break-words text-sm"><strong>Har tilgang til samtalen: </strong>{audience.map(p => p.name).join(", ") || "Interne MCS-planleggere"}</p>
+      {token && <p className="text-sm text-muted-foreground">Autoriserte MCS-planleggere og prosjektadministratorer kan også lese meldingene.</p>}
     </header>
     {query.isError && <p role="alert" className="text-sm text-destructive">Kunne ikke åpne samtalen. Tilgangen kan være avsluttet.</p>}
     {query.isLoading && <p className="text-sm text-muted-foreground">Henter samtale…</p>}
@@ -80,7 +81,7 @@ export function PlanningChannelConversation({ projectId, channel, token, readOnl
         {audience.filter(p => p.kind === "external").map(p => <label key={p.id} className="flex min-h-11 items-center gap-3 text-sm"><Checkbox checked={selected.includes(p.id)} onCheckedChange={checked => setSelected(ids => checked ? [...ids, p.id] : ids.filter(id => id !== p.id))} /><span>{p.name} · {p.company_name || CHANNEL_LABELS[p.participant_type ?? "supplier"]}</span></label>)}
       </fieldset>}
       <p className="break-words text-sm"><strong>Kan lese denne meldingen: </strong>{receiving.map(p => p.name).join(", ") || "Interne MCS-planleggere"}</p>
-      {excluded.length > 0 && <p className="break-words text-sm text-muted-foreground"><strong>Får ikke meldingen: </strong>{excluded.map(p => p.name).join(", ")}</p>}
+      <p className="break-words text-sm text-muted-foreground"><strong>Får ikke meldingen: </strong>{excluded.map(p => p.name).join(", ") || "Ingen utelatte eksterne i denne samtalen"}</p>
       <Textarea aria-label="Melding" rows={3} value={body} disabled={readOnly || sending} onChange={e => { setBody(e.target.value); setRequestId(crypto.randomUUID()); }} placeholder="Skriv melding…" />
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">{readOnly ? "Skrivebeskyttet forhåndsvisning" : "Meldingen lagres i prosjektrommet. Ingen automatisk e-post."}</p><Button className="min-h-11" disabled={readOnly || sending || !body.trim() || !query.data} onClick={send}><Send />{sending ? "Sender…" : "Send melding"}</Button></div>
     </div>

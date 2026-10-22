@@ -25,6 +25,7 @@ import { useSendWpToResourcePlan } from "@/components/planning/useSendWpToResour
 import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { useDraftAutosave } from "@/hooks/useDraftAutosave";
+import { PlanningSharing } from "@/components/planning/PlanningSharing";
 
 const NONE = "__none__";
 
@@ -151,7 +152,7 @@ export default function PlanningWorkPackagePage() {
       patch.assignment_state = "department_assigned";
     }
     const id = patch.id;
-    for (const k of ["id", "planning_project_id", "created_at", "updated_at", "created_by", "linked_event_id", "sort_order"]) delete patch[k];
+    for (const k of ["id", "planning_project_id", "created_at", "updated_at", "created_by", "linked_event_id", "sort_order", "shared_visibility"]) delete patch[k];
     try {
       await saveWorkPackage.mutateAsync({ id, patch });
       toast.success(id ? "Arbeidspakke lagret" : "Arbeidspakke opprettet");
@@ -206,6 +207,7 @@ export default function PlanningWorkPackagePage() {
         )}
       </header>
 
+      {existing && <PlanningSharing projectId={project.id} kind="work_package" id={existing.id} visibility={existing.shared_visibility} />}
       <Section title="Hva skal gjøres">
         <div className="space-y-1.5">
           <Label htmlFor="wp-name">Navn *</Label>

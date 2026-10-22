@@ -27,6 +27,7 @@ import PlanningBoardPage from "./pages/planning/PlanningBoardPage";
 import PlanningProjectPage from "./pages/planning/PlanningProjectPage";
 import PlanningWorkPackagePage from "./pages/planning/PlanningWorkPackagePage";
 import PlanningNewProjectPage from "./pages/planning/PlanningNewProjectPage";
+import PlanningExternalPage from "./pages/planning/PlanningExternalPage";
 import JobDetail from "./pages/JobDetail";
 import MaterialPickListPrintPage from "./pages/MaterialPickListPrintPage";
 import SharedMaterialListPage from "./pages/SharedMaterialListPage";
@@ -264,6 +265,7 @@ const App = () => (
             <Route path="/kj/:token" element={<ChemicalPublicPage />} />
 
             <Route path="/invite/thread/:token" element={<ThreadInviteAcceptPage />} />
+            <Route path="/planlegging/ekstern/:id" element={<PlanningExternalPage />} />
             <Route path="/activate" element={<ActivatePage />} />
             <Route path="/bestilling" element={<OrderFormsCatalogPage />} />
             <Route path="/bestilling/:slug" element={<OrderFormPublicPage />} />
