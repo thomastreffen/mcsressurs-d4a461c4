@@ -1,5 +1,10 @@
 # Roadmap
 
+## Ressursplan – testkobling må ikke blokkere opprettelse
+- [ ] Økonomisk master kun ved aktiv produksjonskobling; frivillig TEST-søk beholdes
+- [ ] Tydelig validering ved manglende eksisterende prosjekt; flerdagsvalg og vedlegg beholdes
+- [ ] Regresjonstester og faktisk kalenderlagring med kun TEST-kobling
+
 ## Oppdragsgodkjenning – 401 Invalid user
 - [x] Signing-key-kompatibel validering og alle ti godkjenningsanrop sesjonssikret uten mutasjonsretry
 - [x] 276 tester grønne, bygg OK; deployet tjeneste godtar ekte innlogging (400 Missing job_id uten skriving), avviser ugyldig bearer (401); ingen eksisterende oppdrag sendt på nytt
