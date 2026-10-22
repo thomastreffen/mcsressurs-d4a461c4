@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { canReadChannel, chosenRecipients, excludedRecipients, type ChannelPerson } from "@/lib/planning-external";
 import { planningInviteEmail } from "../../supabase/functions/planning-external-invite/email";
+import { planningAccessEmail } from "../../supabase/functions/planning-external-login/email";
+import { clearExternalStorage, externalLandingPath, EXTERNAL_PORTAL_KEY } from "@/lib/planning-external-portal";
 const people: ChannelPerson[] = [
   { id: "mcs", kind: "internal", name: "MCS", company_name: "MCS" },
   { id: "supplier1", kind: "external", name: "Leverandør 1", company_name: "Test", participant_type: "supplier" },
@@ -20,5 +22,29 @@ describe("project collaboration rules", () => {
     expect(mail.html).not.toContain("<img"); expect(mail.html).not.toContain("<script>");
     expect(mail.html).toContain("/planlegging/ekstern/a#invite=safe");
     expect(mail.html).not.toContain("?invite=");
+  });
+  it("opens a single explicitly listed project directly", () => {
+    expect(externalLandingPath([{ id: "project-a" }])).toBe("/planlegging/ekstern/project-a");
+  });
+  it("keeps multiple explicit projects on Mine prosjekter", () => {
+    expect(externalLandingPath([{ id: "project-a" }, { id: "project-b" }])).toBe("/ekstern");
+  });
+  it("does not invent a project for an empty grant list", () => {
+    expect(externalLandingPath([])).toBe("/ekstern");
+  });
+  it("logout clears every external credential without clearing Hub storage", () => {
+    sessionStorage.setItem(EXTERNAL_PORTAL_KEY, "portal-test");
+    sessionStorage.setItem("planning-external:a", "project-test");
+    sessionStorage.setItem("hub-selection", "keep");
+    clearExternalStorage();
+    expect(sessionStorage.getItem(EXTERNAL_PORTAL_KEY)).toBeNull();
+    expect(sessionStorage.getItem("planning-external:a")).toBeNull();
+    expect(sessionStorage.getItem("hub-selection")).toBe("keep");
+    sessionStorage.removeItem("hub-selection");
+  });
+  it("resend uses the common entrance and fragment-only credential", () => {
+    const email = planningAccessEmail({ name: "Test", project: "A", type: "supplier", token: "test-only" });
+    expect(email.html).toContain("/ekstern#access=test-only");
+    expect(email.html).not.toContain("?access=");
   });
 });

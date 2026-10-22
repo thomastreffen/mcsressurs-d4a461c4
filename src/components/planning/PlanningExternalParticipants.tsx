@@ -30,6 +30,8 @@ export function PlanningExternalParticipants({ projectId, projectName }: { proje
   const [company, setCompany] = useState("");
   const [type, setType] = useState<ExternalType>("supplier");
   const [sending, setSending] = useState(false);
+  const [resending, setResending] = useState<string | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
   const list = participants.data ?? [];
   const activeCount = list.filter((p) => p.status !== "revoked").length;
 
@@ -46,8 +48,19 @@ export function PlanningExternalParticipants({ projectId, projectName }: { proje
     finally { await refresh(); setSending(false); }
   };
   const revoke = async (id: string) => {
+    if (!canManage) return;
     const { error } = await supabase.rpc("planning_revoke_external", { _id: id });
-    if (error) toast.error(error.message); else { toast.success("Tilgangen er avsluttet"); await refresh(); }
+    if (error) toast.error(error.message); else { setConfirmRevoke(null); toast.success("Tilgangen er avsluttet"); await refresh(); }
+  };
+  const resend = async (id: string) => {
+    if (!canManage || resending) return;
+    setResending(id);
+    try {
+      const { data, error } = await invokeWithSession<{ ok: boolean; error?: string }>("planning-external-login", { body: { participant_id: id, project_id: projectId } });
+      if (error || !data?.ok) throw error || new Error(data?.error || "Kunne ikke sende tilgangslenken");
+      toast.success("Tilgangslenken er sendt"); await refresh();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Kunne ikke sende tilgangslenken"); }
+    finally { setResending(null); }
   };
   const channel = CHANNEL_LABELS[type];
 
@@ -121,9 +134,9 @@ export function PlanningExternalParticipants({ projectId, projectName }: { proje
             <li key={p.id} className="space-y-1.5 rounded-lg border border-border/40 p-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{[p.company_name, typeLabel(p.participant_type)].filter(Boolean).join(" · ")}</p>
-                  <p className="truncate text-xs text-muted-foreground">{p.email}</p>
+                  <p className="break-words text-sm font-medium text-foreground">{p.name}</p>
+                  <p className="break-words text-xs text-muted-foreground">{[p.company_name, typeLabel(p.participant_type)].filter(Boolean).join(" · ")}</p>
+                  <p className="break-all text-xs text-muted-foreground">{p.email}</p>
                 </div>
                 <Badge variant={s.tone} className="shrink-0">{s.label}</Badge>
               </div>
@@ -131,9 +144,11 @@ export function PlanningExternalParticipants({ projectId, projectName }: { proje
                 {revoked ? "Ingen tilgang" : `Tilgang: dette prosjektet · ${CHANNEL_LABELS[p.participant_type]} + Alle`}
               </p>
               {canManage && !revoked && (
-                <Button variant="ghost" size="sm" className="min-h-11 w-full justify-start text-destructive" onClick={() => revoke(p.id)}>
-                  <UserX className="h-4 w-4" /> Avslutt tilgang
-                </Button>
+                <div className="space-y-1">
+                  <Button variant="outline" size="sm" className="min-h-11 w-full justify-start whitespace-normal text-left" disabled={!!resending} onClick={() => resend(p.id)}><Send className="h-4 w-4 shrink-0" />{resending === p.id ? "Sender…" : "Send tilgangslenke på nytt"}</Button>
+                  {confirmRevoke === p.id ? <div className="space-y-2 border-l-2 border-destructive pl-3"><p className="text-sm">Avslutte {p.name} sin tilgang til dette prosjektet?</p><div className="flex flex-wrap gap-2"><Button variant="ghost" className="min-h-11" onClick={() => setConfirmRevoke(null)}>Behold tilgang</Button><Button variant="destructive" className="min-h-11" onClick={() => revoke(p.id)}>Avslutt tilgang</Button></div></div>
+                  : <Button variant="ghost" size="sm" className="min-h-11 w-full justify-start text-destructive" onClick={() => setConfirmRevoke(p.id)}><UserX className="h-4 w-4" /> Avslutt tilgang</Button>}
+                </div>
               )}
             </li>
           );
