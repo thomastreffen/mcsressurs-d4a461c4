@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const { rpc, invoke } = vi.hoisted(() => ({ rpc: vi.fn(), invoke: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, functions: { invoke } } }));
-import { searchHubPlanningProjects, fetchTripletexPlanningContext, canCreateHubRoot } from "@/lib/resource-plan-projects";
+import { searchHubPlanningProjects, fetchTripletexPlanningContext, canCreateHubRoot, requiresPlanningParent } from "@/lib/resource-plan-projects";
 import { mergeProjectResults, rowLabel } from "@/lib/project-picker";
 vi.mock("@/lib/invoke-session", () => ({ invokeWithSession: (...args: any[]) => invoke(...args) }));
 import { checkParentOpenForNewJob } from "@/lib/parent-open-gate";
@@ -65,8 +65,21 @@ describe("Additive Tripletex resource planning", () => {
     expect(await searchHubPlanningProjects("busbar", "60374")).toEqual([legacy]);
     expect(invoke).not.toHaveBeenCalled();
   });
-  it("active economic integration blocks Hub-only root creation", () => {
+  it("demo/test search remains optional and never blocks Hub root creation", async () => {
+    rpc.mockResolvedValueOnce({ data: [{ economic_project_master: false, test_search_enabled: true }], error: null });
+    const context = await fetchTripletexPlanningContext("service");
+    expect(canCreateHubRoot(context)).toBe(true);
+    expect(context.test_search_enabled).toBe(true);
+    expect(invoke).not.toHaveBeenCalled();
+  });
+  it("active production economic integration blocks Hub-only root creation", () => {
     expect(canCreateHubRoot({ economic_project_master: true, test_search_enabled: true })).toBe(false);
+  });
+  it("existing mode without a selected project blocks before root creation", () => {
+    expect(requiresPlanningParent(false, "existing", null)).toBe(true);
+    expect(requiresPlanningParent(false, "existing", "project")).toBe(false);
+    expect(requiresPlanningParent(false, "new", null)).toBe(false);
+    expect(requiresPlanningParent(true, "existing", null)).toBe(false);
   });
   it("unknown company configuration cannot authorize root creation", () => {
     expect(canCreateHubRoot(null)).toBe(false);

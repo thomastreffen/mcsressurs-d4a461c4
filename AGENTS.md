@@ -14,7 +14,7 @@
 - `events.entity_type` (financial_project/job/service/internal) is the economic classification; `project_type` stays the Resource Plan display type. Only financial_project may carry Tripletex links (DB triggers enforce). Why: avoid mirroring operative jobs as Tripletex projects.
 - Subdirectories have their own `AGENTS.md` (e.g. `supabase/functions/` for Tripletex); read it before changing files there.
 - Tripletex links control integration, not planning eligibility; Hub-only parents stay plan-able. Tripletex-first roots apply only to integrated companies. Shared separator/token search and equivalent SQL rank before limits; only stable active IDs dedupe, never normalized names/numbers. Why: robust discovery without auto-linking.
-- Resource-plan project search and company integration context use caller-scoped RPCs; link presence for saving is checked independently of visible project numbers and an unreadable or cross-company parent is rejected. Why: a missing display number must neither trigger Tripletex for Hub-only work nor bypass a linked project's open-status guard.
+- Resource-plan project search and company integration context use caller-scoped RPCs; economic-master and optional TEST-search flags are independent; existing-mode saves require an explicit parent, and link presence is checked independently of visible project numbers with unreadable/cross-company parents rejected. Why: discovery must not block Hub creation or bypass a linked project's open-status guard.
 
 - Clear drafts/pending writes on save or confirmed discard; persist remaining chapter edits on partial save/reset. Why: saved/rejected edits must not return.
 

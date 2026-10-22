@@ -1,7 +1,7 @@
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { UnifiedProjectPicker } from "@/components/resource-plan/UnifiedProjectPicker";
 import { checkParentOpenForNewJob, ECONOMIC_PROJECT_HINT } from "@/lib/parent-open-gate";
-import { canCreateHubRoot, fetchTripletexPlanningContext, type TripletexPlanningContext } from "@/lib/resource-plan-projects";
+import { canCreateHubRoot, fetchTripletexPlanningContext, requiresPlanningParent, type TripletexPlanningContext } from "@/lib/resource-plan-projects";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useProjectSuggestions, type ProjectSuggestion } from "@/hooks/useProjectSuggestions";
@@ -1092,6 +1092,10 @@ export function EventDrawer({
   // Save: create or update
   const handleSave = async () => {
     if (saving || submitted || readOnly) return;
+    if (requiresPlanningParent(isEditing, mode, selectedJobId)) {
+      toast.error("Velg et eksisterende prosjekt fra listen før du planlegger oppdraget");
+      return;
+    }
     setSaving(true);
     try {
       const { data: session } = await supabase.auth.getSession();
