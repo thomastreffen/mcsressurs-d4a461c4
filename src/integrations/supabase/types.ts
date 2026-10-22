@@ -13296,6 +13296,68 @@ export type Database = {
           },
         ]
       }
+      planning_external_participants: {
+        Row: {
+          accepted_at: string | null
+          access_level: string
+          company_name: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          email: string
+          id: string
+          invite_expires_at: string | null
+          invite_hash: string | null
+          name: string
+          participant_type: string
+          planning_project_id: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          access_level?: string
+          company_name?: string
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email: string
+          id?: string
+          invite_expires_at?: string | null
+          invite_hash?: string | null
+          name: string
+          participant_type: string
+          planning_project_id: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          access_level?: string
+          company_name?: string
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email?: string
+          id?: string
+          invite_expires_at?: string | null
+          invite_hash?: string | null
+          name?: string
+          participant_type?: string
+          planning_project_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_external_participants_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planning_external_refs: {
         Row: {
           created_at: string
@@ -13337,6 +13399,38 @@ export type Database = {
           },
         ]
       }
+      planning_external_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          participant_id: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          participant_id: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          participant_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_external_sessions_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "planning_external_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planning_files: {
         Row: {
           category: string
@@ -13350,6 +13444,7 @@ export type Database = {
           original_file_name: string
           planning_project_id: string
           revision: number
+          shared_visibility: string
           storage_bucket: string
           storage_path: string
           supersedes_file_id: string | null
@@ -13369,6 +13464,7 @@ export type Database = {
           original_file_name: string
           planning_project_id: string
           revision?: number
+          shared_visibility?: string
           storage_bucket?: string
           storage_path: string
           supersedes_file_id?: string | null
@@ -13388,6 +13484,7 @@ export type Database = {
           original_file_name?: string
           planning_project_id?: string
           revision?: number
+          shared_visibility?: string
           storage_bucket?: string
           storage_path?: string
           supersedes_file_id?: string | null
@@ -13509,14 +13606,18 @@ export type Database = {
           author_id: string | null
           author_name: string | null
           body: string
+          channel: string
+          client_request_id: string | null
           created_at: string
           deleted_at: string | null
           deleted_by: string | null
+          external_author_id: string | null
           id: string
           is_important: boolean
           mentioned_department_ids: string[]
           mentioned_user_ids: string[]
           planning_project_id: string
+          recipient_snapshot: Json
           reply_to_id: string | null
           visibility: string
         }
@@ -13527,14 +13628,18 @@ export type Database = {
           author_id?: string | null
           author_name?: string | null
           body: string
+          channel?: string
+          client_request_id?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          external_author_id?: string | null
           id?: string
           is_important?: boolean
           mentioned_department_ids?: string[]
           mentioned_user_ids?: string[]
           planning_project_id: string
+          recipient_snapshot?: Json
           reply_to_id?: string | null
           visibility?: string
         }
@@ -13545,18 +13650,29 @@ export type Database = {
           author_id?: string | null
           author_name?: string | null
           body?: string
+          channel?: string
+          client_request_id?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          external_author_id?: string | null
           id?: string
           is_important?: boolean
           mentioned_department_ids?: string[]
           mentioned_user_ids?: string[]
           planning_project_id?: string
+          recipient_snapshot?: Json
           reply_to_id?: string | null
           visibility?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "planning_messages_external_author_id_fkey"
+            columns: ["external_author_id"]
+            isOneToOne: false
+            referencedRelation: "planning_external_participants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "planning_messages_planning_project_id_fkey"
             columns: ["planning_project_id"]
@@ -13569,6 +13685,32 @@ export type Database = {
             columns: ["reply_to_id"]
             isOneToOne: false
             referencedRelation: "planning_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_project_channels: {
+        Row: {
+          channel: string
+          id: string
+          planning_project_id: string
+        }
+        Insert: {
+          channel: string
+          id?: string
+          planning_project_id: string
+        }
+        Update: {
+          channel?: string
+          id?: string
+          planning_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_project_channels_planning_project_id_fkey"
+            columns: ["planning_project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -13745,8 +13887,10 @@ export type Database = {
           department_id: string | null
           description: string | null
           due_date: string | null
+          external_assignee_id: string | null
           id: string
           planning_project_id: string
+          shared_visibility: string
           status: string
           title: string
           updated_at: string
@@ -13762,8 +13906,10 @@ export type Database = {
           department_id?: string | null
           description?: string | null
           due_date?: string | null
+          external_assignee_id?: string | null
           id?: string
           planning_project_id: string
+          shared_visibility?: string
           status?: string
           title: string
           updated_at?: string
@@ -13779,8 +13925,10 @@ export type Database = {
           department_id?: string | null
           description?: string | null
           due_date?: string | null
+          external_assignee_id?: string | null
           id?: string
           planning_project_id?: string
+          shared_visibility?: string
           status?: string
           title?: string
           updated_at?: string
@@ -13813,6 +13961,13 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_tasks_external_assignee_id_fkey"
+            columns: ["external_assignee_id"]
+            isOneToOne: false
+            referencedRelation: "planning_external_participants"
             referencedColumns: ["id"]
           },
           {
@@ -13855,6 +14010,7 @@ export type Database = {
           responsible_company_id: string | null
           responsible_department_id: string | null
           responsible_person_id: string | null
+          shared_visibility: string
           sort_order: number
           status: string
           updated_at: string
@@ -13882,6 +14038,7 @@ export type Database = {
           responsible_company_id?: string | null
           responsible_department_id?: string | null
           responsible_person_id?: string | null
+          shared_visibility?: string
           sort_order?: number
           status?: string
           updated_at?: string
@@ -13909,6 +14066,7 @@ export type Database = {
           responsible_company_id?: string | null
           responsible_department_id?: string | null
           responsible_person_id?: string | null
+          shared_visibility?: string
           sort_order?: number
           status?: string
           updated_at?: string
@@ -17713,6 +17871,22 @@ export type Database = {
         Args: { _level?: string; _person: string; _uid: string }
         Returns: boolean
       }
+      planning_accept_external: {
+        Args: { _invite_token: string }
+        Returns: Json
+      }
+      planning_channel_audience: {
+        Args: { _channel: string; _project_id: string }
+        Returns: Json
+      }
+      planning_channel_matches: {
+        Args: { _channel: string; _type: string }
+        Returns: boolean
+      }
+      planning_channel_people: {
+        Args: { _channel: string; _project_id: string }
+        Returns: Json
+      }
       planning_companies: {
         Args: never
         Returns: {
@@ -17721,6 +17895,16 @@ export type Database = {
           is_active: boolean
           name: string
         }[]
+      }
+      planning_create_external_invite: {
+        Args: {
+          _company: string
+          _email: string
+          _name: string
+          _project_id: string
+          _type: string
+        }
+        Returns: Json
       }
       planning_eligible_participants: {
         Args: never
@@ -17733,9 +17917,78 @@ export type Database = {
           user_id: string
         }[]
       }
+      planning_external_channel: {
+        Args: { _channel: string; _project_id: string; _token: string }
+        Returns: Json
+      }
+      planning_external_complete_task: {
+        Args: { _task_id: string; _token: string }
+        Returns: undefined
+      }
+      planning_external_file: {
+        Args: { _file_id: string; _token: string }
+        Returns: Json
+      }
+      planning_external_identity: {
+        Args: { _token: string }
+        Returns: {
+          accepted_at: string | null
+          access_level: string
+          company_name: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          email: string
+          id: string
+          invite_expires_at: string | null
+          invite_hash: string | null
+          name: string
+          participant_type: string
+          planning_project_id: string
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "planning_external_participants"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      planning_external_manager: {
+        Args: { _project_id: string }
+        Returns: boolean
+      }
+      planning_external_project: {
+        Args: { _project_id: string; _token: string }
+        Returns: Json
+      }
       planning_finance_access: {
         Args: { _level?: string; _project_id: string }
         Returns: boolean
+      }
+      planning_revoke_external: { Args: { _id: string }; Returns: undefined }
+      planning_send_channel_message: {
+        Args: {
+          _body: string
+          _channel: string
+          _external_ids: string[]
+          _project_id: string
+          _reply_to?: string
+          _request_id: string
+          _token?: string
+        }
+        Returns: string
+      }
+      planning_set_external_sharing: {
+        Args: {
+          _assignee?: string
+          _id: string
+          _kind: string
+          _project_id: string
+          _visibility: string
+        }
+        Returns: undefined
       }
       planning_storage_access: { Args: { _name: string }; Returns: boolean }
       remove_work_visit_from_plan: {
