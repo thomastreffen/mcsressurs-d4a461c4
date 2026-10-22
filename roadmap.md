@@ -1,5 +1,12 @@
 # Roadmap
 
+## Planlegging – eksterne prosjektdeltakere
+- [ ] Prosjektbundet invitasjon og separat ekstern identitet uten Hub-medlemskap
+- [ ] Fire faste samtaler med serverstyrt gruppe- og meldingsmottakertilgang
+- [ ] Inline invitasjon, mottakeroversikt og egne eksterne prosjektflater
+- [ ] Aktiv deling av private filer, oppgaver og arbeidspakker
+- [ ] Isolerte sikkerhetstester og reelle rollebytter uten utsending; rapporter pilotrisiko
+
 ## Ressursplan – stoppregel og sikker testopprydding
 - [x] Fast regel lagret: ingen live testjobber eller utsending til ekte montører; kun isolerte/mockede tester eller verifisert trygg testressurs uten utsending
 - [x] Egne testjobber JOB-000405–409 identifisert ved eksakte UUID-er, client_request_id, skaper, selskap, tidspunkt og testspor; slettetriggere undersøkt
