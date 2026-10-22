@@ -9,7 +9,6 @@ import { PlanningChannelConversation } from "@/components/planning/PlanningChann
 import { CHANNEL_LABELS, type ExternalProjectView, type PlanningChannel } from "@/lib/planning-external";
 import { PLANNING_STATUS_LABELS, formatPeriod, taskStatusLabel, wpStatusLabel, type PlanningStatus } from "@/lib/planning";
 import { toast } from "sonner";
-import logo from "@/assets/mcs/mcs-hub-logo.webp.asset.json";
 
 const storageKey = (id: string) => `planning-external:${id}`;
 export default function PlanningExternalPage() {
@@ -61,7 +60,7 @@ export default function PlanningExternalPage() {
   };
   const view = query.data;
   return <main className="min-h-dvh bg-background text-foreground">
-    <header className="border-b border-border"><div className="mx-auto flex max-w-4xl items-center justify-between gap-3 p-4"><img src={logo.url} alt="MCS Hub" className="h-10 w-32 object-contain" />{token && <Button variant="ghost" className="min-h-11" onClick={logout}><LogOut />Logg ut</Button>}</div></header>
+    <header className="border-b border-border"><div className="mx-auto flex max-w-4xl items-center justify-between gap-3 p-4"><span className="text-xl font-semibold text-primary">MCS Hub</span>{token && <Button variant="ghost" className="min-h-11" onClick={logout}><LogOut />Logg ut</Button>}</div></header>
     <div className="mx-auto max-w-4xl space-y-6 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-6">
       {!token && <section className="space-y-4"><h1 className="text-2xl font-semibold">Invitasjon til prosjektrom</h1><p className="text-sm text-muted-foreground">Tilgangen gjelder bare prosjektet du er invitert til og innhold MCS deler med deg.</p>{invite ? <Button className="min-h-11" onClick={accept} disabled={accepting}><ArrowRight />{accepting ? "Åpner…" : "Godta invitasjon og åpne prosjekt"}</Button> : <p role="alert">Åpne din personlige invitasjonslenke fra e-posten. Utløpte lenker krever ny invitasjon fra MCS.</p>}</section>}
       {token && query.isLoading && <p>Åpner prosjekt…</p>}
@@ -72,12 +71,12 @@ export default function PlanningExternalPage() {
         {tab === "overview" && <section className="space-y-4"><h2 className="text-lg font-semibold">Delte arbeidspakker</h2>{view.work_packages.length === 0 && <p className="text-sm text-muted-foreground">Ingen arbeidspakker er delt med deg ennå.</p>}{view.work_packages.map(w => <article key={w.id} className="space-y-2 rounded-md border border-border p-4"><h3 className="font-semibold">{w.name}</h3><p className="text-sm">{wpStatusLabel(w.status)} · {formatPeriod(w.planned_start,w.planned_end,null)}</p>{w.description && <p className="whitespace-pre-wrap break-words text-sm">{w.description}</p>}</article>)}</section>}
         {tab === "tasks" && <section className="space-y-4"><h2 className="text-lg font-semibold">Delte oppgaver</h2>{view.tasks.length === 0 && <p className="text-sm text-muted-foreground">Ingen oppgaver er delt med deg ennå.</p>}{view.tasks.map(t => <article key={t.id} className="space-y-2 rounded-md border border-border p-4"><h3 className="font-semibold">{t.title}</h3><p className="text-sm">{taskStatusLabel(t.status)}{t.due_date ? ` · Frist ${t.due_date}` : ""}{t.assigned_to_me ? " · Tildelt deg" : ""}</p>{t.description && <p className="whitespace-pre-wrap break-words text-sm">{t.description}</p>}{t.assigned_to_me && t.status !== "done" && <Button className="min-h-11" onClick={() => complete(t.id)}><Check />Marker utført</Button>}</article>)}</section>}
         {tab === "files" && <section className="space-y-3"><h2 className="text-lg font-semibold">Delte filer</h2>{view.files.length === 0 && <p className="text-sm text-muted-foreground">Ingen filer er delt med deg ennå.</p>}{view.files.map(f => <div key={f.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-3"><div className="min-w-0 break-words"><strong>{f.display_name}</strong><p className="text-sm text-muted-foreground">{f.category}</p></div><Button variant="outline" className="min-h-11" onClick={() => openFile(f.id)}><FileDown />Åpne fil</Button></div>)}</section>}
-        {tab === "conversations" && <ExternalConversations projectId={view.project.id} token={token} channels={view.channels} />}
+        {tab === "conversations" && <ExternalConversations projectId={view.project.id} token={token} channels={view.channels} participantId={view.participant.id} />}
       </>}
     </div>
   </main>;
 }
-function ExternalConversations({ projectId, token, channels }: { projectId: string; token: string; channels: PlanningChannel[] }) {
+function ExternalConversations({ projectId, token, channels, participantId }: { projectId: string; token: string; channels: PlanningChannel[]; participantId: string }) {
   const [channel, setChannel] = useState<PlanningChannel>(channels[0] || "all");
-  return <div className="space-y-4"><Tabs value={channel} onValueChange={v => setChannel(v as PlanningChannel)}><TabsList className="grid h-auto w-full grid-cols-2">{channels.map(c => <TabsTrigger key={c} className="min-h-11" value={c}>{CHANNEL_LABELS[c]}</TabsTrigger>)}</TabsList></Tabs><PlanningChannelConversation key={channel} projectId={projectId} channel={channel} token={token} /></div>;
+  return <div className="space-y-4"><Tabs value={channel} onValueChange={v => setChannel(v as PlanningChannel)}><TabsList className="grid h-auto w-full grid-cols-2">{channels.map(c => <TabsTrigger key={c} className="min-h-11" value={c}>{CHANNEL_LABELS[c]}</TabsTrigger>)}</TabsList></Tabs><PlanningChannelConversation key={channel} projectId={projectId} channel={channel} token={token} participantId={participantId} /></div>;
 }

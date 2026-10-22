@@ -9,8 +9,8 @@ import { toast } from "sonner";
 import { planningAudience } from "@/hooks/usePlanningExternal";
 import { CHANNEL_LABELS, chosenRecipients, excludedRecipients, type ChannelMessage, type ChannelPerson, type PlanningChannel } from "@/lib/planning-external";
 
-export function PlanningChannelConversation({ projectId, channel, token, readOnly = false }: {
-  projectId: string; channel: PlanningChannel; token?: string; readOnly?: boolean;
+export function PlanningChannelConversation({ projectId, channel, token, participantId, readOnly = false }: {
+  projectId: string; channel: PlanningChannel; token?: string; participantId?: string; readOnly?: boolean;
 }) {
   const [body, setBody] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -37,8 +37,8 @@ export function PlanningChannelConversation({ projectId, channel, token, readOnl
   });
   const audience = query.data?.audience ?? [];
   useEffect(() => { setSelected([]); setReply(null); setBody(""); }, [projectId, channel, token]);
-  const receiving = chosenRecipients(audience, selected);
-  const excluded = excludedRecipients(audience, selected);
+  const receiving = chosenRecipients(audience, participantId ? [...selected, participantId] : selected);
+  const excluded = excludedRecipients(audience, participantId ? [...selected, participantId] : selected);
   const send = async () => {
     if (readOnly || !body.trim() || sending || !query.data) return;
     setSending(true);
@@ -76,9 +76,9 @@ export function PlanningChannelConversation({ projectId, channel, token, readOnl
     </article>)}</div>
     <div className="space-y-3 border-t border-border pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {reply && <div className="flex items-center justify-between gap-2 bg-muted p-2 text-sm"><p className="truncate">Svar til {reply.author_name}: {reply.body}</p><Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label="Avbryt svar" onClick={() => setReply(null)}><X /></Button></div>}
-      {audience.some(p => p.kind === "external") && <fieldset className="space-y-1" disabled={readOnly || sending}>
+      {audience.some(p => p.kind === "external" && p.id !== participantId) && <fieldset className="space-y-1" disabled={readOnly || sending}>
         <legend className="text-sm font-semibold">Velg eksterne mottakere</legend>
-        {audience.filter(p => p.kind === "external").map(p => <label key={p.id} className="flex min-h-11 items-center gap-3 text-sm"><Checkbox checked={selected.includes(p.id)} onCheckedChange={checked => setSelected(ids => checked ? [...ids, p.id] : ids.filter(id => id !== p.id))} /><span>{p.name} · {p.company_name || CHANNEL_LABELS[p.participant_type ?? "supplier"]}</span></label>)}
+        {audience.filter(p => p.kind === "external" && p.id !== participantId).map(p => <label key={p.id} className="flex min-h-11 items-center gap-3 text-sm"><Checkbox checked={selected.includes(p.id)} onCheckedChange={checked => setSelected(ids => checked ? [...ids, p.id] : ids.filter(id => id !== p.id))} /><span>{p.name} · {p.company_name || CHANNEL_LABELS[p.participant_type ?? "supplier"]}</span></label>)}
       </fieldset>}
       <p className="break-words text-sm"><strong>Kan lese denne meldingen: </strong>{receiving.map(p => p.name).join(", ") || "Interne MCS-planleggere"}</p>
       <p className="break-words text-sm text-muted-foreground"><strong>Får ikke meldingen: </strong>{excluded.map(p => p.name).join(", ") || "Ingen utelatte eksterne i denne samtalen"}</p>
