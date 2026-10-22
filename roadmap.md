@@ -9,7 +9,7 @@
 - [x] Aktiv deling av private filer, oppgaver og arbeidspakker; offentlig legacy-fil avvist; 60-sekunders signert URL kontrollert inkludert utløp
 - [x] Reelle eksterne tokenbytter, internvisning av alle fire tråder, melding sendt og lest tilbake; 298 tester og automatisk bygg OK
 - [x] Samtidig invitasjon/engangsaksept, null-parametre, utlogging og tilbakekalling avvist server-side; testdeltakere tilbakekalt, 8 testfiler fjernet og to isolerte prosjekter arkivert
-- [ ] Faktisk invitasjonse-post → mottak → lenke fra innboksen: krever eksplisitt godkjenning og avtalt isolert testmottaker; ingen ekte utsending utført, ikke pilotklar
+- [ ] Kontrollert faktisk invitasjon kun til tt@mcsservice.no (godkjent 22.10.2026): isolert testprosjekt, leverandørrolle, Microsoft-aksept og prosjekt/token-kontekst; innboksåpning må bekreftes manuelt
 
 ## Ressursplan – stoppregel og sikker testopprydding
 - [x] Fast regel lagret: ingen live testjobber eller utsending til ekte montører; kun isolerte/mockede tester eller verifisert trygg testressurs uten utsending
