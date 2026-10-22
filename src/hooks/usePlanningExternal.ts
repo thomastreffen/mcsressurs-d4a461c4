@@ -10,7 +10,7 @@ export function usePlanningExternal(projectId: string) {
     queryKey: ["planning-external-participants", projectId],
     queryFn: async () => {
       const { data, error } = await supabase.from("planning_external_participants")
-        .select("id,name,email,company_name,participant_type,status").eq("planning_project_id", projectId).is("deleted_at", null);
+        .select("id,name,email,company_name,participant_type,status").eq("planning_project_id", projectId).or("deleted_at.is.null,status.eq.revoked");
       if (error) throw error;
       return data as ExternalParticipant[];
     },
