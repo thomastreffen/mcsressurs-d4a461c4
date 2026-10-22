@@ -350,8 +350,8 @@ export function EventDrawer({
       setEndTime(nextEndTime);
       setEndDate(nextDate ? autoAdjustEndDate(nextDate, nextStartTime, nextEndTime) : "");
       setTechIds(preselectedTechId ? [preselectedTechId] : []);
-      // Economic projects are owned by Tripletex: project type always starts in existing/search.
-      setMode("existing");
+      // Calendar creation stays Hub-first; only confirmed production context overrides this.
+      setMode(projectId ? "existing" : "new");
       setEventType("project");
       setSelectedJobId(projectId || null);
       setSelectedJobSnapshot(null);
@@ -1731,7 +1731,7 @@ export function EventDrawer({
                   variant={eventType === "project" ? "default" : "ghost"}
                   size="sm"
                   className="h-9 text-xs rounded-md flex-1 gap-1.5"
-                  onClick={() => { setEventType("project"); setMode("existing"); }}
+                  onClick={() => { setEventType("project"); setMode(hubRootAllowed ? "new" : "existing"); }}
                 >
                   <FolderKanban className="h-3.5 w-3.5" />
                   Prosjekt
