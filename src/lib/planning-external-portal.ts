@@ -18,5 +18,6 @@ export async function upgradeExternalSession(projectToken: string) {
   if (error) throw error;
   const result = data as { portal_token: string };
   sessionStorage.setItem(EXTERNAL_PORTAL_KEY, result.portal_token);
+  Object.keys(sessionStorage).filter(key => key.startsWith("planning-external:") && key !== EXTERNAL_PORTAL_KEY).forEach(key => sessionStorage.removeItem(key));
   return result.portal_token;
 }
