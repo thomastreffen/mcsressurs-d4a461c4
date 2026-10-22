@@ -9,7 +9,8 @@
 - [x] Aktiv deling av private filer, oppgaver og arbeidspakker; offentlig legacy-fil avvist; 60-sekunders signert URL kontrollert inkludert utløp
 - [x] Reelle eksterne tokenbytter, internvisning av alle fire tråder, melding sendt og lest tilbake; 298 tester og automatisk bygg OK
 - [x] Samtidig invitasjon/engangsaksept, null-parametre, utlogging og tilbakekalling avvist server-side; testdeltakere tilbakekalt, 8 testfiler fjernet og to isolerte prosjekter arkivert
-- [ ] Kontrollert faktisk invitasjon kun til tt@mcsservice.no (godkjent 22.10.2026): isolert testprosjekt, leverandørrolle, Microsoft-aksept og prosjekt/token-kontekst; innboksåpning må bekreftes manuelt
+- [x] Én faktisk invitasjon kun til tt@mcsservice.no sendt 22.10.2026 kl. 09:52 UTC; Microsoft 202 / funksjon 200 ok; prosjekt 025618e0-be5d-40b9-907f-c438d46d6ce6 «TEST – ekstern invitasjon tt – 22.10.2026», supplier/standard; malens MCS/prosjekt/avsender/rolle/fragmentlenke kontrollert, ingen andre mottakere
+- [ ] Testmottaker må bekrefte innboksmottak og åpne mottatt engangslenke (utløp 24.10.2026 kl. 09:52 UTC); lenken er ikke brukt eller tilbakekalt; deretter trygg opprydding av denne invitasjonen/prosjektet; fortsatt ikke pilotklar
 
 ## Ressursplan – stoppregel og sikker testopprydding
 - [x] Fast regel lagret: ingen live testjobber eller utsending til ekte montører; kun isolerte/mockede tester eller verifisert trygg testressurs uten utsending
