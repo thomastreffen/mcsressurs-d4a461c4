@@ -18,7 +18,7 @@ export function PlanningChannelConversation({ projectId, channel, token, partici
   const [sending, setSending] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const query = useQuery({
-    queryKey: ["planning-channel", projectId, channel, token ? "external" : "internal"],
+    queryKey: ["planning-channel", projectId, channel, token || "internal"],
     refetchInterval: 15000,
     queryFn: async () => {
       if (token) {

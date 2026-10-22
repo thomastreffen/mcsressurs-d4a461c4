@@ -1,24 +1,50 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, FileDown, Check, ArrowRight } from "lucide-react";
+import { FileDown, Check, ArrowRight, ArrowLeft } from "lucide-react";
+import { ExternalHubHeader } from "@/components/planning/ExternalHubHeader";
+import { clearExternalStorage, EXTERNAL_PORTAL_KEY, externalProjectKey, upgradeExternalSession } from "@/lib/planning-external-portal";
 import { PlanningChannelConversation } from "@/components/planning/PlanningChannelConversation";
 import { CHANNEL_LABELS, type ExternalProjectView, type PlanningChannel } from "@/lib/planning-external";
 import { PLANNING_STATUS_LABELS, formatPeriod, taskStatusLabel, wpStatusLabel, type PlanningStatus } from "@/lib/planning";
 import { toast } from "sonner";
 
-const storageKey = (id: string) => `planning-external:${id}`;
 export default function PlanningExternalPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [invite, setInvite] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("invite") || "");
-  const [token, setToken] = useState(() => id ? sessionStorage.getItem(storageKey(id)) || "" : "");
+  const [invite, setInvite] = useState(() => {
+    const value = new URLSearchParams(window.location.hash.slice(1)).get("invite") || "";
+    if (value) window.history.replaceState(null, "", window.location.pathname);
+    return value;
+  });
+  const [token, setToken] = useState("");
+  const [opening, setOpening] = useState(true);
+  const [openError, setOpenError] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [tab, setTab] = useState("overview");
+  useEffect(() => {
+    let current = true;
+    setToken(""); setOpening(true); setOpenError(false); setTab("overview");
+    const open = async () => {
+      if (!id || invite) { if (current) setOpening(false); return; }
+      try {
+        let portal = sessionStorage.getItem(EXTERNAL_PORTAL_KEY);
+        const legacy = sessionStorage.getItem(externalProjectKey(id));
+        if (!portal && legacy) portal = await upgradeExternalSession(legacy);
+        if (!portal) { if (current) setOpening(false); return; }
+        const { data, error } = await supabase.rpc("planning_external_open_project", { _token: portal, _project_id: id });
+        if (error) throw error;
+        if (current) setToken((data as { session_token: string }).session_token);
+      } catch { if (current) setOpenError(true); }
+      finally { if (current) setOpening(false); }
+    };
+    void open();
+    return () => { current = false; };
+  }, [id, invite]);
   const query = useQuery({
     queryKey: ["planning-external-project", id, token], enabled: !!id && !!token,
     retry: false, refetchInterval: 15000,
@@ -35,17 +61,22 @@ export default function PlanningExternalPage() {
       const { data, error } = await supabase.rpc("planning_accept_external", { _invite_token: invite });
       if (error) throw error;
       const result = data as { session_token: string; project_id: string };
-      sessionStorage.setItem(storageKey(result.project_id), result.session_token);
-      setToken(result.session_token); setInvite("");
+      sessionStorage.setItem(externalProjectKey(result.project_id), result.session_token);
+      await upgradeExternalSession(result.session_token);
+      setInvite("");
       navigate(`/planlegging/ekstern/${result.project_id}`, { replace: true });
     } catch (e) { toast.error(e instanceof Error ? e.message : "Invitasjonen kunne ikke åpnes"); }
     finally { setAccepting(false); }
   };
   const logout = async () => {
-    await supabase.rpc("planning_external_logout", { _token: token });
-    if (id) sessionStorage.removeItem(storageKey(id));
+    const portal = sessionStorage.getItem(EXTERNAL_PORTAL_KEY);
+    const { error } = portal ? await supabase.rpc("planning_external_portal_logout", { _token: portal }) : await supabase.rpc("planning_external_logout", { _token: token });
+    if (error) { toast.error("Kunne ikke logge ut. Prøv igjen."); return; }
+    clearExternalStorage();
     setToken(""); queryClient.removeQueries({ queryKey: ["planning-external-project"] });
     queryClient.removeQueries({ queryKey: ["planning-channel"] });
+    queryClient.removeQueries({ queryKey: ["planning-external-portal"] });
+    navigate("/ekstern", { replace: true });
   };
   const openFile = async (fileId: string) => {
     try {
@@ -60,9 +91,12 @@ export default function PlanningExternalPage() {
   };
   const view = query.data;
   return <main className="min-h-dvh bg-background text-foreground">
-    <header className="border-b border-border"><div className="mx-auto flex max-w-4xl items-center justify-between gap-3 p-4"><span className="text-xl font-semibold text-primary">MCS Hub</span>{token && <Button variant="ghost" className="min-h-11" onClick={logout}><LogOut />Logg ut</Button>}</div></header>
+    <ExternalHubHeader onLogout={token ? logout : undefined} />
     <div className="mx-auto max-w-4xl space-y-6 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-6">
-      {!token && <section className="space-y-4"><h1 className="text-2xl font-semibold">Invitasjon til prosjektrom</h1><p className="text-sm text-muted-foreground">Tilgangen gjelder bare prosjektet du er invitert til og innhold MCS deler med deg.</p>{invite ? <Button className="min-h-11" onClick={accept} disabled={accepting}><ArrowRight />{accepting ? "Åpner…" : "Godta invitasjon og åpne prosjekt"}</Button> : <p role="alert">Åpne din personlige invitasjonslenke fra e-posten. Utløpte lenker krever ny invitasjon fra MCS.</p>}</section>}
+      <Button asChild variant="ghost" className="min-h-11"><Link to="/ekstern"><ArrowLeft className="h-4 w-4" />Mine prosjekter</Link></Button>
+      {opening && <p role="status">Åpner prosjekt…</p>}
+      {openError && <section className="space-y-3"><h1 className="text-xl font-semibold">Ingen tilgang til prosjektet</h1><p className="text-sm text-muted-foreground">Velg et prosjekt fra Mine prosjekter, eller be om en ny tilgangslenke.</p><Button asChild className="min-h-11"><Link to="/ekstern">Gå til Mine prosjekter</Link></Button></section>}
+      {!token && !opening && !openError && <section className="space-y-4"><h1 className="text-2xl font-semibold">Invitasjon til prosjektrom</h1><p className="text-sm text-muted-foreground">Tilgangen gjelder bare prosjektet du er invitert til og innhold MCS deler med deg.</p>{invite ? <Button className="min-h-11" onClick={accept} disabled={accepting}><ArrowRight />{accepting ? "Åpner…" : "Godta invitasjon og åpne prosjekt"}</Button> : <Button asChild className="min-h-11"><Link to="/ekstern"><ArrowRight />Logg inn på Mine prosjekter</Link></Button>}</section>}
       {token && query.isLoading && <p>Åpner prosjekt…</p>}
       {token && query.isError && <section className="space-y-3"><h1 className="text-xl font-semibold">Ingen tilgang til prosjektet</h1><p>Tilgangen er utløpt eller tilbakekalt. Kontakt den som inviterte deg.</p><Button variant="outline" className="min-h-11" onClick={logout}>Avslutt</Button></section>}
       {token && view && !query.isError && <>
