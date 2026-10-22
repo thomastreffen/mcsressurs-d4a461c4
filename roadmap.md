@@ -1,5 +1,12 @@
 # Roadmap
 
+## Ressursplan – stoppregel og sikker testopprydding
+- [x] Fast regel lagret: ingen live testjobber eller utsending til ekte montører; kun isolerte/mockede tester eller verifisert trygg testressurs uten utsending
+- [x] Egne testjobber JOB-000405–409 identifisert ved eksakte UUID-er, client_request_id, skaper, selskap, tidspunkt og testspor; slettetriggere undersøkt
+- [x] Kun disse fem oppdragene soft-deletet via direkte dataendring; 13 bekreftelseslenker rotert/utløpt og påminnelser satt på pause uten statusendringer eller ny utsending
+- [x] Verifisert: fem oppdrag soft-deletet, null aktive kalenderblokker, null aktive bekreftelser; foreldreprosjekt JOB-000381 / 60521 urørt
+- [ ] Eventuelle Outlook-rester etter JOB-000405/406: krever separat, verifisert varslingfri fjerning; ingen avlysnings-/sletteutsending startet
+
 ## Ressursplan – presis opprettelsesvalidering
 - [x] Ett normalisert skjema brukes i validering og opprettelse; konkret manglende felt vises og fokuseres. Første reproduksjon dekket bare Nytt prosjekt med tom tittel, ikke brukerens Eksisterende-flyt.
 - [x] JOB-000406 opprettet og gjenåpnet i kalenderen 9./10./11. november med Emil, Marcus, Mats og validering-test.png; alle ni kalenderblokker bekreftet
@@ -8,7 +15,7 @@
 ## Ressursplan – valgt eksisterende prosjekt og navnearv
 - [x] Eksisterende-valg bruker selectedJobId som identitet, valgfritt title og company-autorisert parent.title som fallback i payload; eget oppdragsnavn eksplisitt valgfritt
 - [x] Tilgjengelig eksisterende 60521 valgt uten eget navn: JOB-000407/408/409 lagret 9./10./11. november med Emil/Marcus/Mats, ni blokker gjenåpnet; vedlegg på hovedbesøket bekreftet. Andre gjennomkjøring gjenbrukte samme besøk via eksisterende duplicate-/idempotensregler.
-- [ ] Eksakt 60554/Ringnes-case ende til ende: prosjektet finnes ikke i tilgjengelige events eller picker; krever at det konkrete prosjektet blir tilgjengelig, ikke opprettet/matchet kunstig
+- [ ] Eksakt 60554/Ringnes-case ende til ende: krever isolert testmiljø/mock eller verifisert trygg testressurs uten utsending; skal aldri gjennomføres på ekte montører i produksjon
 - [x] 289 tester grønne, inkludert 60554-navnearv og valgfri overstyring; automatisk bygg OK
 
 ## Ressursplan – testkobling må ikke blokkere opprettelse
