@@ -19,3 +19,8 @@ export async function searchHubPlanningProjects(companyId: string, query: string
 export function canCreateHubRoot(context: TripletexPlanningContext | null): boolean {
   return context?.economic_project_master === false;
 }
+
+/** Existing mode must never silently fall through to root creation. */
+export function requiresPlanningParent(isEditing: boolean, mode: "new" | "existing", parentId: string | null): boolean {
+  return !isEditing && mode === "existing" && !parentId;
+}

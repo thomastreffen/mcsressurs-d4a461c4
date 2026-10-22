@@ -1,7 +1,7 @@
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { UnifiedProjectPicker } from "@/components/resource-plan/UnifiedProjectPicker";
 import { checkParentOpenForNewJob, ECONOMIC_PROJECT_HINT } from "@/lib/parent-open-gate";
-import { canCreateHubRoot, fetchTripletexPlanningContext, type TripletexPlanningContext } from "@/lib/resource-plan-projects";
+import { canCreateHubRoot, fetchTripletexPlanningContext, requiresPlanningParent, type TripletexPlanningContext } from "@/lib/resource-plan-projects";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useProjectSuggestions, type ProjectSuggestion } from "@/hooks/useProjectSuggestions";
@@ -350,8 +350,8 @@ export function EventDrawer({
       setEndTime(nextEndTime);
       setEndDate(nextDate ? autoAdjustEndDate(nextDate, nextStartTime, nextEndTime) : "");
       setTechIds(preselectedTechId ? [preselectedTechId] : []);
-      // Economic projects are owned by Tripletex: project type always starts in existing/search.
-      setMode("existing");
+      // Calendar creation stays Hub-first; only confirmed production context overrides this.
+      setMode(projectId ? "existing" : "new");
       setEventType("project");
       setSelectedJobId(projectId || null);
       setSelectedJobSnapshot(null);
@@ -1092,6 +1092,10 @@ export function EventDrawer({
   // Save: create or update
   const handleSave = async () => {
     if (saving || submitted || readOnly) return;
+    if (requiresPlanningParent(isEditing, mode, selectedJobId)) {
+      toast.error("Velg et eksisterende prosjekt fra listen før du planlegger oppdraget");
+      return;
+    }
     setSaving(true);
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -1727,7 +1731,7 @@ export function EventDrawer({
                   variant={eventType === "project" ? "default" : "ghost"}
                   size="sm"
                   className="h-9 text-xs rounded-md flex-1 gap-1.5"
-                  onClick={() => { setEventType("project"); setMode("existing"); }}
+                  onClick={() => { setEventType("project"); setMode(hubRootAllowed ? "new" : "existing"); }}
                 >
                   <FolderKanban className="h-3.5 w-3.5" />
                   Prosjekt

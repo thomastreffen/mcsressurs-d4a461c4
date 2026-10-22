@@ -1,5 +1,10 @@
 # Roadmap
 
+## Ressursplan – testkobling må ikke blokkere opprettelse
+- [x] Økonomisk master kun ved aktiv produksjonskobling; frivillig TEST-søk beholdes (migrasjon 0047)
+- [x] Nytt prosjekt som kalenderstandard uten produksjonsmaster; tydelig validering ved manglende eksisterende prosjekt; flerdagsvalg og vedlegg beholdes
+- [x] 281 tester grønne, bygg OK; TEST – kalenderretting 22.10.2026 / JOB-000405 lagret til Thomas i MCS Service med kun TEST-kobling, 23. og 26. oktober, vedlegg gjenåpnet og begge kalenderuker verifisert
+
 ## Oppdragsgodkjenning – 401 Invalid user
 - [x] Signing-key-kompatibel validering og alle ti godkjenningsanrop sesjonssikret uten mutasjonsretry
 - [x] 276 tester grønne, bygg OK; deployet tjeneste godtar ekte innlogging (400 Missing job_id uten skriving), avviser ugyldig bearer (401); ingen eksisterende oppdrag sendt på nytt
