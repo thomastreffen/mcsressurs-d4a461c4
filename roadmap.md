@@ -2,8 +2,10 @@
 
 ## Ressursplan – stoppregel og sikker testopprydding
 - [x] Fast regel lagret: ingen live testjobber eller utsending til ekte montører; kun isolerte/mockede tester eller verifisert trygg testressurs uten utsending
-- [ ] Identifiser egne testjobber JOB-000405–409 med proveniens og undersøk slettetriggere/utsending før endring
-- [ ] Soft-delete kun bekreftede egne testjobber, fjern dem fra kalender og stopp utestående bekreftelser uten ny brukerutsending; verifiser resultat
+- [x] Egne testjobber JOB-000405–409 identifisert ved eksakte UUID-er, client_request_id, skaper, selskap, tidspunkt og testspor; slettetriggere undersøkt
+- [x] Kun disse fem oppdragene soft-deletet via direkte dataendring; 13 bekreftelseslenker rotert/utløpt og påminnelser satt på pause uten statusendringer eller ny utsending
+- [ ] Verifiser at ingen aktive kalenderblokker/bekreftelser gjenstår, og at foreldreprosjektet er urørt
+- [ ] Eventuelle Outlook-rester etter JOB-000405/406: krever separat, verifisert varslingfri fjerning; ingen avlysnings-/sletteutsending startet
 
 ## Ressursplan – presis opprettelsesvalidering
 - [x] Ett normalisert skjema brukes i validering og opprettelse; konkret manglende felt vises og fokuseres. Første reproduksjon dekket bare Nytt prosjekt med tom tittel, ikke brukerens Eksisterende-flyt.
