@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExternalLink } from "lucide-react";
 import { PlanningParticipants } from "./PlanningParticipants";
+import { PlanningExternalParticipants } from "./PlanningExternalParticipants";
 import { PlanningWorkLine } from "./PlanningWorkLine";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -275,6 +276,7 @@ export function PlanningOverview({
 
       <div className="space-y-6">
         <PlanningParticipants project={project} />
+        <PlanningExternalParticipants projectId={project.id} projectName={project.name} />
         <Card className="space-y-3 p-4">
           <h2 className="text-sm font-semibold text-foreground">Nøkkeltall</h2>
           <div className="space-y-2 text-sm">
