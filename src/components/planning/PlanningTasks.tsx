@@ -19,6 +19,9 @@ import {
 } from "@/hooks/usePlanning";
 import { TASK_STATUSES, taskStatusLabel } from "@/lib/planning";
 import { PlanningSharing } from "./PlanningSharing";
+import { PersonAssigneePicker } from "./PersonAssigneePicker";
+import { usePersonDirectory } from "@/hooks/useMyPlanningTasks";
+import { BellOff } from "lucide-react";
 
 const NONE = "__none__";
 
@@ -39,9 +42,6 @@ function TaskEditor({
   const [t, setT] = useState<Partial<PlanningTask>>(initial);
   const set = (p: Partial<PlanningTask>) => setT({ ...t, ...p });
   const departments = (lookups?.departments ?? []).filter((d) => !t.company_id || d.company_id === t.company_id);
-  const people = (lookups?.people ?? []).filter(
-    (p) => (!t.company_id || p.company_id === t.company_id) && (!t.department_id || p.department_id === t.department_id),
-  );
 
   const pickWp = (v: string) => {
     const wp = workPackages.find((w) => w.id === v);
@@ -136,6 +136,7 @@ export function PlanningTasks({
 }) {
   const { data: lookups } = usePlanningLookups();
   const { saveTask, deleteTask } = usePlanningMutations(projectId);
+  const { data: directory = [] } = usePersonDirectory();
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
 
   const nameOf = (list: { id: string; name: string }[] | undefined, id: string | null | undefined) =>
@@ -181,7 +182,10 @@ export function PlanningTasks({
                 {[nameOf(lookups?.companies, t.company_id), nameOf(lookups?.departments as any, t.department_id)].filter(Boolean).join(" · ")}
               </Badge>
             )}
-            <span>{nameOf(lookups?.people as any, t.assignee_person_id) ?? "Ingen ansvarlig person"}</span>
+            <span>{directory.find((p) => p.id === t.assignee_person_id)?.name ?? nameOf(lookups?.people as any, t.assignee_person_id) ?? "Ingen ansvarlig person"}</span>
+            {t.assignee_person_id && directory.some((p) => p.id === t.assignee_person_id && !p.canNotify) && (
+              <span className="inline-flex items-center gap-1"><BellOff className="h-3 w-3" /> Kan ikke varsles ennå</span>
+            )}
             {t.due_date && <span>· Frist {format(new Date(t.due_date), "d. MMM", { locale: nb })}</span>}
             {t.status !== "done" && t.status !== "open" && <Badge variant="outline">{taskStatusLabel(t.status)}</Badge>}
           </div>
