@@ -8,7 +8,7 @@ import { FileDown, Check, ArrowRight, ArrowLeft } from "lucide-react";
 import { ExternalHubHeader } from "@/components/planning/ExternalHubHeader";
 import { clearExternalStorage, EXTERNAL_PORTAL_KEY, externalProjectKey, upgradeExternalSession } from "@/lib/planning-external-portal";
 import { PlanningChannelConversation } from "@/components/planning/PlanningChannelConversation";
-import { CHANNEL_LABELS, type ExternalProjectView, type PlanningChannel } from "@/lib/planning-external";
+import { CHANNEL_LABELS, CLOSED_PROJECT_TEXT, externalCanWrite, type ExternalProjectView, type PlanningChannel } from "@/lib/planning-external";
 import { PLANNING_STATUS_LABELS, formatPeriod, taskStatusLabel, wpStatusLabel, type PlanningStatus } from "@/lib/planning";
 import { toast } from "sonner";
 
