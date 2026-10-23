@@ -187,6 +187,7 @@ import PortalNotificationSettings from "./pages/portal/PortalNotificationSetting
 import PortalNotificationsPage from "./pages/portal/PortalNotificationsPage";
 import { PortalProvider } from "@/hooks/usePortal";
 import HubHome from "./pages/public/HubHome";
+import OAuthConsent from "./pages/OAuthConsent";
 import { MountProbe } from "@/lib/debugMount";
 
 // Default data-fetching behavior for the whole app: do not reload everything
@@ -255,6 +256,7 @@ const App = () => (
             <Route path="/bestill-service" element={<Navigate to="/" replace />} />
 
             <Route path="/login" element={<HubHome />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/approval/:token" element={<ApprovalPage />} />
             <Route path="/offer/accept/:token" element={<OfferAcceptPage />} />

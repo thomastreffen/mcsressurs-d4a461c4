@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "sdk_version": "3.2.2",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://nmqycanqumelmfpdmkpr.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "mcs-kontrollsenter",
+      "version": "0.1.0",
+      "title": "MCS Kontrollsenter"
+    },
+    "tools": [
+      {
+        "name": "upload_competence_document",
+        "title": "Last opp kompetansedokument",
+        "description": "Upload a PDF certificate as documentation for one competence record (compliance_competences.id). Provide the PDF either as base64 (pdf_base64) or as an https URL (pdf_url). Max 10 MB. Runs as the signed-in Hub user; requires HMS edit rights in the competence's company. Replaces the record's linked document.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "competence_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "ID of the competence record"
+            },
+            "file_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "File name, e.g. lift-bevis.pdf"
+            },
+            "pdf_base64": {
+              "description": "PDF content as base64",
+              "type": "string"
+            },
+            "pdf_url": {
+              "description": "https URL to download the PDF from",
+              "type": "string",
+              "format": "uri"
+            },
+            "client_request_id": {
+              "description": "Optional idempotency key",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "required": [
+            "competence_id",
+            "file_name"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
