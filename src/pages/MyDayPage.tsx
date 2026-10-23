@@ -1,3 +1,4 @@
+import { MyPlanningTasks } from "@/components/planning/MyPlanningTasks";
 import { useState, useRef, useCallback } from "react";
 import { checkRequiredForms } from "@/components/forms/ProjectFormsSection";
 import { useNavigate } from "react-router-dom";
@@ -720,6 +721,8 @@ export default function MyDayPage() {
                 </CardContent>
               </Card>
             )}
+
+            <MyPlanningTasks />
 
             {unreadMessages.length > 0 && (
               <section aria-label="Nye meldinger">

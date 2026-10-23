@@ -379,6 +379,20 @@
       "when": 1792672113182,
       "tag": "0053_planning_external_revoke_login_links",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1792741862333,
+      "tag": "0054_planning_person_identity_and_my_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1792741885023,
+      "tag": "0055_user_accounts_auto_verify_exact_email",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CreatePersonDialog } from "@/components/CreatePersonDialog";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
+import { PersonLoginLinkReview } from "@/components/admin/PersonLoginLinkReview";
 
 interface PersonRow {
   id: string;
@@ -256,6 +257,8 @@ export default function PeoplePage() {
           </DropdownMenu>
         </div>
       </div>
+
+      {isSuperAdmin && <PersonLoginLinkReview />}
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

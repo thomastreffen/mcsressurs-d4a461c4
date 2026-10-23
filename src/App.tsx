@@ -107,6 +107,7 @@ import ProjectClassificationPage from "./pages/ProjectClassificationPage";
 import ManagementPage from "./pages/ManagementPage";
 import AbsencePage from "./pages/AbsencePage";
 import MyDayPage from "./pages/MyDayPage";
+import TasksPage from "./pages/TasksPage";
 import CompanyMigrationPage from "./pages/CompanyMigrationPage";
 import HelpCenterPage from "./pages/HelpCenterPage";
 import OrderFormsPage from "./pages/OrderFormsPage";
@@ -307,6 +308,7 @@ const App = () => (
               } />
               <Route path="/dashboard" element={<RoleHomeRedirect />} />
               <Route path="/tasks" element={<RoleHomeRedirect />} />
+              <Route path="/oppgaver" element={<TasksPage />} />
               <Route path="/projects" element={<JobsPage />} />
               <Route path="/projects/new" element={<ProjectNewPage />} />
               <Route path="/projects/import-tripletex" element={<TripletexProjectImportPage />} />

@@ -1,3 +1,4 @@
+import { MyPlanningTasks } from "@/components/planning/MyPlanningTasks";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -373,6 +374,8 @@ export default function OverviewPage() {
           <QuickAction icon={<TriangleAlert className="h-3.5 w-3.5" />} label="Avvik" onClick={() => navigate("/jobs")} />
         </div>
       </div>
+
+      <div className="mb-8"><MyPlanningTasks /></div>
 
       {/* ─── KPI Row ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3 mb-8">

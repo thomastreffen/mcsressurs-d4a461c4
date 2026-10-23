@@ -24,3 +24,5 @@
 - Calendar/Tripletex/approval calls use invokeWithSession: await hydration, pin bearer, share refresh; only allow-listed reads retry once on 401, never mutations/403. Why: no anonymous requests or replayed writes.
 
 - HMS control uses company-scoped RPCs/triggers for immutable signed versions/original risk, explicit residual decisions, atomic due-date recurrence and append-only audit; UI locking is insufficient.
+- `user_accounts` is the only person↔login link (one active per person and per login, verified_at/link_source set only by trigger or super-admin RPC); task recipients resolve via it, never by email, and `user_accounts.company_id` is never a responsibility line. Why: notifications must reach exactly the verified person.
+- Planning tasks stay in `planning_tasks` only; recipient views read `my_planning_tasks()` and assignee org context is validated against active employment by trigger. Why: one object, no duplicates, no wrong-company assignment.

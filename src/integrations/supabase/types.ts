@@ -16295,7 +16295,10 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          link_source: string
           person_id: string
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           auth_user_id: string
@@ -16303,7 +16306,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          link_source?: string
           person_id: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           auth_user_id?: string
@@ -16311,7 +16317,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          link_source?: string
           person_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {
@@ -17335,6 +17344,10 @@ export type Database = {
         Args: { _submission_id: string }
         Returns: Json
       }
+      confirm_person_login_link: {
+        Args: { _person_id: string }
+        Returns: undefined
+      }
       create_material_suggestion: {
         Args: {
           p_comment: string
@@ -17956,6 +17969,23 @@ export type Database = {
           org_number: string
         }[]
       }
+      my_planning_tasks: {
+        Args: never
+        Returns: {
+          can_open_project: boolean
+          company_name: string
+          department_name: string
+          description: string
+          due_date: string
+          id: string
+          planning_project_id: string
+          project_name: string
+          status: string
+          title: string
+          updated_at: string
+          work_package_name: string
+        }[]
+      }
       normalize_project_search: { Args: { _value: string }; Returns: string }
       order_submission_allows_public_child_insert: {
         Args: { _submission_id: string }
@@ -17972,6 +18002,20 @@ export type Database = {
         Returns: boolean
       }
       person_has_employment: { Args: { _person_id: string }; Returns: boolean }
+      person_has_verified_login: {
+        Args: { _person_id: string }
+        Returns: boolean
+      }
+      person_login_link_review: {
+        Args: never
+        Returns: {
+          companies: string
+          email: string
+          full_name: string
+          issue: string
+          person_id: string
+        }[]
+      }
       person_module_access: {
         Args: { _level?: string; _person: string; _uid: string }
         Returns: boolean
@@ -18102,6 +18146,19 @@ export type Database = {
       planning_finance_access: {
         Args: { _level?: string; _project_id: string }
         Returns: boolean
+      }
+      planning_person_directory: {
+        Args: never
+        Returns: {
+          can_notify: boolean
+          company_id: string
+          company_name: string
+          department_id: string
+          department_name: string
+          full_name: string
+          is_primary: boolean
+          person_id: string
+        }[]
       }
       planning_revoke_external: { Args: { _id: string }; Returns: undefined }
       planning_send_channel_message: {

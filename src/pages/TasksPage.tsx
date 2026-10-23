@@ -1,3 +1,4 @@
+import { MyPlanningTasks } from "@/components/planning/MyPlanningTasks";
 import { useState, useEffect } from "react";
 import {
   ListChecks, Plus, Filter, CheckCircle2, Circle,
@@ -189,6 +190,8 @@ export default function TasksPage() {
           <FolderKanban className="h-3 w-3" /> {projectCount} prosjekt
         </Badge>
       </div>
+
+      <div className="mb-6"><MyPlanningTasks title="Fra Planlegging" /></div>
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-6">
