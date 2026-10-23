@@ -18,6 +18,7 @@ const STATUS: Record<string, { label: string; tone: "default" | "secondary" | "d
   pending: { label: "Klargjøres", tone: "outline" },
   send_failed: { label: "Sending feilet", tone: "destructive" },
   revoked: { label: "Tilgang avsluttet", tone: "outline" },
+  paused: { label: "Satt på pause", tone: "outline" },
 };
 const typeLabel = (t: ExternalType) => (t === "customer" ? "Kunde" : "Leverandør / samarbeidspartner");
 
@@ -34,6 +35,13 @@ export function PlanningExternalParticipants({ projectId, projectName }: { proje
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
   const list = participants.data ?? [];
   const activeCount = list.filter((p) => p.status !== "revoked").length;
+
+  const resume = async (participantId: string) => {
+    const { error } = await supabase.rpc("planning_external_resume", { _participant_id: participantId });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Tilgangen er aktiv igjen. Send en ny tilgangslenke ved behov.");
+    await refresh();
+  };
 
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -143,7 +151,10 @@ export function PlanningExternalParticipants({ projectId, projectName }: { proje
               <p className="text-xs text-muted-foreground">
                 {revoked ? "Ingen tilgang" : `Tilgang: dette prosjektet · ${CHANNEL_LABELS[p.participant_type]} + Alle`}
               </p>
-              {canManage && !revoked && (
+              {canManage && p.status === "paused" && (
+                <Button variant="outline" size="sm" className="min-h-11 w-full justify-start" onClick={() => resume(p.id)}>Aktiver tilgang igjen</Button>
+              )}
+              {canManage && !revoked && p.status !== "paused" && (
                 <div className="space-y-1">
                   <Button variant="outline" size="sm" className="min-h-11 w-full justify-start whitespace-normal text-left" disabled={!!resending} onClick={() => resend(p.id)}><Send className="h-4 w-4 shrink-0" />{resending === p.id ? "Sender…" : "Send tilgangslenke på nytt"}</Button>
                   {confirmRevoke === p.id ? <div className="space-y-2 border-l-2 border-destructive pl-3"><p className="text-sm">Avslutte {p.name} sin tilgang til dette prosjektet?</p><div className="flex flex-wrap gap-2"><Button variant="ghost" className="min-h-11" onClick={() => setConfirmRevoke(null)}>Behold tilgang</Button><Button variant="destructive" className="min-h-11" onClick={() => revoke(p.id)}>Avslutt tilgang</Button></div></div>

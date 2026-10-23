@@ -229,6 +229,24 @@ export function usePlanningProjects() {
   });
 }
 
+/** Prosjekter brukeren kan se, men som det globale selskapsvalget holder utenfor tavla. */
+export function usePlanningHiddenByCompany() {
+  const { activeCompanyId, isAllCompanies } = useCompanyContext();
+  return useQuery<number>({
+    queryKey: ["planning-projects-hidden", isAllCompanies ? "all" : activeCompanyId],
+    enabled: !isAllCompanies && !!activeCompanyId,
+    queryFn: async () => {
+      const { count, error } = await sb
+        .from("planning_projects")
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null)
+        .or(`company_id.is.null,company_id.neq.${activeCompanyId}`);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+}
+
 export function usePlanningProject(id: string | undefined) {
   return useQuery<PlanningProject | null>({
     queryKey: ["planning-project", id],

@@ -83,7 +83,7 @@ export function PlanningChannelConversation({ projectId, channel, token, partici
       <p className="break-words text-sm"><strong>Kan lese denne meldingen: </strong>{receiving.map(p => p.name).join(", ") || "Interne MCS-planleggere"}</p>
       <p className="break-words text-sm text-muted-foreground"><strong>Får ikke meldingen: </strong>{excluded.map(p => p.name).join(", ") || "Ingen utelatte eksterne i denne samtalen"}</p>
       <Textarea aria-label="Melding" rows={3} value={body} disabled={readOnly || sending} onChange={e => { setBody(e.target.value); setRequestId(crypto.randomUUID()); }} placeholder="Skriv melding…" />
-      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">{readOnly ? "Skrivebeskyttet forhåndsvisning" : "Meldingen lagres i prosjektrommet. Ingen automatisk e-post."}</p><Button className="min-h-11" disabled={readOnly || sending || !body.trim() || !query.data} onClick={send}><Send />{sending ? "Sender…" : "Send melding"}</Button></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">{readOnly ? (token ? "Prosjektet er avsluttet – kun lesing" : "Skrivebeskyttet forhåndsvisning") : "Meldingen lagres i prosjektrommet. Ingen automatisk e-post."}</p><Button className="min-h-11" disabled={readOnly || sending || !body.trim() || !query.data} onClick={send}><Send />{sending ? "Sender…" : "Send melding"}</Button></div>
     </div>
   </section>;
 }
