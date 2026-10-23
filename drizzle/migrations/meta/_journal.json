@@ -407,6 +407,13 @@
       "when": 1792746372855,
       "tag": "0057_competence_document_attach",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1792746396963,
+      "tag": "0058_competence_document_attach_fix_log",
+      "breakpoints": true
     }
   ]
 }
