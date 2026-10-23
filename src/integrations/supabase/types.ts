@@ -13825,6 +13825,7 @@ export type Database = {
           billing_model: string | null
           budget_value: number | null
           company_id: string | null
+          completed_at: string | null
           contract_form: string
           contract_value: number | null
           created_at: string
@@ -13861,6 +13862,7 @@ export type Database = {
           billing_model?: string | null
           budget_value?: number | null
           company_id?: string | null
+          completed_at?: string | null
           contract_form?: string
           contract_value?: number | null
           created_at?: string
@@ -13897,6 +13899,7 @@ export type Database = {
           billing_model?: string | null
           budget_value?: number | null
           company_id?: string | null
+          completed_at?: string | null
           contract_form?: string
           contract_value?: number | null
           created_at?: string
@@ -18114,6 +18117,10 @@ export type Database = {
         Args: { _project_id: string }
         Returns: boolean
       }
+      planning_external_mode_for: {
+        Args: { _completed_at: string; _deleted_at: string; _status: string }
+        Returns: string
+      }
       planning_external_my_projects: { Args: { _token: string }; Returns: Json }
       planning_external_open_project: {
         Args: { _project_id: string; _token: string }
@@ -18143,6 +18150,10 @@ export type Database = {
         Args: { _project_id: string; _token: string }
         Returns: Json
       }
+      planning_external_resume: {
+        Args: { _participant_id: string }
+        Returns: undefined
+      }
       planning_finance_access: {
         Args: { _level?: string; _project_id: string }
         Returns: boolean
@@ -18159,6 +18170,10 @@ export type Database = {
           is_primary: boolean
           person_id: string
         }[]
+      }
+      planning_project_external_mode: {
+        Args: { _project_id: string }
+        Returns: string
       }
       planning_revoke_external: { Args: { _id: string }; Returns: undefined }
       planning_send_channel_message: {

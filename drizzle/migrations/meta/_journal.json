@@ -393,6 +393,13 @@
       "when": 1792741885023,
       "tag": "0055_user_accounts_auto_verify_exact_email",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1792743449296,
+      "tag": "0056_planning_external_lifecycle",
+      "breakpoints": true
     }
   ]
 }
