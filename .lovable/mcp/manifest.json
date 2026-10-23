@@ -12,10 +12,64 @@
   "mcp": {
     "server": {
       "name": "mcs-kontrollsenter",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "MCS Kontrollsenter"
     },
     "tools": [
+      {
+        "name": "find_employee",
+        "title": "Finn ansatt",
+        "description": "Search employees by name or email. Returns only employees the signed-in Hub user may see (person_id, name, email, company).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100,
+              "description": "Part of name or email"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_employee_competences",
+        "title": "Vis ansattes kompetanse",
+        "description": "List active competence records for one employee (person_id). Returns competence_id, type/name, issued_at, expires_at, issuer, description and whether a document is attached. Respects the signed-in user's HMS view access.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "person_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "person_id from find_employee"
+            }
+          },
+          "required": [
+            "person_id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
       {
         "name": "upload_competence_document",
         "title": "Last opp kompetansedokument",
