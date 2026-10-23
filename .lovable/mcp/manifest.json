@@ -145,7 +145,12 @@
           ],
           "additionalProperties": false
         },
-        "outputSchema": null
+        "outputSchema": null,
+        "_meta": {
+          "openai/fileParams": [
+            "file"
+          ]
+        }
       }
     ]
   }
