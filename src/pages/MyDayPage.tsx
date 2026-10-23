@@ -721,6 +721,8 @@ export default function MyDayPage() {
               </Card>
             )}
 
+            <MyPlanningTasks />
+
             {unreadMessages.length > 0 && (
               <section aria-label="Nye meldinger">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">Nye meldinger</h2>
