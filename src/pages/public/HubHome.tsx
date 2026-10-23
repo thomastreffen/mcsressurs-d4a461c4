@@ -37,13 +37,19 @@ export default function HubHome() {
 
   // Innloggede brukere kan se forsiden. Vi sender dem bare videre rett etter
   // Microsoft-innlogging, eller når de åpner /login direkte.
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const POST_LOGIN_KEY = "mcs:hub-post-login";
+  const NEXT_KEY = "mcs:hub-post-login-next";
+  const rawNext = new URLSearchParams(search).get("next");
+  const nextPath = rawNext ? oauthReturnPath(rawNext) : null;
   if (!loading && session) {
     const justSignedIn = sessionStorage.getItem(POST_LOGIN_KEY) === "1";
     if (justSignedIn || pathname === "/login") {
+      const stored = sessionStorage.getItem(NEXT_KEY);
       sessionStorage.removeItem(POST_LOGIN_KEY);
-      return <Navigate to="/app" replace />;
+      sessionStorage.removeItem(NEXT_KEY);
+      const target = nextPath && nextPath !== "/" ? nextPath : stored ? oauthReturnPath(stored) : "/app";
+      return <Navigate to={target === "/" ? "/app" : target} replace />;
     }
   }
 
@@ -51,6 +57,7 @@ export default function HubHome() {
     if (signingIn) return;
     setSigningIn(true);
     sessionStorage.setItem("mcs:hub-post-login", "1");
+    if (nextPath && nextPath !== "/") sessionStorage.setItem(NEXT_KEY, nextPath);
     try {
       const result = await lovable.auth.signInWithOAuth("microsoft", { redirect_uri: window.location.origin });
       if (result.error) {
