@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Plus, Search, Building2, Users, CalendarDays, User } from "lucide-react";
-import { usePlanningLookups, usePlanningProjects, type PlanningProject } from "@/hooks/usePlanning";
+import { usePlanningHiddenByCompany, usePlanningLookups, usePlanningProjects, type PlanningProject } from "@/hooks/usePlanning";
+import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -77,6 +78,8 @@ export default function PlanningBoardPage() {
   const navigate = useNavigate();
   const { data: projects, isLoading } = usePlanningProjects();
   const { data: lookups } = usePlanningLookups();
+  const { data: hiddenCount } = usePlanningHiddenByCompany();
+  const { activeCompany, setActiveCompanyId } = useCompanyContext();
 
   const [search, setSearch] = useState("");
   const [company, setCompany] = useState(ALL);
@@ -138,6 +141,13 @@ export default function PlanningBoardPage() {
         </Button>
       </header>
 
+      {!!hiddenCount && (
+        <Card role="status" className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
+          <p>{hiddenCount} {hiddenCount === 1 ? "prosjekt" : "prosjekter"} du har tilgang til i andre selskaper er skjult, fordi Hub viser {activeCompany?.name ?? "valgt selskap"}.</p>
+          <Button variant="outline" className="min-h-11" onClick={() => setActiveCompanyId(null)}>Vis alle selskaper</Button>
+        </Card>
+      )}
+
       <Card className="p-3">
         <div className="flex flex-wrap items-center gap-2 [&_button[role=combobox]]:max-sm:h-11 [&_button[role=combobox]]:max-sm:flex-1 [&_button[role=combobox]]:max-sm:min-w-[45%]">
           <div className="relative w-full flex-1 sm:min-w-[200px] sm:w-auto">
@@ -158,7 +168,7 @@ export default function PlanningBoardPage() {
           <Select value={company} onValueChange={(v) => { setCompany(v); setDepartment(ALL); }}>
             <SelectTrigger className="w-[170px]"><SelectValue placeholder="Selskap" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Alle selskaper</SelectItem>
+              <SelectItem value={ALL}>Alle selskaper i visningen</SelectItem>
               {(lookups?.companies ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
