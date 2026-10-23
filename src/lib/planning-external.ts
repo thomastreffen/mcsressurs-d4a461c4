@@ -26,7 +26,12 @@ export function excludedRecipients(audience: ChannelPerson[], externalIds: strin
 export function invitationSummary(name: string, project: string, type: ExternalType) {
   return `${name || "Mottakeren"} får tilgang til «${project}», samtalene ${CHANNEL_LABELS[type]} og Alle, og filer, oppgaver og arbeidspakker som deles med ${CHANNEL_LABELS[type].toLowerCase()} eller alle. Ingen andre prosjekter, Ressursplan, kunder, ansatte, HMS eller intern økonomi.`;
 }
+export type ExternalAccessMode = "write" | "read" | "none";
+export const CLOSED_PROJECT_TEXT = "Prosjektet eksisterer ikke lenger, eller tilgangen er avsluttet.";
+export function externalCanWrite(mode: ExternalAccessMode | undefined) { return mode === "write"; }
+export function externalCanOpen(mode: ExternalAccessMode | undefined) { return mode === "write" || mode === "read"; }
 export interface ExternalProjectView {
+  access_mode: ExternalAccessMode; read_only_until: string | null;
   project: { id: string; name: string; status: string; expected_start: string | null; expected_end: string | null };
   participant: { id: string; name: string; participant_type: ExternalType };
   channels: PlanningChannel[];

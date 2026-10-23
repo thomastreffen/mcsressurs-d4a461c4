@@ -1,14 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { ExternalType } from "@/lib/planning-external";
+import type { ExternalAccessMode, ExternalType } from "@/lib/planning-external";
 
 export const EXTERNAL_PORTAL_KEY = "planning-external:portal";
 export const externalProjectKey = (id: string) => `planning-external:${id}`;
 export interface ExternalPortalView {
   person: { name: string; email: string };
-  projects: { id: string; name: string; project_number: string | null; status: string; participant_type: ExternalType; company_name: string }[];
+  projects: { id: string; name: string; project_number: string | null; status: string; access_mode: ExternalAccessMode; participant_type: ExternalType; company_name: string }[];
 }
-export function externalLandingPath(projects: { id: string }[]) {
-  return projects.length === 1 ? `/planlegging/ekstern/${projects[0].id}` : "/ekstern";
+export function externalLandingPath(projects: { id: string; access_mode?: ExternalAccessMode }[]) {
+  const open = projects.filter(p => p.access_mode !== "none");
+  return open.length === 1 && projects.length === 1 ? `/planlegging/ekstern/${open[0].id}` : "/ekstern";
 }
 export function clearExternalStorage() {
   Object.keys(sessionStorage).filter(key => key.startsWith("planning-external:")).forEach(key => sessionStorage.removeItem(key));
