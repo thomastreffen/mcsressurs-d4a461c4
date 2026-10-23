@@ -1,5 +1,10 @@
 # Roadmap
 
+## Kompetansedokumenter – binær PDF og trygg kartlegging
+- [ ] Kontroller berørt privat fil og andre filer uten skriving; skill Base64-tekst fra faktisk PDF
+- [ ] Herd MCP/edge PDF-dekoding og validering; behold native fil, pdf_url og eksisterende HMS-/lagringsflyt
+- [ ] Kjør regresjonstester og kontroller deployet rute uten å endre kompetansemetadata eller eksisterende filer
+
 ## Ekstern kundereise – én inngang
 - [x] Personbundet sikker inngang på /ekstern, Mine prosjekter og tilbakevei; gamle prosjektlenker/sessions oppgraderes etter verifisering
 - [x] Ettersend tilgang på samme person/deltaker, intern inline-bekreftelse ved avslutning og enkel ny innlogging; avsluttede deltakere vises i intern historikk
