@@ -1,3 +1,4 @@
+import { oauthReturnPath } from "@/lib/oauth-return-path";
 import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { Loader2, CalendarRange, FolderKanban, Users, Handshake, ArrowRight } from "lucide-react";
