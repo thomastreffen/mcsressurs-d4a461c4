@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canReadChannel, chosenRecipients, excludedRecipients, type ChannelPerson } from "@/lib/planning-external";
+import { canReadChannel, chosenRecipients, excludedRecipients, externalCanOpen, externalCanWrite, type ChannelPerson } from "@/lib/planning-external";
 import { planningInviteEmail } from "../../supabase/functions/planning-external-invite/email";
 import { planningAccessEmail } from "../../supabase/functions/planning-external-login/email";
 import { clearExternalStorage, externalLandingPath, EXTERNAL_PORTAL_KEY } from "@/lib/planning-external-portal";
@@ -46,5 +46,11 @@ describe("project collaboration rules", () => {
     const email = planningAccessEmail({ name: "Test", project: "A", type: "supplier", token: "test-only" });
     expect(email.html).toContain("/ekstern#access=test-only");
     expect(email.html).not.toContain("?access=");
+  });
+  it("completed (read) projects can be opened but not written to", () => { expect(externalCanOpen("read")).toBe(true); expect(externalCanWrite("read")).toBe(false); });
+  it("closed projects can neither be opened nor written to", () => { expect(externalCanOpen("none")).toBe(false); expect(externalCanWrite("none")).toBe(false); });
+  it("active projects allow writing", () => expect(externalCanWrite("write")).toBe(true));
+  it("a single closed project does not auto-open", () => {
+    expect(externalLandingPath([{ id: "project-a", access_mode: "none" }])).toBe("/ekstern");
   });
 });
