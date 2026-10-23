@@ -80,6 +80,11 @@
           "idempotentHint": true,
           "openWorldHint": true
         },
+        "_meta": {
+          "openai/fileParams": [
+            "file"
+          ]
+        },
         "inputSchema": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",

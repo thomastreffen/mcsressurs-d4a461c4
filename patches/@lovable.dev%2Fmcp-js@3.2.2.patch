@@ -1,0 +1,44 @@
+diff --git a/dist/io-CKX89yXp.js b/dist/io-CKX89yXp.js
+--- a/dist/io-CKX89yXp.js
++++ b/dist/io-CKX89yXp.js
+@@ -24,6 +24,7 @@
+ 			annotations: tool.annotations,
+ 			inputSchema: schemaToJsonSchema(tool.inputSchema, "input", tool.strict !== false),
+ 			outputSchema: schemaToJsonSchema(tool.outputSchema, "output", false),
++			...tool._meta ? { _meta: tool._meta } : {},
+ 			...tool.enabled ? { conditional: true } : {}
+ 		}))
+ 	};
+diff --git a/dist/io-BCqgMODc.cjs b/dist/io-BCqgMODc.cjs
+--- a/dist/io-BCqgMODc.cjs
++++ b/dist/io-BCqgMODc.cjs
+@@ -22,6 +22,7 @@
+ 			title: tool.title,
+ 			description: tool.description,
+ 			annotations: tool.annotations,
++			...tool._meta ? { _meta: tool._meta } : {},
+ 			inputSchema: schemaToJsonSchema(tool.inputSchema, "input", tool.strict !== false),
+ 			outputSchema: schemaToJsonSchema(tool.outputSchema, "output", false),
+ 			...tool.enabled ? { conditional: true } : {}
+diff --git a/dist/mcp-Dml0oUFG.js b/dist/mcp-Dml0oUFG.js
+--- a/dist/mcp-Dml0oUFG.js
++++ b/dist/mcp-Dml0oUFG.js
+@@ -438,6 +438,7 @@
+ 			title: tool.title,
+ 			description: tool.description,
+ 			annotations: tool.annotations,
++			...tool._meta ? { _meta: tool._meta } : {},
+ 			...tool.outputSchema ? { outputSchema: standardSchemaFromDefinition(tool.outputSchema, false) } : {}
+ 		};
+ 		const callback = adaptToolCallback(tool, auth, recorder, era === "legacy" ? "legacy" : MODERN_PROTOCOL_VERSION, appContext);
+diff --git a/dist/mcp-CdFFC4U3.cjs b/dist/mcp-CdFFC4U3.cjs
+--- a/dist/mcp-CdFFC4U3.cjs
++++ b/dist/mcp-CdFFC4U3.cjs
+@@ -438,6 +438,7 @@
+ 			title: tool.title,
+ 			description: tool.description,
+ 			annotations: tool.annotations,
++			...tool._meta ? { _meta: tool._meta } : {},
+ 			...tool.outputSchema ? { outputSchema: standardSchemaFromDefinition(tool.outputSchema, false) } : {}
+ 		};
+ 		const callback = adaptToolCallback(tool, auth, recorder, era === "legacy" ? "legacy" : MODERN_PROTOCOL_VERSION, appContext);
