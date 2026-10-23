@@ -108,5 +108,8 @@
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^3.2.4",
     "workbox-window": "^7.4.1"
+  },
+  "patchedDependencies": {
+    "@lovable.dev/mcp-js@3.2.2": "patches/@lovable.dev%2Fmcp-js@3.2.2.patch"
   }
 }
