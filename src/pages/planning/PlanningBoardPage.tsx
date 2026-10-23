@@ -79,10 +79,12 @@ export default function PlanningBoardPage() {
   const { data: projects, isLoading } = usePlanningProjects();
   const { data: lookups } = usePlanningLookups();
   const { data: hiddenCount } = usePlanningHiddenByCompany();
-  const { activeCompany, setActiveCompanyId } = useCompanyContext();
+  const { activeCompany, activeCompanyId, isAllCompanies, companies, setActiveCompanyId } = useCompanyContext();
 
   const [search, setSearch] = useState("");
-  const [company, setCompany] = useState(ALL);
+  // Board company filter IS the Hub company choice — one selector, one truth.
+  const company = isAllCompanies || !activeCompanyId ? ALL : activeCompanyId;
+  const setCompany = (v: string) => setActiveCompanyId(v === ALL ? null : v);
   const [department, setDepartment] = useState(ALL);
   const [customer, setCustomer] = useState(ALL);
   const [status, setStatus] = useState(ALL);
@@ -179,8 +181,8 @@ export default function PlanningBoardPage() {
           <Select value={company} onValueChange={(v) => { setCompany(v); setDepartment(ALL); }}>
             <SelectTrigger className="w-[170px]"><SelectValue placeholder="Selskap" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Alle selskaper i visningen</SelectItem>
-              {(lookups?.companies ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              <SelectItem value={ALL}>Alle selskaper</SelectItem>
+              {companies.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={department} onValueChange={setDepartment}>
