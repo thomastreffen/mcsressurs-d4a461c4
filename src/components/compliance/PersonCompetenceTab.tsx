@@ -15,6 +15,23 @@ import {
 } from "@/hooks/useCompliance";
 import { COMPETENCE_STATUS_META, competenceStatus, formatDate, type ComplianceStatus } from "@/lib/compliance";
 import { PersonRequirementsSection } from "@/components/compliance/PersonRequirementsSection";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+/** Opens competence documentation via a short-lived server-signed link (works for private files). */
+async function openCompetenceDocument(competenceId: string) {
+  const win = window.open("", "_blank");
+  const { data, error } = await supabase.functions.invoke("competence-document-upload", {
+    body: { action: "sign", competence_id: competenceId },
+  });
+  if (error || !data?.url) {
+    win?.close();
+    toast.error("Dokumentet kunne ikke åpnes");
+    return;
+  }
+  if (win) win.location.href = data.url; else window.location.href = data.url;
+}
+
 
 
 /**
@@ -98,11 +115,9 @@ export function PersonCompetenceTab({ personId, personName, canManage }: { perso
                   </div>
                   {c.comment && <p className="text-xs">{c.comment}</p>}
                   <div className="flex flex-wrap items-center gap-2 pt-1">
-                    {doc?.public_url ? (
-                      <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-                        <a href={doc.public_url} target="_blank" rel="noreferrer">
-                          <Paperclip className="mr-1 h-3 w-3" /> {doc.file_name}
-                        </a>
+                    {c.document_id || doc ? (
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openCompetenceDocument(c.id)}>
+                        <Paperclip className="mr-1 h-3 w-3" /> {doc?.file_name ?? "Åpne dokumentasjon"}
                       </Button>
                     ) : (
                       <span className="text-xs text-muted-foreground">Ingen dokumentasjon</span>
