@@ -92,18 +92,103 @@ var upload_competence_document_default = defineTool({
   }
 });
 
+// src/lib/mcp/tools/find-employee.ts
+import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@3.2.2";
+import { z as z2 } from "npm:zod@^4.6.7";
+
+// src/lib/mcp/userClient.ts
+import { createClient } from "npm:@supabase/supabase-js@^2.95.3";
+function supabaseForUser(ctx) {
+  return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
+    global: { headers: { Authorization: `Bearer ${userBearer(ctx)}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+
+// src/lib/mcp/tools/find-employee.ts
+var fail2 = (text) => ({ content: [{ type: "text", text }], isError: true });
+var find_employee_default = defineTool2({
+  name: "find_employee",
+  title: "Finn ansatt",
+  description: "Search employees by name or email. Returns only employees the signed-in Hub user may see (person_id, name, email, company).",
+  inputSchema: {
+    query: z2.string().min(2).max(100).describe("Part of name or email")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ query }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail2("Not authenticated");
+    const sb = supabaseForUser(ctx);
+    const q = query.replace(/[%,()*]/g, " ").trim();
+    const { data: people, error } = await sb.from("people").select("id, full_name, email").or(`full_name.ilike.%${q}%,email.ilike.%${q}%`).neq("is_active", false).limit(25);
+    if (error) return fail2(error.message);
+    const ids = (people ?? []).map((p) => p.id);
+    if (!ids.length) return { content: [{ type: "text", text: "No matching employees" }], structuredContent: { employees: [] } };
+    const [{ data: emp }, { data: companies }] = await Promise.all([
+      sb.from("employment_profiles").select("person_id, company_id, archived_at").in("person_id", ids),
+      sb.from("internal_companies").select("id, name")
+    ]);
+    const cname = new Map((companies ?? []).map((c) => [c.id, c.name]));
+    const byPerson = /* @__PURE__ */ new Map();
+    for (const e of emp ?? []) {
+      if (e.archived_at) continue;
+      const l = byPerson.get(e.person_id) ?? [];
+      const n = cname.get(e.company_id) ?? e.company_id;
+      if (!l.includes(n)) l.push(n);
+      byPerson.set(e.person_id, l);
+    }
+    const employees = (people ?? []).filter((p) => byPerson.has(p.id)).map((p) => ({ person_id: p.id, name: p.full_name ?? "", email: p.email ?? null, companies: byPerson.get(p.id) ?? [] }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(employees) }],
+      structuredContent: { employees }
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-employee-competences.ts
+import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@3.2.2";
+import { z as z3 } from "npm:zod@^4.6.7";
+var fail3 = (text) => ({ content: [{ type: "text", text }], isError: true });
+var list_employee_competences_default = defineTool3({
+  name: "list_employee_competences",
+  title: "Vis ansattes kompetanse",
+  description: "List active competence records for one employee (person_id). Returns competence_id, type/name, issued_at, expires_at, issuer, description and whether a document is attached. Respects the signed-in user's HMS view access.",
+  inputSchema: {
+    person_id: z3.string().uuid().describe("person_id from find_employee")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ person_id }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail3("Not authenticated");
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.from("compliance_competences").select("id, type_label, description, issuer, issued_at, expires_at, document_id, compliance_competence_types(name)").eq("person_id", person_id).is("deleted_at", null).order("expires_at", { ascending: true, nullsFirst: false }).limit(200);
+    if (error) return fail3(error.message);
+    const competences = (data ?? []).map((r) => ({
+      competence_id: r.id,
+      type: r.compliance_competence_types?.name ?? r.type_label ?? null,
+      issued_at: r.issued_at ?? null,
+      expires_at: r.expires_at ?? null,
+      issuer: r.issuer ?? null,
+      description: r.description ?? null,
+      has_document: !!r.document_id
+    }));
+    return {
+      content: [{ type: "text", text: competences.length ? JSON.stringify(competences) : "No visible competence records" }],
+      structuredContent: { competences }
+    };
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "nmqycanqumelmfpdmkpr";
 var mcp_default = defineMcp({
   name: "mcs-kontrollsenter",
   title: "MCS Kontrollsenter",
-  version: "0.1.0",
-  instructions: "Tools for MCS Hub. Actions run as the signed-in Hub user with their normal permissions.",
+  version: "0.2.0",
+  instructions: "Tools for MCS Hub. Actions run as the signed-in Hub user with their normal permissions. Find an employee, list their competences, then upload a PDF to a competence record.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [upload_competence_document_default]
+  tools: [find_employee_default, list_employee_competences_default, upload_competence_document_default]
 });
 
 // lovable-mcp-supabase-entry.ts
