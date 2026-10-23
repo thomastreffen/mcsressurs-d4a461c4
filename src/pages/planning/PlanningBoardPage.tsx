@@ -94,6 +94,17 @@ export default function PlanningBoardPage() {
 
   const ids = useMemo(() => (projects ?? []).map((p) => p.id), [projects]);
   const { data: wpSummary } = useBoardWorkPackageSummary(ids);
+  const { data: externalCounts } = useQuery({
+    queryKey: ["planning-board-externals", ids],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("planning_external_participants").select("planning_project_id").in("planning_project_id", ids).eq("status", "active").is("deleted_at", null);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) counts[row.planning_project_id] = (counts[row.planning_project_id] ?? 0) + 1;
+      return counts;
+    },
+  });
 
   const nameOf = (list: { id: string; name: string }[] | undefined, id: string | null) =>
     (id && list?.find((x) => x.id === id)?.name) || null;
@@ -303,6 +314,7 @@ export default function PlanningBoardPage() {
                       <div className="flex flex-wrap gap-1.5">
                         <Badge variant="outline">{PLANNING_STATUS_LABELS[p.status as PlanningStatus] ?? p.status}</Badge>
                         {need && <Badge variant="secondary">{need}</Badge>}
+                        {!!externalCounts?.[p.id] && <Badge variant="outline">Eksterne har tilgang ({externalCounts[p.id]})</Badge>}
                         {!!sum?.unassigned && (
                           <Badge variant="outline" className="border-warning/40 text-warning">
                             {sum.unassigned} ikke tildelt
