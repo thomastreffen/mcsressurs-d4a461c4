@@ -73,7 +73,13 @@
       {
         "name": "upload_competence_document",
         "title": "Last opp kompetansedokument",
-        "description": "Upload a PDF certificate as documentation for one competence record (compliance_competences.id). Provide the PDF either as base64 (pdf_base64) or as an https URL (pdf_url). Max 10 MB. Runs as the signed-in Hub user; requires HMS edit rights in the competence's company. Replaces the record's linked document.",
+        "description": "Upload a PDF certificate as documentation for one competence record (compliance_competences.id). Prefer the native `file` parameter (a user-uploaded PDF). Legacy: pdf_base64 or https pdf_url. Max 10 MB. Runs as the signed-in Hub user; requires HMS edit rights in the competence's company. Replaces the record's linked document.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
         "inputSchema": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
@@ -84,18 +90,46 @@
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
               "description": "ID of the competence record"
             },
+            "file": {
+              "description": "User-uploaded PDF file (OpenAI file param)",
+              "type": "object",
+              "properties": {
+                "download_url": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "Temporary download URL for the uploaded file"
+                },
+                "file_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Host file ID"
+                },
+                "mime_type": {
+                  "description": "MIME type, should be application/pdf",
+                  "type": "string"
+                },
+                "file_name": {
+                  "description": "Original file name",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "download_url",
+                "file_id"
+              ]
+            },
             "file_name": {
+              "description": "File name, e.g. lift-bevis.pdf (defaults to file.file_name)",
               "type": "string",
               "minLength": 1,
-              "maxLength": 200,
-              "description": "File name, e.g. lift-bevis.pdf"
+              "maxLength": 200
             },
             "pdf_base64": {
-              "description": "PDF content as base64",
+              "description": "Legacy: PDF content as base64",
               "type": "string"
             },
             "pdf_url": {
-              "description": "https URL to download the PDF from",
+              "description": "Legacy: https URL to download the PDF from",
               "type": "string",
               "format": "uri"
             },
@@ -107,8 +141,7 @@
             }
           },
           "required": [
-            "competence_id",
-            "file_name"
+            "competence_id"
           ],
           "additionalProperties": false
         },
