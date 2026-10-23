@@ -21,3 +21,5 @@
 - Before child planning, `resource_plan_parent_context` checks caller RLS and selected company independently of display numbers. Only an active project-link requires a fresh Tripletex open-status read; unlinked parents make no Tripletex call. Why: linking is an integration allow-list, not a planning prerequisite.
 
 - ms-calendar/tripletex-import/create-approval verify JWTs with SDK getClaims; server permissions/roles and caller-bearer RLS remain authoritative. Approval authentication uses the shared approval-auth verifier. Why: signing-key validation must not depend on a redundant Auth user fetch.
+
+- Competence documentation uploads go through `competence-document-upload` (caller bearer via getClaims, service-role storage into private `compliance-documents`, atomic idempotent `attach_competence_document` RPC executable only by service_role); reads use its `sign` action. Why: integrations need a server-side path, and personal certificates must not be public.
