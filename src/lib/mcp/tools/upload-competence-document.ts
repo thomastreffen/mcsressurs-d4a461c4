@@ -42,7 +42,7 @@ export default defineTool({
     const form = new FormData();
     form.append("competence_id", args.competence_id);
     if (args.client_request_id) form.append("client_request_id", args.client_request_id);
-    form.append("file", new Blob([bytes], { type: "application/pdf" }), args.file_name.endsWith(".pdf") ? args.file_name : `${args.file_name}.pdf`);
+    form.append("file", new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" }), args.file_name.endsWith(".pdf") ? args.file_name : `${args.file_name}.pdf`);
 
     const res = await fetch(`${supabaseProjectUrl()}/functions/v1/competence-document-upload`, {
       method: "POST",
