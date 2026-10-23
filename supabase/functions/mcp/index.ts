@@ -5,6 +5,78 @@
 // src/lib/mcp/index.ts
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@3.2.2";
 
+// src/lib/mcp/tool-meta.ts
+var registry = /* @__PURE__ */ new Map();
+function withToolMeta(tool2, meta) {
+  registry.set(tool2.name, meta);
+  return Object.assign(tool2, { _meta: meta });
+}
+function addToolMeta(payload) {
+  const visit = (msg) => {
+    const tools = msg?.result?.tools;
+    if (!Array.isArray(tools)) return;
+    for (const t of tools) {
+      const meta = t?.name ? registry.get(t.name) : void 0;
+      if (meta) t._meta = { ...t._meta ?? {}, ...meta };
+    }
+  };
+  if (Array.isArray(payload)) payload.forEach(visit);
+  else visit(payload);
+  return payload;
+}
+async function rewrite(res) {
+  const type = res.headers.get("content-type") ?? "";
+  const isJson = type.includes("application/json");
+  const isSse = type.includes("text/event-stream");
+  if (!res.body || !isJson && !isSse) return res;
+  const text = await res.text();
+  let out = text;
+  try {
+    if (isJson) out = JSON.stringify(addToolMeta(JSON.parse(text)));
+    else
+      out = text.replace(/^data: (.*)$/gm, (line, data) => {
+        try {
+          return `data: ${JSON.stringify(addToolMeta(JSON.parse(data)))}`;
+        } catch {
+          return line;
+        }
+      });
+  } catch {
+    out = text;
+  }
+  const headers = new Headers(res.headers);
+  headers.delete("content-length");
+  return new Response(out, { status: res.status, statusText: res.statusText, headers });
+}
+function installToolsListMetaInterceptor() {
+  const deno = globalThis.Deno;
+  if (!deno?.serve || deno.serve.__toolMeta) return;
+  const original = deno.serve.bind(deno);
+  const wrap = (h) => async (req, info) => {
+    if (req.method !== "POST") return h(req, info);
+    let isList = false;
+    try {
+      const body = await req.clone().json();
+      const msgs = Array.isArray(body) ? body : [body];
+      isList = msgs.some((m) => m?.method === "tools/list");
+    } catch {
+    }
+    const res = await h(req, info);
+    return isList ? rewrite(res) : res;
+  };
+  const patched = (...args) => {
+    const i = args.findIndex((a) => typeof a === "function");
+    if (i >= 0) args[i] = wrap(args[i]);
+    else if (args[0] && typeof args[0].handler === "function") {
+      const o = args[0];
+      args[0] = { ...o, handler: wrap(o.handler) };
+    }
+    return original(...args);
+  };
+  patched.__toolMeta = true;
+  deno.serve = patched;
+}
+
 // src/lib/mcp/tools/upload-competence-document.ts
 import { defineTool } from "npm:@lovable.dev/mcp-js@3.2.2";
 import { z } from "npm:zod@^4.6.7";
@@ -44,7 +116,7 @@ function userBearer(ctx) {
 // src/lib/mcp/tools/upload-competence-document.ts
 var MAX = 10 * 1024 * 1024;
 var fail = (text) => ({ content: [{ type: "text", text }], isError: true });
-var upload_competence_document_default = defineTool({
+var tool = defineTool({
   name: "upload_competence_document",
   title: "Last opp kompetansedokument",
   description: "Upload a PDF certificate as documentation for one competence record (compliance_competences.id). Prefer the native `file` parameter (a user-uploaded PDF). Legacy: pdf_base64 or https pdf_url. Max 10 MB. Runs as the signed-in Hub user; requires HMS edit rights in the competence's company. Replaces the record's linked document.",
@@ -107,6 +179,7 @@ var upload_competence_document_default = defineTool({
     };
   }
 });
+var upload_competence_document_default = withToolMeta(tool, { "openai/fileParams": ["file"] });
 
 // src/lib/mcp/tools/find-employee.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@3.2.2";
@@ -194,6 +267,7 @@ var list_employee_competences_default = defineTool3({
 });
 
 // src/lib/mcp/index.ts
+installToolsListMetaInterceptor();
 var projectRef = "nmqycanqumelmfpdmkpr";
 var mcp_default = defineMcp({
   name: "mcs-kontrollsenter",
