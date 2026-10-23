@@ -58,6 +58,10 @@ function TaskEditor({
         <Label htmlFor="task-title">Tittel *</Label>
         <Input id="task-title" autoFocus value={t.title ?? ""} onChange={(e) => set({ title: e.target.value })} />
       </div>
+      <PersonAssigneePicker
+        value={{ assignee_person_id: t.assignee_person_id ?? null, company_id: t.company_id ?? null, department_id: t.department_id ?? null }}
+        onChange={(v) => set(v)}
+      />
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label>Arbeidspakke</Label>
@@ -92,16 +96,6 @@ function TaskEditor({
             <SelectContent>
               <SelectItem value={NONE}>Ikke valgt</SelectItem>
               {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Ansvarlig person</Label>
-          <Select value={t.assignee_person_id ?? NONE} onValueChange={(v) => set({ assignee_person_id: v === NONE ? null : v })}>
-            <SelectTrigger><SelectValue placeholder="Ikke valgt" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Ikke valgt</SelectItem>
-              {people.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

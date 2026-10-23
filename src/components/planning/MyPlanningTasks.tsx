@@ -25,7 +25,7 @@ export function MyPlanningTasks({ title = "Mine oppgaver", showDone = false }: {
           return (
             <Wrapper
               key={t.id}
-              {...(t.can_open_project ? { type: "button", onClick: () => navigate(`/planlegging/${t.planning_project_id}?fane=oppgaver`) } : {})}
+              {...(t.can_open_project ? { type: "button", onClick: () => navigate(`/planlegging/${t.planning_project_id}?tab=oppgaver`) } : {})}
               className="flex min-h-14 w-full items-start gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-left active:bg-muted/60"
             >
               {t.status === "done"
