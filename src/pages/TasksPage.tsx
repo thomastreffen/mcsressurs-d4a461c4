@@ -191,6 +191,8 @@ export default function TasksPage() {
         </Badge>
       </div>
 
+      <div className="mb-6"><MyPlanningTasks title="Fra Planlegging" /></div>
+
       {/* Filters */}
       <div className="flex items-center gap-3 mb-6">
         <div className="flex items-center gap-1.5">
