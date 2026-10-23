@@ -1,7 +1,10 @@
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
+import { installToolsListMetaInterceptor } from "./tool-meta";
 import uploadCompetenceDocument from "./tools/upload-competence-document";
 import findEmployee from "./tools/find-employee";
 import listEmployeeCompetences from "./tools/list-employee-competences";
+
+installToolsListMetaInterceptor();
 
 const projectRef = import.meta.env["VITE_SUPABASE_PROJECT_ID"] ?? "project-ref-unset";
 

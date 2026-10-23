@@ -1,11 +1,12 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
+import { withToolMeta } from "../tool-meta";
 import { supabaseProjectUrl, supabasePublishableKey, userBearer } from "../supabase";
 
 const MAX = 10 * 1024 * 1024;
 const fail = (text: string) => ({ content: [{ type: "text" as const, text }], isError: true });
 
-export default defineTool({
+const tool = defineTool({
   name: "upload_competence_document",
   title: "Last opp kompetansedokument",
   description:
@@ -77,3 +78,5 @@ export default defineTool({
     };
   },
 });
+
+export default withToolMeta(tool, { "openai/fileParams": ["file"] });
