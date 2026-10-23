@@ -58,15 +58,11 @@ export default defineTool({
     if (!(bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d))
       return fail("File is not a valid PDF");
     const rawName = args.file_name ?? args.file?.file_name ?? "kompetansebevis.pdf";
-    } catch {
-      return fail("Could not read the PDF");
-    }
-    if (bytes.length === 0 || bytes.length > MAX) return fail("PDF must be between 1 byte and 10 MB");
 
     const form = new FormData();
     form.append("competence_id", args.competence_id);
     if (args.client_request_id) form.append("client_request_id", args.client_request_id);
-    form.append("file", new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" }), args.file_name.endsWith(".pdf") ? args.file_name : `${args.file_name}.pdf`);
+    form.append("file", new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" }), rawName.toLowerCase().endsWith(".pdf") ? rawName : `${rawName}.pdf`);
 
     const res = await fetch(`${supabaseProjectUrl()}/functions/v1/competence-document-upload`, {
       method: "POST",
