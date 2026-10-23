@@ -5679,6 +5679,7 @@ export type Database = {
           ai_classified_at: string | null
           ai_confidence: number | null
           category: string
+          client_request_id: string | null
           company_id: string | null
           created_at: string
           deleted_at: string | null
@@ -5702,6 +5703,7 @@ export type Database = {
           ai_classified_at?: string | null
           ai_confidence?: number | null
           category?: string
+          client_request_id?: string | null
           company_id?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -5725,6 +5727,7 @@ export type Database = {
           ai_classified_at?: string | null
           ai_confidence?: number | null
           category?: string
+          client_request_id?: string | null
           company_id?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -17238,6 +17241,17 @@ export type Database = {
         Returns: Json
       }
       apply_duplicate_schedule_blocks_cleanup: { Args: never; Returns: Json }
+      attach_competence_document: {
+        Args: {
+          _actor: string
+          _client_request_id: string
+          _competence_id: string
+          _file_name: string
+          _file_size: number
+          _path: string
+        }
+        Returns: string
+      }
       backfill_commercial_cases_for_active: { Args: never; Returns: Json }
       can_access_dle_package_file: {
         Args: { _package: string }
@@ -17291,6 +17305,14 @@ export type Database = {
       cleanup_empty_calculations: { Args: never; Returns: Json }
       company_role_permission: {
         Args: { _company: string; _perm: string; _uid: string }
+        Returns: boolean
+      }
+      competence_document_can_manage: {
+        Args: { _actor: string; _competence_id: string }
+        Returns: string
+      }
+      competence_document_can_view: {
+        Args: { _actor: string; _competence_id: string }
         Returns: boolean
       }
       compliance_competence_status: {
