@@ -1,4 +1,5 @@
 import { resolveJobAddress } from "../_shared/job-address.ts";
+import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
@@ -129,11 +130,6 @@ function buildApprovalEmail(
     ? `Tidsendring: ${displayNumber} – ${job.title}`
     : `Jobbforespørsel: ${displayNumber} – ${job.title}`;
 
-  // Build description section
-  const descriptionHtml = job.description
-    ? `<tr><td style="padding: 8px 0; color: #64748b;">Beskrivelse</td><td style="padding: 8px 0;">${job.description}</td></tr>`
-    : "";
-
   // Build attachments section
   const attachments = Array.isArray(job.attachments) ? job.attachments : [];
   let attachmentsHtml = "";
@@ -142,7 +138,7 @@ function buildApprovalEmail(
     <div style="margin: 16px 0; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
       <p style="margin: 0 0 8px; font-weight: 600; color: #64748b; font-size: 13px;">📎 Vedlegg</p>
       <ul style="margin: 0; padding-left: 20px;">
-        ${attachments.map((a: any) => `<li style="margin-bottom: 4px;"><a href="${a.url || "#"}" style="color: #2563eb; text-decoration: none;">${a.name || "Vedlegg"}</a></li>`).join("")}
+        ${attachments.map((a: any) => `<li style="margin-bottom: 4px;"><a href="${escapeHtml(String(a.url || "#"))}" style="color: #2563eb; text-decoration: none;">${escapeHtml(String(a.name || "Vedlegg"))}</a></li>`).join("")}
       </ul>
     </div>`;
   }
@@ -166,15 +162,7 @@ function buildApprovalEmail(
           : "Du har blitt tildelt en ny jobb. Vennligst bekreft om du kan ta oppdraget.")}</p>
     
     <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-      <tr><td style="padding: 8px 0; color: #64748b; width: 120px;">Jobbnummer</td><td style="padding: 8px 0; font-weight: 600;">${displayNumber}</td></tr>
-      <tr><td style="padding: 8px 0; color: #64748b;">Tittel</td><td style="padding: 8px 0;">${job.title}</td></tr>
-      <tr><td style="padding: 8px 0; color: #64748b;">Kunde</td><td style="padding: 8px 0;">${job.customer || "—"}</td></tr>
-      <tr><td style="padding: 8px 0; color: #64748b;">Adresse</td><td style="padding: 8px 0;">${job.address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}" style="color: #2563b0;">${job.address}</a>` : "—"}</td></tr>
-      ${job.site_contact_name || job.site_contact_phone ? `<tr><td style="padding: 8px 0; color: #64748b;">Kontaktperson</td><td style="padding: 8px 0;">${[job.site_contact_name, job.site_contact_phone].filter(Boolean).join(" · ")}</td></tr>` : ""}
-      <tr><td style="padding: 8px 0; color: #64748b;">Dato</td><td style="padding: 8px 0;">${startDate}</td></tr>
-      <tr><td style="padding: 8px 0; color: #64748b;">Tid</td><td style="padding: 8px 0;">${startTime} – ${endTime}</td></tr>
-      ${descriptionHtml}
-      ${job.access_notes ? `<tr><td style="padding: 8px 0; color: #64748b;">Tilgang</td><td style="padding: 8px 0;">${job.access_notes}</td></tr>` : ""}
+      ${briefEmailRows(job.__brief ?? buildOperationalJobBrief({ event: { ...job, job_number: displayNumber } }), { date: startDate, time: `${startTime} – ${endTime}` })}
     </table>
     
     ${attachmentsHtml}
@@ -281,6 +269,24 @@ Deno.serve(async (req) => {
     }
     // Operative address: newest event address, else the order's oppdragssted
     job.address = (await resolveJobAddress(supabaseAdmin, job)) || null;
+    // Operational brief: edited event fields win, linked order fills the gaps (same helper as the app view).
+    {
+      let orderId: string | null = job.source_order_form_id ?? null;
+      if (!orderId) {
+        const { data: linked } = await supabaseAdmin.from("order_form_submissions").select("id")
+          .eq("linked_event_id", job.id).is("deleted_at", null).order("last_activity_at", { ascending: false }).limit(1).maybeSingle();
+        orderId = linked?.id ?? null;
+      }
+      let orderSummary = null, orderValues = null;
+      if (orderId) {
+        const [{ data: sub }, { data: vals }] = await Promise.all([
+          supabaseAdmin.from("order_form_submissions").select("summary").eq("id", orderId).maybeSingle(),
+          supabaseAdmin.from("order_form_submission_values").select("field_key, value").eq("submission_id", orderId),
+        ]);
+        orderSummary = sub?.summary ?? null; orderValues = vals ?? null;
+      }
+      job.__brief = buildOperationalJobBrief({ event: { ...job, job_number: job.job_number || job.internal_number }, orderSummary, orderValues });
+    }
 
     // Fetch technicians assigned to this job (include time overrides)
     const { data: assignments } = await supabaseAdmin
