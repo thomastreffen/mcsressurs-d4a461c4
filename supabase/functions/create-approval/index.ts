@@ -168,7 +168,7 @@ function buildApprovalEmail(
       <tr><td style="padding: 8px 0; color: #64748b; width: 120px;">Jobbnummer</td><td style="padding: 8px 0; font-weight: 600;">${displayNumber}</td></tr>
       <tr><td style="padding: 8px 0; color: #64748b;">Tittel</td><td style="padding: 8px 0;">${job.title}</td></tr>
       <tr><td style="padding: 8px 0; color: #64748b;">Kunde</td><td style="padding: 8px 0;">${job.customer || "—"}</td></tr>
-      <tr><td style="padding: 8px 0; color: #64748b;">Adresse</td><td style="padding: 8px 0;">${job.address || "—"}</td></tr>
+      <tr><td style="padding: 8px 0; color: #64748b;">Adresse</td><td style="padding: 8px 0;">${job.address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}" style="color: #2563b0;">${job.address}</a>` : "—"}</td></tr>
       ${job.site_contact_name || job.site_contact_phone ? `<tr><td style="padding: 8px 0; color: #64748b;">Kontaktperson</td><td style="padding: 8px 0;">${[job.site_contact_name, job.site_contact_phone].filter(Boolean).join(" · ")}</td></tr>` : ""}
       <tr><td style="padding: 8px 0; color: #64748b;">Dato</td><td style="padding: 8px 0;">${startDate}</td></tr>
       <tr><td style="padding: 8px 0; color: #64748b;">Tid</td><td style="padding: 8px 0;">${startTime} – ${endTime}</td></tr>
@@ -278,6 +278,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Operative address: newest event address, else the order's oppdragssted
+    job.address = (await resolveJobAddress(supabaseAdmin, job)) || null;
 
     // Fetch technicians assigned to this job (include time overrides)
     const { data: assignments } = await supabaseAdmin
