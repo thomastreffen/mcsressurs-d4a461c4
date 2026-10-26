@@ -8,6 +8,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
+import { isPlausiblePdf } from "./pdf-check.ts";
 
 const BUCKET = "compliance-documents";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -56,7 +57,8 @@ Deno.serve(async (req) => {
     if (!fields.success || !(file instanceof File)) return json({ error: "competence_id og file kreves" }, 400);
     if (file.size === 0 || file.size > MAX_BYTES) return json({ error: "Filen må være mellom 1 byte og 10 MB" }, 400);
     const bytes = new Uint8Array(await file.arrayBuffer());
-    if (new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") return json({ error: "Kun PDF-filer er tillatt" }, 400);
+    // Reject truncated/corrupt PDFs: must start with "%PDF-" and end with a %%EOF trailer.
+    if (!isPlausiblePdf(bytes)) return json({ error: "Filen er ikke en gyldig PDF (mangler eller har korrupt PDF-avslutning)" }, 400);
 
     const { competence_id } = fields.data;
     const requestId = fields.data.client_request_id ?? crypto.randomUUID();

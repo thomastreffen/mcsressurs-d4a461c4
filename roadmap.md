@@ -1,9 +1,10 @@
 # Roadmap
 
 ## Kompetansedokumenter – binær PDF og trygg kartlegging
-- [ ] Kontroller berørt privat fil og andre filer uten skriving; skill Base64-tekst fra faktisk PDF
-- [ ] Herd MCP/edge PDF-dekoding og validering; behold native fil, pdf_url og eksisterende HMS-/lagringsflyt
-- [ ] Kjør regresjonstester og kontroller deployet rute uten å endre kompetansemetadata eller eksisterende filer
+- [x] Kontrollert berørt fil (148750 B, %PDF--header, mangler startxref/%%EOF); ingen andre objekter i bøtten; ingen data endret
+- [x] Herdet validering i MCP-verktøy og edge-funksjon: krever %PDF--header + startxref + %%EOF (tåler trailing bytes); native file/pdf_base64/pdf_url uendret ellers
+- [x] 15 regresjonstester grønne (9 vitest + 6 Deno); edge-funksjon deployet, MCP publisert, manifest har openai/fileParams
+- [ ] Re-oppdater Emil Strids Anhuker-bevis med originalen via ChatGPT når pluginen er refreshet (krever at ChatGPT henter ny tools/list)
 
 ## Ekstern kundereise – én inngang
 - [x] Personbundet sikker inngang på /ekstern, Mine prosjekter og tilbakevei; gamle prosjektlenker/sessions oppgraderes etter verifisering

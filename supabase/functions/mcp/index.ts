@@ -113,6 +113,23 @@ function userBearer(ctx) {
   return token;
 }
 
+// src/lib/mcp/pdf-check.ts
+var PDF_MAGIC = [37, 80, 68, 70, 45];
+var EOF_WINDOW = 1024;
+var XREF_WINDOW = 64 * 1024;
+var latin1 = new TextDecoder("latin1");
+function isPlausiblePdf(bytes) {
+  if (bytes.length < PDF_MAGIC.length + 8) return false;
+  for (let i = 0; i < PDF_MAGIC.length; i++) {
+    if (bytes[i] !== PDF_MAGIC[i]) return false;
+  }
+  const tail = bytes.subarray(Math.max(0, bytes.length - XREF_WINDOW));
+  const tailText = latin1.decode(tail);
+  if (!tailText.includes("startxref")) return false;
+  const eofText = latin1.decode(bytes.subarray(Math.max(0, bytes.length - EOF_WINDOW)));
+  return eofText.includes("%%EOF");
+}
+
 // src/lib/mcp/tools/upload-competence-document.ts
 var MAX = 10 * 1024 * 1024;
 var fail = (text) => ({ content: [{ type: "text", text }], isError: true });
@@ -159,8 +176,7 @@ var tool = defineTool({
       return fail(e instanceof Error ? e.message : "Could not read the PDF");
     }
     if (bytes.length === 0 || bytes.length > MAX) return fail("PDF must be between 1 byte and 10 MB");
-    if (!(bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70 && bytes[4] === 45))
-      return fail("File is not a valid PDF");
+    if (!isPlausiblePdf(bytes)) return fail("File is not a valid PDF (missing or corrupt PDF trailer)");
     const rawName = args.file_name ?? args.file?.file_name ?? "kompetansebevis.pdf";
     const form = new FormData();
     form.append("competence_id", args.competence_id);

@@ -2,6 +2,7 @@ import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { withToolMeta } from "../tool-meta";
 import { supabaseProjectUrl, supabasePublishableKey, userBearer } from "../supabase";
+import { isPlausiblePdf } from "../pdf-check";
 
 const MAX = 10 * 1024 * 1024;
 const fail = (text: string) => ({ content: [{ type: "text" as const, text }], isError: true });
@@ -55,9 +56,8 @@ const tool = defineTool({
       return fail(e instanceof Error ? e.message : "Could not read the PDF");
     }
     if (bytes.length === 0 || bytes.length > MAX) return fail("PDF must be between 1 byte and 10 MB");
-    // Magic bytes check: "%PDF-"
-    if (!(bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d))
-      return fail("File is not a valid PDF");
+    // Reject truncated/corrupt PDFs: must start with "%PDF-" and end with a %%EOF trailer.
+    if (!isPlausiblePdf(bytes)) return fail("File is not a valid PDF (missing or corrupt PDF trailer)");
     const rawName = args.file_name ?? args.file?.file_name ?? "kompetansebevis.pdf";
 
     const form = new FormData();
