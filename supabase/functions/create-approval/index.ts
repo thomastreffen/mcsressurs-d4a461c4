@@ -1,3 +1,4 @@
+import { resolveJobAddress } from "../_shared/job-address.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
