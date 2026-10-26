@@ -6,6 +6,7 @@ import { ProjectSubnav } from "@/components/project/ProjectSubnav";
 import { MobileProjectHome } from "@/components/project/MobileProjectHome";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProjectDashboard } from "@/components/project/ProjectDashboard";
+import { OrderBriefingSection } from "@/components/orders/OrderBriefingSection";
 import { ProjectPlanTab } from "@/components/ProjectPlanTab";
 import { ThreadList } from "@/components/conversations/ThreadList";
 import { DocsFilesRoom } from "@/components/docs/DocsFilesRoom";
@@ -184,8 +185,12 @@ export default function JobDetail() {
 
         {/* Tab content */}
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 pb-28 md:pb-8">
+          {activeTab === "home" && isMobile && (
+            <div className="mb-4"><OrderBriefingSection eventId={job.id} compact /></div>
+          )}
           {activeTab === "home" && !isMobile && (
             <div className="space-y-6">
+              <OrderBriefingSection eventId={job.id} />
               <ProjectDashboard
                 jobId={job.id}
                 technicianNames={technicianNames}
