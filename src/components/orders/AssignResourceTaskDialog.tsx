@@ -30,6 +30,7 @@ import { TechnicianMultiSelect } from "@/components/TechnicianMultiSelect";
 import { format, setHours, setMinutes } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { invokeWithSession } from "@/lib/invoke-session";
 
 interface AssignResourceTaskDialogProps {
   open: boolean;

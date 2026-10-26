@@ -11,7 +11,10 @@ import {
   Clock,
   FileText,
   Users,
+  Send,
 } from "lucide-react";
+import { toast } from "sonner";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 
@@ -51,6 +54,25 @@ export function ProjectDashboard({
   const [formCounts, setFormCounts] = useState({ not_started: 0, in_progress: 0, completed: 0, signed: 0 });
   const [recentDocs, setRecentDocs] = useState<Array<{ id: string; file_name: string; created_at: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [resending, setResending] = useState(false);
+
+  const resendJobInfo = async () => {
+    setResending(true);
+    try {
+      const { data, error } = await invokeWithSession("create-approval", { body: { job_id: jobId, resend: true } });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      const results: any[] = (data as any)?.results || [];
+      const sent = results.filter((r) => r.emailSent).length;
+      const failed = results.filter((r) => !r.emailSent);
+      if (sent > 0 && failed.length === 0) toast.success(`Jobbinfo med vedlegg sendt til ${sent} montør(er)`);
+      else if (sent > 0) toast.warning(`Sendt til ${sent}, men ${failed.length} feilet`);
+      else toast.error("E-post ble ikke sendt", { description: "Logg inn på nytt med Microsoft og prøv igjen." });
+    } catch (e: any) {
+      toast.error("Kunne ikke sende jobbinfo", { description: e?.message });
+    } finally {
+      setResending(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     const today = new Date().toISOString().split("T")[0];
@@ -216,6 +238,12 @@ export function ProjectDashboard({
                 <span className="text-right">{technicianNames.length > 0 ? technicianNames.join(", ") : "Ingen tildelt"}</span>
               </div>
             </div>
+            {technicianNames.length > 0 && (
+              <Button variant="outline" size="sm" className="mt-4 w-full rounded-xl gap-2" disabled={resending} onClick={resendJobInfo}>
+                <Send className="h-3.5 w-3.5" />
+                {resending ? "Sender…" : "Send jobbinfo til montør på nytt"}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
