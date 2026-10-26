@@ -295,6 +295,21 @@ export function AssignResourceTaskDialog({
         console.warn("[AssignResourceTask] Calendar sync failed:", e);
       }
 
+      // Send jobbforespørsel med beskrivelse og vedlegg til montør(ene) på e-post
+      const techMail = { sent: 0, failed: 0, error: "" as string };
+      try {
+        const { data, error } = await invokeWithSession("create-approval", { body: { job_id: newEvent.id } });
+        if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+        for (const r of ((data as any)?.results || []) as any[]) {
+          if (r.emailSent || r.autoApproved) techMail.sent++;
+          else techMail.failed++;
+        }
+      } catch (e: any) {
+        techMail.failed = selectedTechIds.length;
+        techMail.error = e?.message || String(e);
+        console.error("[AssignResourceTask] create-approval failed:", e);
+      }
+
       // Notify requester now if user opted in
       let notifyResult: { attempted: boolean; sent: boolean; error?: string } = { attempted: false, sent: false };
       if (notifyRequester && bestillerEpost) {
@@ -322,9 +337,9 @@ export function AssignResourceTaskDialog({
         notifyResult.error = "Mangler e-postadresse til bestiller";
       }
 
-      return { newEvent, notifyResult };
+      return { newEvent, notifyResult, techMail };
     },
-    onSuccess: ({ newEvent, notifyResult }) => {
+    onSuccess: ({ newEvent, notifyResult, techMail }) => {
       qc.invalidateQueries({ queryKey: ["order-form-submission", submissionId] });
       qc.invalidateQueries({ queryKey: ["order-form-activity", submissionId] });
 
@@ -334,6 +349,16 @@ export function AssignResourceTaskDialog({
           window.location.href = `/projects/plan?openTask=${newEvent.id}`;
         },
       };
+
+      if (techMail.sent > 0 && techMail.failed === 0) {
+        toast.success(`Jobbinfo med vedlegg sendt til ${techMail.sent} montør(er)`);
+      } else {
+        toast.error("Montør fikk ikke e-post med jobbinfo", {
+          description: techMail.error || "Åpne jobben og trykk «Send jobbinfo til montør på nytt».",
+          action: openAction,
+          duration: 15000,
+        });
+      }
 
       if (notifyResult.attempted && notifyResult.sent) {
         toast.success("Oppgave opprettet og bestiller varslet", { action: openAction });
