@@ -58,10 +58,7 @@ const HEADER_LABELS = /^(bestilling|kunde|kontaktperson|telefon|e-?post|oppdrags
 export function stripBriefHeader(description: string): string {
   const lines = description.replace(/\r\n/g, "\n").split("\n");
   let i = 0;
-  while (i < lines.length && (HEADER_LABELS.test(lines[i].trim()) || (!lines[i].trim() && i < 8))) {
-    if (!lines[i].trim() && !lines.slice(0, i).some((l) => HEADER_LABELS.test(l.trim()))) break;
-    i++;
-  }
+  while (i < lines.length && (!lines[i].trim() || HEADER_LABELS.test(lines[i].trim()))) i++;
   return lines.slice(i).join("\n").trim();
 }
 
