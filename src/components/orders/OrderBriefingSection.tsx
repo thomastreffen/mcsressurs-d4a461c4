@@ -11,7 +11,7 @@ import {
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
-import { buildEntries, findValueIn, findValuesIn } from "@/lib/order-field-resolver";
+import { buildOperationalJobBrief } from "../../../supabase/functions/_shared/job-brief";
 
 interface OrderBriefingSectionProps {
   /** Event/oppgave id — vi finner koblet bestilling automatisk */
@@ -21,6 +21,7 @@ interface OrderBriefingSectionProps {
 }
 
 interface BriefingData {
+  event: Record<string, unknown>;
   submission: any;
   values: Array<{ field_key: string; value: unknown }>;
   attachments: Array<{
@@ -52,7 +53,7 @@ export function OrderBriefingSection({ eventId, compact = false }: OrderBriefing
       // 2. order_form_submissions.linked_event_id  (manually linked)
       const { data: ev } = await supabase
         .from("events")
-        .select("source_order_form_id")
+        .select("source_order_form_id, title, job_number, internal_number, location_details, address, postal_code, city, customer, site_contact_name, site_contact_phone, description, access_notes")
         .eq("id", eventId)
         .maybeSingle();
 
@@ -102,6 +103,7 @@ export function OrderBriefingSection({ eventId, compact = false }: OrderBriefing
       const msg = msgRes.data;
 
       return {
+        event: (ev ?? {}) as Record<string, unknown>,
         submission,
         values: (values || []) as any,
         attachments: (attachments || []) as any,
@@ -110,61 +112,14 @@ export function OrderBriefingSection({ eventId, compact = false }: OrderBriefing
     },
   });
 
+  // Same operational brief as the technician email (event wins, order fills gaps, no invoice/PO).
   const briefing = useMemo(() => {
     if (!data?.submission) return null;
-    const sub = data.submission as any;
-    const summary = (sub.summary as Record<string, unknown> | null) ?? {};
-    const entries = buildEntries(data.values);
-
-    const find = (...keys: string[]) => findValueIn(entries, summary, ...keys);
-    const findAll = (...keys: string[]) => findValuesIn(entries, summary, ...keys);
-
-    const tittel = find("oppdragstittel", "tittel", "prosjektnavn", "emne");
-    const beskrivelse = find(
-      "detaljert_arbeidsbeskrivelse",
-      "arbeidsbeskrivelse",
-      "beskrivelse",
-      "problem_beskrivelse",
-      "melding"
-    );
-    const oppdragssted = findAll("anleggsadresse", "oppdragssted", "adresse").join(", ");
-    const kunde = find("kundenavn", "firmanavn", "bestiller_firma", "kunde", "company_name");
-    const kontaktperson =
-      find("kontaktperson_navn", "kontaktperson_kunde", "kontaktperson") ||
-      sub.notification_recipient_name ||
-      sub.submitter_name ||
-      "";
-    const kontaktTelefon =
-      find("kontaktperson_telefon", "telefon_kunde", "telefon", "kontakt_telefon") ||
-      sub.notification_recipient_phone ||
-      "";
-    const kontaktEpost =
-      find("kontaktperson_epost", "epost_kunde", "epost", "kontakt_epost") ||
-      sub.notification_recipient_email ||
-      sub.submitter_email ||
-      "";
-    const referanse = find("referanse_po", "fakturamerking", "midlertidig_referanse", "po", "referanse");
-    const tilgang = find("tilgang", "tilgang_notat", "adgang", "nokler", "noekler");
-    const materiell = find("materiell", "materialer", "verktoy", "verktoey", "medbring");
-    const onsketDato = find("oensket_dato", "onsket_utfort_dato", "onsket_dato", "dato");
-    const onsketTid = find("oensket_tid", "onsket_klokkeslett", "onsket_tid", "tidsvindu");
-    const hastegrad = find("hastegrad", "prioritet");
-
-    return {
-      tittel,
-      beskrivelse,
-      oppdragssted,
-      kunde,
-      kontaktperson,
-      kontaktTelefon,
-      kontaktEpost,
-      referanse,
-      tilgang,
-      materiell,
-      onsketDato,
-      onsketTid,
-      hastegrad,
-    };
+    return buildOperationalJobBrief({
+      event: data.event,
+      orderSummary: (data.submission.summary as Record<string, unknown> | null) ?? {},
+      orderValues: data.values,
+    });
   }, [data]);
 
   if (isLoading || !data?.submission || !briefing) return null;
@@ -185,7 +140,7 @@ export function OrderBriefingSection({ eventId, compact = false }: OrderBriefing
       <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
         <CardTitle className="text-sm flex items-center gap-2">
           <ClipboardList className="h-4 w-4 text-primary" />
-          Fra bestilling
+          Jobbinfo fra bestilling
           <Badge variant="outline" className="text-[10px] h-4 font-mono">
             {sub.submission_no}
           </Badge>
@@ -204,99 +159,34 @@ export function OrderBriefingSection({ eventId, compact = false }: OrderBriefing
       </CardHeader>
 
       <CardContent className="space-y-3 text-sm">
-        {briefing.tittel && (
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Oppdrag
-            </div>
-            <div className="font-medium">{briefing.tittel}</div>
-          </div>
+        {briefing.siteName && <InfoRow icon={<MapPin className="h-3.5 w-3.5" />} label="Oppdragssted" value={briefing.siteName} />}
+        {briefing.address && (
+          <InfoRow
+            icon={<MapPin className="h-3.5 w-3.5" />}
+            label="Adresse"
+            value={<a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(briefing.address)}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">{briefing.address}</a>}
+          />
         )}
-
-        {briefing.beskrivelse && (
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-              <FileText className="h-3 w-3" /> Arbeidsbeskrivelse
-            </div>
-            <div className="whitespace-pre-wrap text-sm leading-snug mt-0.5">
-              {briefing.beskrivelse}
-            </div>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-          {briefing.kunde && (
-            <InfoRow icon={<User className="h-3.5 w-3.5" />} label="Kunde" value={briefing.kunde} />
+          {briefing.customer && <InfoRow icon={<User className="h-3.5 w-3.5" />} label="Kunde" value={briefing.customer} />}
+          {briefing.contactName && <InfoRow icon={<User className="h-3.5 w-3.5" />} label="Kontaktperson" value={briefing.contactName} />}
+          {briefing.contactPhone && (
+            <InfoRow icon={<Phone className="h-3.5 w-3.5" />} label="Telefon"
+              value={<a href={`tel:${briefing.contactPhone.replace(/\s/g, "")}`} className="text-primary hover:underline">{briefing.contactPhone}</a>} />
           )}
-          {briefing.oppdragssted && (
-            <InfoRow icon={<MapPin className="h-3.5 w-3.5" />} label="Oppdragssted" value={briefing.oppdragssted} />
-          )}
-          {briefing.kontaktperson && (
-            <InfoRow icon={<User className="h-3.5 w-3.5" />} label="Kontaktperson" value={briefing.kontaktperson} />
-          )}
-          {briefing.kontaktTelefon && (
-            <InfoRow
-              icon={<Phone className="h-3.5 w-3.5" />}
-              label="Telefon"
-              value={
-                <a href={`tel:${briefing.kontaktTelefon}`} className="text-primary hover:underline">
-                  {briefing.kontaktTelefon}
-                </a>
-              }
-            />
-          )}
-          {briefing.kontaktEpost && (
-            <InfoRow
-              icon={<Mail className="h-3.5 w-3.5" />}
-              label="E-post"
-              value={
-                <a href={`mailto:${briefing.kontaktEpost}`} className="text-primary hover:underline">
-                  {briefing.kontaktEpost}
-                </a>
-              }
-            />
-          )}
-          {(briefing.onsketDato || briefing.onsketTid) && (
-            <InfoRow
-              icon={<Calendar className="h-3.5 w-3.5" />}
-              label="Ønsket utført"
-              value={[briefing.onsketDato, briefing.onsketTid].filter(Boolean).join(" – ")}
-            />
-          )}
-          {briefing.referanse && (
-            <InfoRow
-              icon={<Tag className="h-3.5 w-3.5" />}
-              label="PO / referanse"
-              value={briefing.referanse}
-            />
-          )}
-          {briefing.hastegrad && (
-            <InfoRow
-              icon={<Tag className="h-3.5 w-3.5" />}
-              label="Hastegrad"
-              value={briefing.hastegrad}
-            />
+          {briefing.contactEmail && (
+            <InfoRow icon={<Mail className="h-3.5 w-3.5" />} label="E-post"
+              value={<a href={`mailto:${briefing.contactEmail}`} className="text-primary hover:underline">{briefing.contactEmail}</a>} />
           )}
         </div>
-
-        {(briefing.tilgang || briefing.materiell) && (
+        {briefing.workDescription && (
+          <BriefBlock icon={<FileText className="h-3 w-3" />} label="Arbeidsbeskrivelse" text={briefing.workDescription} />
+        )}
+        {(briefing.materialResponsibility || briefing.serviceMustProcure || briefing.practicalInfo) && (
           <div className="space-y-2 pt-1 border-t border-border/50">
-            {briefing.materiell && (
-              <div>
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Materiell / hva som må medbringes
-                </div>
-                <div className="text-sm whitespace-pre-wrap leading-snug">{briefing.materiell}</div>
-              </div>
-            )}
-            {briefing.tilgang && (
-              <div>
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-                  <KeyRound className="h-3 w-3" /> Tilgang / nøkler
-                </div>
-                <div className="text-sm whitespace-pre-wrap leading-snug">{briefing.tilgang}</div>
-              </div>
-            )}
+            {briefing.materialResponsibility && <BriefBlock label="Hvem skaffer materiell?" text={briefing.materialResponsibility} />}
+            {briefing.serviceMustProcure && <BriefBlock label="Hva må MCS Service skaffe?" text={briefing.serviceMustProcure} />}
+            {briefing.practicalInfo && <BriefBlock icon={<KeyRound className="h-3 w-3" />} label="Praktisk info / adgang" text={briefing.practicalInfo} />}
           </div>
         )}
 
@@ -358,6 +248,15 @@ function InfoRow({
         <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
         <div className="text-sm break-words">{value}</div>
       </div>
+    </div>
+  );
+}
+
+function BriefBlock({ icon, label, text }: { icon?: React.ReactNode; label: string; text: string }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">{icon}{label}</div>
+      <div className="whitespace-pre-wrap text-sm leading-snug mt-0.5">{text}</div>
     </div>
   );
 }
