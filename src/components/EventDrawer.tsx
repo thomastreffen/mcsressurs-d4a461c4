@@ -52,6 +52,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import {
   AlertTriangle,
+  Send,
   ExternalLink,
   Clock,
   MapPin,
@@ -2395,6 +2396,11 @@ export function EventDrawer({
             )}
           </div>
 
+          {isEditing && editEvent && editEvent.technicians.length > 0 && (
+            <ResendJobInfoButton jobId={editEvent.id} />
+          )}
+
+
           {!readOnly && drawerTab === "details" && isEditing && editEvent && (
             <Button
               variant="ghost" size="sm"
@@ -2677,5 +2683,32 @@ function NewEventFields({
         </div>
       )}
     </section>
+  );
+}
+
+function ResendJobInfoButton({ jobId }: { jobId: string }) {
+  const [sending, setSending] = useState(false);
+  const send = async () => {
+    setSending(true);
+    try {
+      const { data, error } = await invokeWithSession("create-approval", { body: { job_id: jobId, resend: true } });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      const results: any[] = (data as any)?.results || [];
+      const sent = results.filter((r) => r.emailSent).length;
+      const failed = results.length - sent;
+      if (sent > 0 && failed === 0) toast.success(`Jobbinfo med vedlegg sendt til ${sent} montør(er)`);
+      else if (sent > 0) toast.warning(`Sendt til ${sent}, men ${failed} feilet`);
+      else toast.error("E-post ble ikke sendt", { description: "Logg inn på nytt med Microsoft og prøv igjen." });
+    } catch (e: any) {
+      toast.error("Kunne ikke sende jobbinfo", { description: e?.message });
+    } finally {
+      setSending(false);
+    }
+  };
+  return (
+    <Button variant="secondary" className="w-full gap-1.5" onClick={send} disabled={sending}>
+      {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+      {sending ? "Sender…" : "Send info til montør på nytt"}
+    </Button>
   );
 }
