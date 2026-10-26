@@ -1,3 +1,4 @@
+import { getOrderSiteAddress } from "@/lib/order-display";
 import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -146,7 +147,7 @@ export function AssignResourceTaskDialog({
     
     // Separate place-of-work name from actual physical address
     setPlaceOfWork(findVal("oppdragssted", "oppdragssted_navn", "arbeidssted_navn", "anleggsnavn") || summary?.oppdragssted || "");
-    setAddress(buildFullAddress());
+    setAddress(getOrderSiteAddress(summary) || buildFullAddress());
     
     setCustomer(findVal("firmanavn", "kundenavn", "kunde") || summary?.kundenavn || "");
     setContactPerson(findVal("kontaktperson", "kontaktperson_kunde", "kontakt") || summary?.kontaktperson || "");

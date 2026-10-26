@@ -1,3 +1,4 @@
+import { resolveJobAddress } from "../_shared/job-address.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -776,6 +777,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Operative address: newest event address, else the order's oppdragssted
+    (event as any).address = (await resolveJobAddress(supabaseAdmin, event)) || null;
 
     // ── Server-side access check: company-scoped resource_plan edit (skipped for trusted internal/service-role callers) ──
     if (callerUserId) {
