@@ -244,7 +244,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes } = await req.json();
+    const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes, resend } = await req.json();
+    const isResend = resend === true;
     if (!job_id) {
       return new Response(JSON.stringify({ error: "Missing job_id" }), {
         status: 400,
@@ -323,6 +324,42 @@ Deno.serve(async (req) => {
 
     for (const tech of technicians) {
       const isSelf = tech.user_id === callerUserId;
+
+      if (isResend) {
+        // Re-send job info + attachments; reuse existing approval (keep its status), create one if missing.
+        let token: string | null = null;
+        const { data: existing } = await supabaseAdmin
+          .from("job_approvals").select("token").eq("job_id", job_id).eq("technician_user_id", tech.user_id)
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (existing?.token) token = existing.token;
+        else {
+          const { data: ins, error: insErr } = await supabaseAdmin.from("job_approvals")
+            .insert({ job_id, technician_user_id: tech.user_id, response_required: rRequired, reminder_profile: rProfile, reminder_config: rConfig })
+            .select("token").single();
+          if (insErr) { results.push({ techId: tech.id, techName: tech.name, emailSent: false, error: insErr.message }); continue; }
+          token = ins.token;
+        }
+        if (!msToken || !tech.email) {
+          results.push({ techId: tech.id, techName: tech.name, emailSent: false, reason: !msToken ? "no_ms_token" : "no_email" });
+          continue;
+        }
+        const techTimes = techTimeMap.get(tech.id);
+        const { subject, body } = buildApprovalEmail(job, tech.name, token!, displayNumber, false, techTimes?.start_at, techTimes?.end_at, []);
+        const emailRes = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${msToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ message: { subject: `Jobbinfo (sendt på nytt): ${displayNumber} – ${job.title}`, body: { contentType: "HTML", content: body }, toRecipients: [{ emailAddress: { address: tech.email } }] } }),
+        });
+        const ok = emailRes.ok;
+        if (!ok) console.error("[create-approval] Resend failed:", tech.email, await emailRes.text());
+        results.push({ techId: tech.id, techName: tech.name, emailSent: ok });
+        await supabaseAdmin.from("event_logs").insert({
+          event_id: job_id, performed_by: callerUserId, action_type: "info_resent",
+          change_summary: ok ? `Jobbinfo med vedlegg sendt på nytt til ${tech.name} (${tech.email})` : `Kunne ikke sende jobbinfo på nytt til ${tech.name}`,
+        });
+        void subject;
+        continue;
+      }
 
       if (isSelf && !isTimeChange) {
         // Auto-approve when assigning to yourself – no email needed
