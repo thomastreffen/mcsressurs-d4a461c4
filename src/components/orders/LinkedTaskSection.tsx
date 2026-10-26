@@ -3,10 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, User, ExternalLink, CheckCircle2, Clock, PlayCircle, Link2, MapPin } from "lucide-react";
+import { CalendarDays, User, ExternalLink, CheckCircle2, Clock, PlayCircle, Link2, MapPin, Send } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { toast } from "sonner";
+import { invokeWithSession } from "@/lib/invoke-session";
 
 interface LinkedTaskSectionProps {
   submissionId: string;
@@ -32,6 +35,25 @@ export function LinkedTaskSection({
   onManageLink,
 }: LinkedTaskSectionProps) {
   const navigate = useNavigate();
+  const [resending, setResending] = useState(false);
+
+  const resendJobInfo = async (jobId: string) => {
+    setResending(true);
+    try {
+      const { data, error } = await invokeWithSession("create-approval", { body: { job_id: jobId, resend: true } });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      const results: any[] = (data as any)?.results || [];
+      const sent = results.filter((r) => r.emailSent).length;
+      const failed = results.filter((r) => !r.emailSent).length;
+      if (sent > 0 && failed === 0) toast.success(`Jobbinfo med vedlegg sendt til ${sent} montør(er)`);
+      else if (sent > 0) toast.warning(`Sendt til ${sent}, men ${failed} feilet`);
+      else toast.error("E-post ble ikke sendt", { description: "Logg inn på nytt med Microsoft og prøv igjen." });
+    } catch (e: any) {
+      toast.error("Kunne ikke sende jobbinfo", { description: e?.message });
+    } finally {
+      setResending(false);
+    }
+  };
 
   // Resolution priority:
   // 1. Explicit linked_event_id (admin chose existing task)
@@ -181,6 +203,19 @@ export function LinkedTaskSection({
           <ExternalLink className="h-3 w-3 mr-1.5" />
           Åpne i ressursplan
         </Button>
+
+        {linkedTask.technicians.length > 0 && (
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full text-xs h-8"
+            disabled={resending}
+            onClick={() => resendJobInfo(linkedTask.id)}
+          >
+            <Send className="h-3 w-3 mr-1.5" />
+            {resending ? "Sender…" : "Send info til montør på nytt"}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
