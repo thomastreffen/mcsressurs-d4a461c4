@@ -2395,6 +2395,11 @@ export function EventDrawer({
             )}
           </div>
 
+          {isEditing && editEvent && editEvent.technicians.length > 0 && (
+            <ResendJobInfoButton jobId={editEvent.id} />
+          )}
+
+
           {!readOnly && drawerTab === "details" && isEditing && editEvent && (
             <Button
               variant="ghost" size="sm"
