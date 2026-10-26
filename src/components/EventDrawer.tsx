@@ -1876,7 +1876,7 @@ export function EventDrawer({
                   <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{editEvent.customer}</span>
                 )}
                 {editEvent.address && (
-                  <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{editEvent.address}</span>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(editEvent.address)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-primary underline-offset-2 hover:underline min-h-[44px] sm:min-h-0"><MapPin className="h-3.5 w-3.5" />{editEvent.address}</a>
                 )}
               </div>
 

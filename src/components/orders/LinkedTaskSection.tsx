@@ -181,7 +181,7 @@ export function LinkedTaskSection({
         {linkedTask.address && (
           <div className="text-xs flex items-start gap-1">
             <MapPin className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
-            <span>{linkedTask.address}</span>
+            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(linkedTask.address)}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{linkedTask.address}</a>
           </div>
         )}
 
