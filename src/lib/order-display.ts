@@ -97,3 +97,23 @@ export function getSubmissionDisplayTitle(submission: any): string {
     "Bestilling"
   );
 }
+
+function titleCaseCity(city: string): string {
+  if (!city || city !== city.toUpperCase()) return city;
+  return city.toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_m, p, c) => p + c.toUpperCase());
+}
+
+/** Operative site address "Ramstadveien 6, 1850 Mysen" from an order summary (oppdragssted). Never invoice address. */
+export function getOrderSiteAddress(summary: AnyRec): string {
+  const street = pick(summary, ["adresse", "address", "besoksadresse", "anleggsadresse"]) || "";
+  let code = pick(summary, ["postnummer", "postcode"]) || "";
+  let city = pick(summary, ["poststed", "city"]) || "";
+  const m = code.match(/^(\d{4})\s+(.+)$/);
+  if (m) { code = m[1]; city = city || m[2]; }
+  const tail = [code, titleCaseCity(city)].filter(Boolean).join(" ");
+  return street && tail ? `${street}, ${tail}` : street || tail;
+}
+
+export function mapsUrl(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
