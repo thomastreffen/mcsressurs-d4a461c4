@@ -1,10 +1,13 @@
 # Roadmap
 
 ## Produksjonsdokumentasjon DLE sak 63210 punkt 2 – 27.10.2026
-- [ ] Registrer skriftlig internrevisjonsrutine i MCS Service, uten utsending
-- [ ] Dokumenter reell systemgjennomgang 27.10.2026 med eksisterende åpne DLE-funn, uten udokumenterte kontrollpåstander
-- [ ] Koble rutine/referat til punkt 2 og sett godkjent brukerbestilt svartekst; ikke formelt lukk eller send
-- [ ] Les tilbake produksjonsposter og kontroller innlogget visning; rapporter nøyaktige poster/status og gjenstående godkjenning
+- [x] Rutine 9470d76b-da66-495c-94c0-287c893a2a7a, versjon 1 published, uten utsending; tidligere håndbok urørt
+- [x] Revisjon b8d7dfbf-7328-443e-9780-d7a4404425dd completed 27.10.2026, 7 besvarte kontrollpunkter og frosset systemgrunnlag; dokumentgjennomgang, ingen fysisk inspeksjon attestert
+- [x] To dokumenter/bevis koblet til punkt 2; brukerbestilt svartekst satt uten formell godkjenning/lukking; tidligere svar bevart i sakshistorikken
+- [x] Ett åpent oppfølgingstiltak 13f22948-34c8-4888-bff8-b8fc29e7794c, Thomas Treffen, 08.11.2026; øvrige DLE-funn og gammel revisjon urørt
+- [x] Produksjonsposter lest tilbake; lagrede rutine/referat byte-verifisert (3161/6109 B); publisert side krever innlogging; ingen kodeendring eller app-publisering nødvendig
+- [ ] Innlogget visuell kontroll: ingen tilgjengelig autorisert nettlesersesjon, selv-mint fant ikke bestiller; ingen omgåelse av innlogging
+- [ ] Punkt 2 oversendelse/lukking: krever ansvarlig på funnet, godkjent svartekst, rettet-/dokumentasjon-komplett-bekreftelser og håndtering av åpent tilknyttet tiltak; ingenting sendt eller lukket
 
 ## DLE / internrevisjon – AI-forslag 27.10.2026
 - [x] Svarforslag i punkt 2: vent på lagring før forslag fjernes, vis innsatt/lagret bekreftelse, ventestatus og feil med nytt forsøk; godkjenning fortsatt separat
