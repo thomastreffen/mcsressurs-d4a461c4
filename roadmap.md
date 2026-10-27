@@ -1,5 +1,10 @@
 # Roadmap
 
+## Tilsynsflyt publiseringskontroll – 27.10.2026
+- [ ] Verifiser og herd forhåndsvisning/manuell sending; aldri registrer oversendt før Microsoft aksepterer; tester uten produksjonsskriving
+- [ ] Kontroller aktiv organisasjonsbevis/individuell kravrelevans; punkt 2/3 og Rune urørt
+- [ ] Rapporter test/byggestatus og gjenstående publisering/deploy; ikke publiser eller send
+
 ## Individuell kravrelevans – 27.10.2026
 - [x] Append-only compliance_requirement_assessments + HMS-audit, company-authorized/idempotent RPC; begrunnelse/aktør/tid/valgfri revurdering, oppheving; endret krav/ansettelseskontekst ugyldiggjør vurdering
 - [x] Adminhandling i gjeldende personkrav; eksplisitt Ikke relevant i matrise/eksport, separate opplæringstall og vurderingstall i gap/preflight/svarpakke/DLE/internrevisjon
