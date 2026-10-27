@@ -40,6 +40,7 @@ export type EvidenceSourceKind =
   | "competence"
   | "regulation"
   | "org_role"
+  | "organization_overview"
   | "internal_audit"
   | "hms_incident"
   | "action_item"
@@ -107,6 +108,7 @@ export const EVIDENCE_SOURCE_KINDS: { value: EvidenceSourceKind; label: string; 
   { value: "competence", label: "Enkelt kompetansebevis", hint: "Ett konkret bevis for én ansatt" },
   { value: "regulation", label: "Regelverk", hint: "Referanse til regelverksregisteret" },
   { value: "org_role", label: "Organisasjon & ansvar", hint: "Rolle- og ansvarsbeskrivelse" },
+  { value: "organization_overview", label: "Hele organisasjonsoversikten", hint: "Gjeldende aktive roller, ansvar og rapporteringslinjer for selskapet" },
   { value: "internal_audit", label: "Internkontroll", hint: "Gjennomført internrevisjon" },
   { value: "hms_incident", label: "HMS-avvik", hint: "Registrert avvik i HMS" },
   { value: "action_item", label: "Tiltak", hint: "Gjennomført tiltak som bevis" },
