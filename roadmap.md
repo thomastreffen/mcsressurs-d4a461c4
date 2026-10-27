@@ -1,9 +1,12 @@
 # Roadmap
 
 ## Tilsynsflyt publiseringskontroll – 27.10.2026
-- [ ] Verifiser og herd forhåndsvisning/manuell sending; aldri registrer oversendt før Microsoft aksepterer; tester uten produksjonsskriving
-- [ ] Kontroller aktiv organisasjonsbevis/individuell kravrelevans; punkt 2/3 og Rune urørt
-- [ ] Rapporter test/byggestatus og gjenstående publisering/deploy; ikke publiser eller send
+- [x] Herdet eksisterende preview: innholds-/mottakerbundet bekreftelse før separat send, ingen omgåelse ved mangler; genererte vedlegg vises; DLE-filpanel krever klargjorte filer og bekreftelse
+- [x] Forberedelse lagrer draft/HTML og aldri oversendt; server kontrollerer bekreftelse, aktuelle funn, åpne tiltak/bevis og uendret svar; claim hindrer dobbel sending; først Microsoft-aksept gir submitted, aldri closed; feil/ukjent respons må ikke gjenåpne sent/sending
+- [x] 91 tester bestått i 13 filer inkl. faktisk edge-handler med simulerte tjenester (5), preview-brukerflyt (4), sendepolicy (19), organisasjonsbevis og append-only kravrelevans. Ingen nettverksutsending eller produksjonstestdata
+- [x] Aktive sider importerer begge HMS-funksjoner; punkt 2/3 fortsatt documentation_ready med uendrede tidsstempler. Agenten har ikke skrevet produksjonsdata. Samtidig ekstern aktivitet observeres: punkt 1 updated_at 12:45:25 UTC og to Rune-vurderinger 12:44:24/12:44:55 UTC; ikke endret/tilbakestilt her
+- [ ] Innlogget visuell sluttkontroll: egen sesjon kunne ikke mintes (ingen kontomatch); trenger brukerens preview-innlogging. Mocked preview-/serverflyt er verifisert
+- [ ] Samordnet deploy av inspection-response-send og app-publisering: ikke utført etter brukerens uttrykkelige stoppregel; gammel frontend/ny server skal ikke deployes hver for seg
 
 ## Individuell kravrelevans – 27.10.2026
 - [x] Append-only compliance_requirement_assessments + HMS-audit, company-authorized/idempotent RPC; begrunnelse/aktør/tid/valgfri revurdering, oppheving; endret krav/ansettelseskontekst ugyldiggjør vurdering
