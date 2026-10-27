@@ -1,5 +1,10 @@
 # Roadmap
 
+## Samlet organisasjonsbevis – DLE 63210 punkt 1
+- [ ] Samlet dynamisk selskapskilde, eksisterende enkeltroller beholdes
+- [ ] Preflight og svarpakke/eksport med samlet oversikt
+- [ ] Tester og innlogget kontroll uten produksjonsskriving; publisering ikke bestilt
+
 ## Produksjonsdokumentasjon DLE sak 63210 punkt 2 – 27.10.2026
 - [x] Rutine 9470d76b-da66-495c-94c0-287c893a2a7a, versjon 1 published, uten utsending; tidligere håndbok urørt
 - [x] Revisjon b8d7dfbf-7328-443e-9780-d7a4404425dd completed 27.10.2026, 7 besvarte kontrollpunkter og frosset systemgrunnlag; dokumentgjennomgang, ingen fysisk inspeksjon attestert
