@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";
@@ -39,7 +38,13 @@ describe("MCP native PDF contract", () => {
         const binary = form.get("file");
         expect(binary).toBeInstanceOf(Blob);
         if (!(binary instanceof Blob)) throw new Error("Expected binary PDF");
-        expect(new Uint8Array(await binary.arrayBuffer())).toEqual(pdf);
+        const buffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => reader.result instanceof ArrayBuffer ? resolve(reader.result) : reject(new Error("Expected bytes"));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsArrayBuffer(binary);
+        });
+        expect(new Uint8Array(buffer)).toEqual(pdf);
         expect(binary.type).toBe("application/pdf");
         expect(new Headers(init?.headers).get("authorization")).toBe("Bearer mock-caller-bearer");
         return Response.json({ document_id: "mock-existing-document", file_path: "mock-private-path" });
