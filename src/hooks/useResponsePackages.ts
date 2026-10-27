@@ -12,6 +12,7 @@ import { sourceLabelFor, type AttachmentCandidate, type ManifestEntry, type Pack
 import { organizationOverviewCandidate } from "@/lib/organization-evidence";
 import { useOrgPeople } from "@/hooks/useOrgPeople";
 import { summarizeRequirements, competenceOverviewRows, type RelevanceMetadata } from "@/lib/requirement-relevance";
+import { initialPackageDelivery, responseFindingReady } from "../../supabase/functions/_shared/inspection-send-policy";
 
 const sb = supabase as any;
 
@@ -379,6 +380,8 @@ export function buildPreflight(input: {
   return input.findings.map((f) => {
     const checks: PreflightCheck[] = [];
 
+    if (!responseFindingReady(f)) checks.push({ label: "Intern behandling må være ferdig: ansvarlig, godkjent svar, rettet forhold og komplett dokumentasjon", tone: "alert" });
+
     if (f.response_text?.trim()) checks.push({ label: "Svartekst klar", tone: "ok" });
     else checks.push({ label: "Mangler svartekst til tilsynsmyndigheten", tone: "alert" });
 
@@ -484,7 +487,7 @@ export function useResponsePackageMutations() {
         .insert({
           company_id: cid,
           inspection_id: input.inspection_id,
-          status: input.mode === "send" ? "sent" : "exported",
+          ...initialPackageDelivery(input.mode),
           subject: input.subject,
           recipient_name: input.recipient_name || null,
           recipient_email: input.recipient_email || null,
@@ -492,10 +495,8 @@ export function useResponsePackageMutations() {
           intro_text: input.intro,
           closing_text: input.closing,
           manifest: input.manifest,
-          email_body_snapshot: input.email_text,
+          email_body_snapshot: input.email_html,
           exported_at: input.mode === "export" ? new Date().toISOString() : null,
-          sent_at: input.mode === "send" ? new Date().toISOString() : null,
-          sent_by: input.mode === "send" ? user?.id ?? null : null,
           created_by: user?.id ?? null,
         })
         .select()
@@ -520,9 +521,10 @@ export function useResponsePackageMutations() {
         if (fErr) throw fErr;
       }
 
-      if (input.attachments.length) {
+      const fileAttachments = input.attachments.filter(a => a.kind !== "reference");
+      if (fileAttachments.length) {
         const { error: aErr } = await sb.from("compliance_response_package_attachments").insert(
-          input.attachments.map((a, idx) => ({
+          fileAttachments.map((a, idx) => ({
             company_id: cid,
             package_id: pkg.id,
             finding_id: a.finding_id,
@@ -543,33 +545,7 @@ export function useResponsePackageMutations() {
         if (aErr) throw aErr;
       }
 
-      if (input.mode === "send") {
-        // Funn settes til «Oversendt» – ikke lukket. Lukking skjer først når myndigheten godkjenner.
-        const ids = input.findings.map((f) => f.finding_id);
-        if (ids.length) {
-          await sb.from("compliance_findings").update({ status: "submitted" }).in("id", ids);
-        }
-        await sb.from("compliance_correspondence").insert({
-          company_id: cid,
-          inspection_id: input.inspection_id,
-          direction: "out",
-          occurred_at: new Date().toISOString(),
-          contact_name: input.recipient_name || input.recipient_email || null,
-          subject: input.subject,
-          notes: `Svarpakke ${pkg.package_number} sendt til ${input.recipient_email}. ${input.findings.length} avvik, ${input.attachments.filter((a) => a.export_name).length} vedlegg.`,
-          created_by: user?.id ?? null,
-        });
-        await sb
-          .from("compliance_inspections")
-          .update({ status: "submitted", submitted_at: new Date().toISOString() })
-          .eq("id", input.inspection_id);
-        await log({
-          inspection_id: input.inspection_id,
-          event_type: "response_sent",
-          summary: `Svarpakke ${pkg.package_number} sendt til ${input.recipient_email} (${input.findings.map((f) => `avvik ${f.finding_number}`).join(", ")})`,
-          payload: { package_id: pkg.id, package_number: pkg.package_number, recipient: input.recipient_email, findings: input.findings.map((f) => f.finding_number) },
-        });
-      } else {
+      if (input.mode === "export") {
         await log({
           inspection_id: input.inspection_id,
           event_type: "response_exported",
@@ -586,7 +562,8 @@ export function useResponsePackageMutations() {
 
   const markSendFailed = useMutation({
     mutationFn: async ({ id, error }: { id: string; error: string }) => {
-      await sb.from("compliance_response_packages").update({ status: "draft", send_error: error, sent_at: null }).eq("id", id);
+      // Do not reset sent/sending on a lost response: that could replay accepted mail.
+      await sb.from("compliance_response_packages").update({ status: "draft", send_error: error, sent_at: null }).eq("id", id).in("status", ["draft", "exported"]);
     },
     onSuccess: () => invalidate(),
   });

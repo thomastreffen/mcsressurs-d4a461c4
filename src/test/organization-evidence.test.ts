@@ -53,7 +53,7 @@ describe("Combined organization evidence", () => {
   });
   it("package preflight rejects a selected missing organization source", () => {
     const c = organizationOverviewCandidate(evidence, company, [], people, true);
-    const finding = { id: evidence.finding_id, finding_number: 1, title: "Manglende dokumentert organisasjonsoversikt", response_text: "Oversikt" } as Finding;
+    const finding = { id: evidence.finding_id, finding_number: 1, title: "Manglende dokumentert organisasjonsoversikt", response_text: "Oversikt", internal_assessment: "Kontrollert", responsible_person_id: "rune", response_approved_at: "2026-10-27", condition_corrected_at: "2026-10-27", documentation_complete_at: "2026-10-27", documentation_status: "complete", status: "documentation_ready" } as Finding;
     const result = buildPreflight({ findings: [finding], evidence: [evidence], actions: [], candidates: [c], selectedAttachmentKeys: new Set([c.key]), detailFor: () => null });
     expect(result[0].overall).toBe("missing");
     const valid = candidate();
