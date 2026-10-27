@@ -76,6 +76,7 @@ function hit(text: string, needle?: string | null): boolean {
 /* ------------------------------------------------------------------ */
 
 export interface CoverageLike {
+  notRelevant?: number;
   total: number;
   ok: number;
   warn: number;
@@ -154,7 +155,7 @@ export function systemCheckForFinding(rawText: string, s: SystemCheckSources): S
 
   for (const c of competence) {
     const cov = c.coverage;
-    if (!cov || cov.total === 0) {
+    if (!cov || (cov.total === 0 && !cov.notRelevant)) {
       facts.push(`Ingen aktive ansatte er omfattet av et registrert krav om ${c.name}.`);
       gaps.push({
         id: `req-${c.typeId}`,
@@ -167,6 +168,7 @@ export function systemCheckForFinding(rawText: string, s: SystemCheckSources): S
       continue;
     }
     const parts = [`${cov.total} aktive ansatte omfattes av kravet om ${c.name}`, `${cov.ok} har gyldig dokumentasjon`];
+    if (cov.notRelevant) parts.push(`${cov.notRelevant} personkrav er dokumentert ikke relevante (ikke opplæring)`);
     if (cov.warn) parts.push(`${cov.warn} utløper snart`);
     if (cov.gaps) parts.push(`${cov.gaps} mangler gyldig dokumentasjon`);
     facts.push(`${parts.join(", ")}.`);

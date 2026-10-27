@@ -129,7 +129,7 @@ export interface CompetenceCoverageDetail {
   warn: number;
   gaps: number;
   notRelevant?: number;
-  people: {
+  people: ({
     person_id: string;
     name: string;
     status: string;
@@ -161,14 +161,13 @@ export function useCompetenceCoverageDetails() {
       expires_at: r.expires_at,
       has_document: r.has_document,
       document_id: (compById.get(r.competence_id ?? "") as any)?.document_id ?? null,
+      assessment_id: r.assessment_id, assessment_reason: r.assessment_reason, assessor_name: r.assessor_name,
+      assessed_by: r.assessed_by, assessed_at: r.assessed_at, assessment_valid_until: r.assessment_valid_until,
     }));
     return {
       competence_type_id: competenceTypeId,
       competence_type_name: types.data?.find((t) => t.id === competenceTypeId)?.name ?? "Kompetanse",
-      total: rows.length,
-      ok: rows.filter((r) => r.status === "fulfilled").length,
-      warn: rows.filter((r) => r.status === "expiring_soon").length,
-      gaps: rows.filter((r) => ["missing", "missing_document", "expired"].includes(r.status)).length,
+      ...summarizeRequirements(rows),
       people: people.sort((a, b) => a.name.localeCompare(b.name, "nb")),
     };
   };
@@ -186,6 +185,7 @@ const COMPETENCE_STATUS_TEXT: Record<string, { label: string; tone: ComplianceTo
   missing: { label: "Mangler kompetanse", tone: "alert" },
   missing_document: { label: "Mangler dokumentasjon", tone: "alert" },
   not_required: { label: "Ikke påkrevd", tone: "neutral" },
+  not_relevant: { label: "Ikke relevant – individuell vurdering", tone: "neutral" },
 };
 
 /**
@@ -305,26 +305,18 @@ export function useAttachmentCandidates(findings: Finding[], evidence: FindingEv
             source_kind: e.source_kind,
             source_label: srcLabel,
             date: new Date().toISOString(),
-            status_label: detail.gaps > 0 ? `${detail.gaps} mangler` : detail.warn > 0 ? `${detail.warn} utløper snart` : `${detail.ok} av ${detail.total} komplett`,
+            status_label: (detail.gaps > 0 ? `${detail.gaps} mangler` : detail.warn > 0 ? `${detail.warn} utløper snart` : `${detail.ok} av ${detail.total} komplett`) + (detail.notRelevant ? ` · ${detail.notRelevant} ikke relevant` : ""),
             status_tone: detail.gaps > 0 ? "alert" : detail.warn > 0 ? "warn" : "ok",
             title: `${detail.competence_type_name} kompetanseoversikt`,
             generated: {
               type: "competence_overview",
               competence_type_id: e.competence_type_id,
-              rows: [
-                ["Ansatt", "Status", "Gyldig til", "Dokumentasjon"],
-                ...detail.people.map((p) => [
-                  p.name,
-                  COMPETENCE_STATUS_TEXT[p.status]?.label ?? p.status,
-                  p.expires_at ?? "",
-                  p.has_document ? "Ja" : "Nei",
-                ]),
-              ],
+              rows: competenceOverviewRows(detail.people, status => COMPETENCE_STATUS_TEXT[status]?.label ?? status),
             },
           });
           // Ett bevis per ansatt kravet gjelder for
           for (const p of detail.people) {
-            if (p.document_id) {
+            if (p.document_id && p.status !== "not_relevant") {
               pushDocument({
                 key: `covdoc:${e.id}:${p.person_id}`, finding_id: f.id, evidence_id: e.id, documentId: p.document_id,
                 title: `${detail.competence_type_name} – ${p.name}`, source_kind: "competence", source_label: "Ansatt → Kompetanse",
@@ -410,12 +402,14 @@ export function buildPreflight(input: {
     for (const e of input.evidence.filter((x) => x.finding_id === f.id && x.source_kind === "competence_requirement")) {
       const d = input.detailFor(e.competence_type_id);
       if (!d) continue;
-      if (d.total === 0) {
+      if (d.notRelevant) checks.push({ label: `${d.notRelevant} personkrav dokumentert ikke relevant (ikke opplæring)`, tone: "ok" });
+      if (d.total === 0 && !d.notRelevant) {
         checks.push({ label: `Ingen ansatte har ${d.competence_type_name} som krav – kontroller kompetansekravene`, tone: "warn" });
         continue;
       }
       checks.push({ label: `${d.total} ansatte omfattes av ${d.competence_type_name}-kravet`, tone: "ok" });
-      const withDoc = d.people.filter((p) => p.has_document).length;
+      const applicablePeople = d.people.filter(p => p.status !== "not_relevant");
+      const withDoc = applicablePeople.filter((p) => p.has_document).length;
       if (d.gaps > 0) {
         checks.push({
           label: `${d.gaps} ansatte mangler gyldig ${d.competence_type_name}`,
@@ -435,7 +429,7 @@ export function buildPreflight(input: {
       checks.push({
         label: `${withDoc}/${d.total} har dokumentasjon`,
         tone: withDoc === d.total ? "ok" : "alert",
-        people: withDoc === d.total ? undefined : d.people.filter((p) => !p.has_document).map((p) => ({ person_id: p.person_id, name: p.name })),
+        people: withDoc === d.total ? undefined : applicablePeople.filter((p) => !p.has_document).map((p) => ({ person_id: p.person_id, name: p.name })),
       });
     }
 

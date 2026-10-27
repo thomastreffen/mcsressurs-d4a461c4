@@ -133,10 +133,11 @@ export function auditSystemReview(s: AuditReviewSources): AuditSystemFact[] {
       attention: true,
     });
   } else {
-    const byType = new Map<string, { total: number; gaps: number; warn: number }>();
+    const byType = new Map<string, { total: number; gaps: number; warn: number; notRelevant: number }>();
     for (const r of required) {
-      const e = byType.get(r.competence_type_id) ?? { total: 0, gaps: 0, warn: 0 };
-      e.total += 1;
+      const e = byType.get(r.competence_type_id) ?? { total: 0, gaps: 0, warn: 0, notRelevant: 0 };
+      if (r.status === "not_relevant") e.notRelevant += 1;
+      else e.total += 1;
       if (GAP_STATUSES.includes(r.status)) e.gaps += 1;
       else if (r.status === "expiring_soon") e.warn += 1;
       byType.set(r.competence_type_id, e);
@@ -148,11 +149,11 @@ export function auditSystemReview(s: AuditReviewSources): AuditSystemFact[] {
       facts.push({
         id: `competence-${typeId}`,
         area: "competence",
-        message: agg.gaps
+        message: (agg.gaps
           ? `${agg.gaps} ${agg.gaps === 1 ? "ansatt" : "ansatte"} oppfyller ikke ${name}-kravet (${agg.total} omfattes).`
           : agg.warn
             ? `${agg.warn} ${agg.warn === 1 ? "ansatt" : "ansatte"} har ${name} som utløper snart (${agg.total} omfattes).`
-            : `Alle ${agg.total} ansatte som omfattes av ${name}-kravet har gyldig dokumentasjon.`,
+            : `Alle ${agg.total} ansatte som omfattes av ${name}-kravet har gyldig dokumentasjon.`) + (agg.notRelevant ? ` ${agg.notRelevant} personkrav er dokumentert ikke relevante (ikke opplæring).` : ""),
         tone: agg.gaps ? "alert" : agg.warn ? "warn" : "ok",
         route: `/compliance/kompetanse${query}${agg.gaps ? `${query ? "&" : "?"}status=missing_document` : ""}`,
         actionLabel: "Åpne kompetansematrisen",
