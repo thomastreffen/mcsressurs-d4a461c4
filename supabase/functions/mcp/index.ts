@@ -288,7 +288,7 @@ var projectRef = "nmqycanqumelmfpdmkpr";
 var mcp_default = defineMcp({
   name: "mcs-kontrollsenter",
   title: "MCS Kontrollsenter",
-  version: "0.2.0",
+  version: "0.2.1",
   instructions: "Tools for MCS Hub. Actions run as the signed-in Hub user with their normal permissions. Find an employee, list their competences, then upload a PDF to a competence record.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,

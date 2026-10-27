@@ -11,7 +11,7 @@ const projectRef = import.meta.env["VITE_SUPABASE_PROJECT_ID"] ?? "project-ref-u
 export default defineMcp({
   name: "mcs-kontrollsenter",
   title: "MCS Kontrollsenter",
-  version: "0.2.0",
+  version: "0.2.1",
   instructions:
     "Tools for MCS Hub. Actions run as the signed-in Hub user with their normal permissions. Find an employee, list their competences, then upload a PDF to a competence record.",
   auth: auth.oauth.issuer({
