@@ -17,6 +17,8 @@ import { slugForFile, escapeHtml, type AttachmentCandidate } from "@/lib/respons
 import { DLE_CATEGORIES, buildDleFiles, deliverDleBlob, type DleCategory, type DleFile, type DleRecord } from "@/lib/dle/export";
 import { parseDleRecipients } from "@/lib/dle/delivery";
 import { loadDleRecords, prepareDleFile } from "@/lib/dle/sources";
+import { previewAllowsSend } from "../../../supabase/functions/_shared/inspection-send-policy";
+import { invokeWithSession } from "@/lib/invoke-session";
 
 export function DleExportPanel({ inspectionId, attachments, initialEmail }: { inspectionId: string; attachments: AttachmentCandidate[]; initialEmail: string }) {
   const { activeCompanyId, activeCompany } = useCompanyContext();
@@ -37,6 +39,7 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
   const [email, setEmail] = useState(initialEmail);
   const [cc, setCc] = useState("");
   const [emailFormat, setEmailFormat] = useState("files");
+  const [reviewed, setReviewed] = useState<string | null>(null);
   const [zipReady, setZipReady] = useState<{ blob: Blob; files: DleFile[] } | null>(null);
   const company = activeCompany?.name ?? "Firma";
   const date = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
@@ -45,6 +48,9 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
   }, [scope, initialEmail]);
   const files = useMemo(() => DLE_CATEGORIES.flatMap((c) => enabled.has(c.key) ? buildDleFiles(c.key, records[c.key] ?? [], separate[c.key] ?? false, company, date) : []), [enabled, records, separate, company, date]);
   const selected = files.filter((f) => !excluded.has(f.key));
+  const sendSnapshot = JSON.stringify({ scope, email, cc, emailFormat, selected });
+  const sendReady = selected.length > 0 && selected.every(f => Boolean(blobs[f.key])) && Boolean(email.trim());
+  const canSend = previewAllowsSend({ current: sendSnapshot, confirmed: reviewed, ready: sendReady, busy: Boolean(busy) });
   const canExport = access.can("hms", "edit");
   const allowedCategory = (category: DleCategory) => access.can(category === "chart" || category === "matrix" || category === "roles" ? "organisation" : category === "competence" ? "employees" : "hms");
 
@@ -113,7 +119,8 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
     finally { if (currentScope.current === origin) setBusy(""); }
   }
   async function sendFiles() {
-    if (!canExport || !activeCompanyId || !selected.length) return;
+    if (!canExport || !activeCompanyId || !canSend) return;
+    setReviewed(null);
     const origin = scope; setBusy("send"); let packageId: string | null = null;
     try {
       const to = parseDleRecipients(email), copies = parseDleRecipients(cc);
@@ -143,7 +150,7 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
       const metadata = { to, cc: copies, format: emailFormat, purpose: "DLE-tilsyn", company_name: company, actor_name: user?.name ?? user?.email, files: selected.map((f) => ({ name: f.name, versions: f.records.map((r) => ({ id: r.id, title: r.title, version: r.version ?? "Snapshot " + date })) })) };
       const { error: metadataError } = await (supabase as any).from("compliance_response_packages").update({ delivery_metadata: metadata }).eq("id", pkg.id);
       if (metadataError) throw metadataError;
-      const { data, error: sendError } = await supabase.functions.invoke("inspection-response-send", { body: { package_id: pkg.id } });
+      const { data, error: sendError } = await invokeWithSession("inspection-response-send", { body: { package_id: pkg.id, confirm_send: true } });
       if (sendError || !data?.ok) throw new Error(data?.message ?? sendError?.message ?? "Utsendelsen feilet");
       qc.invalidateQueries({ queryKey: ["inspection-events", activeCompanyId, inspectionId] });
       toast.success(`Microsoft har akseptert sending til ${to.join(", ")}`);
@@ -171,6 +178,7 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
         <Checkbox aria-label={`Velg ${file.name}`} checked={!excluded.has(file.key)} disabled={!!busy} onCheckedChange={(checked) => { setExcluded((old) => { const next = new Set(old); checked ? next.delete(file.key) : next.add(file.key); return next; }); setZipReady(null); }} />
         <div className="min-w-0 flex-1"><p className="break-all text-sm">{file.name}</p><p className="text-xs text-muted-foreground">{file.path.split("/")[0]} · {file.records.length} {file.records.length === 1 ? "post" : "poster"}{file.records[0]?.original ? " · Originalfil" : ""}</p></div>
         {blobs[file.key] ? <Button size="sm" variant="outline" disabled={!canExport || !!busy || excluded.has(file.key)} onClick={() => void download(file)}><Download className="mr-1.5 h-4 w-4" />Last ned</Button> : <Button size="sm" variant="outline" disabled={!canExport || !!busy || excluded.has(file.key)} onClick={() => void prepare(file)}>{busy === file.key && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{file.records[0]?.original ? "Klargjør originalfil" : "Generer fil"}</Button>}
+        {blobs[file.key] && <Button size="sm" variant="outline" onClick={() => { const url = URL.createObjectURL(blobs[file.key]); window.open(url, "_blank", "noopener,noreferrer"); window.setTimeout(() => URL.revokeObjectURL(url), 60000); }}>Forhåndsvis fil</Button>}
       </div>)}
     </div>
     <div className="flex flex-wrap items-end gap-3">
@@ -178,7 +186,12 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
       <div className="min-w-0 flex-1 space-y-1"><Label htmlFor="dle-email">Til</Label><Input id="dle-email" type="text" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
       <div className="min-w-0 flex-1 space-y-1"><Label htmlFor="dle-cc">Kopi</Label><Input id="dle-cc" value={cc} onChange={(e) => setCc(e.target.value)} /></div>
       <Select value={emailFormat} onValueChange={setEmailFormat}><SelectTrigger className="w-40" aria-label="E-postformat"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="files">Enkeltfiler</SelectItem><SelectItem value="zip">Samlet ZIP</SelectItem></SelectContent></Select>
-      <Button disabled={!selected.length || !!busy || !canExport || !email.trim()} onClick={() => void sendFiles()}>{busy === "send" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Send valgte filer ({selected.length})</Button>
+      <Button disabled={!canSend || !canExport} onClick={() => void sendFiles()}>{busy === "send" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Send valgte filer ({selected.length})</Button>
+    </div>
+    <div className="space-y-2 border-t pt-3 text-sm">
+      <p className="font-medium">Forhåndsvis utsending: DLE-tilsyn – {company}</p>
+      <p className="whitespace-pre-wrap">Dokumentasjon for DLE-tilsyn – {company}{"\n\n"}{selected.map(f => f.name).join("\n")}</p>
+      <label className="flex items-center gap-2"><Checkbox checked={reviewed === sendSnapshot} disabled={!sendReady || !!busy} onCheckedChange={value => setReviewed(value === true ? sendSnapshot : null)} />Jeg har forhåndsvist de klargjorte filene og kontrollert mottakere og format.</label>
     </div>
   </section>;
 }

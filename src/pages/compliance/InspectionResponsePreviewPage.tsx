@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +24,8 @@ import {
   type AttachmentCandidate, type PackageFindingDraft,
 } from "@/lib/response-package";
 import { TONE_DOT, formatDate } from "@/lib/compliance";
+import { previewAllowsSend } from "../../../supabase/functions/_shared/inspection-send-policy";
+import { invokeWithSession } from "@/lib/invoke-session";
 
 function toCsv(rows: string[][]): string {
   return rows.map((r) => r.map((c) => `"${(c ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
@@ -49,7 +52,7 @@ export default function InspectionResponsePreviewPage() {
   const [selection, setSelection] = useState<{ findings: Set<string>; attachments: Set<string> }>({ findings: new Set(), attachments: new Set() });
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState<"" | "export" | "send">("");
-  const [confirmSend, setConfirmSend] = useState(false);
+  const [confirmedPreview, setConfirmedPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (ready || !id || !inspection.data) return;
@@ -113,9 +116,12 @@ export default function InspectionResponsePreviewPage() {
     : []);
 
   const ccList = form.cc.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+  const previewSnapshot = JSON.stringify({ id, company: activeCompany?.id, form, packageFindings, chosenAttachments, generatedFiles });
+  const sendReady = chosenFindings.length > 0 && blocking.length === 0 && Boolean(form.recipient_email.trim() && form.subject.trim());
+  const canSend = previewAllowsSend({ current: previewSnapshot, confirmed: confirmedPreview, ready: sendReady, busy: busy !== "" });
 
   const finalizeInput = (mode: "export" | "send") => ({
-    inspection_id: id!,
+    inspection_id: id ?? "",
     mode,
     subject: form.subject,
     recipient_name: form.recipient_name,
@@ -176,14 +182,16 @@ export default function InspectionResponsePreviewPage() {
   };
 
   const handleSend = async () => {
+    if (!id || !canEdit || !canSend) return;
     if (!form.recipient_email.trim()) { toast.error("Mottakerens e-postadresse mangler"); return; }
+    setConfirmedPreview(null);
     setBusy("send");
     let pkgId: string | null = null;
     try {
       const pkg = await finalize.mutateAsync(finalizeInput("send"));
       pkgId = pkg.id;
-      const { data, error } = await supabase.functions.invoke("inspection-response-send", {
-        body: { package_id: pkg.id, subject: form.subject, html: emailHtml, generated: generatedFiles },
+      const { data, error } = await invokeWithSession("inspection-response-send", {
+        body: { package_id: pkg.id, confirm_send: true, generated: generatedFiles },
       });
       if (error || !(data as any)?.ok) {
         const msg = (data as any)?.message ?? error?.message ?? "Utsendelsen feilet";
@@ -194,7 +202,7 @@ export default function InspectionResponsePreviewPage() {
       const skipped = (data as any).skipped as string[] | undefined;
       if (skipped?.length) toast.warning(`Sendt, men ${skipped.length} vedlegg kunne ikke legges ved: ${skipped.join(", ")}`);
       else toast.success("Svarpakken er sendt");
-      clearResponseDraft(id!);
+      clearResponseDraft(id);
       navigate(`/compliance/tilsyn/${id}?tab=response`);
     } catch (e: any) {
       if (pkgId) await markSendFailed.mutateAsync({ id: pkgId, error: e?.message ?? "Ukjent feil" });
@@ -314,6 +322,12 @@ export default function InspectionResponsePreviewPage() {
               <ComplianceStatusBadge label={c.status_label} tone={c.status_tone} />
             </div>
           ))}
+          {chosenAttachments.filter(c => c.generated).map(c => (
+            <details key={`generated-${c.key}`} className="border-t pt-2">
+              <summary className="cursor-pointer text-sm font-medium">{exportNames[c.key]} · Generert vedlegg</summary>
+              <pre className="overflow-auto whitespace-pre-wrap break-words py-2 text-xs">{toCsv(c.generated?.rows ?? [])}</pre>
+            </details>
+          ))}
         </CardContent>
       </Card>
 
@@ -321,15 +335,16 @@ export default function InspectionResponsePreviewPage() {
       {canEdit && (
         <Card>
           <CardContent className="space-y-3 p-4">
-            {blocking.length > 0 && !confirmSend && (
-              <label className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            {blocking.length > 0 && (
+              <div className="flex items-start gap-2 text-sm text-destructive">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  Kontrollen viser mangler. Du kan likevel sende hvis dette er avtalt med tilsynsmyndigheten – bekreft under.
-                  <Button size="sm" variant="outline" className="ml-2 h-7" onClick={() => setConfirmSend(true)}>Bekreft og send likevel</Button>
-                </span>
-              </label>
+                <span>Rett manglene før sending. Forhåndsvisning og nedlasting er fortsatt tilgjengelig.</span>
+              </div>
             )}
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={confirmedPreview === previewSnapshot} disabled={!sendReady || busy !== ""} onCheckedChange={value => setConfirmedPreview(value === true ? previewSnapshot : null)} />
+              Jeg har kontrollert svartekst, mottakere og alle vedlegg i forhåndsvisningen.
+            </label>
             <div className="flex flex-wrap justify-end gap-2">
               <Button size="sm" variant="outline" disabled={chosenFindings.length === 0 || busy !== ""} onClick={handleExport}>
                 {busy === "export" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
@@ -337,11 +352,11 @@ export default function InspectionResponsePreviewPage() {
               </Button>
               <Button
                 size="sm"
-                disabled={chosenFindings.length === 0 || busy !== "" || (blocking.length > 0 && !confirmSend)}
+                disabled={!canSend}
                 onClick={handleSend}
               >
                 {busy === "send" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
-                Send svar
+                Send endelig svar
               </Button>
             </div>
           </CardContent>
