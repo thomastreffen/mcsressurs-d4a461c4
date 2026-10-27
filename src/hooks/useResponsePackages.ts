@@ -562,7 +562,8 @@ export function useResponsePackageMutations() {
 
   const markSendFailed = useMutation({
     mutationFn: async ({ id, error }: { id: string; error: string }) => {
-      await sb.from("compliance_response_packages").update({ status: "draft", send_error: error, sent_at: null }).eq("id", id);
+      // Do not reset sent/sending on a lost response: that could replay accepted mail.
+      await sb.from("compliance_response_packages").update({ status: "draft", send_error: error, sent_at: null }).eq("id", id).in("status", ["draft", "exported"]);
     },
     onSuccess: () => invalidate(),
   });
