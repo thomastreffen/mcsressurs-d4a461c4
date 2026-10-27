@@ -32,7 +32,8 @@ export interface AttachmentCandidate {
   /** Kort tittel brukt i manifest og eksportnavn */
   title: string;
   /** Systemgenerert oversikt (kompetanseoversikt) som lages ved eksport */
-  generated?: { type: "competence_overview"; competence_type_id: string; rows: string[][] };
+  generated?: { type: "competence_overview"; competence_type_id: string; rows: string[][] }
+    | { type: "organization_overview"; company_id: string; rows: string[][] };
   /** Sant når referansen ikke har fil (regelverk, rolle, tiltak) */
   reference_note?: string | null;
 }
@@ -42,6 +43,7 @@ export const EVIDENCE_SOURCE_LABELS: Record<string, string> = {
   competence: "Ansatt → Kompetanse",
   regulation: "Regelverk",
   org_role: "Organisasjon & ansvar",
+  organization_overview: "Organisasjon & ansvar – samlet oversikt",
   internal_audit: "Internkontroll",
   hms_incident: "HMS-avvik",
   action_item: "Tiltak",

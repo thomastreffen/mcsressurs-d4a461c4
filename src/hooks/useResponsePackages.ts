@@ -9,6 +9,8 @@ import { useRequirementStatus } from "@/hooks/useComplianceRequirements";
 import { useLogInspectionEvent, type Finding, type FindingEvidence, type InspectionAction } from "@/hooks/useInspections";
 import type { ComplianceTone } from "@/lib/compliance";
 import { sourceLabelFor, type AttachmentCandidate, type ManifestEntry, type PackageFindingDraft } from "@/lib/response-package";
+import { organizationOverviewCandidate } from "@/lib/organization-evidence";
+import { useOrgPeople } from "@/hooks/useOrgPeople";
 
 const sb = supabase as any;
 
@@ -189,6 +191,8 @@ const COMPETENCE_STATUS_TEXT: Record<string, { label: string; tone: ComplianceTo
  * Ingenting kopieres – alt peker på documents eller på en referanse i systemet.
  */
 export function useAttachmentCandidates(findings: Finding[], evidence: FindingEvidence[], actions: InspectionAction[]) {
+  const { activeCompany } = useCompanyContext();
+  const orgPeople = useOrgPeople();
   const { detailFor, loading: coverageLoading } = useCompetenceCoverageDetails();
   const competences = useCompetences();
   const types = useCompetenceTypes();
@@ -241,6 +245,12 @@ export function useAttachmentCandidates(findings: Finding[], evidence: FindingEv
       const list = evidence.filter((e) => e.finding_id === f.id);
       for (const e of list) {
         const srcLabel = sourceLabelFor(e.source_kind);
+
+        if (e.source_kind === "organization_overview") {
+          out.push(organizationOverviewCandidate(e, activeCompany, orgRoles.data ?? [], orgPeople.data ?? [],
+            !orgRoles.isLoading && !orgRoles.isError && !orgPeople.isLoading && !orgPeople.isError));
+          continue;
+        }
 
         if (e.source_kind === "document" && e.document_id) {
           pushDocument({
@@ -342,9 +352,9 @@ export function useAttachmentCandidates(findings: Finding[], evidence: FindingEv
       }
     }
     return out;
-  }, [findings, evidence, documents.data, competences.data, types.data, employees.data, regulations.data, orgRoles.data, audits.data, actions, detailFor]);
+  }, [findings, evidence, documents.data, competences.data, types.data, employees.data, regulations.data, orgRoles.data, orgRoles.isLoading, orgRoles.isError, orgPeople.data, orgPeople.isLoading, orgPeople.isError, activeCompany, audits.data, actions, detailFor]);
 
-  return { candidates, loading: coverageLoading || documents.isLoading };
+  return { candidates, loading: coverageLoading || documents.isLoading || (evidence.some(e => e.source_kind === "organization_overview") && (orgRoles.isLoading || orgPeople.isLoading)) };
 }
 
 /* ---------------- Pre-flight kontroll ---------------- */
@@ -390,6 +400,9 @@ export function buildPreflight(input: {
     if (!fCandidates.length) checks.push({ label: "Ingen dokumentasjon koblet til funnet", tone: "alert" });
     else if (!chosen.length) checks.push({ label: "Ingen dokumentasjon valgt for utsendelsen", tone: "alert" });
     else checks.push({ label: `${chosenFiles.length} vedlegg valgt${chosen.length > chosenFiles.length ? ` + ${chosen.length - chosenFiles.length} referanser` : ""}`, tone: "ok" });
+    for (const c of chosen.filter(c => c.source_kind === "organization_overview")) {
+      checks.push({ label: c.status_label, tone: c.status_tone });
+    }
 
     // Kompetansekrav: kravmotoren avgjør hvem kravet gjelder for
     for (const e of input.evidence.filter((x) => x.finding_id === f.id && x.source_kind === "competence_requirement")) {
