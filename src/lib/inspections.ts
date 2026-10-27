@@ -131,6 +131,59 @@ export function findingStatusMeta(v: string) {
 export function evidenceKindLabel(v: string): string {
   return EVIDENCE_SOURCE_KINDS.find((s) => s.value === v)?.label ?? v;
 }
+
+/* ---------- Visningsstatus for avviksoversikten (kun presentasjon) ---------- */
+export type FindingDisplayStatus = "open" | "in_progress" | "ready" | "submitted" | "closed";
+
+export interface FindingDisplayInput {
+  status: string;
+  responsible_person_id?: string | null;
+  responsible_role_id?: string | null;
+  response_approved_at?: string | null;
+  condition_corrected_at?: string | null;
+  documentation_complete_at?: string | null;
+  documentation_status?: string | null;
+}
+
+export interface FindingDisplay {
+  status: FindingDisplayStatus;
+  label: string;
+  tone: ComplianceTone;
+  /** Hva som mangler – vises kun når hovedstatus ikke er Klar/Oversendt/Lukket */
+  missing: string[];
+}
+
+const DISPLAY_META: Record<FindingDisplayStatus, { label: string; tone: ComplianceTone }> = {
+  open: { label: "Åpen", tone: "neutral" },
+  in_progress: { label: "Under arbeid", tone: "warn" },
+  ready: { label: "Klar for oversendelse", tone: "ok" },
+  submitted: { label: "Oversendt", tone: "ok" },
+  closed: { label: "Lukket", tone: "neutral" },
+};
+
+/**
+ * Beregner én hovedstatus fra eksisterende felt uten å endre saksdata.
+ * Ferdig intern behandling vises som «Klar for oversendelse» selv om rå status er new.
+ */
+export function findingDisplayStatus(f: FindingDisplayInput, derivedDocStatus?: string | null): FindingDisplay {
+  const doc = derivedDocStatus ?? f.documentation_status ?? "none";
+  const hasResponsible = !!(f.responsible_person_id || f.responsible_role_id);
+  const missing: string[] = [];
+  if (!hasResponsible) missing.push("Ansvarlig ikke satt");
+  if (!f.response_approved_at) missing.push("Svar ikke godkjent");
+  if (!f.condition_corrected_at) missing.push("Forhold ikke rettet");
+  if (doc !== "complete" || !f.documentation_complete_at) missing.push("Mangler dokumentasjon");
+
+  let status: FindingDisplayStatus;
+  if (f.status === "approved") status = "closed";
+  else if (f.status === "submitted" || f.status === "disputed") status = "submitted";
+  else if (f.status === "documentation_ready" || missing.length === 0) status = "ready";
+  else if (f.status === "new" && missing.length === 4) status = "open";
+  else status = "in_progress";
+
+  const showMissing = status === "open" || status === "in_progress";
+  return { status, ...DISPLAY_META[status], missing: showMissing ? missing : [] };
+}
 export function correspondenceLabel(v: string): string {
   return CORRESPONDENCE_DIRECTIONS.find((s) => s.value === v)?.label ?? v;
 }

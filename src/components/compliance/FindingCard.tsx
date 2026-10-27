@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { daysUntil, formatDate } from "@/lib/compliance";
 import {
   DOCUMENTATION_STATUSES, FINDING_STATUSES, FINDING_TYPES, deadlineLabel, deadlineTone,
-  findingStatusMeta, findingTypeMeta,
+  findingStatusMeta, findingTypeMeta, findingDisplayStatus,
 } from "@/lib/inspections";
 import {
   FINDING_PRIORITIES, INTERNAL_CATEGORY_SUGGESTIONS, aiDraftPatch, buildInternalControlDraft,
@@ -87,6 +87,7 @@ export function FindingCard({
   const statusMeta = findingStatusMeta(finding.status);
   const prioMeta = findingPriorityMeta(finding.priority ?? "normal");
   const docMeta = DOCUMENTATION_STATUSES[derivedDocStatus];
+  const display = findingDisplayStatus(finding, derivedDocStatus);
   const days = daysUntil(finding.deadline);
   const openActions = actions.filter((a) => ["open", "in_progress"].includes(a.status)).length;
   const personName = (id: string | null) => employees.data?.find((e) => e.person_id === id)?.full_name ?? null;
@@ -151,15 +152,19 @@ export function FindingCard({
             <span className="text-sm font-semibold">
               #{finding.finding_number}{finding.report_reference ? ` · ${finding.report_reference}` : ""}
             </span>
-            <ComplianceStatusBadge label={typeMeta.label} tone={typeMeta.tone} />
-            <ComplianceStatusBadge label={prioMeta.label} tone={prioMeta.tone} />
+            {finding.finding_type !== "deviation" && <ComplianceStatusBadge label={typeMeta.label} tone={typeMeta.tone} />}
             <span className="truncate text-sm font-medium">{finding.title}</span>
+            <span className="text-xs text-muted-foreground">· {prioMeta.label}</span>
+            <span className="ml-auto"><ComplianceStatusBadge label={display.label} tone={display.tone} /></span>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <ComplianceStatusBadge label={statusMeta.label} tone={statusMeta.tone} />
-            <ComplianceStatusBadge label={docMeta.label} tone={docMeta.tone} />
-            {finding.deadline && <ComplianceStatusBadge label={deadlineLabel(days)} tone={deadlineTone(days)} />}
-            <span>Ansvarlig: {responsibleLabel}</span>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className={responsibleLabel === "Ikke satt" ? "font-medium text-destructive" : undefined}>
+              Ansvarlig: {responsibleLabel}
+            </span>
+            {display.missing.filter((m) => m !== "Ansvarlig ikke satt").map((m) => <span key={m}>{m}</span>)}
+            {(display.status === "open" || display.status === "in_progress") && finding.deadline && (
+              <ComplianceStatusBadge label={deadlineLabel(days)} tone={deadlineTone(days)} />
+            )}
             {openActions > 0 && <span>{openActions} åpne tiltak</span>}
             {finding.internal_category && <span>{finding.internal_category}</span>}
           </div>
