@@ -1,5 +1,11 @@
 # Roadmap
 
+## Produksjonsdokumentasjon DLE sak 63210 punkt 2 – 27.10.2026
+- [ ] Registrer skriftlig internrevisjonsrutine i MCS Service, uten utsending
+- [ ] Dokumenter reell systemgjennomgang 27.10.2026 med eksisterende åpne DLE-funn, uten udokumenterte kontrollpåstander
+- [ ] Koble rutine/referat til punkt 2 og sett godkjent brukerbestilt svartekst; ikke formelt lukk eller send
+- [ ] Les tilbake produksjonsposter og kontroller innlogget visning; rapporter nøyaktige poster/status og gjenstående godkjenning
+
 ## DLE / internrevisjon – AI-forslag 27.10.2026
 - [x] Svarforslag i punkt 2: vent på lagring før forslag fjernes, vis innsatt/lagret bekreftelse, ventestatus og feil med nytt forsøk; godkjenning fortsatt separat
 - [x] 35 tester bestått; innlogget punkt 2 kontrollert med lokal simulering av AI/lagring, feil og nytt forsøk; ingen produksjonsskriving eller testdata, automatisk bygg OK; ikke publisert
