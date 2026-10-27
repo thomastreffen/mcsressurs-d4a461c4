@@ -1,8 +1,8 @@
 # Roadmap
 
 ## DLE / internrevisjon – AI-forslag 27.10.2026
-- [ ] Finn og rett overføring fra AI-forslag til riktig svarfelt med bekreftelse, ventestatus og feilvisning
-- [ ] Verifiser med automatiserte tester og nettleser uten produksjonsskriving eller testdata
+- [x] Svarforslag i punkt 2: vent på lagring før forslag fjernes, vis innsatt/lagret bekreftelse, ventestatus og feil med nytt forsøk; godkjenning fortsatt separat
+- [x] 35 tester bestått; innlogget punkt 2 kontrollert med lokal simulering av AI/lagring, feil og nytt forsøk; ingen produksjonsskriving eller testdata, automatisk bygg OK; ikke publisert
 
 ## MCP native filparameter – produksjonskontroll 27.10.2026
 - [x] Faktisk OAuth-autentisert produksjons-tools/list HTTP 200 inneholder allerede top-level file og _meta.openai/fileParams=[file]; avviket er på ChatGPT-klientsiden, ikke manglende serverschema
