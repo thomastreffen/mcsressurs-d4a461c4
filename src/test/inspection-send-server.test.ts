@@ -40,7 +40,7 @@ async function fixture(options: { approved?: boolean; graphOk?: boolean; status?
     if (url.includes("/sendMail")) { phase = "after-graph"; return new Response(options.graphOk === false ? "Rejected" : null, { status: options.graphOk === false ? 502 : 202 }); }
     throw new Error("Unexpected network attempt");
   });
-  const source = readFileSync(new URL("../../supabase/functions/inspection-response-send/index.ts", import.meta.url), "utf8").replace(/^import .*;\s*$/gm, "");
+  const source = readFileSync(`${process.cwd()}/supabase/functions/inspection-response-send/index.ts`, "utf8").replace(/^import .*;\s*$/gm, "");
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   vm.runInNewContext(js, { Deno: { serve: (fn: typeof handler) => { handler = fn; }, env: { get: () => "mock-config" } }, createClient: () => client, encodeBase64: () => "", corsHeaders: {}, z, explicitPackageSend, responseFindingReady, Response, Request, URLSearchParams, TextEncoder, Uint8Array, Date, console: { log() {}, error() {} }, fetch });
   if (!handler) throw new Error("Handler not registered");
