@@ -26,4 +26,20 @@ export function initialPackageDelivery(mode: "send" | "export") {
 }
 export function explicitPackageSend(confirmed: unknown, status: string): boolean {
   return confirmed === true && ["draft", "exported"].includes(status);
+}/** Test mail goes only to the caller's registered work e-mail, never to the authority. */
+export function resolveTestRecipient(workEmail?: string | null, loginEmail?: string | null): string | null {
+  const ok = (v?: string | null) => (v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? v.trim().toLowerCase() : null);
+  return ok(workEmail) ?? ok(loginEmail);
+}
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] ?? c));
+/** Builds the test message: same HTML/attachments, marked TEST, only one recipient, no cc. */
+export function buildTestMessage(input: { subject: string; html: string; caseNumber?: string | null; to: string; attachments: unknown[] }) {
+  const label = `TEST – DLE svarpakke${input.caseNumber ? ` – sak ${input.caseNumber}` : ""}`;
+  const banner = `<div style="background:#fef3c7;border:2px solid #d97706;color:#78350f;padding:12px 16px;margin:0 0 20px;font-family:Segoe UI,Arial,sans-serif;font-size:14px;"><strong>${esc(label)}</strong><br>Dette er en intern test. Den er ikke sendt til DLE, og ingen status er endret.</div>`;
+  return {
+    subject: `${label} · ${input.subject}`,
+    body: { contentType: "HTML", content: banner + input.html },
+    toRecipients: [{ emailAddress: { address: input.to } }],
+    attachments: input.attachments,
+  };
 }

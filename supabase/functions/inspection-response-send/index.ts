@@ -54,9 +54,56 @@ Deno.serve(async (req) => {
     const userId = identity?.user?.id;
     if (claimsErr || !userId) return json({ ok: false, message: "Ugyldig token" }, 401);
 
-    const parsed = z.object({ export_id: z.string().uuid().optional(), package_id: z.string().uuid().optional(), confirm_send: z.boolean().optional(), html: z.string().max(500000).optional(), subject: z.string().max(255).optional(), generated: z.array(z.object({ export_name: z.string().min(1).max(255), content: z.string().max(5000000).optional(), content_base64: z.string().max(5000000).optional(), mime_type: z.string().max(100).optional() })).max(100).optional() }).safeParse(await req.json().catch(() => null));
+    const parsed = z.object({ mode: z.enum(["final", "test", "test_recipient"]).optional(), inspection_id: z.string().uuid().optional(), attachments: z.array(z.object({ document_id: z.string().uuid().nullable().optional(), storage_bucket: z.string().max(100).nullable().optional(), file_path: z.string().max(1000).nullable().optional(), export_name: z.string().min(1).max(255), mime_type: z.string().max(100).nullable().optional() })).max(100).optional(), export_id: z.string().uuid().optional(), package_id: z.string().uuid().optional(), confirm_send: z.boolean().optional(), html: z.string().max(500000).optional(), subject: z.string().max(255).optional(), generated: z.array(z.object({ export_name: z.string().min(1).max(255), content: z.string().max(5000000).optional(), content_base64: z.string().max(5000000).optional(), mime_type: z.string().max(100).optional() })).max(100).optional() }).safeParse(await req.json().catch(() => null));
     if (!parsed.success) return json({ ok: false, message: "Ugyldig svarpakke eller filinnhold" }, 400);
     const body = parsed.data;
+
+    // ---- Test til meg selv: aldri pakke-/funn-/sakstatus, aldri DLE-mottaker eller kopi ----
+    if (body.mode === "test" || body.mode === "test_recipient") {
+      if (!body.inspection_id) return json({ ok: false, message: "Mangler tilsynssak" }, 400);
+      const admin = createClient(url, service);
+      const { data: insp } = await admin.from("compliance_inspections").select("id,company_id,case_number").eq("id", body.inspection_id).is("deleted_at", null).maybeSingle();
+      if (!insp) return json({ ok: false, message: "Fant ikke tilsynssaken" }, 404);
+      const { data: allowed } = await admin.rpc("has_company_access", { _uid: userId, _company: insp.company_id, _module: "hms", _level: "edit" });
+      if (!allowed) return json({ ok: false, message: "Du har ikke tilgang til svarpakken" }, 403);
+      const { data: account } = await admin.from("user_accounts").select("person_id").eq("auth_user_id", userId).eq("is_active", true).maybeSingle();
+      const { data: person } = account?.person_id ? await admin.from("people").select("email").eq("id", account.person_id).maybeSingle() : { data: null };
+      const testTo = resolveTestRecipient(person?.email, identity?.user?.email);
+      if (!testTo) return json({ ok: false, message: "Du har ingen registrert jobb-e-post" }, 400);
+      if (body.mode === "test_recipient") return json({ ok: true, recipient: testTo });
+      if (!body.html || !body.subject) return json({ ok: false, message: "Mangler forhåndsvisning" }, 400);
+
+      const caller = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
+      const files: any[] = [];
+      let size = 0;
+      const missing: string[] = [];
+      for (const a of body.attachments ?? []) {
+        if (!a.file_path || !a.storage_bucket) continue;
+        const { data: doc } = a.document_id ? await caller.from("documents").select("file_path,storage_bucket").eq("id", a.document_id).maybeSingle() : { data: null };
+        if (!doc || doc.file_path !== a.file_path || doc.storage_bucket !== a.storage_bucket) return json({ ok: false, message: "Ingen tilgang til vedlegget" }, 403);
+        const { data: file } = await admin.storage.from(a.storage_bucket).download(a.file_path);
+        if (!file) { missing.push(a.export_name); continue; }
+        const buf = new Uint8Array(await file.arrayBuffer());
+        size += buf.byteLength;
+        files.push({ "@odata.type": "#microsoft.graph.fileAttachment", name: a.export_name, contentType: a.mime_type ?? "application/octet-stream", contentBytes: encodeBase64(buf) });
+      }
+      for (const g of body.generated ?? []) {
+        if (!(body.attachments ?? []).some((a) => a.export_name === g.export_name && !a.file_path)) return json({ ok: false, message: "Generert fil finnes ikke i dokumentmanifestet" }, 400);
+        const bytes = g.content_base64 ? Uint8Array.from(atob(g.content_base64), (c) => c.charCodeAt(0)) : new TextEncoder().encode(g.content ?? "");
+        size += bytes.byteLength;
+        files.push({ "@odata.type": "#microsoft.graph.fileAttachment", name: g.export_name, contentType: g.mime_type ?? "text/csv", contentBytes: encodeBase64(bytes) });
+      }
+      if (missing.length) return json({ ok: false, message: `Ingen test sendt. Vedlegg kunne ikke hentes: ${missing.join(", ")}` }, 400);
+      if (size >= MAX_TOTAL_ATTACHMENTS) return json({ ok: false, message: "Vedleggene er for store for en test-e-post" }, 400);
+      const graph = await getGraphToken();
+      if (graph.error) return json({ ok: false, message: graph.error }, 502);
+      const testMessage = buildTestMessage({ subject: body.subject, html: body.html, caseNumber: insp.case_number, to: testTo, attachments: files });
+      const sent = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/sendMail`, { method: "POST", headers: { Authorization: `Bearer ${graph.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ message: testMessage, saveToSentItems: false }) });
+      if (!sent.ok && sent.status !== 202) return json({ ok: false, message: `Microsoft avviste testen: ${await sent.text()}` }, 502);
+      await admin.from("compliance_inspection_events").insert({ company_id: insp.company_id, inspection_id: insp.id, actor_user_id: userId, event_type: "response_test_sent", summary: `Intern test av svarpakke sendt til ${testTo}`, payload: { test: true, to: testTo, attachments: files.map((f) => f.name) } });
+      return json({ ok: true, test: true, recipient: testTo, attachments: files.length });
+    }
+
     const standalone = !!body.export_id;
     const packageId = body.export_id ?? body.package_id;
     const packageTable = standalone ? "hms_document_exports" : "compliance_response_packages";
