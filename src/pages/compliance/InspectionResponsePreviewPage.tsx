@@ -51,7 +51,7 @@ export default function InspectionResponsePreviewPage() {
   const [form, setForm] = useState({ recipient_name: "", recipient_email: "", cc: "", subject: "", intro: "", closing: "" });
   const [selection, setSelection] = useState<{ findings: Set<string>; attachments: Set<string> }>({ findings: new Set(), attachments: new Set() });
   const [ready, setReady] = useState(false);
-  const [busy, setBusy] = useState<"" | "export" | "send">("");
+  const [busy, setBusy] = useState<"" | "export" | "send" | "test">("");
   const [confirmedPreview, setConfirmedPreview] = useState<string | null>(null);
 
   useEffect(() => {
