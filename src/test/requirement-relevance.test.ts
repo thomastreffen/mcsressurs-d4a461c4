@@ -33,7 +33,7 @@ describe("Individual requirement relevance", () => {
     const coverage = { total: 0, ok: 0, warn: 0, gaps: 0, notRelevant: 1, gapNames: [], warnNames: [] };
     expect(deriveDocumentationStatus([evidence], () => coverage)).toBe("complete");
     const detail: CompetenceCoverageDetail = { ...coverage, competence_type_id: "fse", competence_type_name: "FSE", people: [{ person_id: "p", name: "Person", status: "not_relevant", expires_at: null, has_document: false, document_id: null }] };
-    const result = buildPreflight({ findings: [{ id: "f", response_text: "Dokumentert vurdering" } as Finding], evidence: [evidence], actions: [], candidates: [{ key: "c", finding_id: "f", kind: "generated" } as any], selectedAttachmentKeys: new Set(["c"]), detailFor: () => detail });
+    const result = buildPreflight({ findings: [{ id: "f", response_text: "Dokumentert vurdering", internal_assessment: "Kontrollert", responsible_person_id: "reviewer", response_approved_at: "2026-10-27", condition_corrected_at: "2026-10-27", documentation_complete_at: "2026-10-27", documentation_status: "complete", status: "documentation_ready" } as Finding], evidence: [evidence], actions: [], candidates: [{ key: "c", finding_id: "f", kind: "generated" } as any], selectedAttachmentKeys: new Set(["c"]), detailFor: () => detail });
     expect(result[0].checks.filter(c => c.tone === "alert")).toEqual([]);
     expect(result[0].checks.some(c => c.label.includes("ikke opplæring"))).toBe(true);
     const check = systemCheckForFinding("FSE", { competenceTypes: [{ id: "fse", key: "fse", name: "FSE" }], coverageFor: () => coverage, orgRoles: [], regulations: [], audits: [], requirementRows: [], personName: () => null });
