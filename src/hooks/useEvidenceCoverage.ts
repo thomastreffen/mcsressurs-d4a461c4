@@ -3,6 +3,9 @@ import { useRequirementStatus } from "@/hooks/useComplianceRequirements";
 import { useComplianceEmployees } from "@/hooks/useCompliance";
 import type { FindingEvidence } from "@/hooks/useInspections";
 import type { DocumentationStatus } from "@/lib/inspections";
+import { activeOrganizationRoles } from "@/lib/organization-evidence";
+import { useCompanyContext } from "@/hooks/useCompanyContext";
+import { useOrgRoles } from "@/hooks/useCompliance";
 
 export interface CoverageResult {
   /** Antall ansatte kravet gjelder for */
@@ -22,6 +25,12 @@ export interface CoverageResult {
  * hvilke ansatte kravet gjelder for, status per ansatt og hvem som mangler bevis.
  */
 export function useEvidenceCoverage() {
+  const { activeCompanyId } = useCompanyContext();
+  const orgRoles = useOrgRoles();
+  const organizationFor = (companyId: string | null) => {
+    if (!companyId || companyId !== activeCompanyId || orgRoles.isLoading || orgRoles.isError) return null;
+    return activeOrganizationRoles(orgRoles.data ?? []).length;
+  };
   const statuses = useRequirementStatus();
   const employees = useComplianceEmployees();
 
@@ -46,17 +55,22 @@ export function useEvidenceCoverage() {
     };
   };
 
-  return { loading: statuses.isLoading || employees.isLoading, coverageFor, rows: statuses.data ?? [] };
+  return { loading: statuses.isLoading || employees.isLoading, coverageFor, organizationFor, rows: statuses.data ?? [] };
 }
 
 /** Dokumentasjonsstatus for et funn beregnes fra koblet dokumentasjon + kravmotoren */
 export function deriveDocumentationStatus(
   evidence: FindingEvidence[],
   coverageFor: (id: string | null) => CoverageResult | null,
+  organizationFor: (companyId: string | null) => number | null = () => null,
 ): DocumentationStatus {
   if (!evidence.length) return "none";
   let warn = false;
   for (const e of evidence) {
+    if (e.source_kind === "organization_overview") {
+      const count = organizationFor(e.ref_id);
+      if (count === null || count === 0) return "gaps";
+    }
     if (e.source_kind === "competence_requirement") {
       const c = coverageFor(e.competence_type_id);
       if (!c || c.total === 0) {

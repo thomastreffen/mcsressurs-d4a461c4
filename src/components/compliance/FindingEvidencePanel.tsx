@@ -11,6 +11,9 @@ import { EVIDENCE_SOURCE_KINDS, evidenceKindLabel, type EvidenceSourceKind } fro
 import { useCompetenceTypes, useRegulations, useOrgRoles, useComplianceAudits, useComplianceEmployees, useCompetences } from "@/hooks/useCompliance";
 import { useEvidenceMutations, useInspectionActions, type FindingEvidence } from "@/hooks/useInspections";
 import { useEvidenceCoverage } from "@/hooks/useEvidenceCoverage";
+import { useInspection } from "@/hooks/useInspections";
+import { activeOrganizationRoles } from "@/lib/organization-evidence";
+import { Link } from "react-router-dom";
 
 const sb = supabase as any;
 
@@ -122,6 +125,8 @@ export function FindingEvidencePanel({
   canEdit: boolean;
 }) {
   const { add, remove } = useEvidenceMutations();
+  const { activeCompany } = useCompanyContext();
+  const inspection = useInspection(inspectionId);
   const types = useCompetenceTypes();
   const regulations = useRegulations();
   const orgRoles = useOrgRoles();
@@ -137,6 +142,24 @@ export function FindingEvidencePanel({
   const [competenceTypeId, setCompetenceTypeId] = useState<string>("");
   const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
+  const [linkError, setLinkError] = useState("");
+  const [linkingOverview, setLinkingOverview] = useState(false);
+  const [linkedOverview, setLinkedOverview] = useState(false);
+  const overviewExists = evidence.some(e => e.source_kind === "organization_overview") || linkedOverview;
+  const activeRoles = activeOrganizationRoles(orgRoles.data ?? []);
+  const companyMatches = !!activeCompany && inspection.data?.company_id === activeCompany.id;
+  const linkOverview = async () => {
+    if (!activeCompany || !companyMatches || overviewExists || linkingOverview) return;
+    setLinkError(""); setLinkingOverview(true);
+    try {
+      await add.mutateAsync({ inspection_id: inspectionId, finding_id: findingId,
+        source_kind: "organization_overview", ref_id: activeCompany.id,
+        label: `Organisasjonsoversikt – ${activeCompany.name}`, note: note.trim() || null });
+      setLinkedOverview(true); reset();
+    } catch (error) {
+      setLinkError(error instanceof Error ? error.message : "Kunne ikke koble organisasjonsoversikten");
+    } finally { setLinkingOverview(false); }
+  };
 
   const reset = () => {
     setAdding(false); setRefId(""); setCompetenceTypeId(""); setLabel(""); setNote("");
@@ -144,6 +167,7 @@ export function FindingEvidencePanel({
   };
 
   const submit = () => {
+    if (kind === "organization_overview") { void linkOverview(); return; }
     const payload: any = {
       inspection_id: inspectionId,
       finding_id: findingId,
@@ -182,12 +206,15 @@ export function FindingEvidencePanel({
         <div key={e.id} className="rounded-md border bg-muted/20 px-3 py-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
                 {e.source_kind === "competence_requirement" ? <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" /> : <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />}
                 <span className="font-medium truncate">{e.label ?? evidenceKindLabel(e.source_kind)}</span>
                 <span className="text-xs text-muted-foreground">{evidenceKindLabel(e.source_kind)}</span>
               </div>
               {e.note && <p className="mt-0.5 text-xs text-muted-foreground">{e.note}</p>}
+              {e.source_kind === "organization_overview" && (
+                <Link to="/compliance/organisasjon" className="text-xs text-primary underline">Åpne organisasjonsoversikten</Link>
+              )}
               {e.source_kind === "competence_requirement" && <div className="mt-1"><CoverageLine competenceTypeId={e.competence_type_id} /></div>}
             </div>
             {canEdit && (
@@ -198,6 +225,20 @@ export function FindingEvidencePanel({
           </div>
         </div>
       ))}
+
+      {canEdit && (
+        <div className="space-y-1">
+          <Button size="sm" variant="outline" className="min-h-11 h-auto whitespace-normal text-left" onClick={linkOverview}
+            disabled={overviewExists || linkingOverview || add.isPending || orgRoles.isLoading || orgRoles.isError || !companyMatches || activeRoles.length === 0}>
+            <Plus className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+            {linkingOverview ? "Kobler organisasjonsoversikt…" : overviewExists ? "Organisasjonsoversikt koblet" : "Koble organisasjonsoversikt"}
+          </Button>
+          {linkedOverview && <p role="status" className="text-xs text-primary">Organisasjonsoversikten er koblet som ett samlet bevis.</p>}
+          {orgRoles.isLoading && <p role="status" className="text-xs text-muted-foreground">Henter organisasjonsoversikten…</p>}
+          {(linkError || orgRoles.isError) && <p role="alert" className="text-xs text-destructive">{linkError || "Kunne ikke hente organisasjonsoversikten"}</p>}
+          {!orgRoles.isLoading && !orgRoles.isError && activeRoles.length === 0 && <p className="text-xs text-muted-foreground">Ingen gjeldende aktive roller.</p>}
+        </div>
+      )}
 
       {canEdit && !adding && (
         <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
@@ -226,7 +267,7 @@ export function FindingEvidencePanel({
                 </SelectContent>
               </Select>
             )}
-            {refOptions.length >= 0 && kind !== "competence_requirement" && kind !== "competence" && kind !== "other" && (
+            {refOptions.length >= 0 && kind !== "competence_requirement" && kind !== "competence" && kind !== "other" && kind !== "organization_overview" && (
               <Select value={refId} onValueChange={setRefId}>
                 <SelectTrigger><SelectValue placeholder="Velg referanse" /></SelectTrigger>
                 <SelectContent>
@@ -247,13 +288,14 @@ export function FindingEvidencePanel({
           )}
           {kind === "competence" && refId && <p className="text-xs text-muted-foreground">Valgt: {label}</p>}
           {kind === "competence_requirement" && competenceTypeId && <CoverageLine competenceTypeId={competenceTypeId} />}
+          {kind === "organization_overview" && <p className="text-xs text-muted-foreground">Organisasjonsoversikt – {activeCompany?.name} · {activeRoles.length} aktive roller</p>}
 
           <Input placeholder="Merknad (valgfritt)" value={note} onChange={(e) => setNote(e.target.value)} />
           <p className="text-xs text-muted-foreground">
             {EVIDENCE_SOURCE_KINDS.find((k) => k.value === kind)?.hint}
           </p>
           <div className="flex gap-2">
-            <Button size="sm" onClick={submit} disabled={add.isPending}>Koble dokumentasjon</Button>
+            <Button size="sm" onClick={submit} disabled={add.isPending || linkingOverview || (kind === "organization_overview" && (overviewExists || !companyMatches || orgRoles.isLoading || orgRoles.isError || !activeRoles.length))}>Koble dokumentasjon</Button>
             <Button size="sm" variant="ghost" onClick={reset}>Avbryt</Button>
           </div>
         </div>

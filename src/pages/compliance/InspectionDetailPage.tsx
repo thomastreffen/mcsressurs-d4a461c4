@@ -58,7 +58,7 @@ export default function InspectionDetailPage() {
   const correspondence = useCorrespondence(id);
   const employees = useComplianceEmployees();
   const users = useAssignableUsers();
-  const { coverageFor } = useEvidenceCoverage();
+  const { coverageFor, organizationFor } = useEvidenceCoverage();
 
   const { setStatus } = useInspectionMutations();
   const findingMut = useFindingMutations(id);
@@ -74,10 +74,10 @@ export default function InspectionDetailPage() {
   const docStatusByFinding = useMemo(() => {
     const map: Record<string, ReturnType<typeof deriveDocumentationStatus>> = {};
     for (const f of findings.data ?? []) {
-      map[f.id] = deriveDocumentationStatus((evidence.data ?? []).filter((e) => e.finding_id === f.id), coverageFor);
+      map[f.id] = deriveDocumentationStatus((evidence.data ?? []).filter((e) => e.finding_id === f.id), coverageFor, organizationFor);
     }
     return map;
-  }, [findings.data, evidence.data, coverageFor]);
+  }, [findings.data, evidence.data, coverageFor, organizationFor]);
 
   if (inspection.isLoading) return <div className="space-y-3 p-6"><Skeleton className="h-10 w-64" /><Skeleton className="h-40" /></div>;
   if (!inspection.data) {
