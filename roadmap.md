@@ -196,3 +196,10 @@
 - [x] Montørmobil: «Dette må du gjøre» (egne tiltak) + Mine tiltak med merk utført; adminmodulene kun under Mer HMS for hms.manage
 - [x] 261 tester grønne og automatisk bygg OK; hovedkjede og PDF verifisert innlogget; øvrige A-F-utsendingsscenarioer gjenstår under neste punkt
 - [ ] Senere: DLE-pakkeintegrasjon for nye moduler, varsling ved tildelt tiltak, kobling risiko<->avvik fra avvikssiden
+
+## Produksjonsdokumentasjon DLE sak 63210 punkt 3 – 27.10.2026
+- [x] Regelverksregister MCS Service AS: 9 aktive poster (El-tilsynsloven, Internkontrollforskriften, FEK, FSE, FEL, FEU, NEK 400:2026, NEK 439-serien, NEK EN 50110-1:2023), ansvarlig Rune Ørbeck, kontroll 27.10.2026, neste 27.10.2027, 12 mnd intervall, kun metadata
+- [x] Fagstøtte-profil opprettet: primære NEK 400:2026 + NEK 439-serien, sekundær NEK EN 50110-1:2023, regime nek
+- [x] Funn 3 (160c6974): svartekst satt (735 tegn), 9 regelverk koblet som dokumentasjon, status uendret 'new', ikke godkjent/rettet/komplett
+- [x] Tilbakelesing verifisert: 9 poster, profil, svartekst og 9 koblinger; ingen andre DLE-punkter endret, ingenting sendt
+- [ ] Punkt 3 formell lukking: krever ansvarlig på funnet, godkjent svartekst, rettet-/dokumentasjon-komplett-bekreftelser; ingenting sendt til DLE
