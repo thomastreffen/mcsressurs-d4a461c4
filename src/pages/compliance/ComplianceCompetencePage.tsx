@@ -87,7 +87,7 @@ export default function ComplianceCompetencePage() {
         <Button size="sm" variant="outline" onClick={() => navigate("/compliance/kompetansekrav")}>
           <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Kompetansekrav
         </Button>
-        <LocalExportMenu title="Kompetanse" module="hms" disabled={loading} filters={{Søk:search||'Alle',Avdeling:departments.find(d=>d.id===dept)?.name??'Alle',Kompetanse:filteredTypes.map(t=>t.name).join(', '),Status:statusFilter}} rows={rows.flatMap(({person,cells})=>cells.map(({type,req})=>({'Ansatt':person.full_name,'Avdeling':person.department_name,'Kompetanse':type.name,'Status':req?REQUIREMENT_STATUS_META[req.status].short:'Ingen krav','Gyldig til':req?.expires_at?new Date(req.expires_at):null})))}/>
+        <LocalExportMenu title="Kompetanse" module="hms" disabled={loading} filters={{Søk:search||'Alle',Avdeling:departments.find(d=>d.id===dept)?.name??'Alle',Kompetanse:filteredTypes.map(t=>t.name).join(', '),Status:statusFilter}} rows={rows.flatMap(({person,cells})=>cells.map(({type,req})=>({'Ansatt':person.full_name,'Avdeling':person.department_name,'Kompetanse':type.name,'Status':req?REQUIREMENT_STATUS_META[req.status].short:'Ingen krav','Gyldig til':req?.status !== 'not_relevant' && req?.expires_at?new Date(req.expires_at):null,'Vurderingsbegrunnelse':req?.assessment_reason,'Vurdert av':req?.assessor_name,'Vurdert tidspunkt':req?.assessed_at,'Revurdering':req?.assessment_valid_until})))}/>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -118,6 +118,7 @@ export default function ComplianceCompetencePage() {
             <SelectItem value="expired">Utløpt</SelectItem>
             <SelectItem value="expiring_soon">Utløper snart</SelectItem>
             <SelectItem value="fulfilled">Oppfylt</SelectItem>
+            <SelectItem value="not_relevant">Ikke relevant</SelectItem>
             <SelectItem value="not_required">Ikke påkrevd</SelectItem>
           </SelectContent>
         </Select>
@@ -178,13 +179,14 @@ export default function ComplianceCompetencePage() {
                               {req.expires_at ? formatDate(req.expires_at) : "Uten utløp"}
                             </p>
                           )}
+                          {req.status === "not_relevant" && <p className="max-w-40 truncate text-[11px] text-muted-foreground" title={req.assessment_reason ?? ""}>{req.assessment_reason}</p>}
                         </td>
                       );
                     })}
 
                     <td className="sticky right-0 z-10 bg-background px-3 py-2.5 text-right">
                       <ComplianceStatusBadge
-                        label={tone === "alert" ? "Mangler" : tone === "warn" ? "Følg opp" : tone === "ok" ? "Oppfylt" : "Ingen krav"}
+                        label={tone === "alert" ? "Mangler" : tone === "warn" ? "Følg opp" : tone === "ok" ? "Oppfylt" : cells.some(c => c.req?.status === "not_relevant") ? "Ikke relevant" : "Ingen krav"}
                         tone={tone}
                       />
                     </td>

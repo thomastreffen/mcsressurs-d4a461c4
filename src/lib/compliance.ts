@@ -128,6 +128,7 @@ export type RequirementStatus =
   | "missing_document"
   | "expiring_soon"
   | "expired"
+  | "not_relevant"
   | "not_required";
 
 export const REQUIREMENT_STATUS_META: Record<RequirementStatus, { label: string; short: string; tone: ComplianceTone }> = {
@@ -137,10 +138,12 @@ export const REQUIREMENT_STATUS_META: Record<RequirementStatus, { label: string;
   expiring_soon: { label: "Utløper snart", short: "Utløper snart", tone: "warn" },
   expired: { label: "Utløpt", short: "Utløpt", tone: "alert" },
   not_required: { label: "Ikke påkrevd", short: "Ikke påkrevd", tone: "neutral" },
+  not_relevant: { label: "Ikke relevant", short: "Ikke relevant", tone: "neutral" },
 };
 
 const REQ_SEVERITY: Record<RequirementStatus, number> = {
   not_required: 0,
+  not_relevant: 0,
   fulfilled: 1,
   expiring_soon: 2,
   missing_document: 3,

@@ -66,7 +66,7 @@ export default function ComplianceOverviewPage() {
 
     const complete = people.filter((p) => {
       const list = byPerson.get(p.person_id) ?? [];
-      return list.length > 0 && list.every((r) => r.status === "fulfilled");
+      return list.length > 0 && list.every((r) => r.status === "fulfilled" || r.status === "not_relevant");
     }).length;
 
     const peopleWithRequirements = people.filter((p) => (byPerson.get(p.person_id) ?? []).length > 0).length;
@@ -74,7 +74,7 @@ export default function ComplianceOverviewPage() {
     const typeCoverage = (key: string) => {
       const t = (types.data ?? []).find((x) => x.key === key);
       if (!t) return { ok: 0, total: 0 };
-      const relevant = rows.filter((r) => r.competence_type_id === t.id);
+      const relevant = rows.filter((r) => r.competence_type_id === t.id && r.status !== "not_relevant");
       return { ok: relevant.filter((r) => r.status === "fulfilled").length, total: relevant.length };
     };
 
@@ -124,7 +124,7 @@ export default function ComplianceOverviewPage() {
         : { tone: "ok", label: "OK" };
 
   const kpis: Kpi[] = [
-    { title: "Alle krav oppfylt", value: `${model.complete}/${model.peopleWithRequirements}`, hint: "Ansatte uten mangler", tone: model.complete === model.peopleWithRequirements ? "ok" : "warn", href: "/compliance/kompetanse", icon: Users },
+    { title: "Ansatte uten kravmangler", value: `${model.complete}/${model.peopleWithRequirements}`, hint: "Oppfylt eller dokumentert ikke relevant", tone: model.complete === model.peopleWithRequirements ? "ok" : "warn", href: "/compliance/kompetanse", icon: Users },
     { title: "Mangler påkrevd kompetanse", value: model.missingCompetence, hint: `${model.missingCompetencePeople} ansatte berørt`, tone: model.missingCompetence > 0 ? "alert" : "ok", href: "/compliance/kompetanse?status=missing", icon: AlertTriangle },
     { title: "Manglende dokumentasjon", value: model.missingDocs, hint: "Kompetanse finnes, bevis mangler", tone: model.missingDocs > 0 ? "alert" : "ok", href: "/compliance/kompetanse?status=missing_document", icon: FileWarning },
     { title: "Utløpt kompetanse", value: model.expired, hint: "Ikke lenger gyldig", tone: model.expired > 0 ? "alert" : "ok", href: "/compliance/kompetanse?status=expired", icon: AlertTriangle },

@@ -1,5 +1,13 @@
 # Roadmap
 
+## Individuell kravrelevans – 27.10.2026
+- [x] Append-only compliance_requirement_assessments + HMS-audit, company-authorized/idempotent RPC; begrunnelse/aktør/tid/valgfri revurdering, oppheving; endret krav/ansettelseskontekst ugyldiggjør vurdering
+- [x] Adminhandling i gjeldende personkrav; eksplisitt Ikke relevant i matrise/eksport, separate opplæringstall og vurderingstall i gap/preflight/svarpakke/DLE/internrevisjon
+- [x] 90 tester bestått, derav 14 faktiske SQL-tester i isolert PGlite; servertilgang/RLS/oppheving/utløp/idempotens/audit og UI-feil/nytt forsøk; automatisk bygg OK
+- [x] Produksjon tilbakelest: 0 vurderinger, Rune fortsatt 2 påkrevde krav og 0 kompetanseposter; ingen testdata, ingen utsending/publisering. Ingen eksisterende automatisk produsent for compliance-varsler funnet; gapbaserte varsler/tellere følger statusmotoren
+- [ ] Innlogget visuell kontroll i preview: egen konto kunne ikke matches; krever brukerinnlogging. UI-handlingen testet med isolert simulering
+- [ ] Publisering av ny adminhandling: avventer eksplisitt bestilling; additive databasestøtte er installert
+
 ## Samlet organisasjonsbevis – DLE 63210 punkt 1
 - [x] Samlet dynamisk selskapskilde med ref_id=sakens selskap; servervalidering, duplikatvern og antall aktive roller; enkeltroller beholdes
 - [x] Preflight validerer tilgjengelig register; ett samlet CSV-vedlegg i svarpakke og samlet innhold i eksisterende PDF-eksport

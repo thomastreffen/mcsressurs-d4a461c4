@@ -62,11 +62,12 @@ function CoverageLine({ competenceTypeId }: { competenceTypeId: string | null })
   const { coverageFor } = useEvidenceCoverage();
   const c = coverageFor(competenceTypeId);
   if (!c) return null;
-  if (c.total === 0)
+  if (c.total === 0 && !c.notRelevant)
     return <p className="text-xs text-amber-600">Ingen ansatte har dette som krav – kontroller kompetansekravene.</p>;
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
       <ComplianceStatusBadge label={`${c.ok} av ${c.total} ansatte komplett`} tone={c.ok === c.total ? "ok" : "warn"} />
+      {!!c.notRelevant && <ComplianceStatusBadge label={`${c.notRelevant} vurdert ikke relevant`} tone="neutral" />}
       {c.warn > 0 && <ComplianceStatusBadge label={`${c.warn} utløper snart`} tone="warn" />}
       {c.gaps > 0 && <ComplianceStatusBadge label={`${c.gaps} mangler gyldig bevis`} tone="alert" />}
       {c.gaps > 0 && <span className="text-muted-foreground">{c.gapNames.join(", ")}</span>}

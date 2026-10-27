@@ -3,6 +3,8 @@ import { fetchSdsUrl } from "@/hooks/useChemicals";
 import type { AttachmentCandidate } from "@/lib/response-package";
 import type { DleCategory, DleFile, DleRecord } from "./export";
 import { generateDlePdf } from "./export";
+import { relevanceDocumentation } from "@/lib/requirement-relevance";
+import { REQUIREMENT_STATUS_META, type RequirementStatus } from "@/lib/compliance";
 const sb = supabase as any;
 
 async function rows(table: string, company: string, columns: string, deleted = true) {
@@ -46,13 +48,18 @@ export async function loadDleRecords(category: DleCategory, company: string, att
     }));
   }
   if (category === "competence") {
-    const [employees, competences, types] = await Promise.all([
+    const [employees, competences, types, requirements] = await Promise.all([
       sb.from("employment_profiles").select("person_id,people(full_name,is_active)").eq("company_id", company).eq("include_in_hms_people", true).is("archived_at", null),
       rows("compliance_competences", company, "id,person_id,competence_type_id,type_label,issuer,issued_at,expires_at"),
       rows("compliance_competence_types", company, "id,name", false),
+      sb.rpc("compliance_requirement_status_details", { _company_id: company, _person_id: null }),
     ]);
     if (employees.error) throw employees.error;
-    return (employees.data ?? []).filter((e: any) => e.people?.is_active !== false).map((e: any) => ({ id: e.person_id, title: e.people?.full_name ?? "Ansatt", sections: competences.filter((c: any) => c.person_id === e.person_id).map((c: any) => section(types.find((t: any) => t.id === c.competence_type_id)?.name ?? c.type_label ?? "Kompetanse", `Utsteder: ${c.issuer ?? "Ikke oppgitt"}\nUtstedt: ${c.issued_at ?? "Ikke oppgitt"}\nGyldig til: ${c.expires_at ?? "Ikke oppgitt"}`)) }));
+    if (requirements.error) throw requirements.error;
+    return (employees.data ?? []).filter((e: any) => e.people?.is_active !== false).map((e: any) => ({ id: e.person_id, title: e.people?.full_name ?? "Ansatt", sections: [
+      ...competences.filter((c: any) => c.person_id === e.person_id).map((c: any) => section(types.find((t: any) => t.id === c.competence_type_id)?.name ?? c.type_label ?? "Kompetanse", `Utsteder: ${c.issuer ?? "Ikke oppgitt"}\nUtstedt: ${c.issued_at ?? "Ikke oppgitt"}\nGyldig til: ${c.expires_at ?? "Ikke oppgitt"}`)),
+      ...(requirements.data ?? []).filter((r: any) => r.person_id === e.person_id).map((r: any) => section(types.find((t: any) => t.id === r.competence_type_id)?.name ?? "Kompetansekrav", r.status === "not_relevant" ? relevanceDocumentation(r) : `Kravstatus: ${REQUIREMENT_STATUS_META[r.status as RequirementStatus]?.label ?? r.status}`)),
+    ] }));
   }
   if (category === "chemicals" || category === "sds") {
     const chemicals = await rows("hms_chemicals", company, "id,product_name,supplier,usage_area,h_statements,p_statements,ppe_requirements,first_aid,storage_requirements,waste_handling,sds_filename,sds_revision_date,sds_path");

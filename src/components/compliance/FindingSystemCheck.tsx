@@ -76,12 +76,13 @@ export function FindingSystemCheck({
             {c.coverage && c.coverage.gaps > 0 && <ComplianceStatusBadge label={`${c.coverage.gaps} mangler`} tone="alert" />}
             {c.coverage && c.coverage.warn > 0 && <ComplianceStatusBadge label={`${c.coverage.warn} utløper snart`} tone="warn" />}
           </div>
-          {c.coverage && c.coverage.total > 0 ? (
+          {c.coverage && (c.coverage.total > 0 || !!c.coverage.notRelevant) ? (
             <>
               <p className="mt-1 text-xs text-muted-foreground">
                 {c.coverage.total} aktive ansatte omfattes av kravet. {c.coverage.ok} har gyldig dokumentert kompetanse.
                 {c.coverage.warn > 0 ? ` ${c.coverage.warn} utløper snart.` : ""}
                 {c.coverage.gaps > 0 ? ` ${c.coverage.gaps} mangler dokumentasjon.` : ""}
+                {c.coverage.notRelevant ? ` ${c.coverage.notRelevant} personkrav er vurdert ikke relevante, ikke dokumentasjon på opplæring.` : ""}
               </p>
               {(c.coverage.gapNames.length > 0 || c.coverage.warnNames.length > 0) && (
                 <p className="mt-1 text-[11px] text-muted-foreground">

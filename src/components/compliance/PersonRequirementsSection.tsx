@@ -7,11 +7,12 @@ import { ComplianceStatusBadge } from "@/components/compliance/ComplianceStatusB
 import { Info, ShieldCheck } from "lucide-react";
 import { useCompetenceTypes } from "@/hooks/useCompliance";
 import {
-  useRequirementStatus, useJobRoles, usePersonJobRole,
+  useRequirementStatus, useJobRoles, usePersonJobRole, useRequirementAssessmentHistory,
 } from "@/hooks/useComplianceRequirements";
 import {
   REQUIREMENT_STATUS_META, formatDate, requirementOverallTone, scopeSourceLabel,
 } from "@/lib/compliance";
+import { RequirementRelevanceEditor } from "@/components/compliance/RequirementRelevanceEditor";
 
 
 /**
@@ -20,6 +21,7 @@ import {
  */
 export function PersonRequirementsSection({ personId, canManage }: { personId: string; canManage: boolean }) {
   const statuses = useRequirementStatus(personId);
+  const history = useRequirementAssessmentHistory(personId);
   const types = useCompetenceTypes();
   const jobRoles = useJobRoles();
   const profile = usePersonJobRole(personId);
@@ -38,7 +40,7 @@ export function PersonRequirementsSection({ personId, canManage }: { personId: s
     return (statuses.data ?? [])
       .map((r) => ({ ...r, typeName: typeById.get(r.competence_type_id)?.name ?? "Kompetanse" }))
       .sort((a, b) => {
-        const sev = (s: string) => (s === "not_required" ? 2 : s === "fulfilled" ? 1 : 0);
+        const sev = (s: string) => (s === "not_required" || s === "not_relevant" ? 2 : s === "fulfilled" ? 1 : 0);
         if (sev(a.status) !== sev(b.status)) return sev(a.status) - sev(b.status);
         return a.typeName.localeCompare(b.typeName, "nb");
       });
@@ -107,7 +109,7 @@ export function PersonRequirementsSection({ personId, canManage }: { personId: s
                         {r.validity_months ? ` · Gyldighet ${r.validity_months} mnd` : ""}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {r.status === "missing"
+                        {r.status === "not_relevant" ? "Individuell vurdering – ikke bekreftelse på opplæring" : r.status === "missing"
                           ? "Ingen registrert kompetanse"
                           : r.status === "missing_document"
                             ? "Registrert, men dokumentasjon mangler"
@@ -132,11 +134,13 @@ export function PersonRequirementsSection({ personId, canManage }: { personId: s
                     </div>
                   </div>
                   {open && r.reason && <p className="mt-2 rounded-md bg-muted/50 p-2 text-xs">{r.reason}</p>}
+                  <RequirementRelevanceEditor row={r} history={history.data ?? []} canManage={canManage} />
                 </div>
               );
             })}
           </div>
         )}
+        {history.isError && <p role="alert" className="text-xs text-destructive">Vurderingshistorikken kunne ikke hentes.</p>}
       </CardContent>
     </Card>
   );
