@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import { useMountLog } from "@/lib/debugMount";
+import { HUB_SIGN_OUT_SCOPE } from "@/lib/auth-signout";
 
 export type AppRole = "super_admin" | "admin" | "montør" | "customer_user";
 
