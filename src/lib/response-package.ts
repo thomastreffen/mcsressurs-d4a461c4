@@ -184,31 +184,47 @@ export function buildEmailHtml(input: {
   findings: PackageFindingDraft[];
   manifest: ManifestEntry[];
   closing: string;
+  title?: string;
+  caseNumber?: string | null;
 }): string {
-  const p = (s: string) => `<p style="margin:0 0 12px;white-space:pre-wrap;">${escapeHtml(s)}</p>`;
-  const parts: string[] = [`<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#111827;line-height:1.55;">`];
-  parts.push(p(input.intro));
+  // Outlook-vennlig: tabeller og inline CSS, ingen bilder eller eksterne stiler.
+  const text = (s: string, extra = "") => `<p style="margin:0 0 12px;white-space:pre-wrap;${extra}">${escapeHtml(s)}</p>`;
+  const label = (s: string) => `<p style="margin:14px 0 4px;font-size:12px;font-weight:bold;letter-spacing:0.04em;text-transform:uppercase;color:#6b7280;">${escapeHtml(s)}</p>`;
+  const parts: string[] = [`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tr><td style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#111827;line-height:1.6;max-width:680px;">`];
+  parts.push(`<h1 style="margin:0 0 4px;font-size:20px;font-weight:bold;color:#111827;">${escapeHtml(input.title || "Svar på tilsyn")}</h1>`);
+  if (input.caseNumber) parts.push(`<p style="margin:0 0 20px;font-size:13px;color:#6b7280;">Saksnummer ${escapeHtml(input.caseNumber)}</p>`);
+  parts.push(text(input.intro));
   for (const f of input.findings) {
-    parts.push(`<h3 style="margin:18px 0 6px;font-size:15px;">Avvik ${f.finding_number} – ${escapeHtml(f.title)}</h3>`);
-    parts.push(p(f.response_text?.trim() || "(svartekst mangler)"));
+    parts.push(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:20px 0;border:1px solid #e5e7eb;"><tr><td style="padding:16px 20px;">`);
+    parts.push(`<h2 style="margin:0 0 4px;font-size:16px;font-weight:bold;color:#111827;">Avvik ${f.finding_number} – ${escapeHtml(f.title)}</h2>`);
+    if (f.original_text?.trim()) { parts.push(label("Avvik")); parts.push(text(f.original_text, "color:#374151;")); }
+    parts.push(label("Vår tilbakemelding"));
+    parts.push(text(f.response_text?.trim() || "(svartekst mangler)"));
     const completed = f.actions.filter(a => ["completed", "done"].includes(a.status));
-    if (completed.length)
-      parts.push(`<p style="margin:0 0 8px;color:#374151;"><strong>Gjennomførte tiltak:</strong> ${escapeHtml(completed.map((a) => a.title).join("; "))}</p>`);
-    if (f.attachment_names.length)
-      parts.push(`<p style="margin:0 0 8px;color:#374151;"><strong>Vedlegg:</strong> ${escapeHtml(f.attachment_names.join(", "))}</p>`);
+    if (completed.length) {
+      parts.push(label("Gjennomførte tiltak"));
+      parts.push(`<ul style="margin:0 0 12px;padding-left:20px;">${completed.map((a) => `<li>${escapeHtml(a.title)}</li>`).join("")}</ul>`);
+    }
+    if (f.attachment_names.length) {
+      parts.push(label("Dokumentasjon/vedlegg"));
+      parts.push(`<ul style="margin:0;padding-left:20px;">${f.attachment_names.map((n) => `<li>${escapeHtml(n)}</li>`).join("")}</ul>`);
+    }
+    parts.push(`</td></tr></table>`);
   }
   const files = input.manifest.filter((m) => !m.reference_only);
   const refs = input.manifest.filter((m) => m.reference_only);
-  parts.push(`<h3 style="margin:20px 0 6px;font-size:15px;">Vedlegg</h3><ol style="margin:0 0 12px;padding-left:20px;">`);
-  files.forEach((m) => parts.push(`<li>${escapeHtml(m.export_name ?? "")} – ${escapeHtml(m.title)}</li>`));
-  parts.push("</ol>");
+  parts.push(`<h2 style="margin:24px 0 8px;font-size:16px;font-weight:bold;">Vedleggsoversikt</h2>`);
+  if (files.length) {
+    parts.push(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">`);
+    files.forEach((m) => parts.push(`<tr><td style="padding:6px 12px 6px 0;border-bottom:1px solid #e5e7eb;font-family:Consolas,monospace;color:#374151;white-space:nowrap;">${escapeHtml(m.export_name ?? "")}</td><td style="padding:6px 0;border-bottom:1px solid #e5e7eb;">${escapeHtml(m.title)}</td></tr>`));
+    parts.push(`</table>`);
+  } else parts.push(text("Ingen vedlagte filer.", "color:#6b7280;"));
   if (refs.length) {
-    parts.push(`<p style="margin:0 0 6px;color:#374151;"><strong>Referanser uten vedlagt fil:</strong></p><ul style="margin:0 0 12px;padding-left:20px;">`);
-    refs.forEach((m) => parts.push(`<li>${escapeHtml(m.title)} (${escapeHtml(m.source_label)})</li>`));
-    parts.push("</ul>");
+    parts.push(label("Referanser uten vedlagt fil"));
+    parts.push(`<ul style="margin:0 0 12px;padding-left:20px;">${refs.map((m) => `<li>${escapeHtml(m.title)} (${escapeHtml(m.source_label)})</li>`).join("")}</ul>`);
   }
-  parts.push(p(input.closing));
-  parts.push("</div>");
+  parts.push(`<div style="margin-top:24px;">${text(input.closing)}</div>`);
+  parts.push("</td></tr></table>");
   return parts.join("");
 }
 

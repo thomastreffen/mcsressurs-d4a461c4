@@ -109,7 +109,7 @@ export default function InspectionResponsePreviewPage() {
   }));
 
   const emailText = buildEmailText({ intro: form.intro, findings: packageFindings, manifest, closing: form.closing });
-  const emailHtml = buildEmailHtml({ intro: form.intro, findings: packageFindings, manifest, closing: form.closing });
+  const emailHtml = buildEmailHtml({ intro: form.intro, findings: packageFindings, manifest, closing: form.closing, title: inspection.data?.authority_name ? `Svar til ${inspection.data.authority_name}` : "Svar på tilsyn", caseNumber: inspection.data?.case_number });
 
   const generatedFiles = chosenAttachments.flatMap(c => c.kind === "generated" && c.generated
     ? [{ export_name: exportNames[c.key] ?? `${slugForFile(c.title)}.csv`, content: toCsv(c.generated.rows), mime_type: "text/csv" }]
