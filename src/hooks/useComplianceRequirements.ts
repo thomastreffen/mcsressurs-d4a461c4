@@ -4,6 +4,7 @@ import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { RequirementStatus } from "@/lib/compliance";
+import type { RelevanceMetadata } from "@/lib/requirement-relevance";
 
 const sb = supabase as any;
 
@@ -37,7 +38,7 @@ export interface JobRole {
   is_active: boolean;
 }
 
-export interface RequirementStatusRow {
+export interface RequirementStatusRow extends RelevanceMetadata {
   person_id: string;
   competence_type_id: string;
   requirement_id: string;
@@ -231,12 +232,47 @@ export function useRequirementStatus(personId?: string) {
     queryKey: ["compliance-requirement-status", cid, personId ?? "all"],
     enabled: !!cid,
     queryFn: async () => {
-      const { data, error } = await sb.rpc("compliance_requirement_status", {
+      const { data, error } = await sb.rpc("compliance_requirement_status_details", {
         _company_id: cid,
         _person_id: personId ?? null,
       });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+}
+
+export interface RequirementAssessment {
+  id: string; requirement_id: string; person_id: string; competence_type_id: string;
+  decision: "not_relevant" | "revoke"; reason: string; assessor_name: string;
+  assessed_by: string; assessed_at: string; valid_until: string | null;
+  revoked_assessment_id: string | null;
+}
+
+export function useRequirementAssessmentHistory(personId?: string) {
+  const cid = useCid();
+  return useQuery<RequirementAssessment[]>({
+    queryKey: ["requirement-assessments", cid, personId], enabled: !!cid && !!personId,
+    queryFn: async () => {
+      const { data, error } = await sb.from("compliance_requirement_assessments").select("*").eq("company_id", cid).eq("person_id", personId).order("assessed_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useAssessPersonRequirement() {
+  const cid = useCid(); const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { personId: string; requirementId: string; reason: string; validUntil: string | null; revokeId?: string; clientRequestId: string }) => {
+      if (!cid) throw new Error("Velg selskap først");
+      const { data, error } = await sb.rpc("assess_person_requirement", { _company_id: cid, _person_id: input.personId, _requirement_id: input.requirementId, _reason: input.reason.trim(), _valid_until: input.validUntil, _revoke_id: input.revokeId ?? null, _client_request_id: input.clientRequestId });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: async () => {
+      await Promise.all(["compliance-requirement-status", "requirement-assessments", "compliance-overview", "response-packages", "readiness-data"].map(key => qc.invalidateQueries({ queryKey: [key] })));
+      toast.success("Vurderingen er lagret i revisjonssporet");
     },
   });
 }

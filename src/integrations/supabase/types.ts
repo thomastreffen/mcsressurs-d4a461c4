@@ -17504,6 +17504,10 @@ export type Database = {
           warning_days: number
         }[]
       }
+      compliance_requirement_status_details: {
+        Args: { _company_id: string; _person_id?: string }
+        Returns: Json[]
+      }
       compute_submission_summary: {
         Args: { _submission_id: string }
         Returns: Json

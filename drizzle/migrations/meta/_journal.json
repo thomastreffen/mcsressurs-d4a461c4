@@ -428,6 +428,13 @@
       "when": 1793103802732,
       "tag": "0060_individual_requirement_relevance",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1793103841715,
+      "tag": "0061_requirement_assessment_status_details",
+      "breakpoints": true
     }
   ]
 }
