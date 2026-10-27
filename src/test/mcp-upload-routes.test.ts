@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";
@@ -48,7 +49,7 @@ describe("MCP native PDF contract", () => {
         ? { competence_id: id, file, pdf_base64: "invalid-fallback", pdf_url: "https://unused.example.test" }
         : route === "pdf_url" ? { competence_id: id, pdf_url: file.download_url }
         : { competence_id: id, pdf_base64: btoa(String.fromCharCode(...pdf)) };
-      const result = await upload.handler(args, context());
+      const result = await upload.handler({ file: undefined, file_name: undefined, pdf_base64: undefined, pdf_url: undefined, client_request_id: undefined, ...args }, context());
       expect(result.isError).not.toBe(true);
       expect(fetchMock).toHaveBeenCalledTimes(route === "pdf_base64" ? 1 : 2);
     });
@@ -57,7 +58,7 @@ describe("MCP native PDF contract", () => {
   it("rejects a truncated native file before calling the storage API", async () => {
     const fetchMock = vi.fn(async () => new Response("%PDF-1.4\ntruncated"));
     vi.stubGlobal("fetch", fetchMock);
-    const result = await upload.handler({ competence_id: id, file }, context());
+    const result = await upload.handler({ competence_id: id, file, file_name: undefined, pdf_base64: undefined, pdf_url: undefined, client_request_id: undefined }, context());
     expect(result.isError).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
