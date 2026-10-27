@@ -32,6 +32,7 @@ beforeAll(async () => {
   `);
   await db.exec(readFileSync("drizzle/migrations/0060_individual_requirement_relevance.sql", "utf8"));
   await db.exec(readFileSync("drizzle/migrations/0061_requirement_assessment_status_details.sql", "utf8"));
+  await db.exec(readFileSync("drizzle/migrations/0062_requirement_assessment_explicit_grants.sql", "utf8"));
   await db.exec(`
     INSERT INTO public.internal_companies VALUES ('${company}');
     INSERT INTO public.people(id,full_name) VALUES ('${person}','Isolert person'),('${actor}','Isolert HMS-leder');
