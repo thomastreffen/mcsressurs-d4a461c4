@@ -1,5 +1,10 @@
 # Roadmap
 
+## Individuell kravrelevans – 27.10.2026
+- [ ] Revisjonssikker individuell vurdering med utløp/oppheving og serverkontroll
+- [ ] Adminhandling i personkrav, statuser/varsler/gap/preflight og eksport
+- [ ] Tester uten produksjonsdata og kontroll av urørte Rune-poster; ingen publisering
+
 ## Samlet organisasjonsbevis – DLE 63210 punkt 1
 - [x] Samlet dynamisk selskapskilde med ref_id=sakens selskap; servervalidering, duplikatvern og antall aktive roller; enkeltroller beholdes
 - [x] Preflight validerer tilgjengelig register; ett samlet CSV-vedlegg i svarpakke og samlet innhold i eksisterende PDF-eksport
