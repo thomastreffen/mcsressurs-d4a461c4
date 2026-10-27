@@ -1,5 +1,13 @@
 # Roadmap
 
+## MCP native filparameter – produksjonskontroll 27.10.2026
+- [x] Faktisk OAuth-autentisert produksjons-tools/list HTTP 200 inneholder allerede top-level file og _meta.openai/fileParams=[file]; avviket er på ChatGPT-klientsiden, ikke manglende serverschema
+- [x] MCP-versjon 0.2.1; 14 tester bestått: native file først, eksakte binære bytes for alle tre ruter, eksisterende competence_id, korrupt PDF avvist; live native tools/call avviser http før lagring
+- [x] Manifest regenerert med tre verktøy; publisering forespurt 27.10.2026. 25 eksisterende kritiske sikkerhetsfunn består; ingen database-/lagringsendringer
+- [x] Produksjon initialize HTTP 200 bekrefter versjon 0.2.1; etter publiseringsforespørselen returnerer faktisk tools/list native file med korrekt metadata
+- [ ] Bekreft at den installerte ChatGPT-koblingen henter samme schema; ChatGPT-installasjonen er ikke tilgjengelig her
+- [ ] Erstatt Emil Strids dokument først når originalfilen er tilgjengelig og ruten verifisert; ingen dokumentendring i denne operasjonen
+
 ## Kompetansedokumenter – binær PDF og trygg kartlegging
 - [x] Kontrollert berørt fil (148750 B, %PDF--header, mangler startxref/%%EOF); ingen andre objekter i bøtten; ingen data endret
 - [x] Herdet validering i MCP-verktøy og edge-funksjon: krever %PDF--header + startxref + %%EOF (tåler trailing bytes); native file/pdf_base64/pdf_url uendret ellers
