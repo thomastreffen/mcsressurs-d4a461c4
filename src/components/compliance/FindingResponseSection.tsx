@@ -36,12 +36,40 @@ export function FindingResponseSection({
   const [text, setText] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ text: string; missing: string[] } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [applied, setApplied] = useState(false);
 
   const value = text ?? finding.response_text ?? "";
   const approved = !!finding.response_approved_at;
+  const busy = loading || applying || save.isPending;
+
+  const applyDraft = async () => {
+    if (!draft?.text.trim() || busy) return;
+    const nextText = draft.text;
+    setApplying(true);
+    setErrorMessage(null);
+    setApplied(false);
+    try {
+      await save.mutateAsync({
+        id: finding.id, inspection_id: inspectionId, response_text: nextText,
+        response_approved_at: null, response_approved_by: null,
+      });
+      setText(nextText);
+      setDraft(null);
+      setApplied(true);
+      toast.success("AI-forslaget er satt inn og lagret som svartekst");
+    } catch (e: unknown) {
+      setErrorMessage(e instanceof Error ? e.message : "Kunne ikke lagre svarforslaget. Prøv igjen.");
+    } finally {
+      setApplying(false);
+    }
+  };
 
   const suggest = async () => {
     setLoading(true);
+    setErrorMessage(null);
+    setApplied(false);
     try {
       const { data, error } = await supabase.functions.invoke("finding-response-draft", {
         body: {
@@ -67,9 +95,14 @@ export function FindingResponseSection({
       });
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.message ?? "Kunne ikke lage forslag til svartekst");
-      setDraft({ text: data.response_text ?? "", missing: data.missing_information ?? [] });
+      if (typeof data.response_text !== "string" || !data.response_text.trim()) {
+        throw new Error("AI returnerte ingen svartekst. Prøv igjen.");
+      }
+      setDraft({ text: data.response_text, missing: data.missing_information ?? [] });
     } catch (e: any) {
-      toast.error(e?.message ?? "Kunne ikke lage forslag til svartekst");
+      const message = e?.message ?? "Kunne ikke lage forslag til svartekst";
+      setErrorMessage(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -89,13 +122,14 @@ export function FindingResponseSection({
       </div>
 
       <div>
-        <Label className="text-xs">Svartekst som brukes i svarpakken</Label>
+        <Label htmlFor={`response-${finding.id}`} className="text-xs">Svartekst som brukes i svarpakken</Label>
         <Textarea
+          id={`response-${finding.id}`}
           rows={5}
           value={value}
-          disabled={!canEdit}
+          disabled={!canEdit || applying}
           placeholder="Skriv svaret til myndigheten, eller la AI foreslå et utkast."
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => { setText(e.target.value); setApplied(false); setErrorMessage(null); }}
           onBlur={() => {
             if (text === null || text === (finding.response_text ?? "")) return;
             save.mutate({
@@ -103,27 +137,35 @@ export function FindingResponseSection({
               response_text: text || null,
               // enhver endring opphever tidligere godkjenning
               response_approved_at: null, response_approved_by: null,
-            } as any);
+            } as any, {
+              onError: (e) => setErrorMessage(e instanceof Error ? e.message : "Kunne ikke lagre svarteksten. Prøv igjen."),
+            });
           }}
         />
       </div>
 
+      {applied && <p role="status" className="flex items-center gap-1.5 text-xs text-primary">
+        <CheckCircle2 className="h-3.5 w-3.5" /> AI-forslaget er satt inn og lagret som svartekst. Ikke godkjent ennå.
+      </p>}
+      {errorMessage && <p role="alert" className="text-xs text-destructive">{errorMessage}</p>}
+
       {canEdit && (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={suggest} disabled={loading}>
+          <Button size="sm" variant="outline" onClick={suggest} disabled={busy}>
             {loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
             Foreslå svartekst
           </Button>
           {!approved && value.trim() && (
-            <Button size="sm" onClick={() => save.mutate({
+            <Button size="sm" disabled={busy} onClick={() => save.mutate({
               id: finding.id, inspection_id: inspectionId,
+              response_text: value,
               response_approved_at: new Date().toISOString(), response_approved_by: user?.id ?? null,
             } as any)}>
               <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Godkjenn svartekst
             </Button>
           )}
           {approved && (
-            <Button size="sm" variant="ghost" onClick={() => save.mutate({
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => save.mutate({
               id: finding.id, inspection_id: inspectionId, response_approved_at: null, response_approved_by: null,
             } as any)}>
               <Undo2 className="mr-1.5 h-3.5 w-3.5" /> Opphev godkjenning
@@ -148,15 +190,11 @@ export function FindingResponseSection({
           )}
           {canEdit && (
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => {
-                setText(draft.text);
-                save.mutate({
-                  id: finding.id, inspection_id: inspectionId, response_text: draft.text,
-                  response_approved_at: null, response_approved_by: null,
-                } as any);
-                setDraft(null);
-              }}>Bruk som svartekst</Button>
-              <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Avvis forslag</Button>
+              <Button size="sm" disabled={busy || !draft.text.trim()} onClick={applyDraft}>
+                {applying && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                {applying ? "Setter inn…" : "Bruk som svartekst"}
+              </Button>
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setDraft(null); setErrorMessage(null); }}>Avvis forslag</Button>
             </div>
           )}
           <p className="text-[11px] text-muted-foreground">
