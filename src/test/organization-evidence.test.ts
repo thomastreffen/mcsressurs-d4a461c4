@@ -36,8 +36,8 @@ describe("Combined organization evidence", () => {
     expect(c.generated).toBeUndefined();
     expect(c.status_tone).toBe("alert");
   });
-  it.each([[], [role]])("blocks empty or unavailable sources", roles => {
-    const c = organizationOverviewCandidate(evidence, company, roles, people, false);
+  it.each([{ roles: [], available: true }, { roles: [role], available: false }])("blocks empty or unavailable sources", ({ roles, available }) => {
+    const c = organizationOverviewCandidate(evidence, company, roles, people, available);
     expect(c.generated).toBeUndefined();
     expect(deriveDocumentationStatus([evidence], () => null, () => null)).toBe("gaps");
   });
