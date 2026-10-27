@@ -3505,6 +3505,103 @@ export type Database = {
           },
         ]
       }
+      compliance_requirement_assessments: {
+        Row: {
+          assessed_at: string
+          assessed_by: string
+          assessor_name: string
+          client_request_id: string
+          company_id: string
+          competence_type_id: string
+          decision: string
+          employment_context: Json
+          id: string
+          person_id: string
+          reason: string
+          requirement_id: string
+          requirement_updated_at: string
+          revoked_assessment_id: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          assessed_at?: string
+          assessed_by: string
+          assessor_name: string
+          client_request_id: string
+          company_id: string
+          competence_type_id: string
+          decision: string
+          employment_context: Json
+          id?: string
+          person_id: string
+          reason: string
+          requirement_id: string
+          requirement_updated_at: string
+          revoked_assessment_id?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          assessed_at?: string
+          assessed_by?: string
+          assessor_name?: string
+          client_request_id?: string
+          company_id?: string
+          competence_type_id?: string
+          decision?: string
+          employment_context?: Json
+          id?: string
+          person_id?: string
+          reason?: string
+          requirement_id?: string
+          requirement_updated_at?: string
+          revoked_assessment_id?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_requirement_assessments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_requirement_assessments_competence_type_id_fkey"
+            columns: ["competence_type_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_competence_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_requirement_assessments_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_requirement_assessments_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_requirement_assessments_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_competence_requirements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_requirement_assessments_revoked_assessment_id_fkey"
+            columns: ["revoked_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_requirement_assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compliance_response_package_attachments: {
         Row: {
           company_id: string
@@ -17241,6 +17338,18 @@ export type Database = {
         Returns: Json
       }
       apply_duplicate_schedule_blocks_cleanup: { Args: never; Returns: Json }
+      assess_person_requirement: {
+        Args: {
+          _client_request_id?: string
+          _company_id: string
+          _person_id: string
+          _reason: string
+          _requirement_id: string
+          _revoke_id?: string
+          _valid_until?: string
+        }
+        Returns: string
+      }
       attach_competence_document: {
         Args: {
           _actor: string
@@ -17314,6 +17423,36 @@ export type Database = {
       competence_document_can_view: {
         Args: { _actor: string; _competence_id: string }
         Returns: boolean
+      }
+      compliance_active_requirement_assessment: {
+        Args: {
+          _company_id: string
+          _person_id: string
+          _requirement_id: string
+        }
+        Returns: {
+          assessed_at: string
+          assessed_by: string
+          assessor_name: string
+          client_request_id: string
+          company_id: string
+          competence_type_id: string
+          decision: string
+          employment_context: Json
+          id: string
+          person_id: string
+          reason: string
+          requirement_id: string
+          requirement_updated_at: string
+          revoked_assessment_id: string | null
+          valid_until: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "compliance_requirement_assessments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       compliance_competence_status: {
         Args: {

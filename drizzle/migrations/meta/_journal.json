@@ -421,6 +421,13 @@
       "when": 1793102957954,
       "tag": "0059_organization_overview_finding_evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793103802732,
+      "tag": "0060_individual_requirement_relevance",
+      "breakpoints": true
     }
   ]
 }
