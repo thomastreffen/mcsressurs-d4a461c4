@@ -1,9 +1,12 @@
 # Roadmap
 
 ## Samlet organisasjonsbevis – DLE 63210 punkt 1
-- [ ] Samlet dynamisk selskapskilde, eksisterende enkeltroller beholdes
-- [ ] Preflight og svarpakke/eksport med samlet oversikt
-- [ ] Tester og innlogget kontroll uten produksjonsskriving; publisering ikke bestilt
+- [x] Samlet dynamisk selskapskilde med ref_id=sakens selskap; servervalidering, duplikatvern og antall aktive roller; enkeltroller beholdes
+- [x] Preflight validerer tilgjengelig register; ett samlet CSV-vedlegg i svarpakke og samlet innhold i eksisterende PDF-eksport
+- [x] 28 tester bestått, inkludert simulert kobling på eksakte sak/funn-1-ID-er, ventestatus/feil/nytt forsøk, dynamiske endringer og selskapsisolasjon; automatisk bygg OK
+- [x] Tilbakelesing: 7 aktive roller; alle 7 funn har uendrede status/updated_at; ingen samlet beviskobling opprettet i produksjon; ingen utsending
+- [ ] Innlogget visuell kontroll på saken: egen sesjon kunne ikke etableres; krever brukerinnlogging i preview
+- [ ] App-publisering: ikke bestilt; databasens additive bevistype/validering er installert, frontend venter på publisering
 
 ## Produksjonsdokumentasjon DLE sak 63210 punkt 2 – 27.10.2026
 - [x] Rutine 9470d76b-da66-495c-94c0-287c893a2a7a, versjon 1 published, uten utsending; tidligere håndbok urørt
