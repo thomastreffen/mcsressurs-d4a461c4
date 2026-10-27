@@ -17,6 +17,7 @@
 - [ ] App-publisering: ikke bestilt; databasens additive bevistype/validering er installert, frontend venter på publisering
 
 ## Produksjonsdokumentasjon DLE sak 63210 punkt 2 – 27.10.2026
+- [ ] Administrativ ferdigstilling bestilt: fjern kun feil funnkobling på bredt åpent tiltak; kontroller preflight, godkjenn svar og bekreft rettet/komplett som Thomas; verifiser andre funn uendret og ingen utsending
 - [x] Rutine 9470d76b-da66-495c-94c0-287c893a2a7a, versjon 1 published, uten utsending; tidligere håndbok urørt
 - [x] Revisjon b8d7dfbf-7328-443e-9780-d7a4404425dd completed 27.10.2026, 7 besvarte kontrollpunkter og frosset systemgrunnlag; dokumentgjennomgang, ingen fysisk inspeksjon attestert
 - [x] To dokumenter/bevis koblet til punkt 2; brukerbestilt svartekst satt uten formell godkjenning/lukking; tidligere svar bevart i sakshistorikken
