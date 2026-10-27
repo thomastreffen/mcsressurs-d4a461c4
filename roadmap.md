@@ -1,5 +1,11 @@
 # Roadmap
 
+## MCP native filparameter – produksjonskontroll 27.10.2026
+- [ ] Hent faktisk OAuth-autentisert tools/list fra produksjon og sammenlign file/_meta med kildekoden
+- [ ] Rett nødvendig MCP/API-definisjon og test native file først, binær videresending og legacy fallback uten produksjonsskriving
+- [ ] Regenerer manifest, publiser og verifiser faktisk produksjonsschema
+- [ ] Erstatt Emil Strids dokument først når originalfilen er tilgjengelig og ruten verifisert; ingen dokumentendring i denne operasjonen
+
 ## Kompetansedokumenter – binær PDF og trygg kartlegging
 - [x] Kontrollert berørt fil (148750 B, %PDF--header, mangler startxref/%%EOF); ingen andre objekter i bøtten; ingen data endret
 - [x] Herdet validering i MCP-verktøy og edge-funksjon: krever %PDF--header + startxref + %%EOF (tåler trailing bytes); native file/pdf_base64/pdf_url uendret ellers
