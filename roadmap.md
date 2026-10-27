@@ -204,3 +204,5 @@
 - [x] Tilbakelesing verifisert: 9 poster, profil, svartekst og 9 koblinger; ingen andre DLE-punkter endret, ingenting sendt
 - [ ] Punkt 3 formell lukking: krever ansvarlig på funnet, godkjent svartekst, rettet-/dokumentasjon-komplett-bekreftelser; ingenting sendt til DLE
 - [x] QA-retting 27.10.2026: offisielle Lovdata/DSB/NEK-referanser korrigert på alle 9 poster (El-tilsynsloven 1929, FEK 2013-739, FSE 2006-458, FEU 2017-1598); NEK 439 rettet til samlingsnivå A:2024/B:2025/C:2024; Fagstøtte primary_standards og funn 3-svartekst tilsvarende rettet; status fortsatt 'new'
+- [x] Lukkeflyt punkt 3 fullført 27.10.2026: ansvarlig Rune Ørbeck (person), svartekst godkjent av Thomas Treffen (auth-id), forhold rettet + dokumentasjon komplett bekreftet, 9 regelverk koblet som bevis, status documentation_ready (Klar for oversendelse), 9 hendelser logget; andre funn urørt, ingenting sendt til DLE
+- [ ] Punkt 3 oversendelse til DLE: krever egen godkjenning; status submitted/approved settes først ved faktisk utsending/lukking
