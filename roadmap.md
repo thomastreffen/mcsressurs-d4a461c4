@@ -4,7 +4,8 @@
 - [x] Faktisk OAuth-autentisert produksjons-tools/list HTTP 200 inneholder allerede top-level file og _meta.openai/fileParams=[file]; avviket er på ChatGPT-klientsiden, ikke manglende serverschema
 - [x] MCP-versjon 0.2.1; 14 tester bestått: native file først, eksakte binære bytes for alle tre ruter, eksisterende competence_id, korrupt PDF avvist; live native tools/call avviser http før lagring
 - [x] Manifest regenerert med tre verktøy; publisering forespurt 27.10.2026. 25 eksisterende kritiske sikkerhetsfunn består; ingen database-/lagringsendringer
-- [ ] Bekreft at planlagt publisering serverer versjon 0.2.1 og at den installerte ChatGPT-koblingen henter samme schema; ChatGPT-installasjonen er ikke tilgjengelig her
+- [x] Produksjon initialize HTTP 200 bekrefter versjon 0.2.1; etter publiseringsforespørselen returnerer faktisk tools/list native file med korrekt metadata
+- [ ] Bekreft at den installerte ChatGPT-koblingen henter samme schema; ChatGPT-installasjonen er ikke tilgjengelig her
 - [ ] Erstatt Emil Strids dokument først når originalfilen er tilgjengelig og ruten verifisert; ingen dokumentendring i denne operasjonen
 
 ## Kompetansedokumenter – binær PDF og trygg kartlegging
