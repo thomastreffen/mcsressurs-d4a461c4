@@ -24,16 +24,17 @@ vi.mock("@/hooks/useResponsePackages", () => ({
 beforeEach(() => {
   vi.clearAllMocks(); sessionStorage.clear();
   sessionStorage.setItem("mcs.response-draft.case", JSON.stringify({ finding_ids: ["f2"], attachment_keys: ["routine"], recipient_email: "dle@example.test", subject: "Sak 63210" }));
-  m.finalize.mockResolvedValue({ id: "package" }); m.send.mockResolvedValue({ data: { ok: true }, error: null });
+  m.finalize.mockResolvedValue({ id: "package" }); m.send.mockImplementation(async (_n: string, o: any) => ({ data: o?.body?.mode === "test_recipient" ? { ok: true, recipient: "thomas@mcsservice.no" } : { ok: true }, error: null }));
 });
 afterEach(cleanup);
+const sends = () => m.send.mock.calls.filter((c: any[]) => c[1]?.body?.mode !== "test_recipient");
 describe("Inspection preview user flow (isolated, no email)", () => {
   it("renders the selected response and generated content without sending on load", async () => {
     render(<InspectionResponsePreviewPage />);
     await screen.findByText("Rutine og revisjon gjennomført");
     expect(screen.getByText(/Årlig gjennomgang/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send endelig svar" })).toBeDisabled();
-    expect(m.send).not.toHaveBeenCalled(); expect(m.finalize).not.toHaveBeenCalled();
+    expect(sends()).toHaveLength(0); expect(m.finalize).not.toHaveBeenCalled();
   });
   it("requires preview confirmation and re-confirmation after changing the recipient", async () => {
     render(<InspectionResponsePreviewPage />);
@@ -42,22 +43,35 @@ describe("Inspection preview user flow (isolated, no email)", () => {
     expect(screen.getByRole("button", { name: "Send endelig svar" })).toBeEnabled();
     fireEvent.change(screen.getByDisplayValue("dle@example.test"), { target: { value: "other@example.test" } });
     expect(screen.getByRole("button", { name: "Send endelig svar" })).toBeDisabled();
-    expect(m.send).not.toHaveBeenCalled();
+    expect(sends()).toHaveLength(0);
   });
   it("only explicitly clicked final sending invokes the sender, preserving the previewed content", async () => {
     render(<InspectionResponsePreviewPage />);
     fireEvent.click(await screen.findByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Send endelig svar" }));
-    await waitFor(() => expect(m.send).toHaveBeenCalledTimes(1));
-    expect(m.send.mock.calls[0][1].body).toMatchObject({ package_id: "package", confirm_send: true });
+    await waitFor(() => expect(sends()).toHaveLength(1));
+    expect(sends()[0][1].body).toMatchObject({ package_id: "package", confirm_send: true });
     expect(m.finalize.mock.calls[0][0].findings[0].response_text).toBe("Rutine og revisjon gjennomført");
   });
   it("reports failed sending and requires fresh confirmation before retry", async () => {
-    m.send.mockResolvedValue({ data: { ok: false, message: "Avvist" }, error: null });
+    m.send.mockImplementation(async (_n: string, o: any) => ({ data: o?.body?.mode === "test_recipient" ? { ok: true, recipient: "thomas@mcsservice.no" } : { ok: false, message: "Avvist" }, error: null }));
     render(<InspectionResponsePreviewPage />);
     fireEvent.click(await screen.findByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Send endelig svar" }));
     await waitFor(() => expect(m.fail).toHaveBeenCalledWith({ id: "package", error: "Avvist" }));
+    expect(screen.getByRole("button", { name: "Send endelig svar" })).toBeDisabled();
+  });
+  it("test to me shows own address, sends test mode only, and never finalizes or confirms a package", async () => {
+    render(<InspectionResponsePreviewPage />);
+    expect(await screen.findByText("thomas@mcsservice.no")).toBeInTheDocument();
+    expect(sends()).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Send test til meg" }));
+    await waitFor(() => expect(sends()).toHaveLength(1));
+    const body = sends()[0][1].body;
+    expect(body.mode).toBe("test"); expect(body.package_id).toBeUndefined(); expect(body.confirm_send).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain("dle@example.test");
+    expect(body.html).toContain("Rutine og revisjon gjennomført");
+    expect(m.finalize).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Send endelig svar" })).toBeDisabled();
   });
 });

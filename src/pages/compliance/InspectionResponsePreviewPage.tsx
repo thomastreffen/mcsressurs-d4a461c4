@@ -51,7 +51,7 @@ export default function InspectionResponsePreviewPage() {
   const [form, setForm] = useState({ recipient_name: "", recipient_email: "", cc: "", subject: "", intro: "", closing: "" });
   const [selection, setSelection] = useState<{ findings: Set<string>; attachments: Set<string> }>({ findings: new Set(), attachments: new Set() });
   const [ready, setReady] = useState(false);
-  const [busy, setBusy] = useState<"" | "export" | "send">("");
+  const [busy, setBusy] = useState<"" | "export" | "send" | "test">("");
   const [confirmedPreview, setConfirmedPreview] = useState<string | null>(null);
 
   useEffect(() => {
@@ -109,7 +109,7 @@ export default function InspectionResponsePreviewPage() {
   }));
 
   const emailText = buildEmailText({ intro: form.intro, findings: packageFindings, manifest, closing: form.closing });
-  const emailHtml = buildEmailHtml({ intro: form.intro, findings: packageFindings, manifest, closing: form.closing });
+  const emailHtml = buildEmailHtml({ intro: form.intro, findings: packageFindings, manifest, closing: form.closing, title: inspection.data?.authority_name ? `Svar til ${inspection.data.authority_name}` : "Svar på tilsyn", caseNumber: inspection.data?.case_number });
 
   const generatedFiles = chosenAttachments.flatMap(c => c.kind === "generated" && c.generated
     ? [{ export_name: exportNames[c.key] ?? `${slugForFile(c.title)}.csv`, content: toCsv(c.generated.rows), mime_type: "text/csv" }]
@@ -207,6 +207,34 @@ export default function InspectionResponsePreviewPage() {
     } catch (e: any) {
       if (pkgId) await markSendFailed.mutateAsync({ id: pkgId, error: e?.message ?? "Ukjent feil" });
       toast.error(e?.message ?? "Kunne ikke sende svarpakken");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const [testRecipient, setTestRecipient] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!id || !canEdit) return;
+    invokeWithSession("inspection-response-send", { body: { mode: "test_recipient", inspection_id: id } })
+      .then(({ data }) => setTestRecipient((data as any)?.ok ? (data as any).recipient : null))
+      .catch(() => setTestRecipient(null));
+  }, [id, canEdit]);
+
+  // Intern test: samme HTML, manifest og vedlegg, kun til egen jobb-e-post. Endrer ingen status.
+  const handleTest = async () => {
+    if (!id || !testRecipient || busy !== "") return;
+    setBusy("test");
+    try {
+      const { data, error } = await invokeWithSession("inspection-response-send", {
+        body: {
+          mode: "test", inspection_id: id, subject: form.subject, html: emailHtml, generated: generatedFiles,
+          attachments: chosenAttachments.filter(c => c.kind !== "reference").map(c => ({ document_id: c.document_id ?? null, storage_bucket: c.storage_bucket ?? null, file_path: c.file_path ?? null, export_name: exportNames[c.key] ?? c.title, mime_type: c.mime_type ?? null })),
+        },
+      });
+      if (error || !(data as any)?.ok) toast.error((data as any)?.message ?? error?.message ?? "Testen kunne ikke sendes");
+      else toast.success(`Test sendt til ${testRecipient}. Ingenting er sendt til DLE.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Testen kunne ikke sendes");
     } finally {
       setBusy("");
     }
@@ -330,6 +358,26 @@ export default function InspectionResponsePreviewPage() {
           ))}
         </CardContent>
       </Card>
+
+      {/* Intern test – adskilt fra endelig sending */}
+      {canEdit && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="text-sm">
+              <p className="font-medium">Send test til meg</p>
+              <p className="text-muted-foreground">
+                {testRecipient === undefined ? "Henter din jobb-e-post…" : testRecipient
+                  ? <>Testen sendes kun til <span className="font-medium text-foreground">{testRecipient}</span>, merket «TEST». Ikke til DLE, ingen kopi, ingen statusendring.</>
+                  : "Fant ingen registrert jobb-e-post for deg."}
+              </p>
+            </div>
+            <Button size="sm" variant="secondary" disabled={!testRecipient || chosenFindings.length === 0 || busy !== ""} onClick={handleTest}>
+              {busy === "test" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
+              Send test til meg
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Handlinger */}
       {canEdit && (
