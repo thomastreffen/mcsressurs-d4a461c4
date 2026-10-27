@@ -187,9 +187,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.warn("[Auth] queryClient.clear failed", err);
     }
-    // Global signout revokes server-side session too
+    // Revoke only THIS browser's server-side session. A global sign-out would
+    // also revoke the user's connected OAuth clients (ChatGPT/MCP), whose
+    // refresh then fails with "We couldn't connect your account".
     try {
-      await supabase.auth.signOut({ scope: "global" });
+      await supabase.auth.signOut({ scope: HUB_SIGN_OUT_SCOPE });
     } catch (err) {
       console.error("[Auth] signOut error:", err);
     }
