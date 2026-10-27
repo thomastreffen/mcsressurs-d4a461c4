@@ -44,7 +44,7 @@ describe("MCP native PDF contract", () => {
           reader.onerror = () => reject(reader.error);
           reader.readAsArrayBuffer(binary);
         });
-        expect(new Uint8Array(buffer)).toEqual(pdf);
+        expect(Array.from(new Uint8Array(buffer))).toEqual(Array.from(pdf));
         expect(binary.type).toBe("application/pdf");
         expect(new Headers(init?.headers).get("authorization")).toBe("Bearer mock-caller-bearer");
         return Response.json({ document_id: "mock-existing-document", file_path: "mock-private-path" });
