@@ -165,7 +165,8 @@ export function buildEmailText(input: {
   for (const f of input.findings) {
     blocks.push(`Avvik ${f.finding_number} – ${f.title}`);
     blocks.push(f.response_text?.trim() || "(svartekst mangler)");
-    if (f.actions.length) blocks.push(`Gjennomførte tiltak: ${f.actions.map((a) => a.title).join("; ")}`);
+    const completed = f.actions.filter(a => ["completed", "done"].includes(a.status));
+    if (completed.length) blocks.push(`Gjennomførte tiltak: ${completed.map((a) => a.title).join("; ")}`);
     if (f.attachment_names.length) blocks.push(`Vedlegg: ${f.attachment_names.join(", ")}`);
     blocks.push("");
   }
@@ -190,8 +191,9 @@ export function buildEmailHtml(input: {
   for (const f of input.findings) {
     parts.push(`<h3 style="margin:18px 0 6px;font-size:15px;">Avvik ${f.finding_number} – ${escapeHtml(f.title)}</h3>`);
     parts.push(p(f.response_text?.trim() || "(svartekst mangler)"));
-    if (f.actions.length)
-      parts.push(`<p style="margin:0 0 8px;color:#374151;"><strong>Gjennomførte tiltak:</strong> ${escapeHtml(f.actions.map((a) => a.title).join("; "))}</p>`);
+    const completed = f.actions.filter(a => ["completed", "done"].includes(a.status));
+    if (completed.length)
+      parts.push(`<p style="margin:0 0 8px;color:#374151;"><strong>Gjennomførte tiltak:</strong> ${escapeHtml(completed.map((a) => a.title).join("; "))}</p>`);
     if (f.attachment_names.length)
       parts.push(`<p style="margin:0 0 8px;color:#374151;"><strong>Vedlegg:</strong> ${escapeHtml(f.attachment_names.join(", "))}</p>`);
   }
