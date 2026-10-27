@@ -17,13 +17,14 @@
 - [ ] App-publisering: ikke bestilt; databasens additive bevistype/validering er installert, frontend venter på publisering
 
 ## Produksjonsdokumentasjon DLE sak 63210 punkt 2 – 27.10.2026
+- [x] Administrativ ferdigstilling 27.10.2026 12:32:44 UTC: kun feil funnkobling fjernet fra bredt åpent tiltak (øvrige koblinger beholdt); HUB-preflight uten mangler/systemgap, Thomas godkjente eksisterende svar og bekreftet rettet/komplett; documentation_ready + complete, 2 bevis, 0 åpne tilknyttede tiltak, 6 inspeksjonshendelser + 2 aktørfestede auditposter. Alle andre funn har identiske før/etter-hasher; ingen utsending
 - [x] Rutine 9470d76b-da66-495c-94c0-287c893a2a7a, versjon 1 published, uten utsending; tidligere håndbok urørt
 - [x] Revisjon b8d7dfbf-7328-443e-9780-d7a4404425dd completed 27.10.2026, 7 besvarte kontrollpunkter og frosset systemgrunnlag; dokumentgjennomgang, ingen fysisk inspeksjon attestert
 - [x] To dokumenter/bevis koblet til punkt 2; brukerbestilt svartekst satt uten formell godkjenning/lukking; tidligere svar bevart i sakshistorikken
 - [x] Ett åpent oppfølgingstiltak 13f22948-34c8-4888-bff8-b8fc29e7794c, Thomas Treffen, 08.11.2026; øvrige DLE-funn og gammel revisjon urørt
 - [x] Produksjonsposter lest tilbake; lagrede rutine/referat byte-verifisert (3161/6109 B); publisert side krever innlogging; ingen kodeendring eller app-publisering nødvendig
 - [ ] Innlogget visuell kontroll: ingen tilgjengelig autorisert nettlesersesjon, selv-mint fant ikke bestiller; ingen omgåelse av innlogging
-- [ ] Punkt 2 oversendelse/lukking: krever ansvarlig på funnet, godkjent svartekst, rettet-/dokumentasjon-komplett-bekreftelser og håndtering av åpent tilknyttet tiltak; ingenting sendt eller lukket
+- [ ] Punkt 2 ekstern oversendelse/lukking: internt ferdigstilt og klart for oversendelse; faktisk sending/formell DLE-lukking krever separat bestilling, ingenting sendt
 
 ## DLE / internrevisjon – AI-forslag 27.10.2026
 - [x] Svarforslag i punkt 2: vent på lagring før forslag fjernes, vis innsatt/lagret bekreftelse, ventestatus og feil med nytt forsøk; godkjenning fortsatt separat
