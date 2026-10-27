@@ -92,4 +92,17 @@ describe.sequential("Real assessment SQL in an isolated database", () => {
     const rights = (await db.query<{ write: boolean; read: boolean }>("select has_table_privilege('authenticated','public.compliance_requirement_assessments','INSERT') write, has_table_privilege('authenticated','public.compliance_requirement_assessments','SELECT') read")).rows[0];
     expect(rights).toEqual({ write: false, read: true });
   });
+  it("automatically stops using an expired assessment while retaining history", async () => {
+    await db.exec(`INSERT INTO public.compliance_requirement_assessments(company_id,person_id,requirement_id,competence_type_id,decision,reason,assessed_by,assessor_name,valid_until,requirement_updated_at,employment_context,client_request_id)
+      SELECT company_id,person_id,requirement_id,competence_type_id,decision,'Expired isolated fixture',assessed_by,assessor_name,current_date-1,requirement_updated_at,employment_context,'10000000-0000-0000-0000-000000000006'::uuid FROM public.compliance_requirement_assessments WHERE id='${assessmentId}'`);
+    expect(await status()).toBe("missing");
+    expect((await db.query("select * from public.compliance_requirement_assessments")).rows).toHaveLength(3);
+  });
+  it("enforces company-scoped read access with RLS", async () => {
+    await db.exec("GRANT USAGE ON SCHEMA auth TO authenticated; SET ROLE authenticated");
+    expect((await db.query("select * from public.compliance_requirement_assessments")).rows).toHaveLength(3);
+    await db.exec("select set_config('test.uid','00000000-0000-0000-0000-000000000009',false)");
+    expect((await db.query("select * from public.compliance_requirement_assessments")).rows).toHaveLength(0);
+    await db.exec(`RESET ROLE; select set_config('test.uid','${actor}',false)`);
+  });
 });
