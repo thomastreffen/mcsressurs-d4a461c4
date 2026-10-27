@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { daysUntil, formatDate } from "@/lib/compliance";
 import {
   DOCUMENTATION_STATUSES, FINDING_STATUSES, FINDING_TYPES, deadlineLabel, deadlineTone,
-  findingStatusMeta, findingTypeMeta,
+  findingStatusMeta, findingTypeMeta, findingDisplayStatus,
 } from "@/lib/inspections";
 import {
   FINDING_PRIORITIES, INTERNAL_CATEGORY_SUGGESTIONS, aiDraftPatch, buildInternalControlDraft,
