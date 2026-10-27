@@ -11,6 +11,7 @@ import type { ComplianceTone } from "@/lib/compliance";
 import { sourceLabelFor, type AttachmentCandidate, type ManifestEntry, type PackageFindingDraft } from "@/lib/response-package";
 import { organizationOverviewCandidate } from "@/lib/organization-evidence";
 import { useOrgPeople } from "@/hooks/useOrgPeople";
+import { summarizeRequirements, competenceOverviewRows, type RelevanceMetadata } from "@/lib/requirement-relevance";
 
 const sb = supabase as any;
 
@@ -127,6 +128,7 @@ export interface CompetenceCoverageDetail {
   ok: number;
   warn: number;
   gaps: number;
+  notRelevant?: number;
   people: {
     person_id: string;
     name: string;
@@ -134,7 +136,7 @@ export interface CompetenceCoverageDetail {
     expires_at: string | null;
     has_document: boolean;
     document_id: string | null;
-  }[];
+  } & RelevanceMetadata)[];
 }
 
 /**

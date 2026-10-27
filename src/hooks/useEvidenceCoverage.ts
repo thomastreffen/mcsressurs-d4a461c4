@@ -6,6 +6,7 @@ import type { DocumentationStatus } from "@/lib/inspections";
 import { activeOrganizationRoles } from "@/lib/organization-evidence";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useOrgRoles } from "@/hooks/useCompliance";
+import { summarizeRequirements } from "@/lib/requirement-relevance";
 
 export interface CoverageResult {
   /** Antall ansatte kravet gjelder for */
@@ -18,6 +19,7 @@ export interface CoverageResult {
   gaps: number;
   gapNames: string[];
   warnNames: string[];
+  notRelevant?: number;
 }
 
 /**
@@ -46,10 +48,7 @@ export function useEvidenceCoverage() {
     const gapRows = rows.filter((r) => ["missing", "missing_document", "expired"].includes(r.status));
     const warnRows = rows.filter((r) => r.status === "expiring_soon");
     return {
-      total: rows.length,
-      ok: rows.filter((r) => r.status === "fulfilled").length,
-      warn: warnRows.length,
-      gaps: gapRows.length,
+      ...summarizeRequirements(rows),
       gapNames: gapRows.map((r) => nameByPerson.get(r.person_id) ?? "Ukjent ansatt"),
       warnNames: warnRows.map((r) => nameByPerson.get(r.person_id) ?? "Ukjent ansatt"),
     };
@@ -73,7 +72,7 @@ export function deriveDocumentationStatus(
     }
     if (e.source_kind === "competence_requirement") {
       const c = coverageFor(e.competence_type_id);
-      if (!c || c.total === 0) {
+      if (!c || (c.total === 0 && !c.notRelevant)) {
         warn = true;
         continue;
       }
