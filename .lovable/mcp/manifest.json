@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "mcs-kontrollsenter",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "title": "MCS Kontrollsenter"
     },
     "tools": [
