@@ -1,5 +1,9 @@
 # Roadmap
 
+## Målrettet svarpakke fra funn
+- [ ] Eksportklare funn med koblet generert/original/referansebevis; generelle kategorier kun manuelt, stabile dokumenttitler og logisk deduplisering med samlet funnstøtte
+- [ ] Isolert 63210-fixture, full regresjon og lokal PDF-kontroll; ingen produksjonsskriving, sending eller publisering
+
 ## Samlet svarpakke-PDF
 - [x] Felles forside/innholdsfortegnelse/funnkapitler/innfelt dokumentasjon/dokumentoversikt, sikker PDF-fletting og tydelige referanser for uleselige originaler; direkte koblet revisjonsreferat med dokument-id inkluderes
 - [x] Standard PDF i eksport/svarpakke med identisk klargjort fil i forhåndsvisning/nedlasting; ZIP/enkeltfiler sekundært, gjeldende defaultvalg beholdt og ingen skriving/sending ved nedlasting
