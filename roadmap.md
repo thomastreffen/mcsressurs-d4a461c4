@@ -1,8 +1,9 @@
 # Roadmap
 
 ## Målrettet svarpakke fra funn
-- [ ] Eksportklare funn med koblet generert/original/referansebevis; generelle kategorier kun manuelt, stabile dokumenttitler og logisk deduplisering med samlet funnstøtte
-- [ ] Isolert 63210-fixture, full regresjon og lokal PDF-kontroll; ingen produksjonsskriving, sending eller publisering
+- [x] Funnvalg og PDF-status bruker findingDisplayStatus med eksisterende live dokumentasjonsdekning. Koblet generert/original/tilgjengelig referansebevis teller; regelverk løses fra selskapsavgrenset kilde, generelle kategorier kun manuelle avanserte tillegg, semantiske dokumenttitler og kildededuplisering med samlet funnstøtte. Default venter på funn/bevis/tiltak/kilder, eksisterende manuelle utkast beholdes.
+- [x] 485 tester i 59 filer, automatisk typekontroll/bygg OK; isolert 63210-lignende 9-siders PDF med funn 1/2/3, innfelt organisasjon/revisjon/regelverk, identisk nedlasting og mobil uten overflow kontrollert. Historisk bevis beholdes med datoforbehold utenfor beviset. Ingen produksjonsskriving, sending eller publisering.
+- [ ] Publisering og full innlogget 63210/alle private vedleggsbytes avventer separat bestilling; forventet produksjonsvalg er betinget av faktisk gjeldende ferdigbehandling og lesbar dokumentasjon, ikke nytt live-avlesningsresultat.
 
 ## Samlet svarpakke-PDF
 - [x] Felles forside/innholdsfortegnelse/funnkapitler/innfelt dokumentasjon/dokumentoversikt, sikker PDF-fletting og tydelige referanser for uleselige originaler; direkte koblet revisjonsreferat med dokument-id inkluderes
