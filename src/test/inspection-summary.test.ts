@@ -74,7 +74,7 @@ describe("shared inspection summary (read-only)", () => {
     expect(summarizeInspection({ ...inspection, status: "submitted" }, [finding("s", "submitted"), finding("o")], [], []).status).toBe("in_progress");
   });
   it("formal closure is preserved but not invented by completed findings", () => {
-    expect(summarizeInspection(inspection, [finding("c", "approved")], [], []).status).toBe("submitted");
+    expect(summarizeInspection(inspection, [finding("c", "approved")], [], []).status).toBe("ready");
     expect(summarizeInspection({ ...inspection, status: "closed" }, [finding("c", "approved")], [], []).status).toBe("closed");
   });
   it("keeps planned lifecycle for empty cases, not ready", () => {

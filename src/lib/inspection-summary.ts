@@ -38,7 +38,7 @@ export interface InspectionSummary {
 /** Read-only projection: finding treatment, linked evidence and live documentation
  * remain separate. This is not send authorization and never closes a case. */
 export function summarizeInspection(
-  inspection: { id: string; status: string; closed_at?: string | null },
+  inspection: { id: string; status: string; submitted_at?: string | null; closed_at?: string | null },
   findings: SummaryFinding[],
   actions: SummaryAction[],
   evidence: SummaryEvidence[],
@@ -66,7 +66,8 @@ export function summarizeInspection(
   } else if (counts.open + counts.in_progress > 0 || openActions > 0) {
     const untouched = counts.open === relevant.length && openActions === 0;
     display = untouched ? { status: "open", label: "Åpen", tone: "neutral" } : { status: "in_progress", label: "Under arbeid", tone: "warn" };
-  } else if (counts.submitted + counts.closed === relevant.length) {
+  } else if (counts.submitted + counts.closed === relevant.length &&
+    (counts.submitted > 0 || inspection.submitted_at || inspection.status === "submitted")) {
     // Closed findings alone never fabricate formal closure of the case.
     display = { status: "submitted", label: "Oversendt", tone: "ok" };
   } else display = { status: "ready", label: "Klar for oversendelse", tone: "ok" };

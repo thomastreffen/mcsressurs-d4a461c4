@@ -549,15 +549,17 @@ export interface InspectionAction {
 
 export function useInspectionActions(inspectionId?: string) {
   const cid = useCid();
+  const findings = useFindings(inspectionId);
+  const findingIds = (findings.data ?? []).map(f => f.id);
   return useQuery<InspectionAction[]>({
-    queryKey: ["inspection-actions", cid, inspectionId],
-    enabled: !!cid && !!inspectionId,
+    queryKey: ["inspection-actions", cid, inspectionId, findingIds],
+    enabled: !!cid && !!inspectionId && !!findings.data,
     queryFn: async () => {
       const { data, error } = await sb
         .from("hms_action_items")
         .select("id, title, description, status, priority, due_date, assignee_user_id, completed_at, compliance_finding_id, compliance_inspection_id")
         .eq("company_id", cid)
-        .eq("compliance_inspection_id", inspectionId)
+        .or(findingIds.length ? `compliance_inspection_id.eq.${inspectionId},compliance_finding_id.in.(${findingIds.join(",")})` : `compliance_inspection_id.eq.${inspectionId}`)
         .is("deleted_at", null)
         .order("due_date", { ascending: true, nullsFirst: false });
       if (error) throw error;
