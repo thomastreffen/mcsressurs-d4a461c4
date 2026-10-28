@@ -14,11 +14,9 @@ import { useCompanyModuleAccess } from '@/hooks/useCompanyModuleAccess';
 import { useInspection, useFindings, useFindingEvidence, useInspectionActions } from '@/hooks/useInspections';
 import { useAttachmentCandidates } from '@/hooks/useResponsePackages';
 import { supabase } from '@/integrations/supabase/client';
-import { buildDleFiles, deliverDleBlob, type DleFile, type DleRecord } from '@/lib/dle/export';
-import { loadDleRecords } from '@/lib/dle/sources';
-import { loadDocumentation } from '@/lib/documentation/sources';
+import { buildDleFiles, deliverDleBlob, type DleFile } from '@/lib/dle/export';
 import { prepareOutputs, saveDocumentationExport, sendDocumentationExport, markDocumentationDownloaded } from '@/lib/documentation/delivery';
-import { INSPECTION_EXPORT_DEFAULTS, suggestedFindingIds, findingExportRecords } from '@/lib/documentation/inspection';
+import { GENERAL_EXPORT_OPTIONS, availableGeneralExportKeys, loadOptionRecords, suggestedFindingIds } from '@/lib/documentation/inspection';
 
 export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const {user}=useAuth();const {activeCompanyId,activeCompany,companies,setActiveCompanyId}=useCompanyContext();const access=useCompanyModuleAccess();const qc=useQueryClient();
@@ -29,28 +27,30 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const [action,setAction]=useState('download');const [to,setTo]=useState('');const [cc,setCc]=useState('');const [subject,setSubject]=useState('');const [message,setMessage]=useState('');const [sent,setSent]=useState(false);
   const initialized=useRef(false);const alive=useRef(true);useEffect(()=>()=>{alive.current=false;},[]);
   const allowed=(key:string)=>access.can(key==='chart'||key==='matrix'?'organisation':key==='fse_training'||key==='competence'?'employees':'hms');
-  useEffect(()=>{if(initialized.current||!inspection.data||inspection.data.company_id!==activeCompanyId||!findings.data||access.loading)return;initialized.current=true;setChoices(new Set([...INSPECTION_EXPORT_DEFAULTS.filter(allowed),...suggestedFindingIds(findings.data).map(id=>`finding:${id}`)]));setTo(inspection.data.contact_email??'');setSubject(`Dokumentasjon – ${inspection.data.title}`);},[inspection.data,findings.data,access.loading,activeCompanyId]);
+  useEffect(()=>{
+    if(initialized.current||!inspection.data||inspection.data.company_id!==activeCompanyId||!findings.data||access.loading||loading)return;
+    initialized.current=true;
+    setTo(inspection.data.contact_email??'');setSubject(`Dokumentasjon – ${inspection.data.title}`);
+    const suggested=suggestedFindingIds(findings.data,candidates).map(id=>`finding:${id}`);
+    void availableGeneralExportKeys(allowed,key=>loadOptionRecords(key,inspection.data!.company_id,inspectionId,candidates))
+      .then(general=>{if(alive.current)setChoices(new Set([...general,...suggested]));})
+      .catch(()=>{if(alive.current)setChoices(new Set(suggested));});
+  },[inspection.data,findings.data,access.loading,activeCompanyId,loading,candidates,inspectionId]);
   if(inspection.data && inspection.data.company_id !== activeCompanyId) return <div className="space-y-3"><h2 className="text-xl font-semibold">Eksport fra tilsynssak</h2><p className="text-sm text-muted-foreground">Velg sakens firma før dokumentasjonen hentes.</p>{companies.some(c=>c.id===inspection.data?.company_id) && <Button onClick={()=>{if(inspection.data)setActiveCompanyId(inspection.data.company_id);}}>Bytt til {companies.find(c=>c.id===inspection.data?.company_id)?.name ?? 'sakens firma'}</Button>}</div>;
   if(!access.can('hms','edit'))return <p className="text-sm text-muted-foreground">Du har ikke tilgang til eksport i dette firmaet.</p>;
   const company=activeCompany?.name??'Firma';const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Oslo'});
-  const options=[{key:'chart',label:'Organisasjonskart'},{key:'matrix',label:'Ansvarsmatrise'},{key:'fse_training',label:'FSE-opplæring'},{key:'competence',label:'Kompetanseoversikt'},{key:'internal_control',label:'Internkontroll'},...(findings.data??[]).map(f=>({key:`finding:${f.id}`,label:`Dokumentasjon knyttet til funn ${f.finding_number}`}))];
+  const options=[...GENERAL_EXPORT_OPTIONS.map(o=>({key:o.key as string,label:o.label})),...(findings.data??[]).map(f=>({key:`finding:${f.id}`,label:`Dokumentasjon knyttet til funn ${f.finding_number}`}))];
   const selected=files.filter(f=>!removed.has(f.key));
   function reset(){setReviewed(false);setFiles([]);setSent(false);}
   async function review() {
     if(!activeCompanyId||inspection.data?.company_id!==activeCompanyId)return;setBusy(true);const result:DleFile[]=[];const gaps:string[]=[];
     try {
       for(const option of options.filter(o=>choices.has(o.key)&&allowed(o.key))) {
-        let records:DleRecord[]=[];let category: DleFile['category']='roles';
-        if(option.key.startsWith('finding:')){records=findingExportRecords(candidates,option.key.slice(8));category='attachments';}
-        else if(option.key==='internal_control') {
-          const {data,error}=await (supabase as any).from('compliance_audits').select('id,title,status,source_inspection_id,report_document_id,report_markdown,performed_at').eq('company_id',activeCompanyId).is('deleted_at',null).eq('source_inspection_id',inspectionId);
-          if(error)throw error;
-          const ids=(data??[]).map((r:any)=>r.report_document_id).filter(Boolean);
-          let docs:any[]=[];
-          if(ids.length){const response=await supabase.from('documents').select('id,file_name,file_path,storage_bucket,mime_type').eq('company_id',activeCompanyId).is('deleted_at',null).in('id',ids);if(response.error)throw response.error;docs=response.data??[];}
-          records=(data??[]).filter((r:any)=>r.status==='completed').flatMap((r:any)=>{const doc=docs.find(d=>d.id===r.report_document_id);return doc?.storage_bucket&&doc?.file_path?[{id:r.id,title:r.title,sections:[],original:{bucket:doc.storage_bucket,path:doc.file_path,filename:doc.file_name,mime:doc.mime_type??'application/pdf'}}]:r.report_markdown?[{id:r.id,title:r.title,sections:[{heading:'Revisjonsreferat',text:r.report_markdown}]}]:[];});
-        } else if(option.key==='fse_training'){records=(await loadDocumentation('fse_status',activeCompanyId)).filter(r=>r.sections.length>0);category='competence';}
-        else {category=option.key as 'chart'|'matrix'|'competence';records=await loadDleRecords(category,activeCompanyId,[]);}
+        let category: DleFile['category']='roles';
+        if(option.key.startsWith('finding:'))category='attachments';
+        else if(option.key==='fse_training')category='competence';
+        else if(option.key!=='internal_control')category=option.key as 'chart'|'matrix'|'competence';
+        const records=await loadOptionRecords(option.key,activeCompanyId,inspectionId,candidates);
         if(!records.length){gaps.push(option.label);continue;}
         const built=buildDleFiles(category,records,option.key.startsWith('finding:')||option.key==='internal_control',company,date);
         for(const f of built){if(option.key==='fse_training')f.name=f.name.replace('Kompetanseoversikt','FSE_opplaering');f.path=`${f.path.split('/')[0]}/${f.name}`;f.key=`${option.key}:${f.key}`;result.push(f);}
