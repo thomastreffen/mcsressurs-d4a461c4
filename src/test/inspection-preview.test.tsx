@@ -1,8 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import InspectionResponsePreviewPage from "@/pages/compliance/InspectionResponsePreviewPage";
-const m = vi.hoisted(() => ({ send: vi.fn(), finalize: vi.fn(), fail: vi.fn(), navigate: vi.fn() }));
-vi.mock('@/components/compliance/CombinedPdfPreview',()=>({CombinedPdfPreview:({input}:any)=><div data-testid="combined-preview">{input.findings.map((f:any)=>f.title).join(', ')}</div>}));
+const m = vi.hoisted(() => ({ send: vi.fn(), finalize: vi.fn(), fail: vi.fn(), navigate: vi.fn(), pdf:vi.fn(), download:vi.fn() }));
+vi.mock('@/lib/documentation/combined-pdf',async(importOriginal)=>({...await importOriginal<any>(),buildCombinedPdf:m.pdf}));
+vi.mock('@/lib/dle/export',async(importOriginal)=>({...await importOriginal<any>(),deliverDleBlob:m.download}));
 vi.mock("react-router-dom", () => ({ useParams: () => ({ id: "case" }), useNavigate: () => m.navigate }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ isSuperAdmin: true }) }));
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: () => true }) }));
@@ -24,12 +25,19 @@ vi.mock("@/hooks/useResponsePackages", () => ({
 }));
 beforeEach(() => {
   vi.clearAllMocks(); sessionStorage.clear();
+  URL.createObjectURL=vi.fn(()=> 'blob:pdf-preview');URL.revokeObjectURL=vi.fn();
+  m.pdf.mockResolvedValue({name:'Svarpakke_63210.pdf',blob:new Blob(['PDF'],{type:'application/pdf'}),pageCount:4,chapters:[{title:'Funn 2 - Internrevisjon',page:3}],documents:[],warnings:[]});
   sessionStorage.setItem("mcs.response-draft.case", JSON.stringify({ finding_ids: ["f2"], attachment_keys: ["routine"], recipient_email: "dle@example.test", subject: "Sak 63210" }));
   m.finalize.mockResolvedValue({ id: "package" }); m.send.mockImplementation(async (_n: string, o: any) => ({ data: o?.body?.mode === "test_recipient" ? { ok: true, recipient: "thomas@mcsservice.no" } : { ok: true }, error: null }));
 });
 afterEach(cleanup);
 const sends = () => m.send.mock.calls.filter((c: any[]) => c[1]?.body?.mode !== "test_recipient");
 describe("Inspection preview user flow (isolated, no email)", () => {
+  it('preview and default PDF download never finalize, send or change DLE status',async()=>{
+    render(<InspectionResponsePreviewPage/>);fireEvent.click(await screen.findByRole('button',{name:'Forhåndsvis samlet PDF'}));await screen.findByText(/Svarpakke_63210.pdf/);
+    fireEvent.click(screen.getByRole('button',{name:'Last ned svarpakke'}));await waitFor(()=>expect(m.download).toHaveBeenCalledTimes(1));
+    expect(sends()).toHaveLength(0);expect(m.finalize).not.toHaveBeenCalled();expect(m.fail).not.toHaveBeenCalled();expect(m.pdf.mock.calls[0][0].caseNumber).toBe('63210');
+  });
   it("renders the selected response and generated content without sending on load", async () => {
     render(<InspectionResponsePreviewPage />);
     await screen.findByText("Rutine og revisjon gjennomført");

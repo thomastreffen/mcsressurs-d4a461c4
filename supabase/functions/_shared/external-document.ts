@@ -66,6 +66,7 @@ export function renderDocumentPdf(pdf: DocumentPdf, company: string, date: strin
     write(record.title, 13, true);
     if (record.version) write(`Dokumentversjon: ${record.version}`, 9);
     for (const section of record.sections) {
+      if (section.heading && y > 245) { pdf.addPage(); y = 20; }
       if (section.heading) write(section.heading, 11, true);
       if (section.text) write(section.text);
     }
