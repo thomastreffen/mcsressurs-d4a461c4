@@ -1,5 +1,11 @@
 # Roadmap
 
+## Tilsynsoversikt – felles beregnet sannhet
+- [x] Delt summarizeInspection i oversiktskort, detalj-KPI/header, filtre og lokal eksport; findingDisplayStatus + samme live dokumentasjonsregel som funnene, aktive tiltak med case/funn-lenker, faktiske beviskoblinger. Ingen automatisk sending/lukking
+- [x] 15 nye tester dekker blanding, new + komplett behandling, live dokumentasjonsgap, tiltak, bevis, delvis sending, historikk/aktiv-filter og loading; 450 tester i 55 filer bestått; automatisk type-/byggkontroll OK
+- [x] Sak 63210 lest via SELECT: 7 funn, 2 klare, 4 under arbeid, 1 åpent, 4 reelt åpne tiltak, 25 bevis (ett på saksnivå), dokumentasjon på 5/7 funn; hovedstatus Under arbeid. Ingen produksjonsskriving eller publisering
+- [ ] Ekte innlogget visuell kontroll: selv-mint fant ikke bestillers konto; trenger innlogging i preview. Oversikt/filtre testet med isolert simulering uten produksjonsskriving
+
 ## DLE AI-svartekst – faktisk nåstatus
 - [x] Serveren leser gjeldende funn/bevis/tiltak med brukerens tilgang og sakens selskap; delt aktiv-rolle-regel brukes av UI/eksport/server. Koblet organisasjonsdekning gir fast etablert/koblet faktasetning; motsigende fremtidssvar avvises. Behandling og faktiske åpne tiltak holdes separate.
 - [x] 435 tester bestått i 53 filer, inkludert 10 isolerte serverkontroller og 2 nye tester av manuell bruk/godkjenning. Deno-typekontroll uten feil; automatisk app-bygg OK. Ingen produksjonsskriving, e-post eller publisering.

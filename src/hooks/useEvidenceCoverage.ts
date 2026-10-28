@@ -54,7 +54,7 @@ export function useEvidenceCoverage() {
     };
   };
 
-  return { loading: statuses.isLoading || employees.isLoading, coverageFor, organizationFor, rows: statuses.data ?? [] };
+  return { loading: statuses.isLoading || employees.isLoading || orgRoles.isLoading, isError: statuses.isError || employees.isError || orgRoles.isError, coverageFor, organizationFor, rows: statuses.data ?? [] };
 }
 
 /** Dokumentasjonsstatus for et funn beregnes fra koblet dokumentasjon + kravmotoren */

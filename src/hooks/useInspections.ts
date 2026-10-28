@@ -1,4 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useEvidenceCoverage, deriveDocumentationStatus } from "@/hooks/useEvidenceCoverage";
+import { summarizeInspection } from "@/lib/inspection-summary";
+import type { InspectionSummary, SummaryAction } from "@/lib/inspection-summary";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -187,36 +191,34 @@ export function useInspections() {
   });
 }
 
-/** Nøkkeltall per sak: antall funn, åpne tiltak og samlet dokumentasjonsstatus */
+/** Shared read-only case projections, using the same live documentation rule as finding cards. */
 export function useInspectionSummaries() {
   const cid = useCid();
-  return useQuery<Record<string, { findings: number; openActions: number; docStatuses: DocumentationStatus[]; closedFindings: number; submittedFindings: number; inProgressFindings: number }>>({
+  const inspections = useInspections();
+  const coverage = useEvidenceCoverage();
+  const sources = useQuery<{ findings: Finding[]; actions: SummaryAction[]; evidence: FindingEvidence[] }>({
     queryKey: ["inspection-summaries", cid],
     enabled: !!cid,
     queryFn: async () => {
-      const [{ data: findings, error: fErr }, { data: actions, error: aErr }] = await Promise.all([
-        sb.from("compliance_findings").select("inspection_id, status, documentation_status").eq("company_id", cid).is("deleted_at", null),
-        sb.from("hms_action_items").select("compliance_inspection_id, status").eq("company_id", cid).is("deleted_at", null).not("compliance_inspection_id", "is", null),
+      const [{ data: findings, error: fErr }, { data: actions, error: aErr }, { data: evidence, error: eErr }] = await Promise.all([
+        sb.from("compliance_findings").select("id, inspection_id, status, documentation_status, responsible_person_id, responsible_role_id, response_approved_at, condition_corrected_at, documentation_complete_at").eq("company_id", cid).is("deleted_at", null),
+        sb.from("hms_action_items").select("id, compliance_inspection_id, compliance_finding_id, status, completed_at").eq("company_id", cid).is("deleted_at", null).or("compliance_inspection_id.not.is.null,compliance_finding_id.not.is.null"),
+        sb.from("compliance_finding_evidence").select("*").eq("company_id", cid),
       ]);
       if (fErr) throw fErr;
       if (aErr) throw aErr;
-      const map: Record<string, { findings: number; openActions: number; docStatuses: DocumentationStatus[]; closedFindings: number; submittedFindings: number; inProgressFindings: number }> = {};
-      const ensure = (id: string) => (map[id] ??= { findings: 0, openActions: 0, docStatuses: [], closedFindings: 0, submittedFindings: 0, inProgressFindings: 0 });
-      for (const f of findings ?? []) {
-        const e = ensure(f.inspection_id);
-        e.findings += 1;
-        e.docStatuses.push(f.documentation_status);
-        if (f.status === "approved") e.closedFindings += 1;
-        else if (f.status === "submitted") e.submittedFindings += 1;
-        else e.inProgressFindings += 1;
-      }
-      for (const a of actions ?? []) {
-        const e = ensure(a.compliance_inspection_id);
-        if (["open", "in_progress"].includes(a.status)) e.openActions += 1;
-      }
-      return map;
+      if (eErr) throw eErr;
+      return { findings: findings ?? [], actions: actions ?? [], evidence: evidence ?? [] };
     },
   });
+  const data = useMemo(() => {
+    if (!sources.data || !inspections.data) return undefined;
+    const { findings, actions, evidence } = sources.data;
+    const docs: Record<string, DocumentationStatus> = {};
+    for (const f of findings) docs[f.id] = deriveDocumentationStatus(evidence.filter(e => e.finding_id === f.id), coverage.coverageFor, coverage.organizationFor);
+    return Object.fromEntries(inspections.data.map(i => [i.id, summarizeInspection(i, findings, actions, evidence, docs)])) as Record<string, InspectionSummary>;
+  }, [sources.data, inspections.data, coverage.coverageFor, coverage.organizationFor]);
+  return { data, isLoading: sources.isLoading || inspections.isLoading || coverage.loading, isError: sources.isError || inspections.isError || coverage.isError, refetch: sources.refetch };
 }
 
 export function useInspection(id?: string) {
@@ -547,15 +549,17 @@ export interface InspectionAction {
 
 export function useInspectionActions(inspectionId?: string) {
   const cid = useCid();
+  const findings = useFindings(inspectionId);
+  const findingIds = (findings.data ?? []).map(f => f.id);
   return useQuery<InspectionAction[]>({
-    queryKey: ["inspection-actions", cid, inspectionId],
-    enabled: !!cid && !!inspectionId,
+    queryKey: ["inspection-actions", cid, inspectionId, findingIds],
+    enabled: !!cid && !!inspectionId && !!findings.data,
     queryFn: async () => {
       const { data, error } = await sb
         .from("hms_action_items")
         .select("id, title, description, status, priority, due_date, assignee_user_id, completed_at, compliance_finding_id, compliance_inspection_id")
         .eq("company_id", cid)
-        .eq("compliance_inspection_id", inspectionId)
+        .or(findingIds.length ? `compliance_inspection_id.eq.${inspectionId},compliance_finding_id.in.(${findingIds.join(",")})` : `compliance_inspection_id.eq.${inspectionId}`)
         .is("deleted_at", null)
         .order("due_date", { ascending: true, nullsFirst: false });
       if (error) throw error;
