@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { buildDleFiles, deliverDleBlob, type DleFile } from '@/lib/dle/export';
 import { prepareOutputs, saveDocumentationExport, sendDocumentationExport, markDocumentationDownloaded } from '@/lib/documentation/delivery';
 import { GENERAL_EXPORT_OPTIONS, availableGeneralExportKeys, loadOptionRecords, suggestedFindingIds } from '@/lib/documentation/inspection';
+import { isMarkdownFile } from '@/lib/external-document';
 
 export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const {user}=useAuth();const {activeCompanyId,activeCompany,companies,setActiveCompanyId}=useCompanyContext();const access=useCompanyModuleAccess();const qc=useQueryClient();

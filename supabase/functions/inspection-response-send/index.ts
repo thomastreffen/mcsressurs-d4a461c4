@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
     const attachments: any[] | null = attachmentResult.data;
     const attachmentError = attachmentResult.error;
     if (standalone && (pkg.created_by !== userId || !Array.isArray(attachments) || attachments.length > 100)) return json({ ok: false, message: "Ugyldig eksport" }, 403);
-    if (standalone && attachments.some((a: any) => a.storage_bucket !== "dle-exports" || !a.file_path || !a.file_path.startsWith(`${pkg.id}/`))) return json({ ok: false, message: "Ugyldig eksportfil" }, 403);
+    if (standalone && (attachments ?? []).some((a: any) => a.storage_bucket !== "dle-exports" || !a.file_path || !a.file_path.startsWith(`${pkg.id}/`))) return json({ ok: false, message: "Ugyldig eksportfil" }, 403);
     async function logEvent(event_type: string, summary: string, payload: unknown) {
       if (!standalone) return admin.from("compliance_inspection_events").insert({ company_id: pkg.company_id, inspection_id: pkg.inspection_id, actor_user_id: userId, event_type, summary, payload });
       pkg.events = [...(pkg.events ?? []), { event_type, summary, payload, actor_user_id: userId, created_at: new Date().toISOString() }];
