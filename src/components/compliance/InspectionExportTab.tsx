@@ -13,7 +13,8 @@ import { useCompanyContext } from '@/hooks/useCompanyContext';
 import { useCompanyModuleAccess } from '@/hooks/useCompanyModuleAccess';
 import { useInspection, useFindings, useFindingEvidence, useInspectionActions } from '@/hooks/useInspections';
 import { useAttachmentCandidates } from '@/hooks/useResponsePackages';
-import { buildDleFiles, deliverDleBlob, type DleFile, type DleRecord } from '@/lib/dle/export';
+import { supabase } from '@/integrations/supabase/client';
+import { buildDleFiles, deliverDleBlob, type DleFile } from '@/lib/dle/export';
 import { prepareOutputs, saveDocumentationExport, sendDocumentationExport, markDocumentationDownloaded } from '@/lib/documentation/delivery';
 import { GENERAL_EXPORT_OPTIONS, availableGeneralExportKeys, loadOptionRecords, suggestedFindingIds } from '@/lib/documentation/inspection';
 
