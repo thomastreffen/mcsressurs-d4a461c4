@@ -1,5 +1,9 @@
 # Roadmap
 
+## DLE AI-svartekst – faktisk nåstatus
+- [ ] La koblet dokumentasjon og gjeldende aktive roller styre svarforslaget foran eldre løsningstekster; skill dokumentasjonsdekning, manuelle behandlingsfelt og reelle åpne tiltak
+- [ ] Test forslag/faktagrunnlag og manuell godkjenning uten produksjonsskriving, e-post eller publisering
+
 ## DLE 63210 punkt 1 – dokumentasjonsbehov
 - [x] Semantisk kobling av organisasjonskart/ansvarsmatrise til organization_overview med gjeldende aktive roller og sakens selskap; fjernet/tomt/feil selskapsbevis dekker ikke behovet
 - [x] Dekning holdes atskilt fra behandlingsfelter; eksisterende manuell dokumentasjonsbekreftelse forklart eksplisitt, svarpakke/preflight bevarer generert samlet bevis og egne behandlingskrav
