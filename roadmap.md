@@ -1,9 +1,10 @@
 # Roadmap
 
 ## DLE 63210 punkt 1 – dokumentasjonsbehov
-- [ ] Koble organisasjonskart/ansvarsmatrise til validert dynamisk organization_overview, uavhengig av behandlingsfeltene
-- [ ] Synliggjør separat manuell dokumentasjonsbekreftelse; bevar svarpakke/preflight uten automatisk godkjenning/retting/sending
-- [ ] Regresjonstester og visningskontroll uten produksjonsskriving; ingen publisering
+- [x] Semantisk kobling av organisasjonskart/ansvarsmatrise til organization_overview med gjeldende aktive roller og sakens selskap; fjernet/tomt/feil selskapsbevis dekker ikke behovet
+- [x] Dekning holdes atskilt fra behandlingsfelter; eksisterende manuell dokumentasjonsbekreftelse forklart eksplisitt, svarpakke/preflight bevarer generert samlet bevis og egne behandlingskrav
+- [x] 66 tester bestått i 9 filer, inkludert 10 nye tester og simulert gjengivelse/tilbaketrekking uten skriving; automatisk bygg OK; ingen produksjonsdata eller e-post, ingen publisering
+- [ ] Visuell kontroll med ekte sak: ikke utført fordi åpning i redigeringsmodus har eksisterende automatisk AI-utkastlagring; ikke risikert produksjonsskriving
 
 ## Tilsynsflyt publiseringskontroll – 27.10.2026
 - [x] Herdet eksisterende preview: innholds-/mottakerbundet bekreftelse før separat send, ingen omgåelse ved mangler; genererte vedlegg vises; DLE-filpanel krever klargjorte filer og bekreftelse
