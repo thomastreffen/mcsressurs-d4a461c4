@@ -33,7 +33,7 @@ export async function buildCombinedPdf(input: CombinedPdfInput, load: (file: Dle
     let pdf: PDFDocument | null = null;
     const blob = await load(spec.file);
     try {
-      pdf = await PDFDocument.load(await blob.arrayBuffer(), { updateMetadata: false });
+      pdf = await PDFDocument.load(await blobBytes(blob), { updateMetadata: false });
       if (pdf.getPageCount() === 0) throw new Error('Tom PDF');
     } catch {
       warnings.push(`${spec.file.records.map(r => clean(r.title)).join(', ')}: kunne ikke flettes sikkert; dokumentreferanse beholdt.`);
@@ -75,8 +75,8 @@ export async function buildCombinedPdf(input: CombinedPdfInput, load: (file: Dle
       if (emitted.has(index) || (findingId ? !spec.findingIds.includes(findingId) : spec.findingIds.some(id => findings.some(f => f.id===id)))) continue;
       emitted.add(index);
       const entry = documentList[index];
-      await add(entry.title, [{heading:'Dokumentasjon',text:`Støtter: ${entry.supports}\n${pdf ? `${entry.pages} dokumentasjonssider er innfelt på de neste sidene.` : 'Originaldokumentet kunne ikke flettes sikkert. Dokumentet er kun representert ved denne referansen, og må leveres separat etter kontroll.'}`}]);
       if (pdf) segments.push({title:entry.title,pdf});
+      else await add(entry.title, [{heading:'Dokumentasjon',text:`Støtter: ${entry.supports}\nOriginaldokumentet kunne ikke flettes sikkert. Dokumentet er kun representert ved denne referansen, og må leveres separat etter kontroll.`}]);
     }
   };
   for (const f of findings) {
@@ -121,6 +121,11 @@ export async function buildCombinedPdf(input: CombinedPdfInput, load: (file: Dle
 
 function clean(text: string): string {
   return text.replace(/\.(md|markdown)\b/gi,'').replace(/\*\*|__/g,'').replace(/<[^>]*>/g,'').replace(/[–—]/g,'-').replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/[^\u0020-\u00ff\n\r\t]/g,' ');
+}
+
+async function blobBytes(blob:Blob):Promise<ArrayBuffer> {
+  if(typeof blob.arrayBuffer==='function')return blob.arrayBuffer();
+  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>reader.result instanceof ArrayBuffer?resolve(reader.result):reject(new Error('Kunne ikke lese PDF'));reader.onerror=reject;reader.readAsArrayBuffer(blob);});
 }
 
 export function candidateFiles(candidates: import('@/lib/response-package').AttachmentCandidate[], company: string, date: string): CombinedDocument[] {
