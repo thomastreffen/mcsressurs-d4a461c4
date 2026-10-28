@@ -33,7 +33,7 @@ export async function buildCombinedPdf(input: CombinedPdfInput, load: (file: Dle
     let pdf: PDFDocument | null = null;
     const blob = await load(spec.file);
     try {
-      pdf = await PDFDocument.load(await blobBytes(blob), { updateMetadata: false });
+      pdf = await PDFDocument.load(new Uint8Array(await blobBytes(blob)), { updateMetadata: false });
       if (pdf.getPageCount() === 0) throw new Error('Tom PDF');
     } catch {
       warnings.push(`${spec.file.records.map(r => clean(r.title)).join(', ')}: kunne ikke flettes sikkert; dokumentreferanse beholdt.`);
