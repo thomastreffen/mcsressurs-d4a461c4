@@ -218,7 +218,7 @@ export function useInspectionSummaries() {
     for (const f of findings) docs[f.id] = deriveDocumentationStatus(evidence.filter(e => e.finding_id === f.id), coverage.coverageFor, coverage.organizationFor);
     return Object.fromEntries(inspections.data.map(i => [i.id, summarizeInspection(i, findings, actions, evidence, docs)])) as Record<string, InspectionSummary>;
   }, [sources.data, inspections.data, coverage.coverageFor, coverage.organizationFor]);
-  return { data, isLoading: sources.isLoading || inspections.isLoading || coverage.loading, isError: sources.isError || inspections.isError, refetch: sources.refetch };
+  return { data, isLoading: sources.isLoading || inspections.isLoading || coverage.loading, isError: sources.isError || inspections.isError || coverage.isError, refetch: sources.refetch };
 }
 
 export function useInspection(id?: string) {
