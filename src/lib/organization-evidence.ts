@@ -1,11 +1,8 @@
 import type { OrgRole } from "@/hooks/useCompliance";
 import type { FindingEvidence } from "@/hooks/useInspections";
 import type { AttachmentCandidate } from "@/lib/response-package";
-
-export function activeOrganizationRoles(roles: OrgRole[], today = new Date().toISOString().slice(0, 10)) {
-  return roles.filter(r => r.is_active !== false && (!r.valid_from || r.valid_from <= today) && (!r.valid_to || r.valid_to >= today))
-    .sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title, "nb"));
-}
+import { activeOrganizationRoles } from "../../supabase/functions/_shared/organization-coverage";
+export { activeOrganizationRoles };
 
 export function organizationOverviewCandidate(
   evidence: FindingEvidence,
