@@ -21,7 +21,7 @@ async function deliveryFile(file: Blob, source: { file_name?: string; mime_type?
   if (!markdown.trim()) throw new Error("Markdown-dokumentet er tomt. Klargjør ny forhåndsvisning.");
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   renderDocumentPdf(pdf, company, new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" }), [{ title: (source.file_name ?? exportName).replace(/\.(md|markdown)$/i, ""), sections: markdownSections(markdown) }]);
-  return pdf.output("blob");
+  return new Blob([pdf.output("arraybuffer")], { type: "application/pdf" });
 }
 
 function json(body: unknown, status = 200) {
