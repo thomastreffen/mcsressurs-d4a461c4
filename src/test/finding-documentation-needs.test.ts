@@ -44,9 +44,19 @@ describe("Organization evidence covers document needs independently of finding t
     const before = structuredClone(finding);
     const docStatus = deriveDocumentationStatus([evidence], () => null, organizationFor);
     expect(docStatus).toBe("complete");
-    expect(findingPreflight(finding, [], docStatus, 1).missing).toHaveLength(6);
+    expect(findingPreflight(finding, [], docStatus, 1).missing).toHaveLength(5);
     expect(findingPreflight(finding, [], docStatus, 1).ready).toBe(false);
     expect(finding).toEqual(before);
+  });
+  it("still requires explicit response approval after a response has been written", () => {
+    const finding = {
+      internal_assessment: "Oversikten er kontrollert", responsible_person_id: "rune", responsible_role_id: null,
+      internal_deadline: null, response_text: "Organisasjonsoversikten vedlegges.", response_approved_at: null,
+      condition_corrected_at: "2026-10-27", documentation_complete_at: "2026-10-27", status: "new",
+    };
+    expect(findingPreflight(finding, [], "complete", 1).ready).toBe(false);
+    expect(finding.response_approved_at).toBeNull();
+    expect(finding.status).toBe("new");
   });
   it("preserves ordinary linked document matching", () => {
     const document = { ...evidence, source_kind: "document" as const, document_id: "doc", ref_id: null, label: need };
