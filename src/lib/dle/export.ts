@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import { slugForFile } from "@/lib/response-package";
-import { isMarkdownFile, renderDocumentPdf } from "../../../supabase/functions/_shared/external-document";
+import { isMarkdownFile, markdownSections, renderDocumentPdf } from "../../../supabase/functions/_shared/external-document";
 
 export const DLE_CATEGORIES = [
   { key: "chart", label: "Organisasjonskart", folder: "01_Organisasjon" },
@@ -62,7 +62,7 @@ export function buildDleFiles(category: DleCategory, records: DleRecord[], separ
 export function generateDlePdf(file: DleFile, company: string, date: string): Blob {
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   if (file.category !== "chart") {
-    renderDocumentPdf(pdf, company, date, file.records.map(r => ({ ...r, sections: r.sections.map(s => ({ heading: externalText(s.heading), text: externalText(s.text) })) })), DLE_CATEGORIES.find(c => c.key === file.category)?.label);
+    renderDocumentPdf(pdf, company, date, file.records.map(r => ({ ...r, sections: r.sections.flatMap(s => [{ heading: externalText(s.heading), text: '' }, ...markdownSections(s.text).map(part=>({heading:externalText(part.heading),text:externalText(part.text)}))]) })), DLE_CATEGORIES.find(c => c.key === file.category)?.label);
     return pdf.output("blob");
   }
   let y = 20;
