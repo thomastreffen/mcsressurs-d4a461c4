@@ -6,12 +6,23 @@ import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/b
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { explicitPackageSend, responseFindingReady } from '../_shared/inspection-send-policy.ts';
+import { explicitPackageSend, responseFindingReady, resolveTestRecipient, buildTestMessage } from '../_shared/inspection-send-policy.ts';
+import { isMarkdownFile, markdownSections, renderDocumentPdf } from '../_shared/external-document.ts';
+import { jsPDF } from 'npm:jspdf@4.2.1';
 
 const MAILBOX = "postkontoret@mcsservice.no";
 /** Graph sendMail tåler ca 4 MB base64 per melding – vi holder oss godt under */
 const MAX_TOTAL_ATTACHMENTS = 3 * 1024 * 1024;
 const LINK_SECONDS = 7 * 24 * 60 * 60;
+
+async function deliveryFile(file: Blob, source: { file_name?: string; mime_type?: string; file_path?: string }, exportName: string, company: string): Promise<Blob> {
+  if (!isMarkdownFile(source.file_name ?? source.file_path, source.mime_type) && !isMarkdownFile(source.file_path, file.type)) return file;
+  const markdown = await file.text();
+  if (!markdown.trim()) throw new Error("Markdown-dokumentet er tomt. Klargjør ny forhåndsvisning.");
+  const pdf = new jsPDF({ unit: "mm", format: "a4" });
+  renderDocumentPdf(pdf, company, new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" }), [{ title: (source.file_name ?? exportName).replace(/\.(md|markdown)$/i, ""), sections: markdownSections(markdown) }]);
+  return pdf.output("blob");
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -72,6 +83,8 @@ Deno.serve(async (req) => {
       if (!testTo) return json({ ok: false, message: "Du har ingen registrert jobb-e-post" }, 400);
       if (body.mode === "test_recipient") return json({ ok: true, recipient: testTo });
       if (!body.html || !body.subject) return json({ ok: false, message: "Mangler forhåndsvisning" }, 400);
+      if ([...(body.attachments ?? []), ...(body.generated ?? [])].some(a => isMarkdownFile(a.export_name, a.mime_type))) return json({ ok: false, message: "Rå Markdown kan ikke sendes. Klargjør ny PDF-forhåndsvisning." }, 409);
+      const { data: company } = await admin.from("companies").select("name").eq("id", insp.company_id).maybeSingle();
 
       const caller = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
       const files: any[] = [];
@@ -79,13 +92,14 @@ Deno.serve(async (req) => {
       const missing: string[] = [];
       for (const a of body.attachments ?? []) {
         if (!a.file_path || !a.storage_bucket) continue;
-        const { data: doc } = a.document_id ? await caller.from("documents").select("file_path,storage_bucket").eq("id", a.document_id).maybeSingle() : { data: null };
+        const { data: doc } = a.document_id ? await caller.from("documents").select("file_path,storage_bucket,file_name,mime_type").eq("id", a.document_id).maybeSingle() : { data: null };
         if (!doc || doc.file_path !== a.file_path || doc.storage_bucket !== a.storage_bucket) return json({ ok: false, message: "Ingen tilgang til vedlegget" }, 403);
         const { data: file } = await admin.storage.from(a.storage_bucket).download(a.file_path);
         if (!file) { missing.push(a.export_name); continue; }
-        const buf = new Uint8Array(await file.arrayBuffer());
+        const delivered = await deliveryFile(file, doc, a.export_name, company?.name ?? "Firma");
+        const buf = new Uint8Array(await delivered.arrayBuffer());
         size += buf.byteLength;
-        files.push({ "@odata.type": "#microsoft.graph.fileAttachment", name: a.export_name, contentType: a.mime_type ?? "application/octet-stream", contentBytes: encodeBase64(buf) });
+        files.push({ "@odata.type": "#microsoft.graph.fileAttachment", name: a.export_name, contentType: delivered.type || a.mime_type || "application/octet-stream", contentBytes: encodeBase64(buf) });
       }
       for (const g of body.generated ?? []) {
         if (!(body.attachments ?? []).some((a) => a.export_name === g.export_name && !a.file_path)) return json({ ok: false, message: "Generert fil finnes ikke i dokumentmanifestet" }, 400);
@@ -153,6 +167,8 @@ Deno.serve(async (req) => {
     }
 
     if (attachmentError) return json({ ok: false, message: "Kunne ikke lese dokumentmanifest" }, 500);
+    if ([...(attachments ?? []), ...generated].some(a => isMarkdownFile(a.export_name, a.mime_type))) return json({ ok: false, message: "Rå Markdown kan ikke sendes. Klargjør ny PDF-forhåndsvisning." }, 409);
+    const { data: company } = await admin.from("companies").select("name").eq("id", pkg.company_id).maybeSingle();
     const recipients = (value: string) => [...new Set(value.split(/[;,\s]+/).filter(Boolean))];
     const to = recipients(pkg.recipient_email), cc = Array.isArray(pkg.cc_emails) ? pkg.cc_emails.flatMap(recipients) : [];
     if (!to.length || to.length + cc.length > 40 || [...to, ...cc].some((a) => !z.string().email().safeParse(a).success)) return json({ ok: false, message: "Ugyldige mottakere" }, 400);
@@ -164,20 +180,25 @@ Deno.serve(async (req) => {
 
     for (const a of attachments ?? []) {
       if (!a.file_path || !a.storage_bucket) continue;
+      let source = { file_name: a.file_name, mime_type: a.mime_type, file_path: a.file_path };
       if (a.storage_bucket === "dle-exports" && !a.file_path.startsWith(`${pkg.id}/`)) return json({ ok: false, message: "Filen tilhører ikke pakken" }, 403);
       // Verify legacy document paths through the caller's RLS, never service-role alone.
       if (a.storage_bucket !== "dle-exports") {
         const caller = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
-        const { data: doc } = await caller.from("documents").select("id,file_path,storage_bucket").eq("id", a.document_id).maybeSingle();
+        const { data: doc } = await caller.from("documents").select("id,file_path,storage_bucket,file_name,mime_type").eq("id", a.document_id).maybeSingle();
         if (!doc || doc.file_path !== a.file_path || doc.storage_bucket !== a.storage_bucket) return json({ ok: false, message: "Ingen tilgang til vedlegget" }, 403);
+        source = doc;
       }
       const { data: file, error } = await admin.storage.from(a.storage_bucket).download(a.file_path);
       if (error || !file) {
         skipped.push(a.export_name);
         continue;
       }
-      const buf = await file.arrayBuffer();
+      const delivered = await deliveryFile(file, source, a.export_name, company?.name ?? "Firma");
+      const buf = await delivered.arrayBuffer();
       if (total + buf.byteLength >= MAX_TOTAL_ATTACHMENTS) {
+        // Never link the original Markdown when the delivery representation is PDF.
+        if (delivered !== file) return json({ ok: false, message: "PDF-vedleggene er for store. Last ned PDF-pakken eller velg færre vedlegg før sending." }, 400);
         const { data: signed, error: signedError } = await admin.storage.from(a.storage_bucket).createSignedUrl(a.file_path, LINK_SECONDS, { download: a.export_name });
         if (signedError || !signed) { skipped.push(a.export_name); continue; }
         links.push({ name: a.export_name, url: signed.signedUrl, expires_at: new Date(Date.now() + LINK_SECONDS * 1000).toISOString() });
@@ -187,7 +208,7 @@ Deno.serve(async (req) => {
       graphAttachments.push({
         "@odata.type": "#microsoft.graph.fileAttachment",
         name: a.export_name,
-        contentType: a.mime_type ?? "application/octet-stream",
+        contentType: delivered.type || a.mime_type || "application/octet-stream",
         contentBytes: encodeBase64(buf),
       });
     }
