@@ -13,12 +13,9 @@ import { useCompanyContext } from '@/hooks/useCompanyContext';
 import { useCompanyModuleAccess } from '@/hooks/useCompanyModuleAccess';
 import { useInspection, useFindings, useFindingEvidence, useInspectionActions } from '@/hooks/useInspections';
 import { useAttachmentCandidates } from '@/hooks/useResponsePackages';
-import { supabase } from '@/integrations/supabase/client';
 import { buildDleFiles, deliverDleBlob, type DleFile, type DleRecord } from '@/lib/dle/export';
-import { loadDleRecords } from '@/lib/dle/sources';
-import { loadDocumentation } from '@/lib/documentation/sources';
 import { prepareOutputs, saveDocumentationExport, sendDocumentationExport, markDocumentationDownloaded } from '@/lib/documentation/delivery';
-import { INSPECTION_EXPORT_DEFAULTS, suggestedFindingIds, findingExportRecords } from '@/lib/documentation/inspection';
+import { GENERAL_EXPORT_OPTIONS, availableGeneralExportKeys, loadOptionRecords, suggestedFindingIds } from '@/lib/documentation/inspection';
 
 export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const {user}=useAuth();const {activeCompanyId,activeCompany,companies,setActiveCompanyId}=useCompanyContext();const access=useCompanyModuleAccess();const qc=useQueryClient();
