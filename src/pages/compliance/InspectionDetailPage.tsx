@@ -30,10 +30,11 @@ import {
   useInspectionMutations,
 } from "@/hooks/useInspections";
 import { daysUntil, formatDate } from "@/lib/compliance";
+import { summarizeInspection } from "@/lib/inspection-summary";
 import {
   CORRESPONDENCE_DIRECTIONS, DOCUMENTATION_STATUSES, FINDING_TYPES, INSPECTION_STATUSES,
-  aggregateDocumentationStatus, correspondenceLabel, deadlineLabel, deadlineTone,
-  inspectionStatusMeta, inspectionTypeLabel,
+  correspondenceLabel, deadlineLabel, deadlineTone,
+  inspectionTypeLabel,
 } from "@/lib/inspections";
 
 export default function InspectionDetailPage() {
@@ -89,11 +90,9 @@ export default function InspectionDetailPage() {
   }
 
   const i = inspection.data;
-  const statusMeta = inspectionStatusMeta(i.status);
+  const summary = summarizeInspection(i, findings.data ?? [], actions.data ?? [], evidence.data ?? [], docStatusByFinding);
+  const statusMeta = summary;
   const days = daysUntil(i.response_deadline);
-  const docStatus = aggregateDocumentationStatus(Object.values(docStatusByFinding));
-  const docMeta = DOCUMENTATION_STATUSES[docStatus];
-  const openActions = (actions.data ?? []).filter((a) => ["open", "in_progress"].includes(a.status));
   const nameOf = (pid: string | null) => (employees.data ?? []).find((p) => p.person_id === pid)?.full_name ?? "Ikke satt";
 
   const selectedFindings = (findings.data ?? []).filter((f) => selected[f.id]);
@@ -132,8 +131,7 @@ export default function InspectionDetailPage() {
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{i.title}</h1>
           <ComplianceStatusBadge label={inspectionTypeLabel(i.inspection_type)} tone="neutral" />
           <ComplianceStatusBadge label={statusMeta.label} tone={statusMeta.tone} />
-          <ComplianceStatusBadge label={deadlineLabel(days)} tone={deadlineTone(days)} />
-          <ComplianceStatusBadge label={docMeta.label} tone={docMeta.tone} />
+          {summary.deadlineRelevant && <ComplianceStatusBadge label={deadlineLabel(days)} tone={deadlineTone(days)} />}
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
           <span>{i.authority_name ?? "Myndighet ikke satt"}</span>
@@ -141,7 +139,8 @@ export default function InspectionDetailPage() {
           <span>Tilsynsdato: {formatDate(i.inspection_date)}</span>
           <span>Svarfrist: {formatDate(i.response_deadline)}</span>
           <span>Ansvarlig: {nameOf(i.responsible_person_id)}</span>
-          <span>{(findings.data ?? []).length} funn · {openActions.length} åpne tiltak</span>
+          <span>{summary.findings} funn · {summary.openActions} åpne tiltak</span>
+          <span>{summary.documentationLabel}</span>
         </div>
       </div>
 
@@ -165,11 +164,13 @@ export default function InspectionDetailPage() {
             {[
               { label: "Funn totalt", value: (findings.data ?? []).length },
               { label: "Avvik", value: (findings.data ?? []).filter((f) => f.finding_type === "deviation").length },
-              { label: "Åpne tiltak", value: openActions.length },
+              { label: "Åpne tiltak", value: summary.openActions },
               { label: "Funn uten svartekst", value: (findings.data ?? []).filter((f) => !f.response_text?.trim()).length },
-              { label: "Under arbeid", value: (findings.data ?? []).filter((f) => !["submitted", "approved"].includes(f.status)).length },
-              { label: "Oversendt", value: (findings.data ?? []).filter((f) => f.status === "submitted").length },
-              { label: "Lukket", value: (findings.data ?? []).filter((f) => f.status === "approved").length },
+              { label: "Åpne", value: summary.counts.open },
+              { label: "Under arbeid", value: summary.counts.in_progress },
+              { label: "Klar for oversendelse", value: summary.counts.ready },
+              { label: "Oversendt", value: summary.counts.submitted },
+              { label: "Lukket", value: summary.counts.closed },
             ].map((k) => (
               <Card key={k.label}><CardContent className="p-4">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{k.label}</p>
