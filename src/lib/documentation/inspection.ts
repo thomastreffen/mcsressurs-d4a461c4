@@ -3,6 +3,7 @@ import type { DleRecord } from '@/lib/dle/export';
 import { loadDleRecords } from '@/lib/dle/sources';
 import { loadDocumentation } from '@/lib/documentation/sources';
 import { findingDisplayStatus, type FindingDisplayInput } from '@/lib/inspections';
+import { evidenceExportRecord } from './evidence-export';
 import { supabase } from '@/integrations/supabase/client';
 
 /** Generelle dokumenttyper som kan velges manuelt i eksportfanen */
@@ -33,10 +34,8 @@ export function suggestedFindingIds(
 }
 
 export function findingExportRecords(candidates: AttachmentCandidate[], findingId: string): DleRecord[] {
-  return candidates.filter(c=>c.finding_id===findingId && c.kind!=='reference').map(c=>({
-    id:c.key,title:c.title,sections:c.generated ? c.generated.rows.map((row,i)=>({heading:i===0?row.join(' · '):'',text:i===0?'':row.join(' · ')})) : [],
-    original:c.kind==='document' && c.storage_bucket && c.file_path ? {bucket:c.storage_bucket,path:c.file_path,filename:c.file_name,mime:c.mime_type??'application/octet-stream'} : undefined,
-  })).filter(r=>r.original || r.sections.length);
+  return candidates.filter(c => c.finding_id === findingId)
+    .map(evidenceExportRecord).filter((r): r is DleRecord => r !== null);
 }
 
 /**

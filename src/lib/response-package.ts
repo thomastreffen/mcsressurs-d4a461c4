@@ -37,7 +37,6 @@ export interface AttachmentCandidate {
   /** Systemgenerert oversikt (kompetanseoversikt) som lages ved eksport */
   generated?: { type: "competence_overview"; competence_type_id: string; rows: string[][] }
     | { type: "organization_overview"; company_id: string; rows: string[][] };
-  export_rows?: never;
   /** Sant når referansen ikke har fil (regelverk, rolle, tiltak) */
   reference_note?: string | null;
 }

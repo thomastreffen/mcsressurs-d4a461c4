@@ -4,6 +4,7 @@ import { buildDleFiles, type DleFile } from '@/lib/dle/export';
 import { prepareDleFile } from '@/lib/dle/sources';
 import { findingDisplayStatus, type FindingDisplayInput } from '@/lib/inspections';
 import { slugForFile } from '@/lib/response-package';
+import { evidenceExportRecord, exportFileTitle, mergeEvidenceDocuments } from './evidence-export';
 import { markdownSections } from '../../../supabase/functions/_shared/external-document';
 
 export interface CombinedFinding extends FindingDisplayInput {
@@ -29,14 +30,14 @@ export async function buildCombinedPdf(input: CombinedPdfInput, load: (file: Dle
   const prepared: { spec: CombinedDocument; pdf: PDFDocument | null }[] = [];
   const warnings: string[] = [];
   // Each selected source remains represented even when an original PDF is unreadable.
-  for (const spec of input.documents) {
+  for (const spec of mergeEvidenceDocuments(input.documents)) {
     let pdf: PDFDocument | null = null;
     const blob = await load(spec.file);
     try {
       pdf = await PDFDocument.load(new Uint8Array(await blobBytes(blob)), { updateMetadata: false });
       if (pdf.getPageCount() === 0) throw new Error('Tom PDF');
     } catch {
-      warnings.push(`${spec.file.records.map(r => clean(r.title)).join(', ')}: kunne ikke flettes sikkert; dokumentreferanse beholdt.`);
+      warnings.push(`${clean(exportFileTitle(spec.file))}: kunne ikke flettes sikkert; dokumentreferanse beholdt.`);
     }
     prepared.push({ spec, pdf });
   }
@@ -44,7 +45,7 @@ export async function buildCombinedPdf(input: CombinedPdfInput, load: (file: Dle
     const numbers = findings.filter(f => ids.includes(f.id)).map(f => f.finding_number);
     return numbers.length ? `Funn ${numbers.join(', ')}` : 'Saksgenerell dokumentasjon';
   };
-  const documentList = prepared.map(({spec,pdf}) => ({ title: clean(spec.file.records.map(r => r.title).join(', ')), supports: supportLabel(spec.findingIds), included: Boolean(pdf), pages: pdf?.getPageCount() ?? 0 }));
+  const documentList = prepared.map(({spec,pdf}) => ({ title: clean(exportFileTitle(spec.file)), supports: supportLabel(spec.findingIds), included: Boolean(pdf), pages: pdf?.getPageCount() ?? 0 }));
   const segments: { title: string; pdf: PDFDocument }[] = [];
   const makePage = async (title: string, blocks: { heading: string; text: string }[]) => {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' }); let y = 22;
@@ -85,6 +86,7 @@ export async function buildCombinedPdf(input: CombinedPdfInput, load: (file: Dle
       {heading:'Avvik / myndighetens beskrivelse',text:f.original_text || 'Beskrivelse ikke registrert'},
       {heading:'Godkjent svartekst',text:f.response_approved_at ? f.response_text || 'Svartekst mangler' : 'Svartekst er ikke godkjent. Ingen ugodkjent tekst inkludert.'},
       {heading:'Status og retting',text:`${findingDisplayStatus(f).label}\nForhold rettet: ${f.condition_corrected_at || 'Ikke bekreftet'}\nDokumentasjon komplett: ${f.documentation_complete_at || 'Ikke bekreftet'}`},
+      {heading:'Bevisgrunnlag',text:'Vedlagte originaldokumenter gjengis med sitt opprinnelige innhold. Historiske opplysninger gjelder dokumentets dato, ikke nødvendigvis dagens situasjon.'},
       {heading:'Tilhørende dokumentasjon',text:docs.map(d=>`${d.title} (${d.included?'innfelt':'kun referanse'})`).join('\n') || 'Ingen dokumentasjon valgt'},
     ]);
     await addDocuments(f.id);
@@ -129,10 +131,10 @@ async function blobBytes(blob:Blob):Promise<ArrayBuffer> {
 }
 
 export function candidateFiles(candidates: import('@/lib/response-package').AttachmentCandidate[], company: string, date: string): CombinedDocument[] {
-  return candidates.map(c=>{
-    const records: import('@/lib/dle/export').DleRecord[] = c.kind==='reference'
-      ? [{id:c.key,title:c.title,sections:[{heading:'Dokumentreferanse',text:c.reference_note || c.source_label}]}]
-      : [{id:c.key,title:c.title,sections:c.generated?.rows.map((row,i)=>({heading:i===0?row.join(' / '):'',text:i===0?'':row.join(' / ')})) || [],original:c.kind==='document' && c.storage_bucket && c.file_path ? {bucket:c.storage_bucket,path:c.file_path,filename:c.file_name,mime:c.mime_type || 'application/octet-stream'} : undefined}];
-    return {file:buildDleFiles('attachments',records,true,company,date)[0],findingIds:c.finding_id?[c.finding_id]:[]};
-  });
+  return mergeEvidenceDocuments(candidates.flatMap(c=>{
+    const record = evidenceExportRecord(c);
+    if (!record) return [];
+    const file = buildDleFiles('attachments',[record],true,company,date)[0];
+    return file ? [{file,findingIds:c.finding_id?[c.finding_id]:[]}] : [];
+  }));
 }

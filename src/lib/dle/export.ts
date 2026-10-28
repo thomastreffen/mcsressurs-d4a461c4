@@ -28,6 +28,8 @@ export interface DleRecord {
 export interface DleFile {
   key: string;
   category: DleCategory;
+  /** Semantic package title, independent of per-person source records. */
+  title?: string;
   name: string;
   path: string;
   records: DleRecord[];
@@ -55,7 +57,7 @@ export function buildDleFiles(category: DleCategory, records: DleRecord[], separ
     const n = (used.get(base) ?? 0) + 1;
     used.set(base, n);
     const name = `${base}${n > 1 ? `_${n}` : ""}.${original ? extension : "pdf"}`;
-    return { key: `${category}:${group.map((r) => r.id).join(":")}`, category, name, path: `${config.folder}/${name}`, records: group };
+    return { key: `${category}:${group.map((r) => r.id).join(":")}`, category, title, name, path: `${config.folder}/${name}`, records: group };
   });
 }
 
