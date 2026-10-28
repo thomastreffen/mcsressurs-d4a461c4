@@ -6,6 +6,7 @@
  * bare den utsendte/eksporterte pakken – originalen i storage røres ikke.
  */
 import type { ComplianceTone } from "@/lib/compliance";
+import { isMarkdownFile, externalDocumentMime } from "../../supabase/functions/_shared/external-document";
 
 export type AttachmentKind = "document" | "generated" | "reference";
 
@@ -70,7 +71,8 @@ export function slugForFile(input: string): string {
 
 function extensionOf(c: AttachmentCandidate): string {
   if (c.kind === "generated") return "csv";
-  const fromName = c.file_name?.includes(".") ? c.file_name.split(".").pop()! : "";
+  if (isMarkdownFile(c.file_name, c.mime_type)) return "pdf";
+  const fromName = c.file_name?.includes(".") ? c.file_name.split(".").pop() ?? "" : "";
   if (fromName && fromName.length <= 5) return fromName.toLowerCase();
   if (c.mime_type?.includes("pdf")) return "pdf";
   return "pdf";
@@ -91,6 +93,7 @@ export function buildExportNames(list: AttachmentCandidate[]): Record<string, st
 
 export interface ManifestEntry {
   export_name: string | null;
+  mime_type?: string | null;
   title: string;
   source_label: string;
   reference_only: boolean;
@@ -99,6 +102,7 @@ export interface ManifestEntry {
 export function buildManifest(list: AttachmentCandidate[], names: Record<string, string>): ManifestEntry[] {
   return list.map((c) => ({
     export_name: names[c.key] ?? null,
+    mime_type: externalDocumentMime(c.file_name, c.mime_type),
     title: c.title,
     source_label: c.source_label,
     reference_only: c.kind === "reference",

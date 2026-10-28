@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { slugForFile } from "@/lib/response-package";
+import { isMarkdownFile, renderDocumentPdf } from "../../../supabase/functions/_shared/external-document";
 
 export const DLE_CATEGORIES = [
   { key: "chart", label: "Organisasjonskart", folder: "01_Organisasjon" },
@@ -43,12 +44,12 @@ export function externalText(value: unknown): string {
 export function buildDleFiles(category: DleCategory, records: DleRecord[], separate: boolean, company: string, date: string): DleFile[] {
   const config = DLE_CATEGORIES.find((c) => c.key === category);
   if (!config || !records.length) return [];
-  // Original files are never merged or converted.
+  // Keep originals separate; Markdown delivery becomes PDF, source remains untouched.
   const groups = separate || records.some((r) => r.original) ? records.map((r) => [r]) : [records];
   const used = new Map<string, number>();
   return groups.map((group) => {
     const original = group[0]?.original;
-    const extension = original?.filename.split(".").pop()?.toLowerCase() || "pdf";
+    const extension = original && !isMarkdownFile(original.filename, original.mime) ? original.filename.split(".").pop()?.toLowerCase() || "pdf" : "pdf";
     const title = group.length === 1 && (separate || original) ? group[0].title : config.label;
     const base = `${slugForFile(company)}_${slugForFile(title)}_${date}`;
     const n = (used.get(base) ?? 0) + 1;
@@ -60,6 +61,10 @@ export function buildDleFiles(category: DleCategory, records: DleRecord[], separ
 
 export function generateDlePdf(file: DleFile, company: string, date: string): Blob {
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
+  if (file.category !== "chart") {
+    renderDocumentPdf(pdf, company, date, file.records.map(r => ({ ...r, sections: r.sections.map(s => ({ heading: externalText(s.heading), text: externalText(s.text) })) })), DLE_CATEGORIES.find(c => c.key === file.category)?.label);
+    return pdf.output("blob");
+  }
   let y = 20;
   const write = (text: string, size = 10, bold = false) => {
     pdf.setFont("helvetica", bold ? "bold" : "normal");

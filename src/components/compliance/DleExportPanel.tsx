@@ -19,6 +19,7 @@ import { parseDleRecipients } from "@/lib/dle/delivery";
 import { loadDleRecords, prepareDleFile } from "@/lib/dle/sources";
 import { previewAllowsSend } from "../../../supabase/functions/_shared/inspection-send-policy";
 import { invokeWithSession } from "@/lib/invoke-session";
+import { isMarkdownFile } from "@/lib/external-document";
 
 export function DleExportPanel({ inspectionId, attachments, initialEmail }: { inspectionId: string; attachments: AttachmentCandidate[]; initialEmail: string }) {
   const { activeCompanyId, activeCompany } = useCompanyContext();
@@ -133,7 +134,7 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
       }
       if (currentScope.current !== origin) return;
       const candidates = outputs.map((o, i) => ({ key: `delivery-${i}`, finding_id: null, kind: "generated" as const, evidence_id: null, document_id: null, file_name: o.name, mime_type: o.blob.type, file_size: o.blob.size, storage_bucket: "dle-exports", file_path: null, source_kind: o.source.category, source_label: "DLE-tilsyn", date, status_label: "Klargjort", status_tone: "ok" as const, title: o.name, export_name: o.name }));
-      const manifest = candidates.map((c) => ({ export_name: c.export_name, title: c.title, source_label: c.source_label, reference_only: false }));
+      const manifest = candidates.map((c) => ({ export_name: c.export_name, mime_type: c.mime_type, title: c.title, source_label: c.source_label, reference_only: false }));
       const text = `Dokumentasjon for DLE-tilsyn – ${company}\n\n${outputs.map((o) => o.name).join("\n")}`;
       const html = `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
       const pkg = await finalize.mutateAsync({ inspection_id: inspectionId, mode: "export", subject: `DLE-tilsyn – ${company}`, recipient_name: "", recipient_email: to.join(";"), cc: copies, intro: text, closing: "", findings: [], attachments: candidates, manifest, email_text: text, email_html: html });
@@ -176,8 +177,8 @@ export function DleExportPanel({ inspectionId, attachments, initialEmail }: { in
       <h3 className="text-sm font-semibold">Dette blir eksportert ({selected.length})</h3>
       {files.map((file) => <div key={file.key} className="flex flex-wrap items-center gap-3 border-b py-2">
         <Checkbox aria-label={`Velg ${file.name}`} checked={!excluded.has(file.key)} disabled={!!busy} onCheckedChange={(checked) => { setExcluded((old) => { const next = new Set(old); checked ? next.delete(file.key) : next.add(file.key); return next; }); setZipReady(null); }} />
-        <div className="min-w-0 flex-1"><p className="break-all text-sm">{file.name}</p><p className="text-xs text-muted-foreground">{file.path.split("/")[0]} · {file.records.length} {file.records.length === 1 ? "post" : "poster"}{file.records[0]?.original ? " · Originalfil" : ""}</p></div>
-        {blobs[file.key] ? <Button size="sm" variant="outline" disabled={!canExport || !!busy || excluded.has(file.key)} onClick={() => void download(file)}><Download className="mr-1.5 h-4 w-4" />Last ned</Button> : <Button size="sm" variant="outline" disabled={!canExport || !!busy || excluded.has(file.key)} onClick={() => void prepare(file)}>{busy === file.key && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{file.records[0]?.original ? "Klargjør originalfil" : "Generer fil"}</Button>}
+        <div className="min-w-0 flex-1"><p className="break-all text-sm">{file.name}</p><p className="text-xs text-muted-foreground">{file.path.split("/")[0]} · {file.records.length} {file.records.length === 1 ? "post" : "poster"}{isMarkdownFile(file.records[0]?.original?.filename, file.records[0]?.original?.mime) ? " · PDF fra intern kilde · application/pdf" : file.records[0]?.original ? " · Originalfil" : ""}</p></div>
+        {blobs[file.key] ? <Button size="sm" variant="outline" disabled={!canExport || !!busy || excluded.has(file.key)} onClick={() => void download(file)}><Download className="mr-1.5 h-4 w-4" />Last ned</Button> : <Button size="sm" variant="outline" disabled={!canExport || !!busy || excluded.has(file.key)} onClick={() => void prepare(file)}>{busy === file.key && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{isMarkdownFile(file.records[0]?.original?.filename, file.records[0]?.original?.mime) ? "Generer PDF" : file.records[0]?.original ? "Klargjør originalfil" : "Generer fil"}</Button>}
         {blobs[file.key] && <Button size="sm" variant="outline" onClick={() => { const url = URL.createObjectURL(blobs[file.key]); window.open(url, "_blank", "noopener,noreferrer"); window.setTimeout(() => URL.revokeObjectURL(url), 60000); }}>Forhåndsvis fil</Button>}
       </div>)}
     </div>
