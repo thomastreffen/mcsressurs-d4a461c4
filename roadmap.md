@@ -1,9 +1,10 @@
 # Roadmap
 
 ## Samlet svarpakke-PDF
-- [ ] Felles forside/innholdsfortegnelse/funnkapitler/innfelt dokumentasjon/dokumentoversikt, sikker PDF-fletting og tydelige begrensninger
-- [ ] Standard PDF i eksport/svarpakke med identisk forhåndsvisning; ZIP sekundært, gjeldende defaultvalg beholdt og ingen skriving/sending ved nedlasting
-- [ ] Isolert sak-63210-grunnlag, full regresjon, type-/byggsignal og visuell PDF-kontroll uten produksjonsdata/e-post/publisering
+- [x] Felles forside/innholdsfortegnelse/funnkapitler/innfelt dokumentasjon/dokumentoversikt, sikker PDF-fletting og tydelige referanser for uleselige originaler; direkte koblet revisjonsreferat med dokument-id inkluderes
+- [x] Standard PDF i eksport/svarpakke med identisk klargjort fil i forhåndsvisning/nedlasting; ZIP/enkeltfiler sekundært, gjeldende defaultvalg beholdt og ingen skriving/sending ved nedlasting
+- [x] 478 tester i 58 filer bestått; automatisk bygg/typekontroll og Deno-kontroll OK; åttesidig lokal PDF med faktisk lesende revisjonsreferat fra 63210 kontrollert, heading som havnet nederst flyttet og alle sider kontrollert igjen; desktop/mobil isolert nedlasting verifisert, ingen produksjonsskriving/e-post/publisering
+- [ ] Publisering avventer bestilling. Full innlogget sak/alle private vedleggsbytes ikke verifisert; nettleserens innfelte PDF-viser er avhengig av nettleserstøtte, egen vinduslenke finnes. E-postflyt beholdt separat og uendret.
 
 ## Myndighetsvedlegg – Markdown til PDF
 - [x] Felles konvertering og PDF-navn/MIME før manifest/preview/nedlasting/testmail/endelig sending, originaler beholdt og PDF urørt; eldre rå manifest avvises før sending
