@@ -256,7 +256,7 @@ export function useAttachmentCandidates(findings: Finding[], evidence: FindingEv
           continue;
         }
 
-        if (e.source_kind === "document" && e.document_id) {
+        if (e.document_id && ["document", "internal_audit"].includes(e.source_kind)) {
           pushDocument({
             key: `ev:${e.id}`, finding_id: f.id, evidence_id: e.id, documentId: e.document_id,
             title: e.label ?? docs[e.document_id]?.file_name ?? "Dokument",

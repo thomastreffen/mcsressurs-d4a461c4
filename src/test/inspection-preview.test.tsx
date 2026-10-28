@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import InspectionResponsePreviewPage from "@/pages/compliance/InspectionResponsePreviewPage";
 const m = vi.hoisted(() => ({ send: vi.fn(), finalize: vi.fn(), fail: vi.fn(), navigate: vi.fn() }));
+vi.mock('@/components/compliance/CombinedPdfPreview',()=>({CombinedPdfPreview:({input}:any)=><div data-testid="combined-preview">{input.findings.map((f:any)=>f.title).join(', ')}</div>}));
 vi.mock("react-router-dom", () => ({ useParams: () => ({ id: "case" }), useNavigate: () => m.navigate }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ isSuperAdmin: true }) }));
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: () => true }) }));
