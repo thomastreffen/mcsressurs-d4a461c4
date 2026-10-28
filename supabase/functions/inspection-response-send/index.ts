@@ -17,6 +17,7 @@ const LINK_SECONDS = 7 * 24 * 60 * 60;
 
 async function deliveryFile(file: Blob, source: { file_name?: string; mime_type?: string; file_path?: string }, exportName: string, company: string): Promise<Blob> {
   if (!isMarkdownFile(source.file_name ?? source.file_path, source.mime_type) && !isMarkdownFile(source.file_path, file.type)) return file;
+  if (!/\.pdf$/i.test(exportName)) throw new Error("Markdown-kilden krever PDF-navn. Klargjør ny forhåndsvisning.");
   const markdown = await file.text();
   if (!markdown.trim()) throw new Error("Markdown-dokumentet er tomt. Klargjør ny forhåndsvisning.");
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
@@ -99,13 +100,13 @@ Deno.serve(async (req) => {
         const delivered = await deliveryFile(file, doc, a.export_name, company?.name ?? "Firma");
         const buf = new Uint8Array(await delivered.arrayBuffer());
         size += buf.byteLength;
-        files.push({ "@odata.type": "#microsoft.graph.fileAttachment", name: a.export_name, contentType: delivered.type || a.mime_type || "application/octet-stream", contentBytes: encodeBase64(buf) });
+        files.push({ "@odata.type": "#microsoft.graph.fileAttachment", name: a.export_name, contentType: delivered.type || a.mime_type || "application/octet-stream", contentBytes: encodeBase64(buf.buffer) });
       }
       for (const g of body.generated ?? []) {
         if (!(body.attachments ?? []).some((a) => a.export_name === g.export_name && !a.file_path)) return json({ ok: false, message: "Generert fil finnes ikke i dokumentmanifestet" }, 400);
         const bytes = g.content_base64 ? Uint8Array.from(atob(g.content_base64), (c) => c.charCodeAt(0)) : new TextEncoder().encode(g.content ?? "");
         size += bytes.byteLength;
-        files.push({ "@odata.type": "#microsoft.graph.fileAttachment", name: g.export_name, contentType: g.mime_type ?? "text/csv", contentBytes: encodeBase64(bytes) });
+        files.push({ "@odata.type": "#microsoft.graph.fileAttachment", name: g.export_name, contentType: g.mime_type ?? "text/csv", contentBytes: encodeBase64(bytes.buffer) });
       }
       if (missing.length) return json({ ok: false, message: `Ingen test sendt. Vedlegg kunne ikke hentes: ${missing.join(", ")}` }, 400);
       if (size >= MAX_TOTAL_ATTACHMENTS) return json({ ok: false, message: "Vedleggene er for store for en test-e-post" }, 400);
@@ -156,7 +157,7 @@ Deno.serve(async (req) => {
     }
 
     const attachmentResult = standalone ? { data: pkg.files, error: null } : await admin.from("compliance_response_package_attachments").select("*").eq("package_id", packageId).order("sort_order");
-    const attachments = attachmentResult.data;
+    const attachments: any[] | null = attachmentResult.data;
     const attachmentError = attachmentResult.error;
     if (standalone && (pkg.created_by !== userId || !Array.isArray(attachments) || attachments.length > 100)) return json({ ok: false, message: "Ugyldig eksport" }, 403);
     if (standalone && attachments.some((a: any) => a.storage_bucket !== "dle-exports" || !a.file_path || !a.file_path.startsWith(`${pkg.id}/`))) return json({ ok: false, message: "Ugyldig eksportfil" }, 403);
@@ -236,7 +237,7 @@ Deno.serve(async (req) => {
         "@odata.type": "#microsoft.graph.fileAttachment",
         name: g.export_name,
         contentType: g.mime_type ?? (g.export_name.endsWith(".csv") ? "text/csv" : "text/plain"),
-        contentBytes: encodeBase64(bytes),
+        contentBytes: encodeBase64(new Uint8Array(bytes).buffer),
       });
     }
 

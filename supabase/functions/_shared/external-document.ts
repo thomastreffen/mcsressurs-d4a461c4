@@ -25,12 +25,13 @@ export function markdownSections(markdown: string): { heading: string; text: str
       continue;
     }
     if (!fenced && /^\s*(---+|\*\*\*+|\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?)\s*$/.test(line)) continue;
-    const readable = fenced ? line : line
+    let readable = fenced ? line : line
       .replace(/!?\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)")
       .replace(/\*\*([^*]+)\*\*|__([^_]+)__/g, "$1$2")
       .replace(/`([^`]+)`/g, "$1")
       .replace(/^\s*>\s?/, "")
       .replace(/^\s*[-*+]\s+/, "- ");
+    if (!fenced && /^\s*\|.*\|\s*$/.test(readable)) readable = readable.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim()).join("  /  ");
     current.text += `${readable}\n`;
   }
   if (current.heading || current.text.trim()) sections.push(current);
