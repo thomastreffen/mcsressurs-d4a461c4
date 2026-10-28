@@ -33,6 +33,11 @@ export function suggestedFindingIds(
     .map((f) => f.id);
 }
 
+/** General categories are always explicit extras, even when populated. */
+export function defaultInspectionExportChoices(findings: (FindingDisplayInput & { id: string })[], candidates: AttachmentCandidate[]): string[] {
+  return suggestedFindingIds(findings, candidates).map(id => `finding:${id}`);
+}
+
 export function findingExportRecords(candidates: AttachmentCandidate[], findingId: string): DleRecord[] {
   return candidates.filter(c => c.finding_id === findingId)
     .map(evidenceExportRecord).filter((r): r is DleRecord => r !== null);

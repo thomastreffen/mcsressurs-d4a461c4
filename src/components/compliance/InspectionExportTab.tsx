@@ -16,7 +16,7 @@ import { useAttachmentCandidates } from '@/hooks/useResponsePackages';
 import { supabase } from '@/integrations/supabase/client';
 import { buildDleFiles, deliverDleBlob, type DleFile } from '@/lib/dle/export';
 import { prepareOutputs, saveDocumentationExport, sendDocumentationExport, markDocumentationDownloaded } from '@/lib/documentation/delivery';
-import { GENERAL_EXPORT_OPTIONS, loadOptionRecords, suggestedFindingIds } from '@/lib/documentation/inspection';
+import { GENERAL_EXPORT_OPTIONS, loadOptionRecords, defaultInspectionExportChoices } from '@/lib/documentation/inspection';
 import { mergeEvidenceDocuments } from '@/lib/documentation/evidence-export';
 import { isMarkdownFile } from '@/lib/external-document';
 import { CombinedPdfPreview } from '@/components/compliance/CombinedPdfPreview';
@@ -35,7 +35,7 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
     if(initialized.current===inspectionId||!inspection.data||inspection.data.company_id!==activeCompanyId||!findings.data||access.loading||loading)return;
     initialized.current=inspectionId;
     setTo(inspection.data.contact_email??'');setSubject(`Dokumentasjon – ${inspection.data.title}`);
-    const suggested=suggestedFindingIds(findings.data,candidates).map(id=>`finding:${id}`);
+    const suggested=defaultInspectionExportChoices(findings.data,candidates);
     setChoices(new Set(suggested));
   },[inspection.data,findings.data,access.loading,activeCompanyId,loading,candidates,inspectionId]);
   if(inspection.data && inspection.data.company_id !== activeCompanyId) return <div className="space-y-3"><h2 className="text-xl font-semibold">Eksport fra tilsynssak</h2><p className="text-sm text-muted-foreground">Velg sakens firma før dokumentasjonen hentes.</p>{companies.some(c=>c.id===inspection.data?.company_id) && <Button onClick={()=>{if(inspection.data)setActiveCompanyId(inspection.data.company_id);}}>Bytt til {companies.find(c=>c.id===inspection.data?.company_id)?.name ?? 'sakens firma'}</Button>}</div>;
