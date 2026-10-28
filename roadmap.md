@@ -1,8 +1,9 @@
 # Roadmap
 
 ## Myndighetsvedlegg – Markdown til PDF
-- [ ] Felles konvertering før manifest/preview/nedlasting/testmail/endelig sending, originaler beholdt og PDF urørt
-- [ ] Regresjon og visuell PDF-kontroll uten produksjonsskriving/e-post/publisering
+- [x] Felles konvertering og PDF-navn/MIME før manifest/preview/nedlasting/testmail/endelig sending, originaler beholdt og PDF urørt; eldre rå manifest avvises før sending
+- [x] 471 tester i 56 filer bestått; serverens Deno-typekontroll OK; lokal tosidig PDF visuelt kontrollert, rå tabellskilletegn ryddet og begge sider kontrollert igjen. Ingen produksjonsskriving/e-post/publisering
+- [ ] Samordnet app/inspection-response-send-publisering avventer uttrykkelig bestilling; ekte mottak ikke testet etter stoppregelen
 
 ## Tilsynsoversikt – felles beregnet sannhet
 - [x] Delt summarizeInspection i oversiktskort, detalj-KPI/header, filtre og lokal eksport; findingDisplayStatus + samme live dokumentasjonsregel som funnene, aktive tiltak med case/funn-lenker, faktiske beviskoblinger. Ingen automatisk sending/lukking
