@@ -28,6 +28,8 @@ import { previewAllowsSend } from "../../../supabase/functions/_shared/inspectio
 import { invokeWithSession } from "@/lib/invoke-session";
 import { externalDocumentBlob, externalDocumentMime } from "@/lib/external-document";
 import { CombinedPdfPreview } from '@/components/compliance/CombinedPdfPreview';
+import { suggestedFindingIds } from '@/lib/documentation/inspection';
+import { exportableEvidence } from '@/lib/documentation/evidence-export';
 import { candidateFiles } from '@/lib/documentation/combined-pdf';
 
 function toCsv(rows: string[][]): string {
@@ -58,9 +60,10 @@ export default function InspectionResponsePreviewPage() {
   const [confirmedPreview, setConfirmedPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    if (ready || !id || !inspection.data) return;
+    if (ready || !id || !inspection.data || !findings.data || loading) return;
     const d = loadResponseDraft(id);
-    setSelection({ findings: new Set(d?.finding_ids ?? []), attachments: new Set(d?.attachment_keys ?? []) });
+    const suggested = suggestedFindingIds(findings.data, candidates);
+    setSelection({ findings: new Set(d?.finding_ids ?? suggested), attachments: new Set(d?.attachment_keys ?? candidates.filter(c => suggested.includes(c.finding_id ?? "") && exportableEvidence(c)).map(c => c.key)) });
     setForm({
       recipient_name: d?.recipient_name ?? inspection.data.contact_name ?? "",
       recipient_email: d?.recipient_email ?? inspection.data.contact_email ?? "",
@@ -70,7 +73,7 @@ export default function InspectionResponsePreviewPage() {
       closing: d?.closing || defaultClosing(companyName),
     });
     setReady(true);
-  }, [ready, id, inspection.data, companyName]);
+  }, [ready, id, inspection.data, companyName, findings.data, loading, candidates]);
 
   // Utkastet holdes i synk slik at bruker kan gå tilbake uten å miste arbeid
   useEffect(() => {
