@@ -73,22 +73,8 @@ export function FindingResponseSection({
     try {
       const { data, error } = await supabase.functions.invoke("finding-response-draft", {
         body: {
-          inspection_title: inspectionTitle,
-          authority_name: authorityName,
-          finding: {
-            title: finding.title,
-            original_text: finding.original_text,
-            legal_basis_text: finding.legal_basis_text,
-            authority_requirement: finding.authority_requirement,
-            deadline: finding.deadline,
-            internal_assessment: finding.internal_assessment,
-            proposed_solution: finding.proposed_solution,
-            internal_deadline: finding.internal_deadline,
-            condition_corrected_at: finding.condition_corrected_at ?? null,
-            documentation_complete_at: finding.documentation_complete_at ?? null,
-          },
-          actions: actions.map((a) => ({ title: a.title, status: a.status, due_date: a.due_date, description: a.description ?? null })),
-          evidence: evidence.map((e) => e.label ?? e.note ?? "Bevis"),
+          inspection_id: inspectionId,
+          finding_id: finding.id,
           system_facts: systemFacts,
           unresolved_gaps: unresolvedGaps,
         },
