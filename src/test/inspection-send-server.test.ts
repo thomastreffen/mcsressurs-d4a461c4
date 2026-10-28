@@ -4,15 +4,18 @@ import vm from "node:vm";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { jsPDF } from "jspdf";
+import { Blob } from "node:buffer";
+import { isMarkdownFile, markdownSections, renderDocumentPdf } from "../../supabase/functions/_shared/external-document";
 import { buildTestMessage, explicitPackageSend, resolveTestRecipient, responseFindingReady } from "../../supabase/functions/_shared/inspection-send-policy";
 
-async function fixture(options: { approved?: boolean; graphOk?: boolean; status?: string } = {}) {
+async function fixture(options: { approved?: boolean; graphOk?: boolean; status?: string; markdown?: boolean; rawName?: boolean } = {}) {
   let handler: ((req: Request) => Promise<Response>) | undefined;
   const writes: { table: string; patch: any; phase: string }[] = [];
   let phase = "before-graph";
   const finding = { id: "f2", status: "documentation_ready", documentation_status: "complete", internal_assessment: "Done", responsible_person_id: "thomas", response_text: "Routine", response_approved_at: options.approved === false ? null : "2026-10-27", condition_corrected_at: "2026-10-27", documentation_complete_at: "2026-10-27" };
   const pkg = { id: "11111111-1111-4111-8111-111111111111", status: options.status ?? "draft", company_id: "service", inspection_id: "case", package_number: 1, recipient_email: "dle@example.test", cc_emails: [], subject: "63210", email_body_snapshot: "<p>Routine</p>" };
-  const storage = { from: () => ({ download: async () => ({ data: { arrayBuffer: async () => new ArrayBuffer(4) } }) }) };
+  const storage = { from: () => ({ download: async () => ({ data: new Blob([options.markdown ? "# Internrevisjon\nFaktisk gjennomført kontroll av ansvar" : "%PDF-1.4\nOriginal PDF\n%%EOF"], { type: options.markdown ? "text/markdown" : "application/pdf" }) }) }) };
   const client = {
     storage,
     auth: { getUser: async () => ({ data: { user: { id: "thomas" } } }) },
@@ -23,12 +26,14 @@ async function fixture(options: { approved?: boolean; graphOk?: boolean; status?
         if (patch) return [{ id: pkg.id }];
         if (table === "compliance_response_packages") return pkg;
         if (table === "compliance_response_package_findings") return [{ finding_id: "f2", response_text_snapshot: "Routine" }];
+        if (table === "compliance_response_package_attachments") return options.markdown ? [{ document_id: "doc", file_path: "a/rutine.md", storage_bucket: "job-attachments", file_name: "rutine.md", export_name: options.rawName ? "Rutine.md" : "Rutine.pdf", mime_type: options.rawName ? "text/markdown" : "application/pdf" }] : [];
+        if (table === "companies") return { name: "MCS Service" };
         if (table === "compliance_findings") return [finding];
         if (table === "compliance_finding_evidence") return [{ finding_id: "f2" }];
         if (table === "compliance_inspections") return { id: "case", company_id: "service", case_number: "63210" };
         if (table === "user_accounts") return { person_id: "p-thomas" };
         if (table === "people") return { email: "Thomas@mcsservice.no" };
-        if (table === "documents") return { file_path: "a/rutine.pdf", storage_bucket: "job-attachments" };
+        if (table === "documents") return { file_path: options.markdown ? "a/rutine.md" : "a/rutine.pdf", storage_bucket: "job-attachments", file_name: options.markdown ? "rutine.md" : "rutine.pdf", mime_type: options.markdown ? "text/markdown" : "application/pdf" };
         return [];
       };
       const chain: any = {
@@ -49,7 +54,7 @@ async function fixture(options: { approved?: boolean; graphOk?: boolean; status?
   });
   const source = readFileSync(`${process.cwd()}/supabase/functions/inspection-response-send/index.ts`, "utf8").replace(/^import .*;\s*$/gm, "");
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  vm.runInNewContext(js, { Deno: { serve: (fn: typeof handler) => { handler = fn; }, env: { get: () => "mock-config" } }, createClient: () => client, encodeBase64: () => "", corsHeaders: {}, z, buildTestMessage, resolveTestRecipient, explicitPackageSend, responseFindingReady, atob, Response, Request, URLSearchParams, TextEncoder, Uint8Array, Date, console: { log() {}, error() {} }, fetch });
+  vm.runInNewContext(js, { Deno: { serve: (fn: typeof handler) => { handler = fn; }, env: { get: () => "mock-config" } }, createClient: () => client, encodeBase64: (bytes: ArrayBuffer | Uint8Array) => Buffer.from(bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes).toString("base64"), corsHeaders: {}, z, jsPDF, isMarkdownFile, markdownSections, renderDocumentPdf, buildTestMessage, resolveTestRecipient, explicitPackageSend, responseFindingReady, atob, Response, Request, URLSearchParams, TextEncoder, Uint8Array, Date, console: { log() {}, error() {} }, fetch });
   if (!handler) throw new Error("Handler not registered");
   const raw = (b: unknown) => handler?.(new Request("https://example.test", { method: "POST", headers: { Authorization: "Bearer mock-user" }, body: JSON.stringify(b) }));
   return { writes, fetch, sentBodies, raw, call: (confirm: boolean | undefined) => handler?.(new Request("https://example.test", { method: "POST", headers: { Authorization: "Bearer mock-user" }, body: JSON.stringify({ package_id: pkg.id, confirm_send: confirm }) })) };
@@ -102,6 +107,21 @@ describe("Actual inspection sender with mocked services", () => {
   });
   it("final send still requires explicit confirmation", async () => {
     const f = await fixture(); expect((await f.raw({ package_id: "11111111-1111-4111-8111-111111111111" }))?.status).toBe(409); expect(f.fetch).not.toHaveBeenCalled();
+  });
+  it("final delivery converts legacy Markdown sources into PDF with full content, never raw Markdown", async () => {
+    const f = await fixture({ markdown: true }); expect((await f.call(true))?.status).toBe(200);
+    const a = f.sentBodies[0].message.attachments[0]; expect(a.name).toBe("Rutine.pdf"); expect(a.contentType).toBe("application/pdf");
+    const bytes = Buffer.from(a.contentBytes, "base64").toString("latin1"); expect(bytes.startsWith("%PDF-")).toBe(true); expect(bytes).toContain("Faktisk gjennomf");
+  });
+  it("test mail uses the same Markdown PDF rendering and never changes DLE status", async () => {
+    const f = await fixture({ markdown: true }); const body = { ...testBody, attachments: [{ ...testBody.attachments[0], file_path: "a/rutine.md", export_name: "Rutine.pdf", mime_type: "application/pdf" }], generated: [] };
+    expect((await f.raw(body))?.status).toBe(200); const a = f.sentBodies[0].message.attachments[0]; expect(a.name).toBe("Rutine.pdf"); expect(a.contentType).toBe("application/pdf"); expect(Buffer.from(a.contentBytes, "base64").toString("latin1")).toContain("Faktisk gjennomf"); expect(f.writes.map(w => w.table)).toEqual(["compliance_inspection_events"]);
+  });
+  it("rejects old raw Markdown manifests before final delivery without status writes", async () => {
+    const f = await fixture({ markdown: true, rawName: true }); expect((await f.call(true))?.status).toBe(409); expect(f.fetch).not.toHaveBeenCalled(); expect(f.writes).toEqual([]);
+  });
+  it("rejects raw Markdown test payloads before any delivery or status writes", async () => {
+    const f = await fixture(); expect((await f.raw({ ...testBody, generated: [{ export_name: "source.md", mime_type: "text/markdown", content: "# Routine" }] }))?.status).toBe(409); expect(f.fetch).not.toHaveBeenCalled(); expect(f.writes).toEqual([]);
   });
   it("falls back to login e-mail only when no work e-mail exists", () => {
     expect(resolveTestRecipient(null, "A@B.no")).toBe("a@b.no"); expect(resolveTestRecipient("x", null)).toBeNull();
