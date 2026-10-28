@@ -3,6 +3,7 @@ import { fetchSdsUrl } from "@/hooks/useChemicals";
 import type { AttachmentCandidate } from "@/lib/response-package";
 import type { DleCategory, DleFile, DleRecord } from "./export";
 import { generateDlePdf } from "./export";
+import { externalDocumentBlob } from "@/lib/external-document";
 import { relevanceDocumentation } from "@/lib/requirement-relevance";
 import { REQUIREMENT_STATUS_META, type RequirementStatus } from "@/lib/compliance";
 const sb = supabase as any;
@@ -98,5 +99,5 @@ export async function prepareDleFile(file: DleFile, company: string, date: strin
   if (!response.ok) throw new Error("Kunne ikke hente originalfilen");
   const blob = await response.blob();
   if (!blob.size) throw new Error("Originalfilen er tom");
-  return blob;
+  return externalDocumentBlob(blob, original.filename, original.mime, file.records[0].title, company, date);
 }

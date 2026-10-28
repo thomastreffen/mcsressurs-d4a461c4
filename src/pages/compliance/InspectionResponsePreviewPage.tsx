@@ -26,6 +26,7 @@ import {
 import { TONE_DOT, formatDate } from "@/lib/compliance";
 import { previewAllowsSend } from "../../../supabase/functions/_shared/inspection-send-policy";
 import { invokeWithSession } from "@/lib/invoke-session";
+import { externalDocumentBlob, externalDocumentMime } from "@/lib/external-document";
 
 function toCsv(rows: string[][]): string {
   return rows.map((r) => r.map((c) => `"${(c ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
@@ -159,7 +160,7 @@ export default function InspectionResponsePreviewPage() {
         if (!url) { missing.push(c.title); continue; }
         const resp = await fetch(url);
         if (!resp.ok) { missing.push(c.title); continue; }
-        zip.file(name, await resp.blob());
+        zip.file(name, await externalDocumentBlob(await resp.blob(), c.file_name, c.mime_type, c.title, companyName ?? "Firma", new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" })));
       }
       zip.file("00_Dokumentmanifest.txt", `${form.subject}\n\n${manifestAsText(manifest)}\n`);
       zip.file("01_Svarbrev.txt", emailText);
@@ -343,6 +344,7 @@ export default function InspectionResponsePreviewPage() {
           {chosenAttachments.map((c) => (
             <div key={c.key} className="flex flex-wrap items-center gap-2 rounded-md border px-2.5 py-2 text-sm">
               <span className="min-w-[90px] font-mono text-[11px] text-muted-foreground">{exportNames[c.key] ?? "referanse"}</span>
+              {c.kind !== "reference" && <span className="text-xs text-muted-foreground">{externalDocumentMime(c.file_name, c.mime_type)}</span>}
               <span className="min-w-[160px] flex-1">
                 {c.title}
                 <span className="ml-2 text-xs text-muted-foreground">{c.source_label}{c.date ? ` · ${formatDate(c.date)}` : ""}</span>

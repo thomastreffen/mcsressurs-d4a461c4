@@ -13,6 +13,7 @@ import { organizationOverviewCandidate } from "@/lib/organization-evidence";
 import { useOrgPeople } from "@/hooks/useOrgPeople";
 import { summarizeRequirements, competenceOverviewRows, type RelevanceMetadata } from "@/lib/requirement-relevance";
 import { initialPackageDelivery, responseFindingReady } from "../../supabase/functions/_shared/inspection-send-policy";
+import { externalDocumentMime } from "@/lib/external-document";
 
 const sb = supabase as any;
 
@@ -532,7 +533,7 @@ export function useResponsePackageMutations() {
             evidence_id: a.evidence_id,
             export_name: a.export_name ?? a.title,
             file_name: a.file_name || null,
-            mime_type: a.mime_type,
+            mime_type: externalDocumentMime(a.file_name, a.mime_type),
             file_size: a.file_size,
             storage_bucket: a.storage_bucket,
             file_path: a.file_path,
