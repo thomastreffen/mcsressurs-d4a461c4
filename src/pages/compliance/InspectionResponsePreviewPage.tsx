@@ -60,7 +60,7 @@ export default function InspectionResponsePreviewPage() {
   const [confirmedPreview, setConfirmedPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    if (ready || !id || !inspection.data || !findings.data || loading) return;
+    if (ready || !id || !inspection.data || !findings.data || !evidence.data || !actions.data || loading) return;
     const d = loadResponseDraft(id);
     const suggested = suggestedFindingIds(findings.data, candidates);
     setSelection({ findings: new Set(d?.finding_ids ?? suggested), attachments: new Set(d?.attachment_keys ?? candidates.filter(c => suggested.includes(c.finding_id ?? "") && exportableEvidence(c)).map(c => c.key)) });
@@ -73,7 +73,7 @@ export default function InspectionResponsePreviewPage() {
       closing: d?.closing || defaultClosing(companyName),
     });
     setReady(true);
-  }, [ready, id, inspection.data, companyName, findings.data, loading, candidates]);
+  }, [ready, id, inspection.data, companyName, findings.data, evidence.data, actions.data, loading, candidates]);
 
   // Utkastet holdes i synk slik at bruker kan gå tilbake uten å miste arbeid
   useEffect(() => {

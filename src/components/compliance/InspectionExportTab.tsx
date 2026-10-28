@@ -32,12 +32,13 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const initialized=useRef<string | null>(null);const alive=useRef(true);useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
   const allowed=(key:string)=>access.can(key==='chart'||key==='matrix'?'organisation':key==='fse_training'||key==='competence'?'employees':'hms');
   useEffect(()=>{
-    if(initialized.current===inspectionId||!inspection.data||inspection.data.company_id!==activeCompanyId||!findings.data||access.loading||loading)return;
-    initialized.current=inspectionId;
+    const scope=`${activeCompanyId}:${inspectionId}`;
+    if(initialized.current===scope||!inspection.data||inspection.data.company_id!==activeCompanyId||!findings.data||!evidence.data||!actions.data||access.loading||loading)return;
+    initialized.current=scope;
     setTo(inspection.data.contact_email??'');setSubject(`Dokumentasjon – ${inspection.data.title}`);
     const suggested=defaultInspectionExportChoices(findings.data,candidates);
     setChoices(new Set(suggested));
-  },[inspection.data,findings.data,access.loading,activeCompanyId,loading,candidates,inspectionId]);
+  },[inspection.data,findings.data,evidence.data,actions.data,access.loading,activeCompanyId,loading,candidates,inspectionId]);
   if(inspection.data && inspection.data.company_id !== activeCompanyId) return <div className="space-y-3"><h2 className="text-xl font-semibold">Eksport fra tilsynssak</h2><p className="text-sm text-muted-foreground">Velg sakens firma før dokumentasjonen hentes.</p>{companies.some(c=>c.id===inspection.data?.company_id) && <Button onClick={()=>{if(inspection.data)setActiveCompanyId(inspection.data.company_id);}}>Bytt til {companies.find(c=>c.id===inspection.data?.company_id)?.name ?? 'sakens firma'}</Button>}</div>;
   if(!access.can('hms','edit'))return <p className="text-sm text-muted-foreground">Du har ikke tilgang til eksport i dette firmaet.</p>;
   const company=activeCompany?.name??'Firma';const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Oslo'});
