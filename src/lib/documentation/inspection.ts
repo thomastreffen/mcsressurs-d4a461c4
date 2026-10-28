@@ -3,6 +3,7 @@ import type { DleRecord } from '@/lib/dle/export';
 import { loadDleRecords } from '@/lib/dle/sources';
 import { loadDocumentation } from '@/lib/documentation/sources';
 import { findingDisplayStatus, type FindingDisplayInput } from '@/lib/inspections';
+import { evidenceExportRecord } from './evidence-export';
 import { supabase } from '@/integrations/supabase/client';
 
 /** Generelle dokumenttyper som kan velges manuelt i eksportfanen */
@@ -26,17 +27,21 @@ const EXPORT_READY_STATUSES = new Set(['ready', 'submitted', 'closed']);
 export function suggestedFindingIds(
   findings: (FindingDisplayInput & { id: string })[],
   candidates: AttachmentCandidate[],
+  documentationByFinding: Record<string, string> = {},
 ): string[] {
   return findings
-    .filter((f) => EXPORT_READY_STATUSES.has(findingDisplayStatus(f).status) && findingExportRecords(candidates, f.id).length > 0)
+    .filter((f) => EXPORT_READY_STATUSES.has(findingDisplayStatus(f, documentationByFinding[f.id]).status) && findingExportRecords(candidates, f.id).length > 0)
     .map((f) => f.id);
 }
 
+/** General categories are always explicit extras, even when populated. */
+export function defaultInspectionExportChoices(findings: (FindingDisplayInput & { id: string })[], candidates: AttachmentCandidate[], documentationByFinding: Record<string, string> = {}): string[] {
+  return suggestedFindingIds(findings, candidates, documentationByFinding).map(id => `finding:${id}`);
+}
+
 export function findingExportRecords(candidates: AttachmentCandidate[], findingId: string): DleRecord[] {
-  return candidates.filter(c=>c.finding_id===findingId && c.kind!=='reference').map(c=>({
-    id:c.key,title:c.title,sections:c.generated ? c.generated.rows.map((row,i)=>({heading:i===0?row.join(' · '):'',text:i===0?'':row.join(' · ')})) : [],
-    original:c.kind==='document' && c.storage_bucket && c.file_path ? {bucket:c.storage_bucket,path:c.file_path,filename:c.file_name,mime:c.mime_type??'application/octet-stream'} : undefined,
-  })).filter(r=>r.original || r.sections.length);
+  return candidates.filter(c => c.finding_id === findingId)
+    .map(evidenceExportRecord).filter((r): r is DleRecord => r !== null);
 }
 
 /**

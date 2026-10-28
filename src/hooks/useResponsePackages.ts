@@ -113,6 +113,7 @@ function useDocumentsByIds(ids: string[]) {
       const { data, error } = await sb
         .from("documents")
         .select("id, file_name, file_path, mime_type, file_size, storage_bucket, category, created_at, entity_type")
+        .eq("company_id", cid)
         .in("id", key.split(","))
         .is("deleted_at", null);
       if (error) throw error;
@@ -329,6 +330,26 @@ export function useAttachmentCandidates(findings: Finding[], evidence: FindingEv
           continue;
         }
 
+        // Resolve only the linked source through the existing company-scoped reads.
+        if (e.source_kind === "regulation" && e.ref_id) {
+          const r = regulations.data?.find(r => r.id === e.ref_id);
+          out.push({
+            key: `ref:${e.id}`, finding_id: f.id, kind: "reference", evidence_id: e.id, document_id: null,
+            file_name: "", mime_type: null, file_size: null, storage_bucket: null, file_path: null,
+            source_kind: e.source_kind, source_ref_id: e.ref_id, source_label: srcLabel,
+            date: r?.last_reviewed_at ?? null, title: r?.name ?? e.label ?? "Regelverk",
+            status_label: r ? "Registrert regelverk" : "Kilden er utilgjengelig",
+            status_tone: r ? "ok" : "alert",
+            reference_note: r ? [
+              `Navn: ${r.name}`, `Type: ${r.reg_type}`, `Relevans: ${r.relevance ?? "Ikke angitt"}`,
+              `Offisiell kilde: ${r.source_url ?? "Ikke angitt"}`,
+              `Ansvarlig: ${nameByPerson.get(r.responsible_person_id ?? "") ?? r.responsible_role ?? "Ikke angitt"}`,
+              `Kontrollert: ${r.last_reviewed_at ?? "Ikke angitt"}`, `Neste gjennomgang: ${r.next_review_at ?? "Ikke angitt"}`,
+            ].join("\n") : null,
+          });
+          continue;
+        }
+
         // Referanser uten fil (regelverk, roller, internkontroll, tiltak, annet)
         const refTitle =
           e.label ??
@@ -341,7 +362,7 @@ export function useAttachmentCandidates(findings: Finding[], evidence: FindingEv
         out.push({
           key: `ref:${e.id}`, finding_id: f.id, kind: "reference", evidence_id: e.id, document_id: null,
           file_name: "", mime_type: null, file_size: null, storage_bucket: null, file_path: null,
-          source_kind: e.source_kind, source_label: srcLabel, date: e.created_at,
+          source_kind: e.source_kind, source_ref_id: e.ref_id, source_label: srcLabel, date: e.created_at,
           status_label: "Referanse", status_tone: "neutral",
           title: refTitle, reference_note: e.note,
         });
@@ -350,7 +371,7 @@ export function useAttachmentCandidates(findings: Finding[], evidence: FindingEv
     return out;
   }, [findings, evidence, documents.data, competences.data, types.data, employees.data, regulations.data, orgRoles.data, orgRoles.isLoading, orgRoles.isError, orgPeople.data, orgPeople.isLoading, orgPeople.isError, activeCompany, audits.data, actions, detailFor]);
 
-  return { candidates, loading: coverageLoading || documents.isLoading || (evidence.some(e => e.source_kind === "organization_overview") && (orgRoles.isLoading || orgPeople.isLoading)) };
+  return { candidates, loading: coverageLoading || documents.isLoading || (evidence.some(e => e.source_kind === "regulation") && regulations.isLoading) || (evidence.some(e => e.source_kind === "organization_overview") && (orgRoles.isLoading || orgPeople.isLoading)) };
 }
 
 /* ---------------- Pre-flight kontroll ---------------- */

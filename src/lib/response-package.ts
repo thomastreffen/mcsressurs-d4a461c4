@@ -24,6 +24,8 @@ export interface AttachmentCandidate {
   storage_bucket: string | null;
   file_path: string | null;
   source_kind: string;
+  /** Source identity for deduplication; never a person/role display name. */
+  source_ref_id?: string | null;
   /** Hvor dokumentet kommer fra, f.eks. «Ansatt → Kompetanse» */
   source_label: string;
   /** Dato på dokumentet/beviset */

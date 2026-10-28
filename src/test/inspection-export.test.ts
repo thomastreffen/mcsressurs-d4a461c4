@@ -36,7 +36,7 @@ describe('Inspection export rules',()=>{
    expect(suggestedFindingIds([f],[{...candidate,key:'d3',finding_id:'three'}])).toEqual(['three']);
  });
 
- it('exports only evidence belonging to the selected finding',()=>expect(findingExportRecords([candidate,{...candidate,key:'other',finding_id:'seven'}],'six').map(r=>r.id)).toEqual(['document-6']));
+ it('exports only evidence belonging to the selected finding',()=>expect(findingExportRecords([candidate,{...candidate,key:'other',finding_id:'seven'}],'six').map(r=>r.id)).toEqual(['document:doc']));
  it('preserves original evidence file paths',()=>expect(findingExportRecords([candidate],'six')[0].original?.path).toBe('six/report.pdf'));
  it('does not invent files for references without original documentation',()=>expect(findingExportRecords([{...candidate,kind:'reference',storage_bucket:null,file_path:null}],'six')).toEqual([]));
 });

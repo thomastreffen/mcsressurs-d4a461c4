@@ -13,10 +13,12 @@ import { useCompanyContext } from '@/hooks/useCompanyContext';
 import { useCompanyModuleAccess } from '@/hooks/useCompanyModuleAccess';
 import { useInspection, useFindings, useFindingEvidence, useInspectionActions } from '@/hooks/useInspections';
 import { useAttachmentCandidates } from '@/hooks/useResponsePackages';
+import { useEvidenceCoverage, deriveDocumentationStatus } from '@/hooks/useEvidenceCoverage';
 import { supabase } from '@/integrations/supabase/client';
 import { buildDleFiles, deliverDleBlob, type DleFile } from '@/lib/dle/export';
 import { prepareOutputs, saveDocumentationExport, sendDocumentationExport, markDocumentationDownloaded } from '@/lib/documentation/delivery';
-import { GENERAL_EXPORT_OPTIONS, availableGeneralExportKeys, loadOptionRecords, suggestedFindingIds } from '@/lib/documentation/inspection';
+import { GENERAL_EXPORT_OPTIONS, loadOptionRecords, defaultInspectionExportChoices } from '@/lib/documentation/inspection';
+import { mergeEvidenceDocuments } from '@/lib/documentation/evidence-export';
 import { isMarkdownFile } from '@/lib/external-document';
 import { CombinedPdfPreview } from '@/components/compliance/CombinedPdfPreview';
 import type { CombinedDocument } from '@/lib/documentation/combined-pdf';
@@ -25,27 +27,28 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const {user}=useAuth();const {activeCompanyId,activeCompany,companies,setActiveCompanyId}=useCompanyContext();const access=useCompanyModuleAccess();const qc=useQueryClient();
   const inspection=useInspection(inspectionId);const findings=useFindings(inspectionId);const evidence=useFindingEvidence(inspectionId);const actions=useInspectionActions(inspectionId);
   const {candidates,loading}=useAttachmentCandidates(findings.data??[],evidence.data??[],actions.data??[]);
+  const coverage=useEvidenceCoverage();
+  const documentationByFinding=Object.fromEntries((findings.data??[]).map(f=>[f.id,deriveDocumentationStatus((evidence.data??[]).filter(e=>e.finding_id===f.id),coverage.coverageFor,coverage.organizationFor)]));
   const [choices,setChoices]=useState<Set<string>>(new Set());const [files,setFiles]=useState<DleFile[]>([]);const [removed,setRemoved]=useState<Set<string>>(new Set());
   const [busy,setBusy]=useState(false);const [reviewed,setReviewed]=useState(false);const [missing,setMissing]=useState<string[]>([]);
   const [action,setAction]=useState('download');const [to,setTo]=useState('');const [cc,setCc]=useState('');const [subject,setSubject]=useState('');const [message,setMessage]=useState('');const [sent,setSent]=useState(false);
-  const initialized=useRef(false);const alive=useRef(true);useEffect(()=>()=>{alive.current=false;},[]);
+  const initialized=useRef<string | null>(null);const alive=useRef(true);useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
   const allowed=(key:string)=>access.can(key==='chart'||key==='matrix'?'organisation':key==='fse_training'||key==='competence'?'employees':'hms');
   useEffect(()=>{
-    if(initialized.current||!inspection.data||inspection.data.company_id!==activeCompanyId||!findings.data||access.loading||loading)return;
-    initialized.current=true;
+    const scope=`${activeCompanyId}:${inspectionId}`;
+    if(initialized.current===scope||!inspection.data||inspection.data.company_id!==activeCompanyId||!findings.data||!evidence.data||!actions.data||access.loading||loading||coverage.loading)return;
+    initialized.current=scope;
     setTo(inspection.data.contact_email??'');setSubject(`Dokumentasjon – ${inspection.data.title}`);
-    const suggested=suggestedFindingIds(findings.data,candidates).map(id=>`finding:${id}`);
-    void availableGeneralExportKeys(allowed,key=>loadOptionRecords(key,inspection.data!.company_id,inspectionId,candidates))
-      .then(general=>{if(alive.current)setChoices(new Set([...general,...suggested]));})
-      .catch(()=>{if(alive.current)setChoices(new Set(suggested));});
-  },[inspection.data,findings.data,access.loading,activeCompanyId,loading,candidates,inspectionId]);
+    const suggested=defaultInspectionExportChoices(findings.data,candidates,documentationByFinding);
+    setChoices(new Set(suggested));
+  },[inspection.data,findings.data,evidence.data,actions.data,access.loading,activeCompanyId,loading,coverage.loading,candidates,inspectionId,documentationByFinding]);
   if(inspection.data && inspection.data.company_id !== activeCompanyId) return <div className="space-y-3"><h2 className="text-xl font-semibold">Eksport fra tilsynssak</h2><p className="text-sm text-muted-foreground">Velg sakens firma før dokumentasjonen hentes.</p>{companies.some(c=>c.id===inspection.data?.company_id) && <Button onClick={()=>{if(inspection.data)setActiveCompanyId(inspection.data.company_id);}}>Bytt til {companies.find(c=>c.id===inspection.data?.company_id)?.name ?? 'sakens firma'}</Button>}</div>;
   if(!access.can('hms','edit'))return <p className="text-sm text-muted-foreground">Du har ikke tilgang til eksport i dette firmaet.</p>;
   const company=activeCompany?.name??'Firma';const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Oslo'});
   const options=[...GENERAL_EXPORT_OPTIONS.map(o=>({key:o.key as string,label:o.label})),...(findings.data??[]).map(f=>({key:`finding:${f.id}`,label:`Dokumentasjon knyttet til funn ${f.finding_number}`}))];
   const selected=files.filter(f=>!removed.has(f.key));
-  const pdfFindings=(findings.data??[]).filter(f=>choices.has(`finding:${f.id}`));
-  const pdfDocuments:CombinedDocument[]=selected.map(file=>({file,findingIds:pdfFindings.filter(f=>candidates.some(c=>c.finding_id===f.id && file.records.some(r=>r.id===c.key || (r.original && r.original.path===c.file_path && r.original.bucket===c.storage_bucket)))).map(f=>f.id)}));
+  const pdfFindings=(findings.data??[]).filter(f=>choices.has(`finding:${f.id}`)).map(f=>({...f,documentation_status:documentationByFinding[f.id]}));
+  const pdfDocuments:CombinedDocument[]=mergeEvidenceDocuments(selected.map(file=>({file,findingIds:pdfFindings.filter(f=>file.key.startsWith(`finding:${f.id}:`) || candidates.some(c=>c.finding_id===f.id && file.records.some(r=>r.original && r.original.path===c.file_path && r.original.bucket===c.storage_bucket))).map(f=>f.id)})));
   function reset(){setReviewed(false);setFiles([]);setSent(false);}
   async function review() {
     if(!activeCompanyId||inspection.data?.company_id!==activeCompanyId)return;setBusy(true);const result:DleFile[]=[];const gaps:string[]=[];
@@ -58,10 +61,10 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
         const records=await loadOptionRecords(option.key,activeCompanyId,inspectionId,candidates);
         if(!records.length){gaps.push(option.label);continue;}
         const built=buildDleFiles(category,records,option.key.startsWith('finding:')||option.key==='internal_control',company,date);
-        for(const f of built){if(option.key==='fse_training')f.name=f.name.replace('Kompetanseoversikt','FSE_opplaering');f.path=`${f.path.split('/')[0]}/${f.name}`;f.key=`${option.key}:${f.key}`;result.push(f);}
+        for(const f of built){if(!option.key.startsWith('finding:'))f.title=option.label;if(option.key==='fse_training')f.name=f.name.replace('Kompetanseoversikt','FSE_opplaering');f.path=`${f.path.split('/')[0]}/${f.name}`;f.key=`${option.key}:${f.key}`;result.push(f);}
       }
       if(!alive.current)return;
-      setFiles(result.filter((f,i,all)=>all.findIndex(x=>x.records[0]?.original&&f.records[0]?.original?x.records[0].original.path===f.records[0].original.path&&x.records[0].original.bucket===f.records[0].original.bucket:x.name===f.name)===i));setRemoved(new Set());setMissing(gaps);setReviewed(true);
+      setFiles(result);setRemoved(new Set());setMissing(gaps);setReviewed(true);
     }catch(e){toast.error(e instanceof Error?e.message:'Kunne ikke hente dokumentasjon');}finally{if(alive.current)setBusy(false);}
   }
   async function deliver() {
@@ -80,7 +83,7 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   }
   return <section className="max-w-4xl space-y-6">
     <header className="space-y-2"><h2 className="flex items-center gap-2 text-xl font-semibold"><FileCheck2 className="h-5 w-5 text-primary"/>Eksport fra tilsynssak</h2><p className="text-xs text-muted-foreground">Valgt sak</p><p className="text-base font-medium">{inspection.data?.title??'Laster sak…'}</p></header>
-    <div className="space-y-3 border-t pt-4"><h3 className="font-semibold">Foreslått dokumentasjon</h3>{options.map(o=><label key={o.key} className="flex items-center gap-3 text-sm"><Checkbox checked={choices.has(o.key)} disabled={busy||!allowed(o.key)} onCheckedChange={v=>{setChoices(old=>{const n=new Set(old);v===true?n.add(o.key):n.delete(o.key);return n;});reset();}}/><span>{o.label}</span>{!allowed(o.key)&&<span className="text-xs text-muted-foreground">Ingen tilgang</span>}</label>)}</div>
+    <div className="space-y-3 border-t pt-4"><h3 className="font-semibold">Foreslått dokumentasjon</h3>{options.filter(o=>o.key.startsWith('finding:')).map(o=><label key={o.key} className="flex items-center gap-3 text-sm"><Checkbox checked={choices.has(o.key)} disabled={busy||!allowed(o.key)} onCheckedChange={v=>{setChoices(old=>{const n=new Set(old);v===true?n.add(o.key):n.delete(o.key);return n;});reset();}}/><span>{o.label}</span>{!allowed(o.key)&&<span className="text-xs text-muted-foreground">Ingen tilgang</span>}</label>)}<details className="border-t pt-3"><summary className="cursor-pointer text-sm font-medium">Ekstra dokumentasjon (avansert)</summary><div className="space-y-3 pt-3">{options.filter(o=>!o.key.startsWith('finding:')).map(o=><label key={o.key} className="flex items-center gap-3 text-sm"><Checkbox checked={choices.has(o.key)} disabled={busy||!allowed(o.key)} onCheckedChange={v=>{setChoices(old=>{const n=new Set(old);v===true?n.add(o.key):n.delete(o.key);return n;});reset();}}/><span>{o.label}</span>{!allowed(o.key)&&<span className="text-xs text-muted-foreground">Ingen tilgang</span>}</label>)}</div></details></div>
     <div className="space-y-3 border-t pt-4"><h3 className="font-semibold">Hva vil du gjøre?</h3><RadioGroup value={action} onValueChange={v=>{setAction(v);setSent(false);}} className="flex flex-wrap gap-6" disabled={busy}>{[{key:'download',label:'Last ned'},{key:'email',label:'Send på e-post'},{key:'both',label:'Begge'}].map(o=><label key={o.key} className="flex items-center gap-2 text-sm"><RadioGroupItem value={o.key}/>{o.label}</label>)}</RadioGroup></div>
     {action!=='download'&&<div className="grid gap-4 sm:grid-cols-2"><div className="space-y-1"><Label htmlFor="inspection-export-to">Til</Label><Input id="inspection-export-to" value={to} onChange={e=>setTo(e.target.value)}/></div><div className="space-y-1"><Label htmlFor="inspection-export-cc">Kopi</Label><Input id="inspection-export-cc" value={cc} onChange={e=>setCc(e.target.value)}/></div><div className="space-y-1 sm:col-span-2"><Label htmlFor="inspection-export-subject">Emne</Label><Input id="inspection-export-subject" value={subject} onChange={e=>setSubject(e.target.value)}/></div><div className="space-y-1 sm:col-span-2"><Label htmlFor="inspection-export-message">Melding</Label><Textarea id="inspection-export-message" value={message} onChange={e=>setMessage(e.target.value)}/></div></div>}
     {!reviewed?<Button disabled={busy||loading||!choices.size} onClick={()=>void review()}>{busy&&<Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Forhåndsvis eksport</Button>:<div className="space-y-4 border-t pt-4"><h3 className="font-semibold">Dette blir eksportert</h3>{inspection.data && <CombinedPdfPreview input={{company,title:inspection.data.title,authority:inspection.data.authority_name,caseNumber:inspection.data.case_number,date,recipient:[inspection.data.contact_name,inspection.data.contact_email].filter(Boolean).join(' · '),findings:pdfFindings,documents:pdfDocuments}} />}{missing.length>0&&<div className="space-y-1 text-sm text-muted-foreground"><p className="font-medium">Dokumentasjon mangler</p>{missing.map(m=><p key={m}>{m}: ingen tilgjengelig dokumentasjon knyttet til valgt innhold</p>)}</div>}{selected.map(f=><div key={f.key} className="flex items-center gap-3 border-b py-2"><Check className="h-4 w-4 shrink-0 text-primary"/><span className="min-w-0 flex-1 break-words text-sm">{f.name}{f.records[0]?.original&&<span className="block text-xs text-muted-foreground">{isMarkdownFile(f.records[0]?.original?.filename,f.records[0]?.original?.mime)?'PDF fra intern kilde · application/pdf':'Originalfil'}</span>}</span><Button variant="ghost" size="icon" disabled={busy} aria-label={`Fjern ${f.name}`} onClick={()=>setRemoved(old=>new Set(old).add(f.key))}><X className="h-4 w-4"/></Button></div>)}<Button disabled={busy||sent||!selected.length} onClick={()=>void deliver()}>{busy?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:action==='download'?<Download className="mr-2 h-4 w-4"/>:<Send className="mr-2 h-4 w-4"/>}{sent?'Ferdig':action==='download'?'Last ned enkeltfiler (avansert)':action==='both'?'Last ned + send':'Send på e-post'}</Button></div>}
