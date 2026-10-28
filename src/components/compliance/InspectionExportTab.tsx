@@ -45,17 +45,11 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
     if(!activeCompanyId||inspection.data?.company_id!==activeCompanyId)return;setBusy(true);const result:DleFile[]=[];const gaps:string[]=[];
     try {
       for(const option of options.filter(o=>choices.has(o.key)&&allowed(o.key))) {
-        let records:DleRecord[]=[];let category: DleFile['category']='roles';
-        if(option.key.startsWith('finding:')){records=findingExportRecords(candidates,option.key.slice(8));category='attachments';}
-        else if(option.key==='internal_control') {
-          const {data,error}=await (supabase as any).from('compliance_audits').select('id,title,status,source_inspection_id,report_document_id,report_markdown,performed_at').eq('company_id',activeCompanyId).is('deleted_at',null).eq('source_inspection_id',inspectionId);
-          if(error)throw error;
-          const ids=(data??[]).map((r:any)=>r.report_document_id).filter(Boolean);
-          let docs:any[]=[];
-          if(ids.length){const response=await supabase.from('documents').select('id,file_name,file_path,storage_bucket,mime_type').eq('company_id',activeCompanyId).is('deleted_at',null).in('id',ids);if(response.error)throw response.error;docs=response.data??[];}
-          records=(data??[]).filter((r:any)=>r.status==='completed').flatMap((r:any)=>{const doc=docs.find(d=>d.id===r.report_document_id);return doc?.storage_bucket&&doc?.file_path?[{id:r.id,title:r.title,sections:[],original:{bucket:doc.storage_bucket,path:doc.file_path,filename:doc.file_name,mime:doc.mime_type??'application/pdf'}}]:r.report_markdown?[{id:r.id,title:r.title,sections:[{heading:'Revisjonsreferat',text:r.report_markdown}]}]:[];});
-        } else if(option.key==='fse_training'){records=(await loadDocumentation('fse_status',activeCompanyId)).filter(r=>r.sections.length>0);category='competence';}
-        else {category=option.key as 'chart'|'matrix'|'competence';records=await loadDleRecords(category,activeCompanyId,[]);}
+        let category: DleFile['category']='roles';
+        if(option.key.startsWith('finding:'))category='attachments';
+        else if(option.key==='fse_training')category='competence';
+        else if(option.key!=='internal_control')category=option.key as 'chart'|'matrix'|'competence';
+        const records=await loadOptionRecords(option.key,activeCompanyId,inspectionId,candidates);
         if(!records.length){gaps.push(option.label);continue;}
         const built=buildDleFiles(category,records,option.key.startsWith('finding:')||option.key==='internal_control',company,date);
         for(const f of built){if(option.key==='fse_training')f.name=f.name.replace('Kompetanseoversikt','FSE_opplaering');f.path=`${f.path.split('/')[0]}/${f.name}`;f.key=`${option.key}:${f.key}`;result.push(f);}
