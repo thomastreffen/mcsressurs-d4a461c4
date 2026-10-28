@@ -24,6 +24,25 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Applying an inspection response suggestion", () => {
+  it("generates an unsaved draft using the existing finding identity, without approving or modifying treatment fields", async () => {
+    mount(); await generate();
+    expect(mocks.invoke.mock.calls[0][1].body).toEqual({ inspection_id: "inspection", finding_id: "finding-2", system_facts: [], unresolved_gaps: [] });
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+    expect(mocks.mutate).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox")).toHaveValue("Tidligere svar");
+    expect(finding.response_approved_at).toBeNull();
+  });
+  it("requires a separate explicit approval after manually applying a draft", async () => {
+    mount(); await generate();
+    fireEvent.click(screen.getByRole("button", { name: "Bruk som svartekst" }));
+    await waitFor(() => expect(screen.getByRole("textbox")).toHaveValue(suggestion));
+    expect(mocks.mutate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Godkjenn svartekst" }));
+    expect(mocks.mutate.mock.calls[0][0]).toMatchObject({ id: finding.id, response_text: suggestion, response_approved_by: "reviewer" });
+    expect(mocks.mutate.mock.calls[0][0].response_approved_at).toEqual(expect.any(String));
+    expect(mocks.mutate.mock.calls[0][0]).not.toHaveProperty("condition_corrected_at");
+    expect(mocks.mutate.mock.calls[0][0]).not.toHaveProperty("documentation_complete_at");
+  });
   it("saves the full suggestion on the existing finding and clears approval only after success", async () => {
     mount(); await generate();
     fireEvent.click(screen.getByRole("button", { name: "Bruk som svartekst" }));
