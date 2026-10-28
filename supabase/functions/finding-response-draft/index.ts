@@ -4,6 +4,8 @@
 // Samme auth-mønster som inspection-report-analyze (auth.getUser på token).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { activeOrganizationRoles } from "../_shared/organization-coverage.ts";
+import { buildDraftContext, finalizeDraft, SYSTEM_PROMPT } from "./context.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,19 +27,6 @@ function fail(rid: string, status: number, stage: Stage, error_code: string, mes
   console.error(`[finding-response-draft] rid=${rid} stage=${stage} code=${error_code} status=${status} ${technical_details ?? ""}`);
   return json({ ok: false, requestId: rid, stage, error_code, message, technical_details: technical_details ?? null }, status);
 }
-
-const SYSTEM_PROMPT = `Du skriver svar til norske tilsynsmyndigheter (DLE, DSB, Arbeidstilsynet) på vegne av en elektroentreprenør.
-
-Regler:
-- Svaret skal være saklig, kort og profesjonelt. Norsk bokmål. Ingen markedsføring, ingen unnskyldninger utover det saklige.
-- Bygg svaret KUN på informasjonen du får: funnets ordlyd, intern vurdering, faktisk utførte tiltak, systemfakta og godkjente bevis.
-- Du skal ALDRI påstå at noe er dokumentert, utført eller lukket hvis det ikke fremgår av opplysningene du får.
-- Svaret skal beskrive hva virksomheten FAKTISK har gjort og hvilken dokumentasjon som vedlegges. Nevn kun vedlegg som står i listen over godkjente bevis.
-- Er tiltak ikke ferdigstilt skal svaret beskrive planlagt tiltak og frist, ikke at det er utført.
-- Er et forhold listet som «fortsatt ikke rettet» skal svaret ikke beskrive det som lukket; beskriv i stedet hva som gjenstår.
-- Ikke oppgi tall, datoer, navn eller dokumentnavn som ikke finnes i opplysningene.
-- Ikke bruk sannsynlighet eller prosenter.
-- 1-3 avsnitt: hva som er gjort/planlagt, hvordan det dokumenteres, og eventuell frist.`;
 
 const TOOL = {
   type: "function",
@@ -68,65 +57,51 @@ Deno.serve(async (req) => {
     const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "").trim();
     if (!token) return fail(rid, 401, "auth", "missing_token", "Du er ikke innlogget");
 
-    const url = Deno.env.get("SUPABASE_URL")!;
-    const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const authClient = createClient(url, anon);
+    const url = Deno.env.get("SUPABASE_URL");
+    const anon = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!url || !anon) return fail(rid, 500, "auth", "missing_config", "Tjenesten er ikke konfigurert");
+    const authClient = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
     const { data: authData, error: authErr } = await authClient.auth.getUser(token);
     if (authErr || !authData?.user?.id) {
       return fail(rid, 401, "auth", "invalid_token", "Innloggingen er utløpt. Last siden på nytt og prøv igjen.", authErr?.message);
     }
 
     const body = await req.json().catch(() => ({}));
-    const finding = body.finding;
-    if (!finding?.title) return fail(rid, 400, "input", "missing_finding", "Funnet mangler opplysninger");
-
-    const actions: any[] = Array.isArray(body.actions) ? body.actions : [];
-    const evidence: string[] = Array.isArray(body.evidence) ? body.evidence : [];
-    const systemFacts: string[] = Array.isArray(body.system_facts) ? body.system_facts : [];
-    const unresolvedGaps: string[] = Array.isArray(body.unresolved_gaps) ? body.unresolved_gaps : [];
-    const doneActions = actions.filter((a) => ["done", "closed", "completed"].includes(String(a.status)));
-
-    const prompt = [
-      `TILSYNSSAK: ${body.inspection_title ?? "Ukjent sak"}${body.authority_name ? ` (${body.authority_name})` : ""}`,
-      "",
-      "FUNN – MYNDIGHETENS ORDLYD (skal ikke gjentas ordrett i svaret):",
-      `Tittel: ${finding.title}`,
-      finding.original_text ? `Ordlyd: ${finding.original_text}` : null,
-      finding.legal_basis_text ? `Hjemmel: ${finding.legal_basis_text}` : null,
-      finding.authority_requirement ? `Krav: ${finding.authority_requirement}` : null,
-      finding.deadline ? `Myndighetens frist: ${finding.deadline}` : null,
-      "",
-      "INTERN BEHANDLING:",
-      finding.internal_assessment ? `Vurdering: ${finding.internal_assessment}` : "Vurdering: ikke registrert",
-      finding.proposed_solution ? `Planlagt løsning: ${finding.proposed_solution}` : null,
-      finding.internal_deadline ? `Intern frist: ${finding.internal_deadline}` : null,
-      finding.condition_corrected_at
-        ? `Forholdet er internt bekreftet rettet ${finding.condition_corrected_at}`
-        : "Forholdet er IKKE bekreftet rettet – ikke skriv at forholdet er utbedret.",
-      finding.documentation_complete_at
-        ? `Dokumentasjonen er bekreftet komplett ${finding.documentation_complete_at}`
-        : "Dokumentasjonen er IKKE bekreftet komplett.",
-      "",
-      "FAKTISK UTFØRTE TILTAK (kun disse kan omtales som gjennomført):",
-      doneActions.length
-        ? doneActions.map((a) => `- ${a.title}${a.description ? `: ${a.description}` : ""}`).join("\n")
-        : "- Ingen tiltak er ferdigstilt",
-      "",
-      "TILTAK SOM PÅGÅR (omtales som planlagt, ikke utført):",
-      actions.filter((a) => !doneActions.includes(a)).length
-        ? actions.filter((a) => !doneActions.includes(a)).map((a) => `- ${a.title} (status: ${a.status}${a.due_date ? `, frist ${a.due_date}` : ""})`).join("\n")
-        : "- Ingen",
-      "",
-      "SYSTEMFAKTA FRA VÅRE EGNE REGISTRE:",
-      systemFacts.length ? systemFacts.map((f) => `- ${f}`).join("\n") : "- Ingen",
-      "",
-      "FORHOLD SYSTEMET FORTSATT VISER SOM IKKE RETTET (må ikke omtales som lukket):",
-      unresolvedGaps.length ? unresolvedGaps.map((g) => `- ${g}`).join("\n") : "- Ingen",
-      "",
-      "GODKJENTE BEVIS/VEDLEGG (kun disse kan nevnes som vedlagt dokumentasjon):",
-      evidence.length ? evidence.map((e) => `- ${e}`).join("\n") : "- Ingen",
-    ].filter(Boolean).join("\n");
-
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof body.finding_id !== "string" || !uuid.test(body.finding_id) || typeof body.inspection_id !== "string" || !uuid.test(body.inspection_id)) {
+      return fail(rid, 400, "input", "missing_finding", "Velg et gyldig funn og en tilsynssak");
+    }
+    // Read-only caller-bearer queries: company is resolved from the authorized case, never the request.
+    const { data: inspection, error: inspectionError } = await authClient.from("compliance_inspections")
+      .select("id, company_id, title, authority_name").eq("id", body.inspection_id).is("deleted_at", null).maybeSingle();
+    if (inspectionError || !inspection) return fail(rid, 403, "auth", "inspection_unavailable", "Tilsynssaken er ikke tilgjengelig");
+    const { data: allowed, error: accessError } = await authClient.rpc("has_company_access", {
+      _uid: authData.user.id, _company: inspection.company_id, _module: "hms", _level: "edit",
+    });
+    if (accessError || !allowed) return fail(rid, 403, "auth", "access_denied", "Du mangler tilgang til å foreslå svar i dette selskapet");
+    const { data: finding, error: findingError } = await authClient.from("compliance_findings").select("*")
+      .eq("id", body.finding_id).eq("inspection_id", inspection.id).eq("company_id", inspection.company_id).is("deleted_at", null).maybeSingle();
+    if (findingError || !finding) return fail(rid, 403, "auth", "finding_unavailable", "Funnet er ikke tilgjengelig i saken");
+    const [actionResult, evidenceResult, roleResult] = await Promise.all([
+      authClient.from("hms_action_items").select("title, description, status, due_date")
+        .eq("compliance_finding_id", finding.id).eq("company_id", inspection.company_id).is("deleted_at", null),
+      authClient.from("compliance_finding_evidence").select("source_kind, ref_id, label, note")
+        .eq("finding_id", finding.id).eq("inspection_id", inspection.id).eq("company_id", inspection.company_id),
+      authClient.from("compliance_org_roles").select("title, sort_order, is_active, valid_from, valid_to")
+        .eq("company_id", inspection.company_id).is("deleted_at", null),
+    ]);
+    if (actionResult.error || evidenceResult.error || roleResult.error) {
+      return fail(rid, 503, "input", "context_unavailable", "Kunne ikke kontrollere oppdatert dokumentasjon og tiltak. Prøv igjen.");
+    }
+    const strings = (value: unknown): string[] => Array.isArray(value)
+      ? value.filter((x): x is string => typeof x === "string").slice(0, 30).map(x => x.slice(0, 2000)) : [];
+    const context = buildDraftContext({
+      companyId: inspection.company_id, inspection, finding,
+      actions: actionResult.data ?? [], evidence: evidenceResult.data ?? [],
+      activeRoleCount: activeOrganizationRoles(roleResult.data ?? []).length,
+      systemFacts: strings(body.system_facts), registryGaps: strings(body.unresolved_gaps),
+    });
+    const prompt = context.prompt;
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return fail(rid, 500, "ai_request", "ai_not_configured", "AI er ikke konfigurert");
@@ -165,10 +140,13 @@ Deno.serve(async (req) => {
       return fail(rid, 502, "ai_response", "invalid_json", "Kunne ikke tolke svarforslaget", (e as Error).message);
     }
 
+    const responseText = finalizeDraft(typeof parsed.response_text === "string" ? parsed.response_text : "", context);
+    if (!responseText) return fail(rid, 502, "ai_response", "contradictory_draft", "Forslaget samsvarte ikke med dokumentert nåstatus. Prøv igjen.");
+
     return json({
       ok: true,
       requestId: rid,
-      response_text: typeof parsed.response_text === "string" ? parsed.response_text.trim() : "",
+      response_text: responseText,
       missing_information: (Array.isArray(parsed.missing_information) ? parsed.missing_information : [])
         .filter((x: any) => typeof x === "string" && x.trim()).slice(0, 8),
     });
