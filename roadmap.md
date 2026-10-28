@@ -1,5 +1,10 @@
 # Roadmap
 
+## Tilsynsoversikt – felles beregnet sannhet
+- [ ] Del case-summary mellom oversiktskort, KPI, filtre og eksport; bruk findingDisplayStatus, aktive tiltak og faktiske beviskoblinger uten saksendringer
+- [ ] Test blandede funn, ferdig behandling med råstatus new, tiltaksavgrensning og dokumentasjon; kontroller sak 63210 kun lesende
+- [ ] Regresjonstester og automatisk type-/byggkontroll; ingen publisering eller produksjonsskriving
+
 ## DLE AI-svartekst – faktisk nåstatus
 - [x] Serveren leser gjeldende funn/bevis/tiltak med brukerens tilgang og sakens selskap; delt aktiv-rolle-regel brukes av UI/eksport/server. Koblet organisasjonsdekning gir fast etablert/koblet faktasetning; motsigende fremtidssvar avvises. Behandling og faktiske åpne tiltak holdes separate.
 - [x] 435 tester bestått i 53 filer, inkludert 10 isolerte serverkontroller og 2 nye tester av manuell bruk/godkjenning. Deno-typekontroll uten feil; automatisk app-bygg OK. Ingen produksjonsskriving, e-post eller publisering.
