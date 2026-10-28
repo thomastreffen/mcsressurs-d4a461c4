@@ -556,15 +556,21 @@ export function FindingCard({
               <p className="text-[11px] text-muted-foreground">
                 Bekrefter at rettingen er dokumentert med bevis som kan vedlegges svarpakken.
               </p>
+              {evidence.some(e => e.source_kind === "organization_overview") && derivedDocStatus === "complete" && (
+                <p className="text-[11px] text-muted-foreground">
+                  Den koblede organisasjonsoversikten kan brukes som samlet bevis. Bekreftelsen under gjelder kun
+                  dokumentasjon – den godkjenner ikke svartekst, markerer ikke forholdet rettet og sender ingenting.
+                </p>
+              )}
               {canEdit && (finding.documentation_complete_at ? (
                 <Button size="sm" variant="ghost"
                   onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, documentation_complete_at: null, documentation_complete_by: null } as any)}>
                   <Undo2 className="mr-1.5 h-3.5 w-3.5" /> Opphev
                 </Button>
               ) : (
-                <Button size="sm" variant="outline" disabled={evidence.length === 0 || derivedDocStatus === "gaps"}
+                <Button size="sm" variant="outline" disabled={save.isPending || evidence.length === 0 || derivedDocStatus === "gaps"}
                   onClick={() => save.mutate({ id: finding.id, inspection_id: inspectionId, documentation_complete_at: new Date().toISOString(), documentation_complete_by: user?.id ?? null } as any)}>
-                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Marker dokumentasjonen komplett
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> {save.isPending ? "Lagrer…" : "Marker dokumentasjonen komplett"}
                 </Button>
               ))}
             </div>

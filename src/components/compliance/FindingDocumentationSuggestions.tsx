@@ -14,29 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, FileSearch, HelpCircle, Link2, XCircle } from "lucide-react";
 import { useCompetenceTypes, useComplianceAudits } from "@/hooks/useCompliance";
-import { useEvidenceMutations, type Finding, type FindingEvidence } from "@/hooks/useInspections";
+import { useEvidenceMutations, useInspection, type Finding, type FindingEvidence } from "@/hooks/useInspections";
+import { useEvidenceCoverage } from "@/hooks/useEvidenceCoverage";
+import { documentationNeedScore as score, evidenceForDocumentationNeed, isOrganizationDocumentationNeed } from "@/lib/finding-documentation-needs";
 
 const sb = supabase as any;
-
-const STOPWORDS = new Set([
-  "og", "eller", "for", "med", "til", "som", "det", "den", "der", "har", "hva", "skal", "være", "vise",
-  "dokumentasjon", "dokumenter", "dokument", "oversikt", "kopi", "av", "på", "i", "en", "et", "the", "må",
-]);
-
-function tokens(s: string): string[] {
-  return (s ?? "")
-    .toLowerCase()
-    .replace(/[^a-z0-9æøå\s-]/g, " ")
-    .split(/[\s-]+/)
-    .filter((t) => t.length >= 4 && !STOPWORDS.has(t));
-}
-
-function score(need: string, candidate: string): number {
-  const a = tokens(need);
-  const b = new Set(tokens(candidate));
-  if (!a.length) return 0;
-  return a.filter((t) => b.has(t)).length;
-}
 
 type Candidate =
   | { kind: "document"; id: string; label: string }
@@ -73,6 +55,9 @@ export function FindingDocumentationSuggestions({
   const documents = useCompanyDocuments();
   const competenceTypes = useCompetenceTypes();
   const audits = useComplianceAudits();
+  const inspection = useInspection(inspectionId);
+  const { organizationFor } = useEvidenceCoverage();
+  const companyId = inspection.data?.company_id ?? null;
   const { add } = useEvidenceMutations();
   const [dismissed, setDismissed] = useState<string[]>([]);
 
@@ -83,7 +68,9 @@ export function FindingDocumentationSuggestions({
 
   const rows = useMemo(() => {
     return needs.map((need: string) => {
-      const existing = evidence.filter((e) => score(need, `${e.label ?? ""} ${e.note ?? ""}`) > 0);
+      const existing = evidenceForDocumentationNeed(need, evidence, companyId, organizationFor);
+      const organizationLinked = isOrganizationDocumentationNeed(need) && evidence.some(e => e.source_kind === "organization_overview");
+      const organizationUnavailable = organizationLinked && (!companyId || organizationFor(companyId) === null);
       const candidates: Candidate[] = [];
 
       for (const t of competenceTypes.data ?? []) {
@@ -103,9 +90,9 @@ export function FindingDocumentationSuggestions({
         .slice(0, 5);
       for (const { d } of docs) candidates.push({ kind: "document", id: d.id, label: d.label });
 
-      return { need, existing, candidates: candidates.slice(0, 8) };
+      return { need, existing, organizationLinked, organizationUnavailable, candidates: candidates.slice(0, 8) };
     });
-  }, [needs, evidence, competenceTypes.data, audits.data, documents.data]);
+  }, [needs, evidence, companyId, organizationFor, competenceTypes.data, audits.data, documents.data]);
 
   if (!needs.length) return null;
 
@@ -130,29 +117,29 @@ export function FindingDocumentationSuggestions({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dokumentasjon som må fremskaffes</p>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Systemet har søkt i eksisterende dokumentasjon. Et treff er kun et forslag – du må godkjenne hva som faktisk
-        dokumenterer forholdet.
+        Dekning gjelder koblede bevis. Ansvarlig, svartekst, godkjenning, forhold rettet og bekreftelse av komplett
+        dokumentasjon på funnet behandles separat.
       </p>
 
-      {rows.map(({ need, existing, candidates }) => {
-        const status = existing.length ? "found" : candidates.length ? "possible" : "missing";
+      {rows.map(({ need, existing, candidates, organizationLinked, organizationUnavailable }) => {
+        const status = existing.length ? "found" : organizationUnavailable ? "unavailable" : candidates.length ? "possible" : "missing";
         return (
           <div key={need} className="rounded-md border bg-card px-3 py-2">
             <div className="flex flex-wrap items-center gap-2">
-              {status === "found" && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
-              {status === "possible" && <HelpCircle className="h-3.5 w-3.5 text-amber-600" />}
+              {status === "found" && <CheckCircle2 className="h-3.5 w-3.5 text-success" />}
+              {(status === "possible" || status === "unavailable") && <HelpCircle className="h-3.5 w-3.5 text-warning" />}
               {status === "missing" && <XCircle className="h-3.5 w-3.5 text-destructive" />}
               <span className="flex-1 min-w-[180px] text-sm">{need}</span>
               <Badge
                 variant="outline"
                 className={
                   "text-[10px] " +
-                  (status === "found" ? "border-emerald-500/40 text-emerald-600"
-                    : status === "possible" ? "border-amber-500/40 text-amber-600"
+                  (status === "found" ? "border-success/40 text-success"
+                    : status === "possible" || status === "unavailable" ? "border-warning/40 text-warning"
                       : "border-destructive/40 text-destructive")
                 }
               >
-                {status === "found" ? "Finnes allerede" : status === "possible" ? "Mulig dokumentasjon" : "Mangler"}
+                {status === "found" ? "Behov dekket" : status === "unavailable" ? "Kan ikke verifiseres nå" : status === "possible" ? "Mulig dokumentasjon" : "Mangler"}
               </Badge>
             </div>
 
@@ -160,6 +147,14 @@ export function FindingDocumentationSuggestions({
               <p className="mt-1 text-[11px] text-muted-foreground">
                 Koblet som bevis: {existing.map((e) => e.label ?? "Bevis").join(", ")}
               </p>
+            )}
+            {existing.some(e => e.source_kind === "organization_overview") && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {organizationFor(companyId)} aktive roller i gjeldende organisasjonsoversikt. Samlet bevis kan velges i svarpakken.
+              </p>
+            )}
+            {organizationUnavailable && !existing.length && (
+              <p className="mt-1 text-[11px] text-muted-foreground">Det koblede organisasjonsregisteret er ikke tilgjengelig for kontroll. Behovet er ikke bekreftet dekket.</p>
             )}
 
             {candidates.length > 0 && (
@@ -189,8 +184,9 @@ export function FindingDocumentationSuggestions({
 
             {status === "missing" && (
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Ingen eksisterende dokumentasjon treffer dette behovet. Dokumentasjonen må fremskaffes og lastes opp der
-                den hører hjemme, og deretter kobles som bevis.
+                {organizationLinked
+                  ? "Den koblede organisasjonsoversikten har ingen aktive roller eller tilhører ikke sakens selskap."
+                  : "Ingen koblede bevis dekker dette behovet. Koble relevant dokumentasjon som bevis."}
               </p>
             )}
           </div>

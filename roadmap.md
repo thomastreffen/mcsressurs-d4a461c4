@@ -1,5 +1,10 @@
 # Roadmap
 
+## DLE 63210 punkt 1 – dokumentasjonsbehov
+- [ ] Koble organisasjonskart/ansvarsmatrise til validert dynamisk organization_overview, uavhengig av behandlingsfeltene
+- [ ] Synliggjør separat manuell dokumentasjonsbekreftelse; bevar svarpakke/preflight uten automatisk godkjenning/retting/sending
+- [ ] Regresjonstester og visningskontroll uten produksjonsskriving; ingen publisering
+
 ## Tilsynsflyt publiseringskontroll – 27.10.2026
 - [x] Herdet eksisterende preview: innholds-/mottakerbundet bekreftelse før separat send, ingen omgåelse ved mangler; genererte vedlegg vises; DLE-filpanel krever klargjorte filer og bekreftelse
 - [x] Forberedelse lagrer draft/HTML og aldri oversendt; server kontrollerer bekreftelse, aktuelle funn, åpne tiltak/bevis og uendret svar; claim hindrer dobbel sending; først Microsoft-aksept gir submitted, aldri closed; feil/ukjent respons må ikke gjenåpne sent/sending
