@@ -19,7 +19,7 @@
 - Resource-plan creation validates one normalized controlled-form snapshot and reuses its title, primary date, technicians and deduplicated planning dates for writes; missing fields receive specific errors and focus. Why: visible selections and persisted assignments must agree without ambiguous aggregate validation.
 - Existing-project work visits permit an optional job name and otherwise inherit the company-authorized parent's title, not the formatted search label. Why: selecting a project is sufficient naming context without confusing display references with event identity.
 
-- Clear drafts/pending writes on save or confirmed discard; persist remaining chapter edits on partial save/reset. Why: saved/rejected edits must not return.
+- Clear drafts/pending writes on save/confirmed discard; retain remaining chapter edits on partial save/reset. Why: saved/rejected edits must not return.
 
 - Calendar/Tripletex/approval calls use invokeWithSession: await hydration, pin bearer, share refresh; only allow-listed reads retry once on 401, never mutations/403. Why: no anonymous requests or replayed writes.
 
