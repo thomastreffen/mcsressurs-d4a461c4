@@ -18,6 +18,8 @@ import { buildDleFiles, deliverDleBlob, type DleFile } from '@/lib/dle/export';
 import { prepareOutputs, saveDocumentationExport, sendDocumentationExport, markDocumentationDownloaded } from '@/lib/documentation/delivery';
 import { GENERAL_EXPORT_OPTIONS, availableGeneralExportKeys, loadOptionRecords, suggestedFindingIds } from '@/lib/documentation/inspection';
 import { isMarkdownFile } from '@/lib/external-document';
+import { CombinedPdfPreview } from '@/components/compliance/CombinedPdfPreview';
+import type { CombinedDocument } from '@/lib/documentation/combined-pdf';
 
 export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const {user}=useAuth();const {activeCompanyId,activeCompany,companies,setActiveCompanyId}=useCompanyContext();const access=useCompanyModuleAccess();const qc=useQueryClient();
@@ -42,6 +44,8 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const company=activeCompany?.name??'Firma';const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Oslo'});
   const options=[...GENERAL_EXPORT_OPTIONS.map(o=>({key:o.key as string,label:o.label})),...(findings.data??[]).map(f=>({key:`finding:${f.id}`,label:`Dokumentasjon knyttet til funn ${f.finding_number}`}))];
   const selected=files.filter(f=>!removed.has(f.key));
+  const pdfFindings=(findings.data??[]).filter(f=>choices.has(`finding:${f.id}`));
+  const pdfDocuments:CombinedDocument[]=selected.map(file=>({file,findingIds:pdfFindings.filter(f=>candidates.some(c=>c.finding_id===f.id && file.records.some(r=>r.id===c.key || (r.original && r.original.path===c.file_path && r.original.bucket===c.storage_bucket)))).map(f=>f.id)}));
   function reset(){setReviewed(false);setFiles([]);setSent(false);}
   async function review() {
     if(!activeCompanyId||inspection.data?.company_id!==activeCompanyId)return;setBusy(true);const result:DleFile[]=[];const gaps:string[]=[];
@@ -64,6 +68,7 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
     if(!activeCompanyId||!user||!inspection.data||inspection.data.company_id!==activeCompanyId||!selected.length)return;setBusy(true);
     try {
       const outputs=await prepareOutputs(selected,'files',company,'DLE-tilsyn',date);
+      if(action==='download'){for(const output of outputs)await deliverDleBlob(output.blob,output.name);setSent(true);return;}
       const saved=await saveDocumentationExport({companyId:activeCompanyId,userId:user.id,actor:user.name,company,purpose:`DLE-tilsyn – ${inspection.data.title}`,files:selected,outputs,format:'files',action,subject,message,to,cc,filters:{inspection_id:inspectionId,finding_ids:[...choices].filter(k=>k.startsWith('finding:')).map(k=>k.slice(8))}});
       if(action!=='download') await sendDocumentationExport(saved.id);
       if(action!=='email'){for(const output of outputs)await deliverDleBlob(output.blob,output.name);await markDocumentationDownloaded(saved.id);}

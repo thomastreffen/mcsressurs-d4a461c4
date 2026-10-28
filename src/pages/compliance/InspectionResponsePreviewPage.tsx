@@ -27,6 +27,8 @@ import { TONE_DOT, formatDate } from "@/lib/compliance";
 import { previewAllowsSend } from "../../../supabase/functions/_shared/inspection-send-policy";
 import { invokeWithSession } from "@/lib/invoke-session";
 import { externalDocumentBlob, externalDocumentMime } from "@/lib/external-document";
+import { CombinedPdfPreview } from '@/components/compliance/CombinedPdfPreview';
+import { candidateFiles } from '@/lib/documentation/combined-pdf';
 
 function toCsv(rows: string[][]): string {
   return rows.map((r) => r.map((c) => `"${(c ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
@@ -172,9 +174,8 @@ export default function InspectionResponsePreviewPage() {
       a.click();
       URL.revokeObjectURL(a.href);
 
-      await finalize.mutateAsync(finalizeInput("export"));
       if (missing.length) toast.warning(`${missing.length} vedlegg kunne ikke hentes: ${missing.join(", ")}`);
-      else toast.success("Svarpakken er eksportert og lagret i historikken");
+      else toast.success("Dokumentfilene er lastet ned. Ingen saksdata er endret.");
     } catch (e: any) {
       toast.error(e?.message ?? "Kunne ikke eksportere pakken");
     } finally {
@@ -336,6 +337,8 @@ export default function InspectionResponsePreviewPage() {
         </CardContent>
       </Card>
 
+      <CombinedPdfPreview input={{company:companyName || 'Firma',title:inspection.data.title,authority:inspection.data.authority_name,caseNumber:inspection.data.case_number,date:new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Oslo'}),recipient:[form.recipient_name,form.recipient_email].filter(Boolean).join(' · '),intro:form.intro,closing:form.closing,findings:chosenFindings,documents:candidateFiles(chosenAttachments,companyName || 'Firma',new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Oslo'}))}} />
+
       {/* Vedlegg og manifest */}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base">Vedlegg og dokumentmanifest</CardTitle></CardHeader>
@@ -398,7 +401,7 @@ export default function InspectionResponsePreviewPage() {
             <div className="flex flex-wrap justify-end gap-2">
               <Button size="sm" variant="outline" disabled={chosenFindings.length === 0 || busy !== ""} onClick={handleExport}>
                 {busy === "export" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
-                Eksporter pakke (ZIP)
+                Last ned dokumentfiler (ZIP)
               </Button>
               <Button
                 size="sm"
