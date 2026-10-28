@@ -4,6 +4,7 @@ import { defaultInspectionExportChoices, suggestedFindingIds } from '@/lib/docum
 import { buildCombinedPdf, candidateFiles } from '@/lib/documentation/combined-pdf';
 import { evidenceDocumentTitle, evidenceExportRecord, mergeEvidenceDocuments } from '@/lib/documentation/evidence-export';
 import { generateDlePdf } from '@/lib/dle/export';
+import type { DleFile } from '@/lib/dle/export';
 import { externalDocumentBlob } from '@/lib/external-document';
 import type { AttachmentCandidate } from '@/lib/response-package';
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
@@ -25,7 +26,8 @@ describe('Finding-first case 63210 export', () => {
     expect(docs.flatMap(d => d.file.records.map(r => r.id))).not.toContain('competence:fse');
   });
   it('uses evidence readiness, never finding numbers, for generated organization and regulation sources', () => {
-    expect(suggestedFindingIds([{...ready,id:'f1',finding_number:77},{...ready,id:'f3',finding_number:88}], [base,regulation])).toEqual(['f1','f3']);
+    const renumbered = [{...ready,id:'f1',finding_number:77},{...ready,id:'f3',finding_number:88}];
+    expect(suggestedFindingIds(renumbered, [base,regulation])).toEqual(['f1','f3']);
     expect(suggestedFindingIds(findings, [{...base,kind:'reference',generated:undefined,status_tone:'alert',reference_note:'Old 7-role note'}, {...regulation,status_tone:'alert',reference_note:null}])).toEqual([]);
   });
   it('does not preselect any broad general category, including populated organization or FSE', () => {
@@ -41,7 +43,7 @@ describe('Finding-first case 63210 export', () => {
     expect(docs[2].file.records).toHaveLength(2);
   });
   it('uses semantic titles for company-wide source records rather than person/role names', () => {
-    const file = {key:'chart',category:'chart' as const,name:'chart.pdf',path:'chart.pdf',records:[{id:'r1',title:'Daglig leder Rune Ørbeck',sections:[]},{id:'r2',title:'John Mandt',sections:[]}]};
+    const file: DleFile = {key:'chart',category:'chart',name:'chart.pdf',path:'chart.pdf',records:[{id:'r1',title:'Daglig leder Rune Ørbeck',sections:[]},{id:'r2',title:'John Mandt',sections:[]}]};
     expect(mergeEvidenceDocuments([{file,findingIds:[]}])[0].file.title).toBe('Organisasjonskart');
     expect(evidenceDocumentTitle({...base,source_kind:'competence',title:'Lift – Emil Strid'})).toBe('Kompetanseoversikt');
   });
