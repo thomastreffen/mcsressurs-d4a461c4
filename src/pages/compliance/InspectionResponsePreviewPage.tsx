@@ -17,6 +17,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { useFindingEvidence, useFindings, useInspection, useInspectionActions } from "@/hooks/useInspections";
+import { useEvidenceCoverage, deriveDocumentationStatus } from '@/hooks/useEvidenceCoverage';
 import { buildPreflight, useAttachmentCandidates, useCompetenceCoverageDetails, useResponsePackageMutations } from "@/hooks/useResponsePackages";
 import {
   buildEmailHtml, buildEmailText, buildExportNames, buildManifest, clearResponseDraft, defaultClosing, defaultIntro,
@@ -49,6 +50,8 @@ export default function InspectionResponsePreviewPage() {
   const evidence = useFindingEvidence(id);
   const actions = useInspectionActions(id);
   const { candidates, loading } = useAttachmentCandidates(findings.data ?? [], evidence.data ?? [], actions.data ?? []);
+  const coverage = useEvidenceCoverage();
+  const documentationByFinding = Object.fromEntries((findings.data ?? []).map(f => [f.id, deriveDocumentationStatus((evidence.data ?? []).filter(e => e.finding_id === f.id), coverage.coverageFor, coverage.organizationFor)]));
   const { detailFor } = useCompetenceCoverageDetails();
   const { finalize, markSendFailed } = useResponsePackageMutations();
 
@@ -60,9 +63,9 @@ export default function InspectionResponsePreviewPage() {
   const [confirmedPreview, setConfirmedPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    if (ready || !id || !inspection.data || !findings.data || !evidence.data || !actions.data || loading) return;
+    if (ready || !id || !inspection.data || !findings.data || !evidence.data || !actions.data || loading || coverage.loading) return;
     const d = loadResponseDraft(id);
-    const suggested = suggestedFindingIds(findings.data, candidates);
+    const suggested = suggestedFindingIds(findings.data, candidates, documentationByFinding);
     setSelection({ findings: new Set(d?.finding_ids ?? suggested), attachments: new Set(d?.attachment_keys ?? candidates.filter(c => suggested.includes(c.finding_id ?? "") && exportableEvidence(c)).map(c => c.key)) });
     setForm({
       recipient_name: d?.recipient_name ?? inspection.data.contact_name ?? "",
@@ -73,7 +76,7 @@ export default function InspectionResponsePreviewPage() {
       closing: d?.closing || defaultClosing(companyName),
     });
     setReady(true);
-  }, [ready, id, inspection.data, companyName, findings.data, evidence.data, actions.data, loading, candidates]);
+  }, [ready, id, inspection.data, companyName, findings.data, evidence.data, actions.data, loading, coverage.loading, candidates, documentationByFinding]);
 
   // Utkastet holdes i synk slik at bruker kan gå tilbake uten å miste arbeid
   useEffect(() => {
@@ -86,7 +89,7 @@ export default function InspectionResponsePreviewPage() {
     });
   }, [ready, id, form, selection]);
 
-  const chosenFindings = (findings.data ?? []).filter((f) => selection.findings.has(f.id));
+  const chosenFindings = (findings.data ?? []).filter((f) => selection.findings.has(f.id)).map(f => ({...f,documentation_status:documentationByFinding[f.id]}));
   const chosenAttachments = useMemo(
     () => candidates.filter((c) => selection.attachments.has(c.key) && selection.findings.has(c.finding_id ?? "")),
     [candidates, selection],

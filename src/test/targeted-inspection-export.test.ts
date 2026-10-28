@@ -35,6 +35,11 @@ describe('Finding-first case 63210 export', () => {
     for (const key of ['chart','matrix','competence','fse_training','internal_control']) expect(choices).not.toContain(key);
     expect(defaultInspectionExportChoices(findings, [])).toEqual([]);
   });
+  it('uses shared live documentation coverage, not stale raw none on a fully treated finding', () => {
+    const f = {...findings[0],documentation_status:'none'};
+    expect(defaultInspectionExportChoices([f],[base],{f1:'complete'})).toEqual(['finding:f1']);
+    expect(defaultInspectionExportChoices([f],[base],{f1:'gaps'})).toEqual([]);
+  });
   it('deduplicates shared sources by logical identity and unions finding support', () => {
     const docs = candidateFiles([base,{...base,key:'org2',finding_id:'f2'},routine,{...routine,key:'routine2',finding_id:'f3'},regulation,{...regulation,key:'reg2',source_ref_id:'fse',title:'FSE',reference_note:'Forskrift om sikkerhet'}], 'MCS', '2026-10-28');
     expect(docs).toHaveLength(3);

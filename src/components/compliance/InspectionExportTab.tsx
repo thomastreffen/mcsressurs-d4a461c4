@@ -13,6 +13,7 @@ import { useCompanyContext } from '@/hooks/useCompanyContext';
 import { useCompanyModuleAccess } from '@/hooks/useCompanyModuleAccess';
 import { useInspection, useFindings, useFindingEvidence, useInspectionActions } from '@/hooks/useInspections';
 import { useAttachmentCandidates } from '@/hooks/useResponsePackages';
+import { useEvidenceCoverage, deriveDocumentationStatus } from '@/hooks/useEvidenceCoverage';
 import { supabase } from '@/integrations/supabase/client';
 import { buildDleFiles, deliverDleBlob, type DleFile } from '@/lib/dle/export';
 import { prepareOutputs, saveDocumentationExport, sendDocumentationExport, markDocumentationDownloaded } from '@/lib/documentation/delivery';
@@ -26,6 +27,8 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const {user}=useAuth();const {activeCompanyId,activeCompany,companies,setActiveCompanyId}=useCompanyContext();const access=useCompanyModuleAccess();const qc=useQueryClient();
   const inspection=useInspection(inspectionId);const findings=useFindings(inspectionId);const evidence=useFindingEvidence(inspectionId);const actions=useInspectionActions(inspectionId);
   const {candidates,loading}=useAttachmentCandidates(findings.data??[],evidence.data??[],actions.data??[]);
+  const coverage=useEvidenceCoverage();
+  const documentationByFinding=Object.fromEntries((findings.data??[]).map(f=>[f.id,deriveDocumentationStatus((evidence.data??[]).filter(e=>e.finding_id===f.id),coverage.coverageFor,coverage.organizationFor)]));
   const [choices,setChoices]=useState<Set<string>>(new Set());const [files,setFiles]=useState<DleFile[]>([]);const [removed,setRemoved]=useState<Set<string>>(new Set());
   const [busy,setBusy]=useState(false);const [reviewed,setReviewed]=useState(false);const [missing,setMissing]=useState<string[]>([]);
   const [action,setAction]=useState('download');const [to,setTo]=useState('');const [cc,setCc]=useState('');const [subject,setSubject]=useState('');const [message,setMessage]=useState('');const [sent,setSent]=useState(false);
@@ -33,18 +36,18 @@ export function InspectionExportTab({inspectionId}:{inspectionId:string}) {
   const allowed=(key:string)=>access.can(key==='chart'||key==='matrix'?'organisation':key==='fse_training'||key==='competence'?'employees':'hms');
   useEffect(()=>{
     const scope=`${activeCompanyId}:${inspectionId}`;
-    if(initialized.current===scope||!inspection.data||inspection.data.company_id!==activeCompanyId||!findings.data||!evidence.data||!actions.data||access.loading||loading)return;
+    if(initialized.current===scope||!inspection.data||inspection.data.company_id!==activeCompanyId||!findings.data||!evidence.data||!actions.data||access.loading||loading||coverage.loading)return;
     initialized.current=scope;
     setTo(inspection.data.contact_email??'');setSubject(`Dokumentasjon – ${inspection.data.title}`);
-    const suggested=defaultInspectionExportChoices(findings.data,candidates);
+    const suggested=defaultInspectionExportChoices(findings.data,candidates,documentationByFinding);
     setChoices(new Set(suggested));
-  },[inspection.data,findings.data,evidence.data,actions.data,access.loading,activeCompanyId,loading,candidates,inspectionId]);
+  },[inspection.data,findings.data,evidence.data,actions.data,access.loading,activeCompanyId,loading,coverage.loading,candidates,inspectionId,documentationByFinding]);
   if(inspection.data && inspection.data.company_id !== activeCompanyId) return <div className="space-y-3"><h2 className="text-xl font-semibold">Eksport fra tilsynssak</h2><p className="text-sm text-muted-foreground">Velg sakens firma før dokumentasjonen hentes.</p>{companies.some(c=>c.id===inspection.data?.company_id) && <Button onClick={()=>{if(inspection.data)setActiveCompanyId(inspection.data.company_id);}}>Bytt til {companies.find(c=>c.id===inspection.data?.company_id)?.name ?? 'sakens firma'}</Button>}</div>;
   if(!access.can('hms','edit'))return <p className="text-sm text-muted-foreground">Du har ikke tilgang til eksport i dette firmaet.</p>;
   const company=activeCompany?.name??'Firma';const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Oslo'});
   const options=[...GENERAL_EXPORT_OPTIONS.map(o=>({key:o.key as string,label:o.label})),...(findings.data??[]).map(f=>({key:`finding:${f.id}`,label:`Dokumentasjon knyttet til funn ${f.finding_number}`}))];
   const selected=files.filter(f=>!removed.has(f.key));
-  const pdfFindings=(findings.data??[]).filter(f=>choices.has(`finding:${f.id}`));
+  const pdfFindings=(findings.data??[]).filter(f=>choices.has(`finding:${f.id}`)).map(f=>({...f,documentation_status:documentationByFinding[f.id]}));
   const pdfDocuments:CombinedDocument[]=mergeEvidenceDocuments(selected.map(file=>({file,findingIds:pdfFindings.filter(f=>file.key.startsWith(`finding:${f.id}:`) || candidates.some(c=>c.finding_id===f.id && file.records.some(r=>r.original && r.original.path===c.file_path && r.original.bucket===c.storage_bucket))).map(f=>f.id)})));
   function reset(){setReviewed(false);setFiles([]);setSent(false);}
   async function review() {

@@ -27,15 +27,16 @@ const EXPORT_READY_STATUSES = new Set(['ready', 'submitted', 'closed']);
 export function suggestedFindingIds(
   findings: (FindingDisplayInput & { id: string })[],
   candidates: AttachmentCandidate[],
+  documentationByFinding: Record<string, string> = {},
 ): string[] {
   return findings
-    .filter((f) => EXPORT_READY_STATUSES.has(findingDisplayStatus(f).status) && findingExportRecords(candidates, f.id).length > 0)
+    .filter((f) => EXPORT_READY_STATUSES.has(findingDisplayStatus(f, documentationByFinding[f.id]).status) && findingExportRecords(candidates, f.id).length > 0)
     .map((f) => f.id);
 }
 
 /** General categories are always explicit extras, even when populated. */
-export function defaultInspectionExportChoices(findings: (FindingDisplayInput & { id: string })[], candidates: AttachmentCandidate[]): string[] {
-  return suggestedFindingIds(findings, candidates).map(id => `finding:${id}`);
+export function defaultInspectionExportChoices(findings: (FindingDisplayInput & { id: string })[], candidates: AttachmentCandidate[], documentationByFinding: Record<string, string> = {}): string[] {
+  return suggestedFindingIds(findings, candidates, documentationByFinding).map(id => `finding:${id}`);
 }
 
 export function findingExportRecords(candidates: AttachmentCandidate[], findingId: string): DleRecord[] {

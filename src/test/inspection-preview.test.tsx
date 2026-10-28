@@ -7,6 +7,7 @@ vi.mock('@/lib/dle/export',async(importOriginal)=>({...await importOriginal<any>
 vi.mock("react-router-dom", () => ({ useParams: () => ({ id: "case" }), useNavigate: () => m.navigate }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ isSuperAdmin: true }) }));
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: () => true }) }));
+vi.mock('@/hooks/useEvidenceCoverage', () => ({ useEvidenceCoverage: () => ({loading:false,coverageFor:()=>null,organizationFor:()=>7}), deriveDocumentationStatus:()=> 'complete' }));
 vi.mock("@/hooks/useCompanyContext", () => ({ useCompanyContext: () => ({ activeCompany: { id: "service", name: "MCS Service AS" } }) }));
 vi.mock("@/components/compliance/DleExportPanel", () => ({ DleExportPanel: () => null }));
 vi.mock("@/lib/invoke-session", () => ({ invokeWithSession: m.send }));
