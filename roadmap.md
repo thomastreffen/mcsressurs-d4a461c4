@@ -1,8 +1,9 @@
 # Roadmap
 
 ## DLE AI-svartekst – faktisk nåstatus
-- [ ] La koblet dokumentasjon og gjeldende aktive roller styre svarforslaget foran eldre løsningstekster; skill dokumentasjonsdekning, manuelle behandlingsfelt og reelle åpne tiltak
-- [ ] Test forslag/faktagrunnlag og manuell godkjenning uten produksjonsskriving, e-post eller publisering
+- [x] Serveren leser gjeldende funn/bevis/tiltak med brukerens tilgang og sakens selskap; delt aktiv-rolle-regel brukes av UI/eksport/server. Koblet organisasjonsdekning gir fast etablert/koblet faktasetning; motsigende fremtidssvar avvises. Behandling og faktiske åpne tiltak holdes separate.
+- [x] 435 tester bestått i 53 filer, inkludert 10 isolerte serverkontroller og 2 nye tester av manuell bruk/godkjenning. Deno-typekontroll uten feil; automatisk app-bygg OK. Ingen produksjonsskriving, e-post eller publisering.
+- [ ] Koordinert publisering av app og finding-response-draft: avventer eksplisitt bestilling; klienten sender nå funn-/sak-ID for serverens faktalesing. Live AI/produksjonsvisning ikke kjørt for å unngå produksjonsskriving.
 
 ## DLE 63210 punkt 1 – dokumentasjonsbehov
 - [x] Semantisk kobling av organisasjonskart/ansvarsmatrise til organization_overview med gjeldende aktive roller og sakens selskap; fjernet/tomt/feil selskapsbevis dekker ikke behovet
