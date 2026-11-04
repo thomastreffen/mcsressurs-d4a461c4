@@ -1,3 +1,4 @@
+import { mergeScopedRoleIds } from "@/lib/role-scope";
 import { useEffect, useState, useCallback, createContext, useContext, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
