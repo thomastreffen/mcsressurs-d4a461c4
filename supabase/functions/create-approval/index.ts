@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
+import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -332,8 +333,12 @@ Deno.serve(async (req) => {
     const displayNumber = job.job_number || job.internal_number || "—";
 
     // Get MS token from caller for sending emails
-    const msToken = await getValidMsToken(supabaseAdmin, callerUserId);
-    if (!msToken) {
+    const useSystem = systemSenderEnabled();
+    const msToken = useSystem ? null : await getValidMsToken(supabaseAdmin, callerUserId);
+    const { data: callerAuth } = await supabaseAdmin.auth.admin.getUserById(callerUserId);
+    const replyTo = callerAuth?.user?.email ?? null;
+    const canSend = useSystem || !!msToken;
+    if (!canSend) {
       console.error("[create-approval] No valid MS token for caller:", callerUserId);
     }
 
@@ -356,20 +361,17 @@ Deno.serve(async (req) => {
           if (insErr) { results.push({ techId: tech.id, techName: tech.name, emailSent: false, error: insErr.message }); continue; }
           token = ins.token;
         }
-        if (!msToken || !tech.email) {
-          results.push({ techId: tech.id, techName: tech.name, emailSent: false, reason: !msToken ? "no_ms_token" : "no_email" });
+        if (!canSend || !tech.email) {
+          results.push({ techId: tech.id, techName: tech.name, emailSent: false, reason: !canSend ? "no_ms_token" : "no_email" });
           continue;
         }
         const techTimes = techTimeMap.get(tech.id);
         const { subject, body } = buildApprovalEmail(job, tech.name, token!, displayNumber, false, techTimes?.start_at, techTimes?.end_at, []);
-        const emailRes = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${msToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ message: { subject: `Jobbinfo (sendt på nytt): ${displayNumber} – ${job.title}`, body: { contentType: "HTML", content: body }, toRecipients: [{ emailAddress: { address: tech.email } }] } }),
-        });
-        const ok = emailRes.ok;
-        if (!ok) console.error("[create-approval] Resend failed:", tech.email, await emailRes.text());
-        results.push({ techId: tech.id, techName: tech.name, emailSent: ok });
+        const sent = await sendMail({ to: tech.email, subject: `Jobbinfo (sendt på nytt): ${displayNumber} – ${job.title}`, html: body, replyTo },
+          { personalToken: msToken, useSystem });
+        const ok = sent.ok;
+        if (!sent.ok) console.error("[create-approval] Resend failed:", sent.reason, sent.status);
+        results.push({ techId: tech.id, techName: tech.name, emailSent: ok, ...(sent.ok ? {} : { reasonCode: sent.reason, graphStatus: sent.status, error: sent.detail }) });
         await supabaseAdmin.from("event_logs").insert({
           event_id: job_id, performed_by: callerUserId, action_type: "info_resent",
           change_summary: ok ? `Jobbinfo med vedlegg sendt på nytt til ${tech.name} (${tech.email})` : `Kunne ikke sende jobbinfo på nytt til ${tech.name}`,
@@ -465,40 +467,17 @@ Deno.serve(async (req) => {
       }
 
       // Send email via Microsoft Graph
-      if (msToken && tech.email) {
+      if (canSend && tech.email) {
         const techTimes = techTimeMap.get(tech.id);
         const { subject, body } = buildApprovalEmail(job, tech.name, approvalToken, displayNumber, isTimeChange, techTimes?.start_at, techTimes?.end_at, infoChanges);
-
-        try {
-          const emailRes = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${msToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              message: {
-                subject,
-                body: { contentType: "HTML", content: body },
-                toRecipients: [{ emailAddress: { address: tech.email } }],
-              },
-            }),
-          });
-
-          if (!emailRes.ok) {
-            const errText = await emailRes.text();
-            console.error("[create-approval] Email send failed for:", tech.email, errText);
-            results.push({ techId: tech.id, token: approvalToken, emailSent: false, error: errText });
-          } else {
-            console.log("[create-approval] Email sent to:", tech.email);
-            results.push({ techId: tech.id, token: approvalToken, emailSent: true });
-          }
-        } catch (emailErr) {
-          console.error("[create-approval] Email exception:", emailErr);
-          results.push({ techId: tech.id, token: approvalToken, emailSent: false });
+        const sent = await sendMail({ to: tech.email, subject, html: body, replyTo }, { personalToken: msToken, useSystem });
+        if (sent.ok) results.push({ techId: tech.id, token: approvalToken, emailSent: true, graphStatus: sent.status });
+        else {
+          console.error("[create-approval] Email send failed:", sent.reason, sent.status);
+          results.push({ techId: tech.id, token: approvalToken, emailSent: false, reasonCode: sent.reason, graphStatus: sent.status, error: sent.detail });
         }
       } else {
-        results.push({ techId: tech.id, token: approvalToken, emailSent: false, reason: "No MS token or no email" });
+        results.push({ techId: tech.id, token: approvalToken, emailSent: false, reasonCode: !canSend ? "sender_no_ms_connection" : "no_email" });
       }
 
       // Log to event_logs
@@ -523,11 +502,13 @@ Deno.serve(async (req) => {
         continue;
       }
       const reason = r.emailSent ? null
-        : !msToken ? "sender_no_ms_connection"
+        : r.reasonCode ? r.reasonCode
+        : !canSend ? "sender_no_ms_connection"
         : !tech.email ? "no_email"
         : r.error ? "graph_error" : "send_failed";
       await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, technicianUserId: tech.user_id,
         recipientEmail: tech.email, channel: "email", status: r.emailSent ? "sent" : "failed", reasonCode: reason,
+        graphStatus: typeof r.graphStatus === "number" ? r.graphStatus : null,
         detail: typeof r.error === "string" ? r.error : null, attemptedBy: callerUserId });
     }
 
