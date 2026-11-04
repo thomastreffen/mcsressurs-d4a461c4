@@ -18529,6 +18529,7 @@ export type Database = {
         Returns: undefined
       }
       planning_storage_access: { Args: { _name: string }; Returns: boolean }
+      read_my_assigned_job: { Args: { _event: string }; Returns: Json }
       record_event_delivery: {
         Args: {
           _actor?: string
@@ -18618,6 +18619,10 @@ export type Database = {
           economic_project_master: boolean
           test_search_enabled: boolean
         }[]
+      }
+      save_permission_override_changes: {
+        Args: { _account: string; _changes: Json; _company: string }
+        Returns: undefined
       }
       scan_resource_plan_ghosts: { Args: never; Returns: Json }
       search_linked_financial_projects: {
