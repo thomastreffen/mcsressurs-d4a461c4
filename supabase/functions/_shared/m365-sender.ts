@@ -69,7 +69,8 @@ export async function sendMail(
   let token: string | null;
   let url: string;
   if (useSystem) {
-    token = await getAppToken(f);
+    if (Deno.env.get("M365_MAILBOX_SCOPE_VERIFIED") !== "true" || !pilotAllows([m.to])) return { ok: false, status: null, via: "system", reason: "pilot_blocked" };
+    try { token = await getAppToken(f); } catch { return { ok: false, status: null, via: "system", reason: "system_sender_unavailable" }; }
     if (!token) return { ok: false, status: null, via: "system", reason: "system_sender_unavailable" };
     url = `https://graph.microsoft.com/v1.0/users/${SYSTEM_MAILBOX}/sendMail`;
   } else {
