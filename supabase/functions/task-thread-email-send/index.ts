@@ -55,13 +55,6 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt);
     if (authErr || !user) return json({ error: "Unauthorized" }, 401);
 
-    // ── Check permission ──
-    const { data: canEmail } = await supabase.rpc("check_permission_v2", {
-      _auth_user_id: user.id,
-      _perm: "task_thread.email_external",
-    });
-    if (!canEmail) return json({ error: "Missing permission: task_thread.email_external" }, 403);
-
     // ── Get task (event) details ──
     const { data: task } = await supabase
       .from("events")
@@ -70,6 +63,14 @@ Deno.serve(async (req) => {
       .is("deleted_at", null)
       .single();
     if (!task) return json({ error: "Task not found" }, 404);
+
+    // ── Check permission in the task's own company (scoped overrides never leak across companies) ──
+    const { data: canEmail } = await supabase.rpc("check_permission_v2_company", {
+      _auth_user_id: user.id,
+      _perm: "task_thread.email_external",
+      _company_id: task.company_id,
+    });
+    if (!canEmail) return json({ error: "Missing permission: task_thread.email_external" }, 403);
 
     // ── Get assigned technicians with emails ──
     const { data: techLinks } = await supabase
