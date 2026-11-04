@@ -20,6 +20,9 @@ const REASON_LABEL: Record<string, string> = {
   send_failed: "Sending feilet",
   self_assigned: "Tildelt seg selv",
   in_progress: "Pågår",
+  pilot_blocked: "Avventer godkjent pilot og Microsoft-rettigheter",
+  unknown_graph_outcome: "Ukjent resultat – må avstemmes før nytt forsøk",
+  uncertain_operation: "Ukjent tidligere forsøk – må avstemmes",
 };
 
 interface Row {
@@ -78,6 +81,15 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
     },
     enabled: !!eventId,
   });
+  const { data: queue } = useQuery({
+    queryKey: ["m365-queue", eventId],
+    queryFn: async () => {
+      const result = await supabase.from("m365_communication_queue").select("id,operation,status,reason_code,attempt_count").eq("event_id", eventId);
+      if (result.error) throw result.error;
+      return result.data;
+    },
+    enabled: !!eventId,
+  });
   if (!data || technicians.length === 0) return null;
   const light = deliveryLight(technicians.map((t) => t.id), data);
   const retry = async () => {
@@ -101,6 +113,12 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
         )}
       </div>
       <Badge variant={light === "red" ? "destructive" : light === "yellow" ? "outline" : "secondary"}>{LIGHT_TEXT[light]}</Badge>
+      {queue?.filter(item => item.status !== "accepted").map(item => (
+        <p key={item.id} className="text-xs text-muted-foreground break-words">
+          {item.operation === "delete" ? "Fjerning" : item.operation === "update" ? "Endring" : "Opprettelse"}: {item.status === "uncertain" ? "Ukjent resultat – avstemming kreves" : item.status === "failed" ? "Feilet" : item.status === "processing" ? "Behandles" : "Venter"}
+          {item.reason_code ? ` · ${REASON_LABEL[item.reason_code] ?? "Kontroll kreves"}` : ""} · {item.attempt_count} forsøk
+        </p>
+      ))}
       {technicians.map((t) => {
         const rows = data.filter((r) => r.technician_id === t.id);
         if (rows.length === 0) return (

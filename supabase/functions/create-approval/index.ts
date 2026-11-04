@@ -451,7 +451,7 @@ Deno.serve(async (req) => {
             reminder_profile: rProfile,
             reminder_config: rConfig,
             token: newToken,
-            token_expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+            expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
           })
           .eq("job_id", job_id)
           .eq("technician_user_id", tech.user_id);
