@@ -505,6 +505,13 @@
       "when": 1793783880462,
       "tag": "0071_admin_tier_shadow_diff",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1793784245139,
+      "tag": "0072_company_admin_explicit_assignments",
+      "breakpoints": true
     }
   ]
 }
