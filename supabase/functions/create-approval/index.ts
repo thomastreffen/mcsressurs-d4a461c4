@@ -226,12 +226,8 @@ Deno.serve(async (req) => {
       .eq("user_id", callerUserId)
       .single();
 
-    if (!roleData || (roleData.role !== "admin" && roleData.role !== "super_admin")) {
-      return new Response(JSON.stringify({ error: "Forbidden - admin only" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Global admins pass; others need company-scoped resource_plan edit on the job's company (checked after job fetch).
+    const isGlobalAdmin = !!roleData && (roleData.role === "admin" || roleData.role === "super_admin");
 
     const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes, resend } = await req.json();
     const isResend = resend === true;
