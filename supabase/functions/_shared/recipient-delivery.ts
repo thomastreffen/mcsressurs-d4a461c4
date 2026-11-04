@@ -46,9 +46,10 @@ export function calendarResultToDelivery(status: string): { status: DeliveryStat
  */
 export function overallSyncStatus(statuses: DeliveryStatus[]): "synced" | "partial" | "failed" | null {
   if (statuses.length === 0) return null;
-  const sent = statuses.filter((s) => s === "sent" || s === "pending").length;
+  const sent = statuses.filter((s) => s === "sent").length;
+  const pending = statuses.filter((s) => s === "pending").length;
   if (sent === statuses.length) return "synced";
-  if (sent === 0) return "failed";
+  if (sent === 0 && pending === 0) return "failed";
   return "partial";
 }
 
@@ -56,28 +57,18 @@ export async function recordDelivery(supabaseAdmin: any, r: DeliveryRecord): Pro
   try {
     const now = new Date().toISOString();
     const { data: existing } = await supabaseAdmin
-      .from("event_recipient_delivery")
-      .select("id, attempt_count")
-      .eq("event_id", r.eventId).eq("technician_id", r.technicianId).eq("channel", r.channel)
-      .maybeSingle();
+      .from("event_recipient_delivery").select("attempt_count")
+      .eq("event_id", r.eventId).eq("technician_id", r.technicianId).eq("channel", r.channel).maybeSingle();
     const row = {
-      event_id: r.eventId,
-      technician_id: r.technicianId,
-      technician_user_id: r.technicianUserId ?? null,
-      recipient_email: r.recipientEmail ?? null,
-      channel: r.channel,
-      status: r.status,
-      reason_code: r.reasonCode ?? null,
-      graph_status: r.graphStatus ?? null,
-      detail: r.detail ? String(r.detail).slice(0, 500) : null,
-      attempted_by: r.attemptedBy ?? null,
-      last_attempt_at: now,
-      sent_at: r.status === "sent" ? now : null,
-      attempt_count: (existing?.attempt_count ?? 0) + 1,
+      event_id: r.eventId, technician_id: r.technicianId,
+      technician_user_id: r.technicianUserId ?? null, recipient_email: r.recipientEmail ?? null,
+      channel: r.channel, status: r.status, reason_code: r.reasonCode ?? null,
+      graph_status: r.graphStatus ?? null, detail: r.detail ? String(r.detail).slice(0, 500) : null,
+      attempted_by: r.attemptedBy ?? null, last_attempt_at: now,
+      sent_at: r.status === "sent" ? now : null, attempt_count: (existing?.attempt_count ?? 0) + 1,
     };
-    const { error } = existing
-      ? await supabaseAdmin.from("event_recipient_delivery").update(row).eq("id", existing.id)
-      : await supabaseAdmin.from("event_recipient_delivery").insert(row);
+    const { error } = await supabaseAdmin.from("event_recipient_delivery")
+      .upsert(row, { onConflict: "event_id,technician_id,channel" });
     if (error) console.error("[recipient-delivery] write failed:", error.message);
   } catch (e) {
     console.error("[recipient-delivery] exception:", e);
