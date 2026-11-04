@@ -44,20 +44,20 @@ describe("shared Microsoft sender", () => {
     const g = fakeGraph();
     const r = await sendMail({ to: "a@b.no", subject: "s", html: "h" }, { personalToken: null, useSystem: false, fetchImpl: g.f });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toBe("sender_no_ms_connection");
+    if (!r.ok) expect((r as any).reason).toBe("sender_no_ms_connection");
     expect(g.calls.length).toBe(0);
   });
 
   it("missing recipient email is a failure with reason, never a silent skip", async () => {
     const r = await sendMail({ to: "", subject: "s", html: "h" }, { personalToken: "x", useSystem: false, fetchImpl: fakeGraph().f });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toBe("no_email");
+    if (!r.ok) expect((r as any).reason).toBe("no_email");
   });
 
   it("Microsoft refusing permission is reported as graph_forbidden", async () => {
     const r = await sendMail({ to: "a@b.no", subject: "s", html: "h" }, { personalToken: null, useSystem: true, fetchImpl: fakeGraph(403).f });
     expect(r.ok).toBe(false);
-    if (!r.ok) { expect(r.reason).toBe("graph_forbidden"); expect(r.status).toBe(403); }
+    if (!r.ok) { expect((r as any).reason).toBe("graph_forbidden"); expect(r.status).toBe(403); }
   });
 
   it("payload has one recipient and no reply-to when none given", () => {

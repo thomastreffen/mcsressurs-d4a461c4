@@ -4,6 +4,8 @@
 // Pilot switch: SYSTEM_SENDER_MODE=postkontoret enables it; anything else keeps
 // the legacy personal-mailbox path so production behaviour is unchanged until approved.
 
+declare const Deno: { env: { get(k: string): string | undefined } };
+
 export const SYSTEM_MAILBOX = "postkontoret@mcsservice.no";
 
 export type SendResult =
