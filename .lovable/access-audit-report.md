@@ -71,3 +71,10 @@ Uten endring:
 **B. Rollesammenslåing.**
 - Emil Strid flyttes fra «Ressursplan» til den sammenslåtte rollen og mister `security.view`.
 - Eirik Oseth: ingen endring i rettigheter.
+
+## Utført 2026-11-04 08:47 UTC
+- Hans Jakob Risnes: hjemselskap BusBar AS, men han har også et AKTIVT medlemskap i MCS Service AS med rollen «Ressursplan» (fra 2026-03-26). Det medlemskapet er ikke endret.
+- Serverkontroll: `check_permission_v2_company` (selskapsbundet). `check_permission_v2` uten selskap teller bare overstyringer for hjemselskapet. Etterkontroll: 0 personer mister noe uten rolledekning.
+- E-post til eksterne fra oppgavetråd sjekkes nå i oppgavens selskap (funksjonen er deployet).
+- Emil Strid flyttet til Ressursplan-rollen uten security.view (v1+v2), med revisjonslogg. Eirik er uendret. Ingen overstyringer er endret (148 før og etter).
+- Ikke utført: sletting av duplikatrollen. Hans Jakob bruker den via medlemskapet i MCS Service, og han ville da mistet security.view der. Det krever en ny diff.

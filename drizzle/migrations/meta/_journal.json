@@ -470,6 +470,13 @@
       "when": 1793781122496,
       "tag": "0066_atomic_permission_changes_and_own_job_read",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1793782011986,
+      "tag": "0067_scope_aware_permission_check",
+      "breakpoints": true
     }
   ]
 }
