@@ -1,4 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { jobAttachmentLinks } from "../_shared/job-access-policy.ts";
+import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.ts";
+import { formatJobSchedule } from "../_shared/job-time.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -119,7 +122,7 @@ async function createOutlookEvent(
     subject,
     body: {
       contentType: "HTML",
-      content: `<b>Kunde:</b> ${job.customer || "Ikke angitt"}<br/><b>Adresse:</b> ${job.address || "Ikke angitt"}${job.description ? `<br/><b>Beskrivelse:</b> ${job.description}` : ""}`,
+      content: `<table>${briefEmailRows(buildOperationalJobBrief({ event: job }), { date: formatJobSchedule(job.start_time, job.end_time).startDate, time: `${formatJobSchedule(job.start_time, job.end_time).startTime} – ${formatJobSchedule(job.start_time, job.end_time).endTime}` })}</table>${jobAttachmentLinks(job.id, job.attachments)}`,
     },
     start: {
       dateTime: toLocalDateTimeString(job.start_time),
@@ -302,7 +305,7 @@ Deno.serve(async (req) => {
           // Fetch job details
           const { data: job } = await supabaseAdmin
             .from("events")
-            .select("title, description, start_time, end_time, address, customer, internal_number, job_number, microsoft_event_id")
+            .select("id,title,description,start_time,end_time,address,customer,internal_number,job_number,microsoft_event_id,site_contact_name,site_contact_phone,access_notes,attachments")
             .eq("id", approval.job_id)
             .single();
 

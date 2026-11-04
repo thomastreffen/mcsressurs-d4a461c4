@@ -7,6 +7,7 @@ import { formatJobSchedule } from "../_shared/job-time.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
 import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
+import { jobInfoUrl, jobAttachmentLinks } from "../_shared/job-access-policy.ts";
 
 
 
@@ -124,7 +125,7 @@ function buildApprovalEmail(
   const approveUrl = `${APP_URL}/approval/${token}?action=approve`;
   const rescheduleUrl = `${APP_URL}/approval/${token}?action=reschedule`;
   const rejectUrl = `${APP_URL}/approval/${token}?action=reject`;
-  const jobUrl = `${APP_URL}/jobs/${job.id}`;
+  const jobUrl = jobInfoUrl(job.id);
 
   const subject = isTimeChange
     ? `Tidsendring: ${displayNumber} – ${job.title}`
@@ -138,7 +139,7 @@ function buildApprovalEmail(
     <div style="margin: 16px 0; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
       <p style="margin: 0 0 8px; font-weight: 600; color: #64748b; font-size: 13px;">📎 Vedlegg</p>
       <ul style="margin: 0; padding-left: 20px;">
-        ${attachments.map((a: any) => `<li style="margin-bottom: 4px;"><a href="${escapeHtml(String(a.url || "#"))}" style="color: #2563eb; text-decoration: none;">${escapeHtml(String(a.name || "Vedlegg"))}</a></li>`).join("")}
+        <li><a href="${jobUrl}" style="color: #2563eb; text-decoration: none;">Åpne ${attachments.length} vedlegg i MCS Hub (innlogging kreves)</a></li>
       </ul>
     </div>`;
   }
@@ -176,7 +177,7 @@ function buildApprovalEmail(
     
     <p style="margin-top: 16px;"><a href="${jobUrl}" style="color: #2563eb; text-decoration: none; font-size: 13px;">🔗 Se jobben i MCS Ressurs</a></p>
     
-    <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">Denne lenken er gyldig i 48 timer. Du trenger ikke å logge inn for å svare.</p>
+    <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">Svarlenkene er gyldige i 48 timer og kan brukes én gang. Jobbinfo og vedlegg i MCS Hub er tilgjengelig også etter godkjenning, med innlogging og gjeldende jobbtilgang.</p>
   </div>
 </body>
 </html>`;
@@ -351,7 +352,7 @@ Deno.serve(async (req) => {
         }
         const times = techTimeMap.get(tech.id);
         const schedule = formatJobSchedule(job.start_time, job.end_time, times?.start_at, times?.end_at);
-        const html = `<h1>${escapeHtml(job.title)}</h1><p>Til informasjon – ingen oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>`;
+        const html = `<h1>${escapeHtml(job.title)}</h1><p>Til informasjon – ingen oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${jobAttachmentLinks(job.id, job.attachments)}`;
         await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, channel: "email", status: "pending", attemptedBy: callerUserId });
         const sent = await sendMail({ to: tech.email ?? "", subject: `Møte / informasjon: ${displayNumber} – ${job.title}`, html, replyTo }, { personalToken: msToken, useSystem });
         results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, ...(!sent.ok ? { reasonCode: sent.reason } : {}) });
