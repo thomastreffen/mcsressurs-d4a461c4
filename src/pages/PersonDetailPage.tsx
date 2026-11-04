@@ -367,7 +367,7 @@ export default function PersonDetailPage() {
       const { data: savedMemberships, error: membershipReadError } = await supabase.from("user_memberships").select("company_id,department_id,role_id").eq("user_id", account.auth_user_id).eq("is_active", true);
       if (roleReadError || membershipReadError) throw roleReadError ?? membershipReadError;
       const canonical = (items: unknown[]) => JSON.stringify(items.map(i => JSON.stringify(i)).sort());
-      const rolesChanged = canonical((savedRoles ?? []).map(r => r.role_id)) !== canonical([...new Set(assignedRoles)]);
+      const rolesChanged = canonical([...new Set((savedRoles ?? []).map(r => r.role_id))]) !== canonical([...new Set(assignedRoles)]);
       const nextMemberships = scopes.map(s => ({ company_id: s.company_id, department_id: s.department_id, role_id: s.department_id === null ? membershipRoles[s.company_id] ?? null : savedMemberships?.find(m => m.company_id === s.company_id && m.department_id === s.department_id)?.role_id ?? null }));
       const membershipsChanged = canonical(savedMemberships ?? []) !== canonical(nextMemberships);
       // Save roles (v2 + legacy sync)
