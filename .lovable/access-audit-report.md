@@ -131,3 +131,23 @@ Forslag (krever egen godkjenning og diff): ny `is_admin_for(company)` i regler m
 
 ### Sindre / Hans Jakob / Ressursplan
 Uendret i denne fasen. Hans Jakobs deaktivering i MCS Service står. Ressursplan-rollen som Emil har, gir ikke security.view. Den andre (2c92…, uten tildelte brukere i v2) har fortsatt security.view og skal ryddes med diff.
+
+## Global admin (2026-11-04) – kartlegging, ingen produksjonsendring
+Kilder til `is_admin()`: gammel rolle admin/super_admin ELLER v1 `admin.manage_users`.
+- v1-rolle «Planlegger/Admin» gir admin.manage_users til: Hans Jakob, John, Lars Erik, Mats, Simen, Sindre, Stian.
+- Rune Ørbeck: individuell v1-overstyring admin.manage_users=true.
+- Gammel rolle admin: John, Mats, Sindre, Simen. super_admin: kun Thomas.
+- Simen har v2 «Superadmin», men ikke super_admin → ikke superadmin i /admin/* i dag.
+- 164 regler bruker is_admin(); bl.a. user_roles, user_roles_v2, user_role_assignments, user_permission_overrides(+v2), user_memberships, permissions, user_scopes → alle 8 kan i dag gi seg selv/andre rettigheter (selv-eskalering).
+Lagt til (ubrukt): is_global_superadmin(uid), is_company_admin(uid, company).
+
+### Før/etter-diff (til godkjenning)
+| Person | Før | Etter |
+|---|---|---|
+| Thomas | superadmin | uendret |
+| Simen | global admin, ikke /admin | + super_admin (A) |
+| John, Mats | global admin | selskapsadmin MCS Service |
+| Sindre | global admin | selskapsadmin Service, Elektrotavler, BusBar (bør snevres inn) |
+| Hans Jakob, Lars Erik, Stian | global admin via v1 | ingen admin; beholder Prosjektleder/planlegging |
+| Rune | global admin via v1-overstyring | ingen admin; beholder operativ MCS Service-tilgang |
+Alle mister: endre roller/rettigheter/medlemskap, systemoppsett, data i selskaper uten medlemskap.
