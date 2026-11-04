@@ -1,3 +1,4 @@
+import { roleAssignmentDiff } from "@/lib/role-scope";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -371,10 +372,12 @@ export default function PersonDetailPage() {
       const membershipsChanged = canonical(savedMemberships ?? []) !== canonical(nextMemberships);
       // Save roles (v2 + legacy sync)
       if (rolesChanged) {
-      await must(supabase.from("user_roles_v2").delete().eq("user_account_id", account.id));
-      if (assignedRoles.length > 0) {
+      // Diff-based: removed roles are deleted, new roles added as global; company-scoped rows are never flattened.
+      const { removed, added } = roleAssignmentDiff((savedRoles ?? []).map(r => r.role_id), assignedRoles);
+      if (removed.length > 0) await must(supabase.from("user_roles_v2").delete().eq("user_account_id", account.id).in("role_id", removed));
+      if (added.length > 0) {
         await must(supabase.from("user_roles_v2").insert(
-          assignedRoles.map((rid) => ({ user_account_id: account.id, role_id: rid }))
+          added.map((rid) => ({ user_account_id: account.id, role_id: rid }))
         ));
       }
       await must(supabase.from("user_role_assignments").delete().eq("user_id", account.auth_user_id));

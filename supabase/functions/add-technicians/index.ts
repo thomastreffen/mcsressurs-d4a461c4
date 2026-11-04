@@ -176,10 +176,12 @@ Deno.serve(async (req) => {
           // Roles
           if (userAccountId && Array.isArray(role_ids) && role_ids.length > 0) {
             for (const rid of role_ids) {
-              await supabaseAdmin.from("user_roles_v2").upsert(
-                { user_account_id: userAccountId, role_id: rid },
-                { onConflict: "user_account_id,role_id" }
-              );
+              // Idempotent global assignment; never touches company-scoped rows of the same role.
+              const { data: existing } = await supabaseAdmin.from("user_roles_v2").select("id")
+                .eq("user_account_id", userAccountId).eq("role_id", rid).is("scope_company_id", null).maybeSingle();
+              if (!existing) {
+                await supabaseAdmin.from("user_roles_v2").insert({ user_account_id: userAccountId, role_id: rid });
+              }
             }
           }
 
