@@ -1,11 +1,11 @@
+import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
+import { recordDelivery } from "../_shared/recipient-delivery.ts";
+import { getApprovalCallerId } from "../_shared/approval-auth.ts";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { formatJobSchedule } from "../_shared/job-time.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+
 
 const APP_URL = "https://mcsressurs.lovable.app";
 
@@ -165,13 +165,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
-    const { data: userData, error: userErr } = await supabaseAnon.auth.getUser(jwt);
-    if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Invalid user" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const callerUserId = userData.user.id;
+    const callerUserId = await getApprovalCallerId(authHeader, supabaseAnon);
+    if (!callerUserId) return new Response(JSON.stringify({ error: "Invalid user" }), { status: 401, headers: corsHeaders });
 
     const body = (await req.json()) as NotifyBody;
     if (!body?.job_id || !Array.isArray(body?.changes) || body.changes.length === 0) {
@@ -188,6 +183,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    const { data: allowed } = await supabaseAdmin.rpc("has_company_access", { _uid: callerUserId, _company: job.company_id, _module: "resource_plan", _level: "edit" });
+    if (!allowed) return new Response(JSON.stringify({ error: "Ingen tilgang" }), { status: 403, headers: corsHeaders });
     // Load assigned technicians (or filter by passed list)
     const { data: assignments } = await supabaseAdmin
       .from("event_technicians").select("technician_id, start_at, end_at").eq("event_id", body.job_id);
@@ -206,7 +203,8 @@ Deno.serve(async (req) => {
       .from("technicians").select("id, name, email, user_id").in("id", techIds);
 
     const displayNumber = job.job_number || job.internal_number || "—";
-    const msToken = await getValidMsToken(supabaseAdmin, callerUserId);
+    const useSystem = systemSenderEnabled();
+    const msToken = useSystem ? null : await getValidMsToken(supabaseAdmin, callerUserId);
     const results: any[] = [];
 
     for (const tech of technicians || []) {
@@ -230,37 +228,13 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Email
-      if (msToken && tech.email) {
-        const assignment = assignments?.find((a: any) => a.technician_id === tech.id);
-        const recipientJob = { ...job, start_time: assignment?.start_at || job.start_time, end_time: assignment?.end_at || job.end_time };
-        const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes);
-        try {
-          const emailRes = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${msToken}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: {
-                subject,
-                body: { contentType: "HTML", content: html },
-                toRecipients: [{ emailAddress: { address: tech.email } }],
-              },
-            }),
-          });
-          if (!emailRes.ok) {
-            const errText = await emailRes.text();
-            console.error("[notify-event-changes] email failed", tech.email, errText);
-            results.push({ techId: tech.id, emailSent: false, error: errText });
-          } else {
-            results.push({ techId: tech.id, emailSent: true });
-          }
-        } catch (e) {
-          console.error("[notify-event-changes] email exception", e);
-          results.push({ techId: tech.id, emailSent: false, error: String(e) });
-        }
-      } else {
-        results.push({ techId: tech.id, emailSent: false, reason: "No MS token or no email" });
-      }
+      const assignment = assignments?.find((a: any) => a.technician_id === tech.id);
+      const recipientJob = { ...job, start_time: assignment?.start_at || job.start_time, end_time: assignment?.end_at || job.end_time };
+      const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes);
+      await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, channel: "email", status: "pending", attemptedBy: callerUserId });
+      const sent = await sendMail({ to: tech.email ?? "", subject, html }, { personalToken: msToken, useSystem });
+      await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: sent.ok ? "sent" : "failed", graphStatus: sent.status, reasonCode: sent.ok ? null : sent.reason, attemptedBy: callerUserId });
+      results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, ...(!sent.ok ? { reason: sent.reason } : {}) });
     }
 
     // Audit log

@@ -1,11 +1,11 @@
+import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
+import { recordDelivery } from "../_shared/recipient-delivery.ts";
+import { getApprovalCallerId } from "../_shared/approval-auth.ts";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { formatJobSchedule } from "../_shared/job-time.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+
 
 const APP_URL = "https://mcsressurs.lovable.app";
 
@@ -134,6 +134,10 @@ Deno.serve(async (req) => {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
+  const bearer = req.headers.get("Authorization")?.replace(/^Bearer /, "");
+  const internal = !!bearer && bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const caller = internal ? null : await getApprovalCallerId(req.headers.get("Authorization") ?? "", supabase);
+  if (!internal && !caller) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
   const now = new Date();
   const logs: string[] = [];
   const log = (msg: string) => {
@@ -256,6 +260,10 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      if (!internal) {
+        const { data: allowed } = await supabase.rpc("has_company_access", { _uid: caller, _company: job.company_id, _module: "resource_plan", _level: "edit" });
+        if (!allowed) continue;
+      }
       // ── GUARD: Job must not be deleted ──
       if (job.deleted_at) {
         log(`[ApprovalReminder][Skip] approval=${aid} reason=job_deleted`);
@@ -368,51 +376,13 @@ Deno.serve(async (req) => {
       const techTimes = tech ? assignmentTimeMap.get(approval.job_id)?.get(tech.id) : null;
       const { subject, body } = buildReminderEmail(job, tech.name, approval.token, displayNumber, currentCount + 1, techTimes?.start_at, techTimes?.end_at);
 
-      // Find an admin user with MS token to send from
-      let msToken: string | null = null;
-      if (job.created_by) {
-        msToken = await getValidMsToken(supabase, job.created_by);
-      }
-
-      if (!msToken) {
-        const { data: admins } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .in("role", ["admin", "super_admin"])
-          .limit(5);
-        for (const admin of admins || []) {
-          msToken = await getValidMsToken(supabase, admin.user_id);
-          if (msToken) break;
-        }
-      }
-
-      if (!msToken) {
-        log(`[ApprovalReminder][Skip] approval=${aid} reason=no_ms_token`);
-        skipped++;
-        continue;
-      }
-
+      const useSystem = systemSenderEnabled();
+      const msToken = useSystem ? null : job.created_by ? await getValidMsToken(supabase, job.created_by) : null;
       try {
-        const emailRes = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${msToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message: {
-              subject,
-              body: { contentType: "HTML", content: body },
-              toRecipients: [{ emailAddress: { address: tech.email } }],
-            },
-          }),
-        });
-
-        if (!emailRes.ok) {
-          const errText = await emailRes.text();
-          log(`[ApprovalReminder][Error] approval=${aid} reason=email_send_failed error=${errText.slice(0, 200)}`);
-          continue;
-        }
+        await recordDelivery(supabase, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: "pending", attemptedBy: job.created_by });
+        const result = await sendMail({ to: tech.email, subject, html: body }, { personalToken: msToken, useSystem });
+        await recordDelivery(supabase, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: result.ok ? "sent" : "failed", reasonCode: result.ok ? null : result.reason, graphStatus: result.status, attemptedBy: job.created_by });
+        if (!result.ok) { log(`[ApprovalReminder][Error] approval=${aid} reason=${result.reason} status=${result.status}`); continue; }
 
         // Update reminder count
         const newCount = currentCount + 1;

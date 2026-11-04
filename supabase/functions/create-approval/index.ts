@@ -1,3 +1,5 @@
+import { requiresApproval } from "../_shared/communication-policy.ts";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { resolveJobAddress } from "../_shared/job-address.ts";
 import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -6,11 +8,7 @@ import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
 import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+
 
 const APP_URL = "https://mcsressurs.lovable.app";
 
@@ -242,7 +240,7 @@ Deno.serve(async (req) => {
 
     const rProfile = reminder_profile || "standard";
     const rConfig = reminder_config || null;
-    const rRequired = response_required !== false;
+    let rRequired = response_required !== false;
     const isTimeChange = time_change === true;
     const infoChanges: InfoChange[] = Array.isArray(info_changes)
       ? info_changes.filter((c: any) => c && typeof c.label === "string").map((c: any) => ({
@@ -276,6 +274,7 @@ Deno.serve(async (req) => {
         });
       }
     }
+    rRequired = requiresApproval(job, response_required);
     // Operative address: newest event address, else the order's oppdragssted
     job.address = (await resolveJobAddress(supabaseAdmin, job)) || null;
     // Operational brief: edited event fields win, linked order fills the gaps (same helper as the app view).
@@ -345,6 +344,16 @@ Deno.serve(async (req) => {
     const results: any[] = [];
 
     for (const tech of technicians) {
+      if (!rRequired) {
+        const times = techTimeMap.get(tech.id);
+        const schedule = formatJobSchedule(job.start_time, job.end_time, times?.start_at, times?.end_at);
+        const html = `<h1>${escapeHtml(job.title)}</h1><p>Til informasjon – ingen oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>`;
+        await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, channel: "email", status: "pending", attemptedBy: callerUserId });
+        const sent = await sendMail({ to: tech.email ?? "", subject: `Møte / informasjon: ${displayNumber} – ${job.title}`, html, replyTo }, { personalToken: msToken, useSystem });
+        results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, ...(!sent.ok ? { reasonCode: sent.reason } : {}) });
+        continue;
+      }
+      if (!tech.user_id) { results.push({ techId: tech.id, emailSent: false, reasonCode: "no_login_link" }); continue; }
       const isSelf = tech.user_id === callerUserId;
 
       if (isResend) {
@@ -366,7 +375,7 @@ Deno.serve(async (req) => {
           continue;
         }
         const techTimes = techTimeMap.get(tech.id);
-        const { subject, body } = buildApprovalEmail(job, tech.name, token!, displayNumber, false, techTimes?.start_at, techTimes?.end_at, []);
+        const { subject, body } = buildApprovalEmail(job, tech.name, token ?? "", displayNumber, false, techTimes?.start_at, techTimes?.end_at, []);
         const sent = await sendMail({ to: tech.email, subject: `Jobbinfo (sendt på nytt): ${displayNumber} – ${job.title}`, html: body, replyTo },
           { personalToken: msToken, useSystem });
         const ok = sent.ok;
@@ -524,7 +533,7 @@ Deno.serve(async (req) => {
     }
 
     // After processing: update job status
-    if (isTimeChange) {
+    if (isTimeChange && rRequired) {
       // Time change: set status back to requested since approvals are reset
       await supabaseAdmin.from("events").update({ status: "requested" }).eq("id", job_id);
     } else {
