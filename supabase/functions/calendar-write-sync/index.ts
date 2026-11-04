@@ -3,7 +3,7 @@ import { organizerEnabled } from "../_shared/m365-sender.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { resolveJobAddress } from "../_shared/job-address.ts";
-import { calendarResultToDelivery, overallSyncStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
+import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 
@@ -916,7 +916,7 @@ Deno.serve(async (req) => {
           state: r.state, verificationSignal: r.signal,
         });
       }
-      const overall = overallSyncStatus(deliveryStatuses);
+      const overall = syncEvidenceStatus(results);
       if (overall) {
         await supabaseAdmin.from("events").update({
           outlook_sync_status: overall,
@@ -936,7 +936,7 @@ Deno.serve(async (req) => {
 
     console.log(`[calendar-write-sync] ${action} for event ${event_id}: ${results.length} technicians, status: ${overallStatus}`);
 
-    return new Response(JSON.stringify({ status: overallStatus, results, deliveryStatus: overallSyncStatus(results.map(r => calendarResultToDelivery(r.status).status)) }), {
+    return new Response(JSON.stringify({ status: overallStatus, results, deliveryStatus: syncEvidenceStatus(results) }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

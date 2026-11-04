@@ -25,9 +25,10 @@ export function calendarResultToDelivery(status: string): { status: DeliveryStat
   switch (status) {
     case "created":
     case "updated":
-    case "already_exists":
     case "deleted":
       return { status: "sent", reason: null };
+    case "already_exists":
+      return { status: "pending", reason: "awaiting_verification" };
     case "in_progress":
       return { status: "pending", reason: "in_progress" };
     case "no_token":
@@ -41,6 +42,14 @@ export function calendarResultToDelivery(status: string): { status: DeliveryStat
     default:
       return { status: "failed", reason: status || "error" };
   }
+}
+
+/** Aggregate evidence, not HTTP acceptance. Legacy object existence remains unverified. */
+export function syncEvidenceStatus(results: { status: string; state?: string; signal?: string | null }[]): "synced" | "partial" | "failed" | null {
+  if (!results.length) return null;
+  if (results.every(r => r.state === "verified" && !!r.signal)) return "synced";
+  if (results.every(r => r.state === "failed" || (!r.state && calendarResultToDelivery(r.status).status === "failed"))) return "failed";
+  return "partial";
 }
 
 /**
