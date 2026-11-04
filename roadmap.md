@@ -1,5 +1,12 @@
 # Roadmap
 
+## Pålitelig Microsoft 365 – utvikling, brytere av
+- [ ] Felles avsender og sporbar approval/påminnelse/endring; kartlegg resterende automatiske veier uten å bryte Postkontoret.
+- [ ] Migreringskompatibel arrangørkalender bak separat bryter; idempotent create/update/delete og eksplisitt responsstatus.
+- [ ] Ærlig kanalstatus, planleggervarsel og sikker retry uten falsk leveringsbekreftelse.
+- [ ] Graph-mock-regresjoner og isolerte schema/RLS-tester; ingen reelle meldinger eller produksjonsaktivering.
+- [ ] Microsoft-admin bekrefter postboksavgrensede rettigheter og godkjenner avgrenset pilot før aktivering/publisering.
+
 ## Målrettet svarpakke fra funn
 - [x] Funnvalg og PDF-status bruker findingDisplayStatus med eksisterende live dokumentasjonsdekning. Koblet generert/original/tilgjengelig referansebevis teller; regelverk løses fra selskapsavgrenset kilde, generelle kategorier kun manuelle avanserte tillegg, semantiske dokumenttitler og kildededuplisering med samlet funnstøtte. Default venter på funn/bevis/tiltak/kilder, eksisterende manuelle utkast beholdes.
 - [x] 485 tester i 59 filer, automatisk typekontroll/bygg OK; isolert 63210-lignende 9-siders PDF med funn 1/2/3, innfelt organisasjon/revisjon/regelverk, identisk nedlasting og mobil uten overflow kontrollert. Historisk bevis beholdes med datoforbehold utenfor beviset. Ingen produksjonsskriving, sending eller publisering.
