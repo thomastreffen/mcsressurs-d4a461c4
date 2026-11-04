@@ -1,10 +1,11 @@
 # Roadmap
 
 ## Pålitelig Microsoft 365 – utvikling, brytere av
-- [ ] Felles avsender og sporbar approval/påminnelse/endring; kartlegg resterende automatiske veier uten å bryte Postkontoret.
-- [ ] Migreringskompatibel arrangørkalender bak separat bryter; idempotent create/update/delete og eksplisitt responsstatus.
-- [ ] Ærlig kanalstatus, planleggervarsel og sikker retry uten falsk leveringsbekreftelse.
-- [ ] Graph-mock-regresjoner og isolerte schema/RLS-tester; ingen reelle meldinger eller produksjonsaktivering.
+- [x] Felles avsender i approval/resend/påminnelse/endring, pilotavgrenset og brytere fortsatt fraværende/av. Eksisterende Postkontoret-ruter beholdt.
+- [x] Separat arrangørkalender med stable IDs, claim og create/update/delete/reconcile for kjent ID; legacy-ID-er urørt, ingen ekte sending.
+- [x] Graph-aksept er ikke levering; kanalvisning, planleggervarsel og vedvarende kø med trigger-intensjon, begrenset create-dispatch. Additive schema/RPC/RLS installert uten historisk backfill.
+- [x] Isolerte handler-/Graph-/SQL-/UI-tester og kompilering kontrollert; sluttresultat rapporteres etter full regresjon.
+- [ ] Full kødrift for endring/fjernet montør/sletting, automatisk svaravstemming og ukjent create uten ID gjenstår; disse veiene blokkeres i ny dispatcher. Eldre tasks-sync og direkte klientveier ikke samlet; ikke full driftsklar eller pilotklar.
 - [ ] Microsoft-admin bekrefter postboksavgrensede rettigheter og godkjenner avgrenset pilot før aktivering/publisering.
 
 ## Målrettet svarpakke fra funn

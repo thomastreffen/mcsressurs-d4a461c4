@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { calendarResultToDelivery, overallSyncStatus } from "../../supabase/functions/_shared/recipient-delivery";
+import { calendarResultToDelivery, overallSyncStatus, syncEvidenceStatus } from "../../supabase/functions/_shared/recipient-delivery";
 import { deliveryLabel } from "@/components/RecipientDeliveryStatus";
 
 describe("per-recipient delivery", () => {
+  it("Graph acceptance and stored legacy IDs never make the evidence aggregate synced", () => {
+    expect(syncEvidenceStatus([{ status: "created", state: "accepted_by_graph" }, { status: "already_exists" }])).toBe("partial");
+    expect(syncEvidenceStatus([{ status: "already_exists", state: "verified", signal: "attendee_accepted" }])).toBe("synced");
+  });
   it("is only synced when every recipient succeeded", () => {
     expect(overallSyncStatus(["sent", "sent"])).toBe("synced");
   });
