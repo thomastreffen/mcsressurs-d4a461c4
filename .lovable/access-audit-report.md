@@ -78,3 +78,12 @@ Uten endring:
 - E-post til eksterne fra oppgavetråd sjekkes nå i oppgavens selskap (funksjonen er deployet).
 - Emil Strid flyttet til Ressursplan-rollen uten security.view (v1+v2), med revisjonslogg. Eirik er uendret. Ingen overstyringer er endret (148 før og etter).
 - Ikke utført: sletting av duplikatrollen. Hans Jakob bruker den via medlemskapet i MCS Service, og han ville da mistet security.view der. Det krever en ny diff.
+
+## Utført 2026-11-04 (Hans Jakob Risnes, godkjent diff)
+- Årsak: Personer-listen filtrerer på ansettelse (bare i BusBar), mens et aktivt medlemskap i MCS Service ga datatilgang i ~88 tabeller.
+- A: Medlemskapet i MCS Service er satt inaktivt (raden er beholdt).
+- B: De MCS Service-bundne overstyringene jobs.view og resourceplan.view_external_titles er fjernet. Overstyringer totalt: 148 -> 146.
+- BusBar er uendret: medlemskap, regulation.review, task_thread.email_external, roller og innlogging.
+- Revisjonslogg: membership_deactivated + 2x override_removed, med tidligere verdier.
+- IKKE utført: C (begrense rollene Prosjektleder og Planlegger/Admin til BusBar). Det har ingen effekt før serversjekken tar hensyn til rollens selskap, og krever en egen diff for alle.
+- Integritetssjekk: Sindre Ulriksen har et aktivt medlemskap i BusBar AS uten ansettelse der. Ikke endret, og må avklares.
