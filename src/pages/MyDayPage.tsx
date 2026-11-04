@@ -1,4 +1,6 @@
 import { MyPlanningTasks } from "@/components/planning/MyPlanningTasks";
+import { HomeScreenHelp } from "@/components/pwa/HomeScreenHelp";
+import { useNotifications } from "@/hooks/useNotifications";
 import { useState, useRef, useCallback } from "react";
 import { checkRequiredForms } from "@/components/forms/ProjectFormsSection";
 import { useNavigate } from "react-router-dom";
@@ -618,6 +620,8 @@ export default function MyDayPage() {
   const [selectedBlock, setSelectedBlock] = useState<MyDayBlock | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
+  const { notifications } = useNotifications();
+  const importantChanges = notifications.filter(n => !n.read && n.event_id && n.priority !== "info");
   const jobIds = [...todayBlocks, ...upcomingBlocks].map((b) => b.project_id).filter(Boolean) as string[];
   const unreadMessages = useMyJobUnreadMessages(jobIds);
   const titleFor = (id: string) => [...todayBlocks, ...upcomingBlocks].find((b) => b.project_id === id);
@@ -680,6 +684,7 @@ export default function MyDayPage() {
       </div>
 
       <div className="px-4 pt-4 space-y-6">
+        {importantChanges.length > 0 && <section aria-label="Viktige endringer" className="space-y-2"><h2 className="font-semibold">Viktige endringer</h2>{importantChanges.map(n => <Button key={n.id} variant="outline" className="min-h-11 h-auto w-full whitespace-normal text-left justify-start py-3" onClick={() => navigate(`/job-info/${n.event_id}`)}><span><strong>{n.title}</strong>{n.message && <span className="block text-sm text-muted-foreground">{n.message}</span>}</span></Button>)}</section>}
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
@@ -733,7 +738,7 @@ export default function MyDayPage() {
                     return (
                       <button
                         key={m.id}
-                        onClick={() => navigate(`/projects/${m.projectId}`)}
+                        onClick={() => navigate(`/job-info/${m.projectId}`)}
                         className="w-full min-h-14 rounded-2xl border border-border bg-card px-4 py-3 text-left active:bg-muted/60"
                       >
                         <div className="flex items-center gap-2">
@@ -768,6 +773,7 @@ export default function MyDayPage() {
             )}
           </>
         )}
+        <HomeScreenHelp />
       </div>
     </div>
   );
