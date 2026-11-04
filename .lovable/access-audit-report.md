@@ -151,3 +151,9 @@ Lagt til (ubrukt): is_global_superadmin(uid), is_company_admin(uid, company).
 | Hans Jakob, Lars Erik, Stian | global admin via v1 | ingen admin; beholder Prosjektleder/planlegging |
 | Rune | global admin via v1-overstyring | ingen admin; beholder operativ MCS Service-tilgang |
 Alle mister: endre roller/rettigheter/medlemskap, systemoppsett, data i selskaper uten medlemskap.
+
+### Fase 1–2 utført (2026-11-04), ingen produksjonsrettighet endret
+- is_admin()-regler i dag: 155 (a) 16 på tilgangsstyringstabeller (user_roles, user_roles_v2, user_role_assignments, user_permission_overrides(+v2), user_memberships, permissions, user_scopes, user_accounts, cross_company_access_grants) → mål: kun is_global_superadmin. (b) 26 selskapsfiltrerte → mål: is_company_admin(uid, rad.company_id). (c) 113 uten selskapsfilter på 64 tabeller → mål: is_company_admin via radens selskap; må kartlegges tabell for tabell før aktivering.
+- Tjenestenøkkel: 100 serverfunksjoner; 65 uten egen rollesjekk, 33 uten selskapsreferanse (mange er token-/cron-flyter med vilje). Må gjennomgås én og én før fase 3 D.
+- Nytt, ubrukt i regler: is_global_superadmin, is_company_admin, admin_tier_shadow_diff() (lesing, kun superadmin).
+- Venter på godkjenning: A (Simen super_admin), B (fjerne admin.manage_users fra Planlegger/Admin og Rune), C (legacy admin → selskapsadmin), D (aktivere nye regler).
