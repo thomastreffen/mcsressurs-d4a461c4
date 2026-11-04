@@ -12,6 +12,9 @@ const REASON_LABEL: Record<string, string> = {
   sender_no_ms_connection: "Avsender mangler Microsoft-kobling",
   graph_conflict: "Kalenderkonflikt",
   graph_error: "Microsoft avviste sendingen",
+  graph_forbidden: "Mangler tillatelse hos Microsoft",
+  system_sender_unavailable: "Felles postboks utilgjengelig",
+  network_error: "Nettverksfeil",
   send_failed: "Sending feilet",
   self_assigned: "Tildelt seg selv",
   in_progress: "Pågår",
@@ -27,7 +30,7 @@ interface Row {
 
 export function deliveryLabel(r: Pick<Row, "channel" | "status" | "reason_code">): string {
   const what = r.channel === "calendar" ? "Kalender" : "E-post";
-  if (r.status === "sent") return `${what} sendt`;
+  if (r.status === "sent") return `${what} overlevert til Microsoft`;
   if (r.status === "pending") return `${what} pågår`;
   const reason = r.reason_code ? REASON_LABEL[r.reason_code] ?? r.reason_code : null;
   if (r.status === "skipped") return `${what}: ${reason ?? "ikke sendt"}`;
