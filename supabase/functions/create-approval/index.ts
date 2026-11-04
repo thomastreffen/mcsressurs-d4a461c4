@@ -229,9 +229,9 @@ Deno.serve(async (req) => {
     // Global admins pass; others need company-scoped resource_plan edit on the job's company (checked after job fetch).
     const isGlobalAdmin = !!roleData && (roleData.role === "admin" || roleData.role === "super_admin");
 
-    const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes, resend } = await req.json();
-    const isResend = resend === true;
-    if (!job_id) {
+    const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes, resend, technician_ids, queue_dispatch } = await req.json();
+    const isResend = resend === true || queue_dispatch === true;
+    if (typeof job_id !== "string" || !/^[0-9a-f-]{36}$/i.test(job_id)) {
       return new Response(JSON.stringify({ error: "Missing job_id" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -316,7 +316,7 @@ Deno.serve(async (req) => {
       techTimeMap.set(a.technician_id, { start_at: a.start_at, end_at: a.end_at });
     }
 
-    const techIds = assignments.map((a: any) => a.technician_id);
+    const techIds = assignments.map((a: any) => a.technician_id).filter((id: string) => !Array.isArray(technician_ids) || technician_ids.includes(id));
     const { data: technicians } = await supabaseAdmin
       .from("technicians")
       .select("id, name, email, user_id")
@@ -345,6 +345,10 @@ Deno.serve(async (req) => {
 
     for (const tech of technicians) {
       if (!rRequired) {
+        if (queue_dispatch === true) {
+          const { data: previous } = await supabaseAdmin.from("event_recipient_delivery").select("status").eq("event_id", job_id).eq("technician_id", tech.id).eq("channel", "email").maybeSingle();
+          if (previous?.status === "sent" || previous?.status === "pending") { results.push({ techId: tech.id, emailSent: previous.status === "sent", alreadyRecorded: true }); continue; }
+        }
         const times = techTimeMap.get(tech.id);
         const schedule = formatJobSchedule(job.start_time, job.end_time, times?.start_at, times?.end_at);
         const html = `<h1>${escapeHtml(job.title)}</h1><p>Til informasjon – ingen oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>`;
@@ -354,6 +358,11 @@ Deno.serve(async (req) => {
         continue;
       }
       if (!tech.user_id) { results.push({ techId: tech.id, emailSent: false, reasonCode: "no_login_link" }); continue; }
+      if (queue_dispatch === true) {
+        const { data: delivery } = await supabaseAdmin.from("event_recipient_delivery").select("status,delivery_state").eq("event_id", job_id).eq("technician_id", tech.id).eq("channel", "email").maybeSingle();
+        if (delivery && (delivery.status === "sent" || delivery.status === "pending")) { results.push({ techId: tech.id, emailSent: delivery.status === "sent", alreadyRecorded: true }); continue; }
+      }
+      await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, channel: "email", status: "pending", attemptedBy: callerUserId });
       const isSelf = tech.user_id === callerUserId;
 
       if (isResend) {
@@ -504,7 +513,7 @@ Deno.serve(async (req) => {
     // Per-recipient email delivery record (visible in the app, no secrets)
     for (const r of results) {
       const tech = technicians.find((t: any) => t.id === r.techId);
-      if (!tech) continue;
+      if (!tech || r.alreadyRecorded) continue;
       if (r.autoApproved) {
         await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, technicianUserId: tech.user_id,
           recipientEmail: tech.email, channel: "email", status: "skipped", reasonCode: "self_assigned", attemptedBy: callerUserId });

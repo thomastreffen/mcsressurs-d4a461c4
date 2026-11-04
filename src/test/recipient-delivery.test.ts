@@ -29,12 +29,12 @@ describe("task delivery light", () => {
     expect(overallSyncStatus(["sent", "pending"])).toBe("partial");
   });
   it("red when any technician failed (medarbeidermøte)", () => {
-    expect(deliveryLight(ids, [{ technician_id: "a", status: "sent" }, { technician_id: "b", status: "failed" }, { technician_id: "c", status: "sent" }])).toBe("red");
+    expect(deliveryLight(ids, [{ technician_id: "a", status: "sent" }, { technician_id: "b", status: "failed", channel: "email" }, { technician_id: "c", status: "sent" }])).toBe("red");
   });
   it("yellow when a technician has no recorded attempt", () => {
     expect(deliveryLight(ids, [{ technician_id: "a", status: "sent" }, { technician_id: "b", status: "sent" }])).toBe("yellow");
   });
-  it("green only when all sent", () => {
-    expect(deliveryLight(ids, ids.map((id) => ({ technician_id: id, status: "sent" as const })))).toBe("green");
+  it("Graph acceptance alone stays yellow", () => {
+    expect(deliveryLight(ids, ids.map((id) => ({ technician_id: id, status: "sent" as const })))).toBe("yellow");
   });
 });

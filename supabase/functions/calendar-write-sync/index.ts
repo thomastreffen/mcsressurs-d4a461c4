@@ -4,7 +4,7 @@ import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { resolveJobAddress } from "../_shared/job-address.ts";
 import { calendarResultToDelivery, overallSyncStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 
 
@@ -828,7 +828,7 @@ Deno.serve(async (req) => {
 
       if (fallbackTech?.user_id) {
         techRows.push({
-          eventTechRow: { id: null, calendar_event_id: event.microsoft_event_id || null },
+          eventTechRow: { id: null, calendar_event_id: event.microsoft_event_id || null, start_at: null, end_at: null },
           tech: fallbackTech,
         });
       }
@@ -892,7 +892,7 @@ Deno.serve(async (req) => {
 
     // Update legacy microsoft_event_id on events table for backward compat
     const firstCreated = results.find(r => r.calendarEventId);
-    if (firstCreated && !event.microsoft_event_id) {
+    if (firstCreated && !event.microsoft_event_id && !results.some(r => r.state)) {
       await supabaseAdmin.from("events").update({
         microsoft_event_id: firstCreated.calendarEventId,
         outlook_last_synced_at: new Date().toISOString(),
@@ -925,7 +925,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (action === "delete" && overallStatus === "deleted") {
+    if (action === "delete" && results.every(r => r.status === "deleted")) {
       await supabaseAdmin.from("events").update({
         microsoft_event_id: null,
         microsoft_etag: null,

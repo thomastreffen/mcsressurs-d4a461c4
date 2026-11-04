@@ -2,7 +2,7 @@ import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
 
 
