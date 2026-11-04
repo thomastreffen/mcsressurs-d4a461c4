@@ -2111,6 +2111,44 @@ export type Database = {
         }
         Relationships: []
       }
+      company_admin_assignments: {
+        Row: {
+          auth_user_id: string
+          company_id: string
+          created_at: string
+          granted_by: string | null
+          id: string
+          reason: string | null
+          revoked_at: string | null
+        }
+        Insert: {
+          auth_user_id: string
+          company_id: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          reason?: string | null
+          revoked_at?: string | null
+        }
+        Update: {
+          auth_user_id?: string
+          company_id?: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          reason?: string | null
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_admin_assignments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_module_access: {
         Row: {
           company_id: string
@@ -17768,6 +17806,7 @@ export type Database = {
           technician_id: string
         }[]
       }
+      event_company_id: { Args: { _event_id: string }; Returns: string }
       event_module_access: {
         Args: { _event: string; _level?: string; _uid: string }
         Returns: boolean
