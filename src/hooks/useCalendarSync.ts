@@ -1,3 +1,4 @@
+import { invokeWithSession } from "@/lib/invoke-session";
 import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,17 +21,19 @@ export function useCalendarSync() {
 
   const syncCreate = useCallback(async (eventId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke("calendar-write-sync", {
+      const { data, error } = await invokeWithSession("calendar-write-sync", {
         body: { action: "create", event_id: eventId },
       });
       if (error) {
         console.error("[CalendarSync] create invoke error:", error);
         return;
       }
-      if (data?.status === "created") {
+      if (data?.deliveryStatus === "partial" || data?.deliveryStatus === "failed") {
+        toast.error("Outlook er ikke bekreftet for alle montører", { description: "Se utsending per montør." });
+      } else if (data?.status === "created") {
         console.log("[CalendarSync] Outlook event created:", data.graph_event_id);
       } else if (data?.status === "no_token") {
-        // Silent – no MS connection
+        toast.error("Oppgaven er lagret, men Outlook mangler Microsoft-kobling");
       } else if (data?.status === "error") {
         console.error("[CalendarSync] create error:", data.code, data.detail);
         toast.error("Oppdraget ble lagret, men kalendersynk feilet", {
@@ -48,11 +51,15 @@ export function useCalendarSync() {
 
   const syncUpdate = useCallback(async (eventId: string): Promise<"synced" | "conflict" | "error" | "no_token" | "unknown"> => {
     try {
-      const { data, error } = await supabase.functions.invoke("calendar-write-sync", {
+      const { data, error } = await invokeWithSession("calendar-write-sync", {
         body: { action: "update", event_id: eventId },
       });
       if (error) {
         console.error("[CalendarSync] update invoke error:", error);
+        return "error";
+      }
+      if (data?.deliveryStatus === "partial" || data?.deliveryStatus === "failed") {
+        toast.error("Outlook er ikke oppdatert for alle montører");
         return "error";
       }
       if (data?.status === "updated" || data?.status === "created") {
@@ -85,7 +92,7 @@ export function useCalendarSync() {
 
   const syncDelete = useCallback(async (eventId: string): Promise<"deleted" | "not_found" | "error" | "no_token" | "unknown"> => {
     try {
-      const { data, error } = await supabase.functions.invoke("calendar-write-sync", {
+      const { data, error } = await invokeWithSession("calendar-write-sync", {
         body: { action: "delete", event_id: eventId },
       });
       if (error) {
@@ -119,7 +126,7 @@ export function useCalendarSync() {
 
   const forceUpdate = useCallback(async (eventId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke("calendar-write-sync", {
+      const { data, error } = await invokeWithSession("calendar-write-sync", {
         body: { action: "force_update", event_id: eventId },
       });
       if (error) {
