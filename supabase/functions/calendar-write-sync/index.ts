@@ -1,4 +1,5 @@
 import { resolveJobAddress } from "../_shared/job-address.ts";
+import { calendarResultToDelivery, overallSyncStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -894,6 +895,41 @@ Deno.serve(async (req) => {
         outlook_sync_status: "synced",
         outlook_last_synced_at: new Date().toISOString(),
       }).eq("id", event_id);
+    }
+
+    // ── Per-recipient delivery record + honest overall status (create/update) ──
+    if (action !== "delete") {
+      const deliveryStatuses: DeliveryStatus[] = [];
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        const tech = techRows[i]?.tech;
+        if (!tech) continue;
+        const mapped = calendarResultToDelivery(r.status);
+        deliveryStatuses.push(mapped.status);
+        await recordDelivery(supabaseAdmin, {
+          eventId: event_id, technicianId: tech.id, technicianUserId: tech.user_id,
+          recipientEmail: tech.email, channel: "calendar", status: mapped.status,
+          reasonCode: mapped.reason, graphStatus: typeof r.code === "number" ? r.code : null,
+          attemptedBy: callerUserId,
+        });
+      }
+      // Assignments without a login link never reach techRows – record them too.
+      for (const et of event.event_technicians ?? []) {
+        if (et.technicians && !et.technicians.user_id) {
+          deliveryStatuses.push("failed");
+          await recordDelivery(supabaseAdmin, {
+            eventId: event_id, technicianId: et.technicians.id, recipientEmail: et.technicians.email,
+            channel: "calendar", status: "failed", reasonCode: "no_login_link", attemptedBy: callerUserId,
+          });
+        }
+      }
+      const overall = overallSyncStatus(deliveryStatuses);
+      if (overall) {
+        await supabaseAdmin.from("events").update({
+          outlook_sync_status: overall,
+          ...(overall !== "failed" ? { outlook_last_synced_at: new Date().toISOString() } : {}),
+        }).eq("id", event_id);
+      }
     }
 
     if (action === "delete" && overallStatus === "deleted") {

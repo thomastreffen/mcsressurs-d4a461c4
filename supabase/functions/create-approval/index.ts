@@ -3,6 +3,7 @@ import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.t
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
+import { recordDelivery } from "../_shared/recipient-delivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -226,12 +227,8 @@ Deno.serve(async (req) => {
       .eq("user_id", callerUserId)
       .single();
 
-    if (!roleData || (roleData.role !== "admin" && roleData.role !== "super_admin")) {
-      return new Response(JSON.stringify({ error: "Forbidden - admin only" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Global admins pass; others need company-scoped resource_plan edit on the job's company (checked after job fetch).
+    const isGlobalAdmin = !!roleData && (roleData.role === "admin" || roleData.role === "super_admin");
 
     const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes, resend } = await req.json();
     const isResend = resend === true;
@@ -266,6 +263,17 @@ Deno.serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+    if (!isGlobalAdmin) {
+      const { data: canWrite } = await supabaseAdmin.rpc("has_company_access", {
+        _uid: callerUserId, _company: job.company_id, _module: "resource_plan", _level: "edit",
+      });
+      if (!canWrite) {
+        return new Response(JSON.stringify({ error: "Ingen tilgang", error_code: "permission_denied" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
     // Operative address: newest event address, else the order's oppdragssted
     job.address = (await resolveJobAddress(supabaseAdmin, job)) || null;
@@ -503,6 +511,24 @@ Deno.serve(async (req) => {
         action_type: isTimeChange ? "time_change" : "created",
         change_summary: logMessage,
       });
+    }
+
+    // Per-recipient email delivery record (visible in the app, no secrets)
+    for (const r of results) {
+      const tech = technicians.find((t: any) => t.id === r.techId);
+      if (!tech) continue;
+      if (r.autoApproved) {
+        await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, technicianUserId: tech.user_id,
+          recipientEmail: tech.email, channel: "email", status: "skipped", reasonCode: "self_assigned", attemptedBy: callerUserId });
+        continue;
+      }
+      const reason = r.emailSent ? null
+        : !msToken ? "sender_no_ms_connection"
+        : !tech.email ? "no_email"
+        : r.error ? "graph_error" : "send_failed";
+      await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, technicianUserId: tech.user_id,
+        recipientEmail: tech.email, channel: "email", status: r.emailSent ? "sent" : "failed", reasonCode: reason,
+        detail: typeof r.error === "string" ? r.error : null, attemptedBy: callerUserId });
     }
 
     // Audit: include info-changes in the same approval flow (so admin sees combined update in history)

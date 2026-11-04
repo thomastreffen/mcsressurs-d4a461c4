@@ -29,7 +29,7 @@ export interface EventLog {
   changeSummary: string;
 }
 
-export type OutlookSyncStatus = "not_synced" | "synced" | "missing_in_outlook" | "failed" | "cancelled" | "restored";
+export type OutlookSyncStatus = "not_synced" | "synced" | "partial" | "missing_in_outlook" | "failed" | "cancelled" | "restored";
 
 export interface Job {
   id: string;

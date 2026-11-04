@@ -6109,6 +6109,68 @@ export type Database = {
           },
         ]
       }
+      event_recipient_delivery: {
+        Row: {
+          attempt_count: number
+          attempted_by: string | null
+          channel: string
+          created_at: string
+          detail: string | null
+          event_id: string
+          graph_status: number | null
+          id: string
+          last_attempt_at: string
+          reason_code: string | null
+          recipient_email: string | null
+          sent_at: string | null
+          status: string
+          technician_id: string
+          technician_user_id: string | null
+        }
+        Insert: {
+          attempt_count?: number
+          attempted_by?: string | null
+          channel: string
+          created_at?: string
+          detail?: string | null
+          event_id: string
+          graph_status?: number | null
+          id?: string
+          last_attempt_at?: string
+          reason_code?: string | null
+          recipient_email?: string | null
+          sent_at?: string | null
+          status: string
+          technician_id: string
+          technician_user_id?: string | null
+        }
+        Update: {
+          attempt_count?: number
+          attempted_by?: string | null
+          channel?: string
+          created_at?: string
+          detail?: string | null
+          event_id?: string
+          graph_status?: number | null
+          id?: string
+          last_attempt_at?: string
+          reason_code?: string | null
+          recipient_email?: string | null
+          sent_at?: string | null
+          status?: string
+          technician_id?: string
+          technician_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_recipient_delivery_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_technicians: {
         Row: {
           calendar_event_id: string | null
