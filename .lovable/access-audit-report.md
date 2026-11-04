@@ -87,3 +87,13 @@ Uten endring:
 - Revisjonslogg: membership_deactivated + 2x override_removed, med tidligere verdier.
 - IKKE utført: C (begrense rollene Prosjektleder og Planlegger/Admin til BusBar). Det har ingen effekt før serversjekken tar hensyn til rollens selskap, og krever en egen diff for alle.
 - Integritetssjekk: Sindre Ulriksen har et aktivt medlemskap i BusBar AS uten ansettelse der. Ikke endret, og må avklares.
+
+## Sindre Ulriksen (2026-11-04)
+Utført:
+- Ny kodeendring: roller med selskapsgrense gjelder bare i sitt selskap (server og app), og en v2-rolle erstatter sin v1-kopi. Ingen roller har grense i dag, så ingen effektiv endring for noen. Tester: role-scope.test.ts.
+- Av de to Elektrotavler-medlemskapene er det uten avdeling satt inaktivt (det med avdeling er beholdt). Elektrotavler er satt som primær ansettelse. Begge er revisjonslogget.
+
+STOPPET, krever ny diff:
+- Punkt 2: «Prosjektleder i Elektrotavler + Service» kan ikke lagres, fordi en rolle bare kan tildeles én gang per person (UNIQUE user_account_id, role_id).
+- Rettighetssjekker uten selskapskontekst (check_permission_v2 med to argumenter, brukt i ~15 serverfunksjoner og dataregler) bruker hjemselskapets roller. Uten videre arbeid kan en Elektrotavler-admin derfor fortsatt få admin i slike sjekker også når han handler i BusBar.
+- BusBar-medlemskapet gir fortsatt datatilgang i BusBar via dataregler, uavhengig av roller.
