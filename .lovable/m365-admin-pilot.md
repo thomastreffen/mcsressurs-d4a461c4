@@ -12,7 +12,7 @@
 - Ukjent POST uten lagret arrangør-ID krever manuell reconciliation; automatisk marker-/transaction-søk er ikke implementert. Ingen blind replay.
 - Ingen automatisk oppfølging av Outlook-svar/webhook; eksplisitt reconcile kan lese kjent arrangør-ID. Ingen bekreftelse av innboksmottak eller message trace-integrasjon.
 - Gamle opprettelsesveier (ProjectNewPage, DropConfirmPopover, eldre tasks-sync) er ikke samlet i én servertransaksjon; ny kø fanger event_technicians, men automatisk kødrift er ikke aktivert. Ikke erklært komplett driftsklar.
-- Ny kø/status-visning må ferdigstilles for egen arbeidsoverflate og separat Hub-varsel-/approval-status; dagens leveringslinje viser e-post og kalender.
+- Leveringslinjen viser e-post/kalender og uavklarte køforsøk. Egen køarbeidsflate og separat Hub-varsel-/approval-status er ikke ferdig.
 
 ## Microsoft-admin: må dokumenteres før brytere settes
 1. Identifiser eksisterende appregistrering og eksisterende Postkontoret-rettigheter uten å dele hemmeligheter. Ingen nøkler roteres i dette arbeidet.
@@ -29,3 +29,10 @@
 
 ## Publisering
 Ingen frontend-publisering eller manuell funksjonsdeploy bestilt her. Lovable kan distribuere funksjonskode automatisk; det er ikke det samme som aktivering. Additive schemaendringer er installert, ingen eksisterende oppgaver/avtaler er endret eller historiske poster backfilled. Funksjonsversjon i produksjon er ikke live-verifisert med sending.
+
+## Kontrollresultat
+- 524 tester i 65 filer bestått, inkludert faktiske fire edge-handlere med Cloud/Graph-substitutter, organizer-mocks, tilgang/constraints/triggere i isolert PGlite og leveringslinjens blokkerte retry i isolert UI.
+- Deno-typekontroll bestått for create-approval, approval-reminder, notify-event-changes, calendar-write-sync og m365-dispatch. Automatisk appbygg/typekontroll: build OK.
+- Ingen ekte meldinger, kalenderinvitasjoner, hemmelighetsendringer, testposter eller endring av eksisterende oppgaver. Ingen innlogget produksjonsflyt kjørt. Isolert Playwright-rendering mislyktes; mobil/desktop-layout er ikke visuelt sluttverifisert, UI-simuleringstesten består.
+- Endrede tjenestefiler: _shared/m365-sender.ts, _shared/recipient-delivery.ts, _shared/communication-policy.ts, _shared/organizer-calendar.ts, create-approval/index.ts, approval-reminder/index.ts, notify-event-changes/index.ts, calendar-write-sync/index.ts, m365-dispatch/index.ts.
+- Endret app: RecipientDeliveryStatus.tsx, EventDrawer.tsx, useCalendarSync.ts. Schema: 0064 og 0065, genererte typer. Tester: m365-sender, recipient-delivery, m365-reliability, m365-schema, m365-handlers, recipient-delivery-ui. Arkitektur/roadmap dokumentert.

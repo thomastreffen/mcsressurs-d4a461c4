@@ -4,7 +4,7 @@
 - [x] Felles avsender i approval/resend/påminnelse/endring, pilotavgrenset og brytere fortsatt fraværende/av. Eksisterende Postkontoret-ruter beholdt.
 - [x] Separat arrangørkalender med stable IDs, claim og create/update/delete/reconcile for kjent ID; legacy-ID-er urørt, ingen ekte sending.
 - [x] Graph-aksept er ikke levering; kanalvisning, planleggervarsel og vedvarende kø med trigger-intensjon, begrenset create-dispatch. Additive schema/RPC/RLS installert uten historisk backfill.
-- [x] Isolerte handler-/Graph-/SQL-/UI-tester og kompilering kontrollert; sluttresultat rapporteres etter full regresjon.
+- [x] 524 tester i 65 filer og Deno-kontroll av fem tjenester består; automatisk bygg/typekontroll OK. Isolert retry/UI-test består; Playwright-layout og innlogget produksjonsflyt ikke sluttverifisert.
 - [ ] Full kødrift for endring/fjernet montør/sletting, automatisk svaravstemming og ukjent create uten ID gjenstår; disse veiene blokkeres i ny dispatcher. Eldre tasks-sync og direkte klientveier ikke samlet; ikke full driftsklar eller pilotklar.
 - [ ] Microsoft-admin bekrefter postboksavgrensede rettigheter og godkjenner avgrenset pilot før aktivering/publisering.
 
