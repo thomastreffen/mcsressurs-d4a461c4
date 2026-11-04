@@ -1,5 +1,10 @@
 # Roadmap
 
+## Duplikat ved individuelle rettigheter
+- [ ] Rett idempotent override-lagring uten kopiering av globale/scopede rader eller sletting av urørte rettigheter.
+- [ ] Verifiser effektiv rolle-/selskapstilgang og egne jobbvedlegg uavhengig av global ressursplanvisning, uten å endre Marcus/Emil.
+- [ ] Isolerte lagrings-/tilgangsregresjoner og bygg; Microsoft-brytere urørt.
+
 ## Varig jobbinfo etter godkjenning
 - [x] Read-only job-access og /job-info: caller-RLS, gjeldende tildeling, 5-min filsignering fra eksakt vedlegg, brukt token kun som locator for riktig innlogget mottaker. Ingen datamigrering.
 - [x] Kvittering beholder jobbinngang, gammel svarlenke kan gjenåpne via innlogging; nye approval/info-mails og kalenderobjekter peker til varig jobbinfo, ikke rå vedleggs-URL. Postkontoret-brytere urørt.
