@@ -79,7 +79,7 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
   const light = deliveryLight(technicians.map((t) => t.id), data);
   const retry = async () => {
     setRetrying(true);
-    const { error } = await supabase.functions.invoke("calendar-write-sync", { body: { event_id: eventId, action: "update" } });
+    const { error } = await supabase.functions.invoke("calendar-write-sync", { body: { event_id: eventId, action: "create" } });
     setRetrying(false);
     if (error) toast.error("Nytt forsøk feilet"); else toast.success("Nytt forsøk fullført");
     refetch();
