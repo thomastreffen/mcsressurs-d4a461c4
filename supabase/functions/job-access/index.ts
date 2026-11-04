@@ -28,12 +28,15 @@ Deno.serve(async req => {
       id = approval.job_id;
     } else if (!["read", "file"].includes(body.action)) return json({ error: "Ugyldig handling" }, 400);
     if (typeof id !== "string" || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)) return json({ error: "Ugyldig jobb" }, 400);
-    const { data: event, error } = await caller.from("events").select("id,title,job_number,internal_number,status,start_time,end_time,address,postal_code,city,customer,site_contact_name,site_contact_phone,description,access_notes,location_details,source_order_form_id,attachments,deleted_at").eq("id", id).is("deleted_at", null).maybeSingle();
-    if (error || !event) return json({ error: "Jobben er fjernet eller du har ikke lenger tilgang" }, 403);
-    const { data: assignments } = await caller.from("event_technicians").select("start_at,end_at,technicians!inner(user_id)").eq("event_id", id).eq("technicians.user_id", uid);
-    const assignment = assignments?.[0];
+    const { data: ownJob } = await caller.rpc("read_my_assigned_job", { _event: id });
+    let event = ownJob?.event;
+    let assignment = ownJob?.assignment;
     const { data: canPlan } = await caller.rpc("check_permission_v2", { _auth_user_id: uid, _perm: "resource_plan.plan_resources" });
-    if (!assignment && canPlan !== true) return json({ error: "Du er ikke lenger tildelt oppdraget" }, 403);
+    if (!event && canPlan === true) {
+      const { data } = await caller.from("events").select("id,title,job_number,internal_number,status,start_time,end_time,address,postal_code,city,customer,site_contact_name,site_contact_phone,description,access_notes,location_details,source_order_form_id,attachments,deleted_at").eq("id", id).is("deleted_at", null).maybeSingle();
+      event = data;
+    }
+    if (!event) return json({ error: "Jobben er fjernet eller du er ikke lenger tildelt oppdraget" }, 403);
     if (body.action === "resolve") return json({ path: jobInfoPath(id) });
     let orderId = event.source_order_form_id;
     if (!orderId) {

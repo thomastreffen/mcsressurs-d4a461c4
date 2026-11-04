@@ -1,4 +1,5 @@
 - Phone layouts use the 767px boundary shared by useIsMobile and CSS; tablet uses the compact desktop shell. Why: no mismatched navigation.
+- Individual permission edits send changed keys to atomic save_permission_override_changes with single account/key uniqueness; inherited/global/other-scope rows are never copied, and scoped overrides never flatten to global legacy grants. Why: preserve scope and prevent duplicate or unintended permissions.
 - Technician email/calendar deep links use `/job-info/:id`, session-backed operational data and fresh authorized file access; home-screen support remains manifest-only with inline Min dag help. Why: approval and expiring bearer links must not become the only copy of job information.
 - MobileResourceDayView reuses ResourcePlan hooks/callbacks and schedule_blocks instants/technician IDs. Why: presentation must not become a second planner.
 - Mine unions project_members via auth-user accounts, technician user_id bookings, task assignments and canonical person-based planning responsibility over RLS-visible IDs, inheriting only within company. Why: relevance is not authorization or a new membership model.

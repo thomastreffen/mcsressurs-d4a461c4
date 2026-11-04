@@ -155,6 +155,10 @@ export function usePermissions(): PermissionState {
 
         for (const o of v2Overrides || []) {
           const ov = o as any;
+          // V2 is authoritative for its key; a legacy flattened copy must not
+          // leak a company-specific grant into a different company.
+          delete merged[ov.permission_key];
+          if (rolePerms[ov.permission_key] !== undefined) merged[ov.permission_key] = rolePerms[ov.permission_key];
           // Apply if: global override (no company) OR matches active company
           if (!ov.scope_company_id || ov.scope_company_id === activeCompanyId) {
             merged[ov.permission_key] = ov.mode === "allow";
