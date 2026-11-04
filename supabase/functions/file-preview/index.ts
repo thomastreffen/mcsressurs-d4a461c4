@@ -69,13 +69,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── Fetch file with service role ──
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    const { data: fileData, error: fileErr } = await supabaseAdmin.storage
+    // Storage RLS, not authentication alone, decides access to arbitrary paths.
+    // Assigned-job attachment signing uses job-access's exact membership check.
+    const { data: fileData, error: fileErr } = await supabaseAuth.storage
       .from(bucket)
       .download(filePath);
 
@@ -98,7 +94,7 @@ Deno.serve(async (req) => {
         ...corsHeaders,
         "Content-Type": contentType,
         "Content-Disposition": `inline; filename="${fileName}"`,
-        "Cache-Control": "private, max-age=3600",
+        "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       },
     });
