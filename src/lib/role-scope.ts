@@ -12,3 +12,9 @@ export function mergeScopedRoleIds(
   }
   return out;
 }
+
+/** Role ids to remove/add when the editor saves; unchanged role ids (incl. their scoped rows) are left untouched. */
+export function roleAssignmentDiff(saved: string[], next: string[]) {
+  const s = new Set(saved), n = new Set(next);
+  return { removed: [...s].filter((r) => !n.has(r)), added: [...n].filter((r) => !s.has(r)) };
+}

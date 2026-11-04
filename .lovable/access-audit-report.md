@@ -97,3 +97,37 @@ STOPPET, krever ny diff:
 - Punkt 2: «Prosjektleder i Elektrotavler + Service» kan ikke lagres, fordi en rolle bare kan tildeles én gang per person (UNIQUE user_account_id, role_id).
 - Rettighetssjekker uten selskapskontekst (check_permission_v2 med to argumenter, brukt i ~15 serverfunksjoner og dataregler) bruker hjemselskapets roller. Uten videre arbeid kan en Elektrotavler-admin derfor fortsatt få admin i slike sjekker også når han handler i BusBar.
 - BusBar-medlemskapet gir fortsatt datatilgang i BusBar via dataregler, uavhengig av roller.
+
+## Selskapsbevisst rettighetsmotor – kodefase (2026-11-04 09:xx)
+### Implementert (ingen effektive rettighetsendringer)
+- Migrering 0069: samme rolle kan ha én rad per selskap pluss én global rad. Den gamle unike nøkkelen er fjernet. Alle eksisterende rader passer.
+- Personsiden lagrer roller som diff, så rader med selskapsgrense blir aldri gjort globale. add-technicians legger til globale roller idempotent (deployet, fordi den gamle nøkkelen er borte).
+- Appen: v2-roller med grense gjelder bare i sitt selskap. v2 erstatter v1-kopien av samme rolle.
+- Server: check_permission_v2_company respekterer rollens og overstyringens selskap. Ukjent selskap (NULL) aktiverer aldri roller med grense.
+- Tester: role-scope.test.ts og permission-scope.test.ts. 72 filer / 561 tester består.
+
+### Ikke aktivert – kallespor uten selskapskontekst (check_permission_v2 med 2 argumenter)
+- Edge: company-migrate, contract-ai, data-integrity, delete-schedule-block, generate-calculation-ai, job-access, ms-calendar, remove-work-visit-from-plan, send-change-order, sharepoint-connect/list/preview-url/upload, task-thread-daily-digest.
+- Frontend: EventDrawer (2), useProjectAccess.
+- Dataregler: ~38 regler (tasks, project_members, schedule_blocks, task_threads/messages/attachments, event_technicians, offer_*, order_form_templates*, calc_*, hms_area_* m.fl.).
+- SQL: get_user_scope_v2, has_samtaler_access, user_has_company_access, is_project_admin, can_view_planning_finance.
+
+FØR/ETTER hvis alle disse bytter til ressursens selskap (beregnet på dagens data):
+| Person | Selskap | Medlem | Rettigheter som bortfaller |
+|---|---|---|---|
+| Hans Jakob Risnes | MCS Elektrotavler, MCS Service | nei | regulation.review, task_thread.email_external |
+| Rune Ørbeck | BusBar, MCS Elektrotavler | nei | hms.manage, hms.view, jobs.view_pricing, module.hms |
+Ingen bortfall i selskaper der personen er medlem. Ingen nye tilganger.
+
+### KRITISK funn – global admin i datareglene
+`is_admin()` = gammel rolle `admin` ELLER super_admin ELLER v1 check_permission('admin.manage_users').
+Den brukes i 164 regler, og 137 av dem har ingen selskapsfilter. Det gjelder blant annet:
+- events, offers, leads, invoice_basis og documents
+- user_roles, user_roles_v2, user_permission_overrides(_v2) og user_memberships
+
+Følgende har i dag admin i ALLE selskaper og kan i praksis endre roller/rettigheter (mulig eskalering):
+John Aleksander Mandt, Mats Lien Hansen, Simen Kjeksli, Sindre Ulriksen (gammel admin + v1), Hans Jakob Risnes, Lars Erik Huseby, Rune Ørbeck, Stian Aarstad (via v1 admin.manage_users). Thomas Treffen er super_admin.
+Forslag (krever egen godkjenning og diff): ny `is_admin_for(company)` i regler med selskapskolonne. Skriving i rolle- og rettighetstabeller bare for super_admin eller admin i samme selskap. Gammel admin-rolle og v1 fases ut etter at diffen per person er godkjent.
+
+### Sindre / Hans Jakob / Ressursplan
+Uendret i denne fasen. Hans Jakobs deaktivering i MCS Service står. Ressursplan-rollen som Emil har, gir ikke security.view. Den andre (2c92…, uten tildelte brukere i v2) har fortsatt security.view og skal ryddes med diff.

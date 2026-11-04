@@ -1,3 +1,4 @@
+import { roleAssignmentDiff } from "@/lib/role-scope";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -366,15 +367,17 @@ export default function PersonDetailPage() {
       const { data: savedMemberships, error: membershipReadError } = await supabase.from("user_memberships").select("company_id,department_id,role_id").eq("user_id", account.auth_user_id).eq("is_active", true);
       if (roleReadError || membershipReadError) throw roleReadError ?? membershipReadError;
       const canonical = (items: unknown[]) => JSON.stringify(items.map(i => JSON.stringify(i)).sort());
-      const rolesChanged = canonical((savedRoles ?? []).map(r => r.role_id)) !== canonical([...new Set(assignedRoles)]);
+      const rolesChanged = canonical([...new Set((savedRoles ?? []).map(r => r.role_id))]) !== canonical([...new Set(assignedRoles)]);
       const nextMemberships = scopes.map(s => ({ company_id: s.company_id, department_id: s.department_id, role_id: s.department_id === null ? membershipRoles[s.company_id] ?? null : savedMemberships?.find(m => m.company_id === s.company_id && m.department_id === s.department_id)?.role_id ?? null }));
       const membershipsChanged = canonical(savedMemberships ?? []) !== canonical(nextMemberships);
       // Save roles (v2 + legacy sync)
       if (rolesChanged) {
-      await must(supabase.from("user_roles_v2").delete().eq("user_account_id", account.id));
-      if (assignedRoles.length > 0) {
+      // Diff-based: removed roles are deleted, new roles added as global; company-scoped rows are never flattened.
+      const { removed, added } = roleAssignmentDiff((savedRoles ?? []).map(r => r.role_id), assignedRoles);
+      if (removed.length > 0) await must(supabase.from("user_roles_v2").delete().eq("user_account_id", account.id).in("role_id", removed));
+      if (added.length > 0) {
         await must(supabase.from("user_roles_v2").insert(
-          assignedRoles.map((rid) => ({ user_account_id: account.id, role_id: rid }))
+          added.map((rid) => ({ user_account_id: account.id, role_id: rid }))
         ));
       }
       await must(supabase.from("user_role_assignments").delete().eq("user_id", account.auth_user_id));

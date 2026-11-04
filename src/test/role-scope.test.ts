@@ -42,3 +42,31 @@ describe("company-scoped roles", () => {
     expect(mergeScopedRoleIds([PL], [{ role_id: PL, scope_company_id: null }], BB)).toEqual([PL]);
   });
 });
+
+import { roleAssignmentDiff } from "@/lib/role-scope";
+describe("same role in several companies", () => {
+  it("unique key allows one row per company scope and one global, rejects exact duplicates", async () => {
+    const d = new PGlite();
+    await d.exec(`CREATE TABLE user_roles_v2(user_account_id uuid, role_id uuid, scope_company_id uuid);`);
+    await d.exec(readFileSync("drizzle/migrations/0069_roles_unique_per_company_scope.sql", "utf8").replace(/--> statement-breakpoint/g, ""));
+    await d.exec(`INSERT INTO user_roles_v2 VALUES ('${U}','${PL}','${ET}'),('${U}','${PL}','${BB}'),('${U}','${PL}',null)`);
+    await expect(d.exec(`INSERT INTO user_roles_v2 VALUES ('${U}','${PL}','${ET}')`)).rejects.toThrow();
+    await expect(d.exec(`INSERT INTO user_roles_v2 VALUES ('${U}','${PL}',null)`)).rejects.toThrow();
+  });
+  it("role scoped to two companies applies in both, not in a third", async () => {
+    await db.exec(`INSERT INTO user_accounts VALUES ('44444444-4444-4444-4444-444444444444','44444444-4444-4444-4444-444444444444','${ET}',true);
+      INSERT INTO user_roles_v2 VALUES ('44444444-4444-4444-4444-444444444444','${PL}','${ET}'),('44444444-4444-4444-4444-444444444444','${PL}','${BB}');`);
+    const X = "44444444-4444-4444-4444-444444444444";
+    expect(await c(X, "jobs.view", ET)).toBe(true);
+    expect(await c(X, "jobs.view", BB)).toBe(true);
+    expect(await c(X, "jobs.view", "00000000-0000-0000-0000-0000000000c9")).toBe(false);
+  });
+  it("unknown company (null) never activates scoped roles", async () => {
+    expect((await db.query<{ r: boolean }>(`SELECT check_permission_v2_company('${U}','admin.manage_users',NULL) r`)).rows[0].r).toBe(false);
+    expect((await db.query<{ r: boolean }>(`SELECT check_permission_v2_company('${G}','admin.manage_users',NULL) r`)).rows[0].r).toBe(true);
+  });
+  it("editor save is a diff and idempotent", () => {
+    expect(roleAssignmentDiff([PL, PL, ADMIN], [PL])).toEqual({ removed: [ADMIN], added: [] });
+    expect(roleAssignmentDiff([PL], [PL])).toEqual({ removed: [], added: [] });
+  });
+});
