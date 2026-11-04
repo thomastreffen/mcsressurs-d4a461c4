@@ -10721,6 +10721,53 @@ export type Database = {
           },
         ]
       }
+      m365_communication_queue: {
+        Row: {
+          attempt_count: number
+          claimed_revision: number | null
+          event_id: string
+          id: string
+          operation: string
+          reason_code: string | null
+          revision: number
+          status: string
+          technician_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          claimed_revision?: number | null
+          event_id: string
+          id?: string
+          operation: string
+          reason_code?: string | null
+          revision?: number
+          status?: string
+          technician_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          claimed_revision?: number | null
+          event_id?: string
+          id?: string
+          operation?: string
+          reason_code?: string | null
+          revision?: number
+          status?: string
+          technician_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "m365_communication_queue_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       m365_organizer_links: {
         Row: {
           event_id: string
