@@ -1,5 +1,11 @@
 # Roadmap
 
+## Varig jobbinfo etter godkjenning
+- [ ] Skill svarlenke fra varig autentisert jobbtilgang; kontroller vedlegg, utløp og tilgang uten offentlig utvidelse.
+- [ ] Behold jobb-/vedleggslenke i e-post og Outlook før/etter aksept, med eksisterende Postkontoret-brytere av.
+- [ ] Diskret hjemskjermhjelp på Min dag, manifest uten ny offline-funksjon, trygg innlogging.
+- [ ] Mock-regresjoner og mobilkontroll uten produksjonsutsending; rapporter grenser og publiseringsstatus.
+
 ## Pålitelig Microsoft 365 – utvikling, brytere av
 - [x] Felles avsender i approval/resend/påminnelse/endring, pilotavgrenset og brytere fortsatt fraværende/av. Eksisterende Postkontoret-ruter beholdt.
 - [x] Separat arrangørkalender med stable IDs, claim og create/update/delete/reconcile for kjent ID; legacy-ID-er urørt, ingen ekte sending.
