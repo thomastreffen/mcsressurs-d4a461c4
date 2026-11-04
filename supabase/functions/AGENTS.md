@@ -23,3 +23,4 @@
 - ms-calendar/tripletex-import/create-approval verify JWTs with SDK getClaims; server permissions/roles and caller-bearer RLS remain authoritative. Approval authentication uses the shared approval-auth verifier. Why: signing-key validation must not depend on a redundant Auth user fetch.
 
 - Competence documentation uploads go through `competence-document-upload` (caller bearer via getClaims, service-role storage into private `compliance-documents`, atomic idempotent `attach_competence_document` RPC executable only by service_role); reads use its `sign` action. Why: integrations need a server-side path, and personal certificates must not be public.
+- Technician calendar/e-mail outcomes are recorded per recipient in event_recipient_delivery via _shared/recipient-delivery.ts; events.outlook_sync_status is synced only when all recipients succeed (else partial/failed). Why: one success must not hide silent per-recipient failures.
