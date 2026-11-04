@@ -6115,51 +6115,60 @@ export type Database = {
           attempted_by: string | null
           channel: string
           created_at: string
+          delivery_state: string | null
           detail: string | null
           event_id: string
           graph_status: number | null
           id: string
           last_attempt_at: string
+          operation_key: string | null
           reason_code: string | null
           recipient_email: string | null
           sent_at: string | null
           status: string
           technician_id: string
           technician_user_id: string | null
+          verification_signal: string | null
         }
         Insert: {
           attempt_count?: number
           attempted_by?: string | null
           channel: string
           created_at?: string
+          delivery_state?: string | null
           detail?: string | null
           event_id: string
           graph_status?: number | null
           id?: string
           last_attempt_at?: string
+          operation_key?: string | null
           reason_code?: string | null
           recipient_email?: string | null
           sent_at?: string | null
           status: string
           technician_id: string
           technician_user_id?: string | null
+          verification_signal?: string | null
         }
         Update: {
           attempt_count?: number
           attempted_by?: string | null
           channel?: string
           created_at?: string
+          delivery_state?: string | null
           detail?: string | null
           event_id?: string
           graph_status?: number | null
           id?: string
           last_attempt_at?: string
+          operation_key?: string | null
           reason_code?: string | null
           recipient_email?: string | null
           sent_at?: string | null
           status?: string
           technician_id?: string
           technician_user_id?: string | null
+          verification_signal?: string | null
         }
         Relationships: [
           {
@@ -10708,6 +10717,53 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      m365_organizer_links: {
+        Row: {
+          event_id: string
+          graph_event_id: string | null
+          id: string
+          last_error: string | null
+          mailbox: string
+          response_status: string | null
+          state: string
+          technician_id: string
+          transaction_id: string
+          updated_at: string
+        }
+        Insert: {
+          event_id: string
+          graph_event_id?: string | null
+          id?: string
+          last_error?: string | null
+          mailbox?: string
+          response_status?: string | null
+          state?: string
+          technician_id: string
+          transaction_id?: string
+          updated_at?: string
+        }
+        Update: {
+          event_id?: string
+          graph_event_id?: string | null
+          id?: string
+          last_error?: string | null
+          mailbox?: string
+          response_status?: string | null
+          state?: string
+          technician_id?: string
+          transaction_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "m365_organizer_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
@@ -18426,6 +18482,23 @@ export type Database = {
         Returns: undefined
       }
       planning_storage_access: { Args: { _name: string }; Returns: boolean }
+      record_event_delivery: {
+        Args: {
+          _actor?: string
+          _channel: string
+          _email?: string
+          _event: string
+          _graph?: number
+          _operation?: string
+          _reason?: string
+          _signal?: string
+          _state: string
+          _status: string
+          _technician: string
+          _user?: string
+        }
+        Returns: undefined
+      }
       remove_work_visit_from_plan: {
         Args: {
           p_actor?: string
