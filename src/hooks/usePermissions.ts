@@ -100,13 +100,9 @@ export function usePermissions(): PermissionState {
         if (ua) {
           const { data: v2Roles } = await supabase
             .from("user_roles_v2")
-            .select("role_id")
+            .select("role_id, scope_company_id")
             .eq("user_account_id", ua.id);
-          for (const r of v2Roles || []) {
-            if (!roleIds.includes((r as any).role_id)) {
-              roleIds.push((r as any).role_id);
-            }
-          }
+          roleIds = mergeScopedRoleIds(roleIds, (v2Roles || []) as any, activeCompanyId);
         }
       }
 
