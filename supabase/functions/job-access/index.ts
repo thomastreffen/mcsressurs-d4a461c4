@@ -18,6 +18,8 @@ Deno.serve(async req => {
     if (!uid) return json({ error: "Logg inn for å åpne jobbinfo" }, 401);
     const body = await req.json();
     const admin = createClient(origin, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    const { data: account } = await caller.from("user_accounts").select("is_active").eq("auth_user_id", uid).maybeSingle();
+    if (account?.is_active === false) return json({ error: "Kontoen er deaktivert" }, 403);
     let id = body.event_id;
     if (body.action === "resolve") {
       if (typeof body.token !== "string" || body.token.length > 200 || !body.token) return json({ error: "Ugyldig lenke" }, 400);
@@ -28,9 +30,11 @@ Deno.serve(async req => {
     if (typeof id !== "string" || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)) return json({ error: "Ugyldig jobb" }, 400);
     const { data: event, error } = await caller.from("events").select("id,title,job_number,internal_number,status,start_time,end_time,address,postal_code,city,customer,site_contact_name,site_contact_phone,description,access_notes,location_details,source_order_form_id,attachments,deleted_at").eq("id", id).is("deleted_at", null).maybeSingle();
     if (error || !event) return json({ error: "Jobben er fjernet eller du har ikke lenger tilgang" }, 403);
-    if (body.action === "resolve") return json({ path: jobInfoPath(id) });
     const { data: assignments } = await caller.from("event_technicians").select("start_at,end_at,technicians!inner(user_id)").eq("event_id", id).eq("technicians.user_id", uid);
     const assignment = assignments?.[0];
+    const { data: canPlan } = await caller.rpc("check_permission_v2", { _user_id: uid, _permission_key: "resource_plan.plan_resources" });
+    if (!assignment && canPlan !== true) return json({ error: "Du er ikke lenger tildelt oppdraget" }, 403);
+    if (body.action === "resolve") return json({ path: jobInfoPath(id) });
     let orderId = event.source_order_form_id;
     if (!orderId) {
       const { data: linked } = await caller.from("order_form_submissions").select("id").eq("linked_event_id", id).is("deleted_at", null).limit(1).maybeSingle();
