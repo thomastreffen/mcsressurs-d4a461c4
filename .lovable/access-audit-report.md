@@ -157,3 +157,24 @@ Alle mister: endre roller/rettigheter/medlemskap, systemoppsett, data i selskape
 - Tjenestenøkkel: 100 serverfunksjoner; 65 uten egen rollesjekk, 33 uten selskapsreferanse (mange er token-/cron-flyter med vilje). Må gjennomgås én og én før fase 3 D.
 - Nytt, ubrukt i regler: is_global_superadmin, is_company_admin, admin_tier_shadow_diff() (lesing, kun superadmin).
 - Venter på godkjenning: A (Simen super_admin), B (fjerne admin.manage_users fra Planlegger/Admin og Rune), C (legacy admin → selskapsadmin), D (aktivere nye regler).
+
+## Runde 3 (2026-11-04 09:30) – utført uten endring av effektive rettigheter
+- Nytt: tom tabell company_admin_assignments (kun superadmin skriver, ingen selv-tildeling); is_company_admin krever nå eksplisitt tildeling + aktivt medlemskap. Gammel admin-rolle gir IKKE selskapsadmin. event_company_id() som selskapsoppslag. Ingen policy bruker dette ennå.
+- RLS-klassifisering og erstatningsutkast: .lovable/rls-admin-replacement-draft.sql (ikke kjørt).
+- Flaky tester: PGlite-oppstart >10 s ved kald parallellkjøring → hookTimeout 60 s. 3 kjøringer etterpå: 74/74 filer, 570/570.
+- Serverfunksjoner: 27 HØY, 33 MIDDELS, rest LAV (se under).
+
+### HØY – serverfunksjoner (ingen endring deployet)
+Selv-eskalering: add-technicians, create-person (vilkårlige rolle-IDer, ingen tak).
+Uten innlogging (verify_jwt=false): ai-project-matcher, analyze-message-actions, conversation-email-reprocess, conversation-email-send, extract-image-text, generate-offer-pdf, graph-subscription-manage, graph-subscription-renew-cron, graph-subscription-sync, outlook-schedule-sync, outlook-sync, schedule-sweep-orphans, task-thread-escalation, graph-webhook-inbound (clientState valgfri).
+Innlogget, men vilkårlig ressurs uten selskapssjekk: absence-calendar-sync, add-participant, analyze-document, conversation-export-pdf, inbox-sync, inspection-report-analyze, seed-order-template, service-journal-pdf, service-journal-share, suggest-task-from-email, sync-task-to-calendar.
+
+### Revidert målbilde-diff
+| Person | Etter |
+|---|---|
+| Thomas | global superadmin (uendret) |
+| Simen | global superadmin (A, venter) |
+| John, Mats | ingen admin; Prosjektleder/Planlegger i MCS Service; selskapsadmin bare ved eksplisitt vedtak |
+| Sindre | ingen admin; operativ i Service/Elektrotavler, samarbeid i BusBar uten administrasjon |
+| Hans Jakob | BusBar operativ; MCS Service forblir deaktivert |
+| Lars Erik, Stian, Rune | ingen admin; operative roller beholdes |
