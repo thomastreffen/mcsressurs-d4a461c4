@@ -38,3 +38,4 @@
 - Inspection preparation stores drafts/HTML; only explicitly confirmed, validated, atomically claimed Microsoft-accepted sends advance status. Why: preview/status edits cannot send mail.
 - Inspection cards/KPIs/filters/exports share summarizeInspection and findingDisplayStatus/live evidence coverage. Why: read-only truth, not send authorization or closure.
 - DLE "Send test til meg" uses inspection-response-send mode test: inline preview HTML/manifest, recipient resolved server-side from the caller's work e-mail, no package row and no status/correspondence writes, only a response_test_sent event. Why: representative test that can never act as a final send.
+- Technician calendar/e-mail outcomes are recorded per recipient in event_recipient_delivery via _shared/recipient-delivery.ts; events.outlook_sync_status is synced only when all recipients succeed (else partial/failed). Why: one success must not hide silent per-recipient failures.
