@@ -24,8 +24,11 @@ Deno.serve(async req => {
     if (!jobs?.length) return json({ processed: 0, reason: "No safe pending operation; uncertain attempts require reconciliation" });
     // Only create is automated here; changed/deleted recipients require lifecycle-specific reconciliation.
     if (jobs.some(j => j.operation !== "create")) return json({ blocked: true, reason: "lifecycle_reconciliation_required" });
-    const { data: techs } = await db.from("technicians").select("email").in("id", jobs.map(j => j.technician_id));
-    if (!techs || techs.length !== jobs.length || !pilotAllows(techs.map(t => t.email ?? ""))) return json({ blocked: true, reason: "recipient_outside_pilot" });
+    // Calendar endpoint still processes all current assignments: validate ALL of them before fan-out.
+    const { data: assignments } = await db.from("event_technicians").select("technician_id").eq("event_id", body.event_id);
+    if (!assignments?.length || assignments.length > 7) return json({ blocked: true, reason: "pilot_assignment_limit" });
+    const { data: techs } = await db.from("technicians").select("email").in("id", assignments.map(j => j.technician_id));
+    if (!techs || techs.length !== assignments.length || !pilotAllows(techs.map(t => t.email ?? ""))) return json({ blocked: true, reason: "recipient_outside_pilot" });
     const claimed = [];
     for (const job of jobs) {
       if (job.attempt_count >= 3) continue;
@@ -40,8 +43,12 @@ Deno.serve(async req => {
     const uncertain = !!calendar.error || !!mail.error;
     for (const job of claimed) {
       const result = mail.data?.results?.find((r: any) => r.techId === job.technician_id);
-      const state = uncertain ? "uncertain" : result?.emailSent || result?.autoApproved ? "accepted" : "failed";
-      await db.from("m365_communication_queue").update({ status: state, reason_code: uncertain ? "unknown_outcome_do_not_replay" : result?.reasonCode ?? null }).eq("id", job.id).eq("revision", job.revision);
+      const calendarResult = calendar.data?.results?.find((r: any) => r.techId === job.technician_id);
+      const calendarAccepted = calendarResult && ["created", "updated", "already_exists"].includes(calendarResult.status) && !["failed", "awaiting"].includes(calendarResult.state);
+      const state = uncertain ? "uncertain" : (result?.emailSent || result?.autoApproved) && calendarAccepted ? "accepted" : "failed";
+      const { data: current } = await db.from("m365_communication_queue").select("revision").eq("id", job.id).single();
+      const stale = current?.revision !== job.revision;
+      await db.from("m365_communication_queue").update({ status: stale ? "pending" : state, reason_code: uncertain ? "unknown_outcome_do_not_replay" : result?.reasonCode ?? calendarResult?.status ?? null }).eq("id", job.id).eq("status", "processing");
     }
     return json({ processed: claimed.length, uncertain, results: mail.data?.results ?? [] });
   } catch { return json({ error: "Dispatch failed; inspect pending/uncertain delivery status before retry" }, 500); }

@@ -58,7 +58,6 @@ export function overallSyncStatus(statuses: DeliveryStatus[]): "synced" | "parti
 
 export async function recordDelivery(supabaseAdmin: any, r: DeliveryRecord): Promise<void> {
   try {
-    const now = new Date().toISOString();
     const state = r.state ?? (r.status === "sent" ? "accepted_by_graph" : r.status === "skipped" && r.reasonCode === "self_assigned" ? "not_required" : r.status === "skipped" ? "awaiting" : r.status);
     const { error } = await supabaseAdmin.rpc("record_event_delivery", {
       _event: r.eventId, _technician: r.technicianId, _channel: r.channel, _status: r.status, _state: state,
@@ -68,6 +67,8 @@ export async function recordDelivery(supabaseAdmin: any, r: DeliveryRecord): Pro
     if (error) throw new Error(`Delivery recording failed: ${error.message}`);
     if (state === "failed" && r.attemptedBy) {
       const { data: event } = await supabaseAdmin.from("events").select("company_id,title").eq("id", r.eventId).maybeSingle();
+      const { data: existingAlert } = await supabaseAdmin.from("notifications").select("id").eq("user_id", r.attemptedBy).eq("entity_id", r.eventId).eq("type", "m365_delivery_failed").eq("read", false).limit(1).maybeSingle();
+      if (existingAlert) return;
       const { error: alertError } = await supabaseAdmin.from("notifications").insert({
         user_id: r.attemptedBy, company_id: event?.company_id, type: "m365_delivery_failed", priority: "important",
         title: "Microsoft-utsending feilet", message: `${event?.title ?? "Oppdrag"}: ${r.channel} – ${r.reasonCode ?? "ukjent feil"}`,

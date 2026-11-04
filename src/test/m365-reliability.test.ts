@@ -68,6 +68,12 @@ describe("Microsoft communication safety", () => {
     expect((await syncOrganizer({ ...x.input, email: "outside@example.test", action: "create" })).status).toBe("pilot_blocked");
     expect(x.calls).toHaveLength(0);
   });
+  it("Graph refusing calendar permission stays failed", async () => {
+    const x = fixture();
+    const denied = vi.fn(async () => new Response("denied", { status: 403 })) as unknown as typeof fetch;
+    const result = await syncOrganizer({ ...x.input, action: "create", fetchImpl: denied });
+    expect(result.status).toBe("graph_forbidden"); expect(result.state).toBe("failed");
+  });
   it("internal informational meetings do not require Hub approval", () => {
     expect(requiresApproval({ entity_type: "internal" }, true)).toBe(false);
     expect(requiresApproval({ entity_type: "job" }, false)).toBe(false);

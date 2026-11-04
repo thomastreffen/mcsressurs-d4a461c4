@@ -43,3 +43,12 @@ it("authenticated users cannot write delivery or execute recording RPC", async (
   await expect(db.exec("UPDATE m365_communication_queue SET status='accepted'")).rejects.toThrow("permission denied");
   await db.exec("RESET ROLE");
 });
+it("delivery, organizer and queue reads follow hidden event RLS", async () => {
+  const hidden = "00000000-0000-0000-0000-000000000003";
+  await db.exec(`INSERT INTO m365_organizer_links(event_id,technician_id) VALUES('${hidden}','${tech}'); INSERT INTO m365_communication_queue(event_id,technician_id,operation) VALUES('${hidden}','${tech}','create'); SELECT record_event_delivery('${hidden}','${tech}','email','sent','accepted_by_graph');`);
+  await db.exec("SET ROLE authenticated");
+  for (const table of ["m365_organizer_links", "m365_communication_queue", "event_recipient_delivery"]) {
+    expect((await db.query(`SELECT * FROM ${table} WHERE event_id='${hidden}'`)).rows).toHaveLength(0);
+  }
+  await db.exec("RESET ROLE");
+});
