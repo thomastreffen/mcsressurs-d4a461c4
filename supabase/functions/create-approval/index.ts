@@ -3,6 +3,7 @@ import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.t
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
+import { recordDelivery } from "../_shared/recipient-delivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -262,6 +263,17 @@ Deno.serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+    if (!isGlobalAdmin) {
+      const { data: canWrite } = await supabaseAdmin.rpc("has_company_access", {
+        _uid: callerUserId, _company: job.company_id, _module: "resource_plan", _level: "edit",
+      });
+      if (!canWrite) {
+        return new Response(JSON.stringify({ error: "Ingen tilgang", error_code: "permission_denied" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
     // Operative address: newest event address, else the order's oppdragssted
     job.address = (await resolveJobAddress(supabaseAdmin, job)) || null;
