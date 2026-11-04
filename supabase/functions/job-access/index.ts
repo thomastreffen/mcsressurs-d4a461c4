@@ -32,7 +32,7 @@ Deno.serve(async req => {
     if (error || !event) return json({ error: "Jobben er fjernet eller du har ikke lenger tilgang" }, 403);
     const { data: assignments } = await caller.from("event_technicians").select("start_at,end_at,technicians!inner(user_id)").eq("event_id", id).eq("technicians.user_id", uid);
     const assignment = assignments?.[0];
-    const { data: canPlan } = await caller.rpc("check_permission_v2", { _user_id: uid, _permission_key: "resource_plan.plan_resources" });
+    const { data: canPlan } = await caller.rpc("check_permission_v2", { _auth_user_id: uid, _perm: "resource_plan.plan_resources" });
     if (!assignment && canPlan !== true) return json({ error: "Du er ikke lenger tildelt oppdraget" }, 403);
     if (body.action === "resolve") return json({ path: jobInfoPath(id) });
     let orderId = event.source_order_form_id;

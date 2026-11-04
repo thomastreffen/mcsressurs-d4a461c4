@@ -7,6 +7,7 @@ async function refresh() {
 }
 function isRead(name: string, action: unknown) {
   return (name === "ms-calendar" && action === "availability") ||
+    (name === "job-access" && ["read", "resolve", "file"].includes(String(action))) ||
     (name === "tripletex-import" && ["search", "preview", "search_hub_customers", "project_open_status"].includes(String(action)));
 }
 /** Await session hydration and pin the bearer for this request and its RLS queries. */

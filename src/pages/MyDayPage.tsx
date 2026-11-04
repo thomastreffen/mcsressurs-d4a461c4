@@ -571,6 +571,7 @@ function JobDetailView({
           )}
         </div>
       )}
+      {block.project_id && <Button variant="outline" className="min-h-11 w-full" onClick={() => navigate(`/job-info/${block.project_id}`)}><FileText className="h-4 w-4 mr-2" />Jobbinfo og vedlegg</Button>}
 
       {/* Non-project block: no actions, just info */}
       {!block.project_id && (
