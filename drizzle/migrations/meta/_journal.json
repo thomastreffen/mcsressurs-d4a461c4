@@ -463,6 +463,13 @@
       "when": 1793779809096,
       "tag": "0065_m365_durable_communication_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1793781122496,
+      "tag": "0066_atomic_permission_changes_and_own_job_read",
+      "breakpoints": true
     }
   ]
 }

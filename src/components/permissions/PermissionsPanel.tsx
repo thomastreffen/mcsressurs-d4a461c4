@@ -13,6 +13,7 @@ import {
   Search, Shield, RotateCcw, Copy, Info, Loader2, X, AlertTriangle, Eye, Building, ChevronDown,
 } from "lucide-react";
 import { PERMISSION_CATEGORIES, SCOPE_OPTIONS, getPermLabel, getPermDescription } from "@/lib/permission-labels";
+import { toggleEffectiveOverride } from "@/lib/permission-overrides";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -116,23 +117,10 @@ export function PermissionsPanel({
 
   const handleCheckboxClick = useCallback(
     (key: string) => {
-      const eff = getEffective(key);
       const newOverrides = { ...overrides };
-      if (eff.source === "override") {
-        if (eff.overrideMode === "allow") {
-          delete newOverrides[key];
-        } else {
-          delete newOverrides[key];
-        }
-      } else if (eff.source === "role") {
-        if (eff.allowed) {
-          newOverrides[key] = "deny";
-        } else {
-          newOverrides[key] = "allow";
-        }
-      } else {
-        newOverrides[key] = "allow";
-      }
+      const next = toggleEffectiveOverride(rolePermissions[key] === true, overrides[key]);
+      if (next) newOverrides[key] = next;
+      else delete newOverrides[key];
       onOverridesChange(newOverrides);
     },
     [getEffective, overrides, rolePermissions, onOverridesChange]
