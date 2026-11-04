@@ -11,6 +11,11 @@ beforeEach(() => {
  invoke.mockReset().mockResolvedValue({ data: { results: [] }, error: null });
 });
 describe("Authenticated calendar and project requests", () => {
+ it.each(["read", "resolve", "file"])("renews a job-access %s read once without replaying approval", async action => {
+  invoke.mockResolvedValueOnce(unauthorized);
+  await invokeWithSession("job-access", { body: { action, event_id: "job" } });
+  expect(invoke).toHaveBeenCalledTimes(2);
+ });
  it("awaits hydration and passes the session bearer explicitly", async () => {
   let ready: (value: any) => void = () => {};
   getSession.mockReturnValueOnce(new Promise(resolve => { ready = resolve; }));

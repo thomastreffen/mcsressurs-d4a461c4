@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import { VitePWA } from "vite-plugin-pwa";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
 const APP_BUILD_TIME = new Date().toISOString();
@@ -35,17 +34,6 @@ export default defineConfig(({ mode }) => ({
     react(),
     mcpPlugin(),
     mode === "development" && componentTagger(),
-    VitePWA({
-      // Temporarily retire offline frontend caching. Preview never registered
-      // the worker, while production did, which allowed old app shells to
-      // survive deployments. The generated worker unregisters itself, clears
-      // its caches and reloads every controlled tab once.
-      selfDestroying: true,
-      injectRegister: null,
-      filename: "sw.js",
-      devOptions: { enabled: false },
-      manifest: false,
-    }),
   ].filter(Boolean),
   resolve: {
     alias: {

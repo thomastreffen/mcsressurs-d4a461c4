@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +15,18 @@ export default function ApprovalPage() {
   const { token } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
   const actionParam = searchParams.get("action") as ApprovalAction | null;
+  const { session, loading: authLoading } = useAuth();
+  const [jobPath, setJobPath] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    if (!token || !session || authLoading) return;
+    void invokeWithSession<{ path: string }>("job-access", { body: { action: "resolve", token } }).then(({ data }) => {
+      if (active && data?.path?.startsWith("/job-info/")) setJobPath(data.path);
+    });
+    return () => { active = false; };
+  }, [token, session?.user.id, authLoading]);
+  const returnPath = `/approval/${encodeURIComponent(token ?? "")}`;
+  const persistentLink = <Button variant="outline" asChild className="min-h-11 w-full"><Link to={jobPath ?? (session ? "/my-day" : `/login?next=${encodeURIComponent(returnPath)}`)}>Åpne jobbinfo og vedlegg</Link></Button>;
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -65,23 +79,9 @@ export default function ApprovalPage() {
         // Parse the error — edge function non-2xx returns contain the response body
         let errorMessage = "Noe gikk galt. Prøv igjen.";
         try {
-          if (typeof fnErr.message === "string") {
-            // Try to extract the JSON error from the edge function response
-            const parsed = JSON.parse(fnErr.message);
-            if (parsed?.error) errorMessage = parsed.error;
-          }
-        } catch {
-          // Check if the context contains the error
-          if (fnErr.context?.body) {
-            try {
-              const bodyText = typeof fnErr.context.body === "string" 
-                ? fnErr.context.body 
-                : new TextDecoder().decode(fnErr.context.body);
-              const parsed = JSON.parse(bodyText);
-              if (parsed?.error) errorMessage = parsed.error;
-            } catch { /* use default */ }
-          }
-        }
+          const parsed = fnErr.context instanceof Response ? await fnErr.context.json() : JSON.parse(fnErr.message);
+          if (parsed?.error) errorMessage = parsed.error;
+        } catch { /* keep safe fallback */ }
         setError(errorMessage);
       } else if (data?.error) {
         setError(data.error);
@@ -108,7 +108,8 @@ export default function ApprovalPage() {
             <CheckCircle2 className="h-8 w-8 text-status-approved" />
           </div>
           <h1 className="text-xl font-bold">{result.message}</h1>
-          <p className="text-sm text-muted-foreground">Du kan lukke denne siden.</p>
+          <p className="text-sm text-muted-foreground">Svaret er registrert. Jobbinfo og vedlegg er fortsatt tilgjengelig i MCS Hub med gjeldende tilgang.</p>
+          {persistentLink}
         </div>
       </div>
     );
@@ -131,6 +132,7 @@ export default function ApprovalPage() {
         </div>
 
         <div className="p-6 space-y-6">
+          {persistentLink}
           {/* Action selection if no action in URL */}
           {!action && (
             <div className="space-y-3">

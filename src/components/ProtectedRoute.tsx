@@ -40,7 +40,7 @@ export function ProtectedRoute({ children, requiredRoles, requiredPermission }: 
   }
 
   if (!session) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
 
   if (requiredRoles && user && !requiredRoles.includes(user.role)) {

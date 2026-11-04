@@ -5,6 +5,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { requiresApproval } from "../../supabase/functions/_shared/communication-policy";
 import { formatJobSchedule } from "../../supabase/functions/_shared/job-time";
+import { jobInfoUrl, jobAttachmentLinks } from "../../supabase/functions/_shared/job-access-policy";
 const eventId = "11111111-1111-4111-8111-111111111111";
 function fixture(name: string, internal = false) {
   let handler: (req: Request) => Promise<Response>;
@@ -37,7 +38,7 @@ function fixture(name: string, internal = false) {
   vm.runInNewContext(js, { Deno: { serve: (fn: typeof handler) => { handler = fn; }, env: { get: () => "mock" } }, createClient: () => db, corsHeaders: {}, formatJobSchedule, requiresApproval,
     getApprovalCallerId: async () => "creator", resolveJobAddress: async () => "Mock address", buildOperationalJobBrief: () => ({}), briefEmailRows: () => "<tr>Mock</tr>",
     systemSenderEnabled: () => true, sendMail: async (input: any, opts: any) => { sends.push({ input, opts }); return input.to.startsWith("marcus") ? { ok: false, status: 403, reason: "graph_forbidden" } : { ok: true, status: 202 }; },
-    recordDelivery: async (_: any, record: any) => records.push(record), crypto, Request, Response, Date, Map, Set, console: { error() {}, log() {} } });
+    jobInfoUrl, jobAttachmentLinks, recordDelivery: async (_: any, record: any) => records.push(record), crypto, Request, Response, Date, Map, Set, console: { error() {}, log() {} } });
   return { sends, records, writes, call: async (payload: unknown) => {
     const response = await handler(new Request("https://example.test", { method: "POST", headers: { Authorization: "Bearer mock" }, body: JSON.stringify(payload) }));
     return { status: response.status, body: await response.json() };

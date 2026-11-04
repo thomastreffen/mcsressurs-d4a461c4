@@ -14,7 +14,6 @@ function RedirectContractToProject() {
   return <Navigate to={`/projects/contracts/${id}`} replace />;
 }
 import { AuthProvider } from "@/hooks/useAuth";
-import { PwaInstallPrompt } from "@/components/pwa/PwaInstallPrompt";
 import { PwaUpdateNotifier } from "@/components/pwa/PwaUpdateNotifier";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
@@ -30,6 +29,7 @@ import PlanningNewProjectPage from "./pages/planning/PlanningNewProjectPage";
 import PlanningExternalPage from "./pages/planning/PlanningExternalPage";
 import PlanningExternalHubPage from "./pages/planning/PlanningExternalHubPage";
 import JobDetail from "./pages/JobDetail";
+import JobInformationPage from "./pages/JobInformationPage";
 import MaterialPickListPrintPage from "./pages/MaterialPickListPrintPage";
 import SharedMaterialListPage from "./pages/SharedMaterialListPage";
 import AdminUsers from "./pages/AdminUsers";
@@ -234,7 +234,6 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <PwaInstallPrompt />
       <PwaUpdateNotifier />
       <BrowserRouter>
         <AuthProvider>
@@ -259,6 +258,7 @@ const App = () => (
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/approval/:token" element={<ApprovalPage />} />
+            <Route path="/job-info/:id" element={<JobInformationPage />} />
             <Route path="/offer/accept/:token" element={<OfferAcceptPage />} />
             <Route path="/approve-change-order" element={<ApproveChangeOrderPage />} />
             <Route path="/jobs/:id/pickliste" element={<MaterialPickListPrintPage />} />

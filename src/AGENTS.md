@@ -1,4 +1,5 @@
 - Phone layouts use the 767px boundary shared by useIsMobile and CSS; tablet uses the compact desktop shell. Why: no mismatched navigation.
+- Technician email/calendar deep links use `/job-info/:id`, session-backed operational data and fresh authorized file access; home-screen support remains manifest-only with inline Min dag help. Why: approval and expiring bearer links must not become the only copy of job information.
 - MobileResourceDayView reuses ResourcePlan hooks/callbacks and schedule_blocks instants/technician IDs. Why: presentation must not become a second planner.
 - Mine unions project_members via auth-user accounts, technician user_id bookings, task assignments and canonical person-based planning responsibility over RLS-visible IDs, inheriting only within company. Why: relevance is not authorization or a new membership model.
 - Large Sheets opt in with mobileWorkspace for dvh/full-width/safe-area; preserve confirmations and desktop widths. Why: avoid blanket dialog regressions.

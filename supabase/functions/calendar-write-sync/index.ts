@@ -4,6 +4,7 @@ import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { resolveJobAddress } from "../_shared/job-address.ts";
 import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
+import { jobInfoUrl } from "../_shared/job-access-policy.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 
@@ -273,15 +274,11 @@ function buildGraphBody(
   if (attachments.length > 0) {
     html += `<p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Vedlegg</p>`;
     html += `<ul style="margin: 0 0 16px; padding-left: 20px;">`;
-    for (const att of attachments) {
-      const name = att.name || "Vedlegg";
-      const url = att.url || "#";
-      html += `<li style="margin-bottom: 4px;"><a href="${url}" style="color: #2563eb; text-decoration: none;">📎 ${name}</a></li>`;
-    }
+    html += `<li><a href="${jobInfoUrl(event.id)}">Åpne ${attachments.length} vedlegg i MCS Hub (innlogging kreves)</a></li>`;
     html += `</ul>`;
   }
 
-  const jobUrl = `https://mcsressurs.lovable.app/jobs/${event.id}`;
+  const jobUrl = jobInfoUrl(event.id);
   html += `<p style="margin: 16px 0 0;"><a href="${jobUrl}" style="color: #2563eb; text-decoration: none; font-size: 13px;">🔗 Åpne i MCS Ressurs</a></p>`;
 
   html += `<!-- MCS_SOURCE:true MCS_EVENT_ID:${event.id}${assignment?.eventTechnicianId ? ` MCS_ASSIGNMENT_ID:${assignment.eventTechnicianId}` : ""}${assignment?.technicianId ? ` MCS_TECHNICIAN_ID:${assignment.technicianId}` : ""} -->`;

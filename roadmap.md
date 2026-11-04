@@ -1,5 +1,13 @@
 # Roadmap
 
+## Varig jobbinfo etter godkjenning
+- [x] Read-only job-access og /job-info: caller-RLS, gjeldende tildeling, 5-min filsignering fra eksakt vedlegg, brukt token kun som locator for riktig innlogget mottaker. Ingen datamigrering.
+- [x] Kvittering beholder jobbinngang, gammel svarlenke kan gjenåpne via innlogging; nye approval/info-mails og kalenderobjekter peker til varig jobbinfo, ikke rå vedleggs-URL. Postkontoret-brytere urørt.
+- [x] Diskret hjemskjermhjelp og viktige uleste endringer på Min dag; manifest/ikon/start_url beholdt, gamle app-shell workers avvikles på samme sti uten ny offline-caching. Innloggingsretur bevart.
+- [x] Isolerte regressioner og reprodusert før/etter-kvittering; signed-out innloggingsretur kontrollert. Full innlogget produksjons-/vedleggsflyt, native iOS/Android installasjon og simulert innlogget Playwright-layout ikke sluttverifisert.
+- [ ] Ekstern jobbtilgang/fornyelse uten Hub-konto ikke implementert; eksisterende prosjektportal beholdt, ingen ny offentlig jobbtilgang. Eksisterende offentlige legacy-filer forblir offentlige; private nye jobbopplastinger og kontrollert migrering gjenstår.
+- [ ] Publisering og eksplisitt Microsoft-pilot avventer bruker/admin; ingen reelle e-poster/invitasjoner/testdata i denne endringen.
+
 ## Pålitelig Microsoft 365 – utvikling, brytere av
 - [x] Felles avsender i approval/resend/påminnelse/endring, pilotavgrenset og brytere fortsatt fraværende/av. Eksisterende Postkontoret-ruter beholdt.
 - [x] Separat arrangørkalender med stable IDs, claim og create/update/delete/reconcile for kjent ID; legacy-ID-er urørt, ingen ekte sending.

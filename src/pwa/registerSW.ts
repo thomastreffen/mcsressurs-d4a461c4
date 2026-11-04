@@ -6,7 +6,6 @@
 //   - manual "check for update" and "clear all caches" helpers
 //   - one-shot stale-chunk reload (handled in chunkErrorRecovery)
 
-import { registerSW as viteRegisterSW } from "virtual:pwa-register";
 import {
   getAppServiceWorkerRegistrations,
   handleFreshResetIfRequested,
@@ -88,37 +87,11 @@ export function registerServiceWorker() {
       return;
     }
 
-    try {
-      updateSW = viteRegisterSW({
-        immediate: true,
-        onNeedRefresh() {
-          needRefresh = true;
-          emit();
-          console.info("[pwa] update available");
-        },
-        onOfflineReady() {
-          offlineReady = true;
-          emit();
-        },
-        onRegisteredSW(_swUrl, registration) {
-          currentRegistration = registration;
-          // Periodic update check every 30 minutes while the tab is open.
-          if (registration) {
-            setInterval(
-              () => {
-                registration.update().catch(() => undefined);
-              },
-              30 * 60 * 1000,
-            );
-          }
-        },
-        onRegisterError(err) {
-          console.warn("[pwa] register error", err);
-        },
-      });
-    } catch (err) {
-      console.warn("[pwa] register failed", err);
-    }
+    // Manifest-only home-screen support. Existing app-shell workers receive
+    // the same-path kill switch; never register a new app-shell worker.
+    void getAppServiceWorkerRegistrations().then(registrations => {
+      void Promise.allSettled(registrations.map(registration => registration.update()));
+    });
   });
 }
 
