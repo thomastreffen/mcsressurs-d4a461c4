@@ -18236,6 +18236,10 @@ export type Database = {
       home_company_of: { Args: { _uid: string }; Returns: string }
       is_active_member_of: { Args: { _company_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_company_admin: {
+        Args: { _auth_user_id: string; _company_id: string }
+        Returns: boolean
+      }
       is_company_member: {
         Args: { _auth_user_id: string; _company_id: string }
         Returns: boolean
@@ -18246,6 +18250,10 @@ export type Database = {
       }
       is_explicit_space_member: {
         Args: { _auth_user_id: string; _space_id: string }
+        Returns: boolean
+      }
+      is_global_superadmin: {
+        Args: { _auth_user_id: string }
         Returns: boolean
       }
       is_hms_submission_participant: {
