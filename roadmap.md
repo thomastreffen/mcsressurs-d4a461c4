@@ -1,9 +1,10 @@
 # Roadmap
 
 ## Duplikat ved individuelle rettigheter
-- [ ] Rett idempotent override-lagring uten kopiering av globale/scopede rader eller sletting av urørte rettigheter.
-- [ ] Verifiser effektiv rolle-/selskapstilgang og egne jobbvedlegg uavhengig av global ressursplanvisning, uten å endre Marcus/Emil.
-- [ ] Isolerte lagrings-/tilgangsregresjoner og bygg; Microsoft-brytere urørt.
+- [x] Changed-key atomic RPC med konfliktmål account/key og scope-/concurrency-vakt; globale urørte rader bevares, scoped grants flattenes ikke til v1. Checkbox toggler effektivt og råt scope beholdes; uendrede roller/medlemskap skrives ikke om.
+- [x] Lesende produksjonskontroll: Marcus Montør; Emil Montør + Ressursplan (ikke samme samlede rolletildeling). Begge jobs.view via Montør. Egne aktive same-company oppdrag via read_my_assigned_job uten global ressursplanrettighet; bare operativ lesing og eksakt vedleggsmedlemskap.
+- [x] 549 tester består inkl. isolerte PGlite conflict/idempotens/rollback/access og før/etter approval; Deno og automatisk appbygg OK. Ingen Marcus/Emil-rader endret, ingen sending/Microsoft-brytere/publisering.
+- [ ] Admin må etter frontend-publisering åpne Marcus → Rettigheter → riktig selskap → Se ressursplan → Lagre. Innlogget produksjonslagring ikke kjørt av agenten; øvrige eksterne/private opplastinger og Microsoft-pilot følger eksisterende oppgaver.
 
 ## Varig jobbinfo etter godkjenning
 - [x] Read-only job-access og /job-info: caller-RLS, gjeldende tildeling, 5-min filsignering fra eksakt vedlegg, brukt token kun som locator for riktig innlogget mottaker. Ingen datamigrering.
