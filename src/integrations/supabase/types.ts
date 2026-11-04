@@ -17565,6 +17565,10 @@ export type Database = {
         Args: { _auth_user_id: string; _perm: string }
         Returns: boolean
       }
+      check_permission_v2_company: {
+        Args: { _auth_user_id: string; _company_id: string; _perm: string }
+        Returns: boolean
+      }
       claim_calendar_sync: {
         Args: {
           _job_id: string
