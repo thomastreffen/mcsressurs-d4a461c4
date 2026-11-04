@@ -484,6 +484,13 @@
       "when": 1793782873711,
       "tag": "0068_role_scope_aware_permission_check",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1793783262380,
+      "tag": "0069_roles_unique_per_company_scope",
+      "breakpoints": true
     }
   ]
 }
