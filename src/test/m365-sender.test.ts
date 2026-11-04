@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const env: Record<string, string> = { AZURE_TENANT_ID: "t", AZURE_CLIENT_ID: "c", AZURE_CLIENT_SECRET: "s" };
+const env: Record<string, string> = { AZURE_TENANT_ID: "t", AZURE_CLIENT_ID: "c", AZURE_CLIENT_SECRET: "s", M365_MAILBOX_SCOPE_VERIFIED: "true", M365_PILOT_RECIPIENTS: "mats@mcsservice.no,a@b.no" };
 (globalThis as any).Deno = { env: { get: (k: string) => env[k] } };
 
 const mod = await import("../../supabase/functions/_shared/m365-sender");

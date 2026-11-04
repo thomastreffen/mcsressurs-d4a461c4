@@ -2397,7 +2397,7 @@ export function EventDrawer({
             )}
           </div>
 
-          {isEditing && editEvent && editEvent.technicians.length > 0 && (
+          {!readOnly && isEditing && editEvent && editEvent.technicians.length > 0 && (
             <>
               <RecipientDeliveryStatus eventId={editEvent.id} technicians={editEvent.technicians.map((t) => ({ id: t.id, name: t.name }))} />
               <ResendJobInfoButton jobId={editEvent.id} />

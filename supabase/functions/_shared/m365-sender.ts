@@ -69,7 +69,8 @@ export async function sendMail(
   let token: string | null;
   let url: string;
   if (useSystem) {
-    token = await getAppToken(f);
+    if (Deno.env.get("M365_MAILBOX_SCOPE_VERIFIED") !== "true" || !pilotAllows([m.to])) return { ok: false, status: null, via: "system", reason: "pilot_blocked" };
+    try { token = await getAppToken(f); } catch { return { ok: false, status: null, via: "system", reason: "system_sender_unavailable" }; }
     if (!token) return { ok: false, status: null, via: "system", reason: "system_sender_unavailable" };
     url = `https://graph.microsoft.com/v1.0/users/${SYSTEM_MAILBOX}/sendMail`;
   } else {
@@ -83,10 +84,20 @@ export async function sendMail(
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(buildMailPayload(m)),
     });
-    if (res.ok) return { ok: true, status: res.status, via: useSystem ? "system" : "personal" };
+    if (res.status === 202) { await res.text(); return { ok: true, status: res.status, via: useSystem ? "system" : "personal" }; }
     const detail = (await res.text()).slice(0, 500);
     return { ok: false, status: res.status, via: useSystem ? "system" : "personal", reason: res.status === 403 ? "graph_forbidden" : "graph_error", detail };
   } catch (e) {
     return { ok: false, status: null, via: useSystem ? "system" : "personal", reason: "network_error", detail: String(e).slice(0, 200) };
   }
+}
+
+/** Server-only pilot gate. Never inferred from the sender switch or supplied by a browser. */
+export function organizerEnabled(env: (k: string) => string | undefined = (k) => Deno.env.get(k)) {
+  return env("SYSTEM_CALENDAR_MODE") === "postkontoret" && env("M365_MAILBOX_SCOPE_VERIFIED") === "true";
+}
+
+export function pilotAllows(recipients: string[], env: (k: string) => string | undefined = (k) => Deno.env.get(k)) {
+  const allowed = (env("M365_PILOT_RECIPIENTS") ?? "").split(",").map(x => x.trim().toLowerCase()).filter(Boolean);
+  return recipients.length > 0 && recipients.every(x => allowed.includes(x.trim().toLowerCase()));
 }

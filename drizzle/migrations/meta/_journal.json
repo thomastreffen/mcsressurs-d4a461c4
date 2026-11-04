@@ -449,6 +449,20 @@
       "when": 1793776912677,
       "tag": "0063_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1793779629613,
+      "tag": "0064_m365_delivery_and_organizer_support",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1793779809096,
+      "tag": "0065_m365_durable_communication_queue",
+      "breakpoints": true
     }
   ]
 }

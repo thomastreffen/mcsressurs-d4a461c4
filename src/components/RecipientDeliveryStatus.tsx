@@ -1,3 +1,5 @@
+import { communicationLight, evidenceState } from "../../supabase/functions/_shared/communication-policy";
+import { invokeWithSession } from "@/lib/invoke-session";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -18,18 +20,27 @@ const REASON_LABEL: Record<string, string> = {
   send_failed: "Sending feilet",
   self_assigned: "Tildelt seg selv",
   in_progress: "Pågår",
+  pilot_blocked: "Avventer godkjent pilot og Microsoft-rettigheter",
+  unknown_graph_outcome: "Ukjent resultat – må avstemmes før nytt forsøk",
+  uncertain_operation: "Ukjent tidligere forsøk – må avstemmes",
 };
 
 interface Row {
   technician_id: string;
   channel: "calendar" | "email";
   status: "pending" | "sent" | "failed" | "skipped";
+  delivery_state?: string | null;
+  verification_signal?: string | null;
   reason_code: string | null;
   last_attempt_at: string;
 }
 
-export function deliveryLabel(r: Pick<Row, "channel" | "status" | "reason_code">): string {
+export function deliveryLabel(r: Pick<Row, "channel" | "status" | "reason_code" | "delivery_state" | "verification_signal">): string {
   const what = r.channel === "calendar" ? "Kalender" : "E-post";
+  const state = evidenceState({ ...r, technician_id: "" });
+  if (state === "verified") return `${what}: ${r.verification_signal === "attendee_accepted" ? "deltaker har akseptert" : "kontrollert objekt"}`;
+  if (state === "awaiting") return `${what}: avventer bekreftelse`;
+  if (state === "not_required") return `${what}: ikke påkrevd`;
   if (r.status === "sent") return `${what} overlevert til Microsoft`;
   if (r.status === "pending") return `${what} pågår`;
   const reason = r.reason_code ? REASON_LABEL[r.reason_code] ?? r.reason_code : null;
@@ -42,23 +53,15 @@ export type DeliveryLight = "green" | "yellow" | "red";
 /** Aggregate for a task: green only when every assigned technician has every channel sent. */
 export function deliveryLight(
   technicianIds: string[],
-  rows: Pick<Row, "technician_id" | "status">[],
+  rows: (Pick<Row, "technician_id" | "status"> & Partial<Row>)[],
 ): DeliveryLight {
-  if (technicianIds.length === 0) return "green";
-  let anyFailed = false, anyOpen = false;
-  for (const id of technicianIds) {
-    const mine = rows.filter((r) => r.technician_id === id);
-    if (mine.length === 0) { anyOpen = true; continue; }
-    if (mine.some((r) => r.status === "failed" || r.status === "skipped")) anyFailed = true;
-    else if (mine.some((r) => r.status !== "sent")) anyOpen = true;
-  }
-  return anyFailed ? "red" : anyOpen ? "yellow" : "green";
+  return communicationLight(technicianIds, rows);
 }
 
 const LIGHT_TEXT: Record<DeliveryLight, string> = {
-  green: "Alle montører har fått avtalen",
+  green: "Alle påkrevde kanaler har kontrollsignal",
   yellow: "Venter på eller mangler status for noen montører",
-  red: "Noen montører har IKKE fått avtalen",
+  red: "Utsending feilet for én eller flere montører",
 };
 
 export function RecipientDeliveryStatus({ eventId, technicians }: {
@@ -71,10 +74,19 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("event_recipient_delivery")
-        .select("technician_id, channel, status, reason_code, last_attempt_at")
+        .select("technician_id, channel, status, reason_code, last_attempt_at, delivery_state, verification_signal")
         .eq("event_id", eventId);
       if (error) throw error;
       return (data ?? []) as Row[];
+    },
+    enabled: !!eventId,
+  });
+  const { data: queue } = useQuery({
+    queryKey: ["m365-queue", eventId],
+    queryFn: async () => {
+      const result = await supabase.from("m365_communication_queue").select("id,operation,status,reason_code,attempt_count").eq("event_id", eventId);
+      if (result.error) throw result.error;
+      return result.data;
     },
     enabled: !!eventId,
   });
@@ -82,10 +94,12 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
   const light = deliveryLight(technicians.map((t) => t.id), data);
   const retry = async () => {
     setRetrying(true);
-    const { error } = await supabase.functions.invoke("calendar-write-sync", { body: { event_id: eventId, action: "create" } });
-    setRetrying(false);
-    if (error) toast.error("Nytt forsøk feilet"); else toast.success("Nytt forsøk fullført");
-    refetch();
+    try {
+      const { data: result, error } = await invokeWithSession("m365-dispatch", { body: { event_id: eventId } });
+      if (error || result?.blocked) toast.error("Nytt forsøk er blokkert", { description: "Pilot og Microsoft-rettigheter må være godkjent." });
+      else toast.info("Forsøket er behandlet – kontroller kanalstatus");
+      await refetch();
+    } finally { setRetrying(false); }
   };
 
   return (
@@ -93,12 +107,18 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">Utsending per montør</p>
         {light !== "green" && (
-          <Button size="sm" variant="outline" className="h-7 text-xs" disabled={retrying} onClick={retry}>
+          <Button size="sm" variant="outline" className="min-h-11 text-xs" disabled={retrying} onClick={retry}>
             {retrying ? "Prøver…" : "Prøv igjen"}
           </Button>
         )}
       </div>
       <Badge variant={light === "red" ? "destructive" : light === "yellow" ? "outline" : "secondary"}>{LIGHT_TEXT[light]}</Badge>
+      {queue?.filter(item => item.status !== "accepted").map(item => (
+        <p key={item.id} className="text-xs text-muted-foreground break-words">
+          {item.operation === "delete" ? "Fjerning" : item.operation === "update" ? "Endring" : "Opprettelse"}: {item.status === "uncertain" ? "Ukjent resultat – avstemming kreves" : item.status === "failed" ? "Feilet" : item.status === "processing" ? "Behandles" : "Venter"}
+          {item.reason_code ? ` · ${REASON_LABEL[item.reason_code] ?? "Kontroll kreves"}` : ""} · {item.attempt_count} forsøk
+        </p>
+      ))}
       {technicians.map((t) => {
         const rows = data.filter((r) => r.technician_id === t.id);
         if (rows.length === 0) return (

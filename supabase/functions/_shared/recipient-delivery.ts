@@ -15,6 +15,9 @@ export interface DeliveryRecord {
   graphStatus?: number | null;
   detail?: string | null;
   attemptedBy?: string | null;
+  state?: "pending" | "accepted_by_graph" | "verified" | "failed" | "awaiting" | "not_required";
+  verificationSignal?: string | null;
+  operationKey?: string | null;
 }
 
 /** Map a calendar-write-sync per-technician result to a delivery record status. */
@@ -22,9 +25,10 @@ export function calendarResultToDelivery(status: string): { status: DeliveryStat
   switch (status) {
     case "created":
     case "updated":
-    case "already_exists":
     case "deleted":
       return { status: "sent", reason: null };
+    case "already_exists":
+      return { status: "pending", reason: "awaiting_verification" };
     case "in_progress":
       return { status: "pending", reason: "in_progress" };
     case "no_token":
@@ -38,6 +42,14 @@ export function calendarResultToDelivery(status: string): { status: DeliveryStat
     default:
       return { status: "failed", reason: status || "error" };
   }
+}
+
+/** Aggregate evidence, not HTTP acceptance. Legacy object existence remains unverified. */
+export function syncEvidenceStatus(results: { status: string; state?: string; signal?: string | null }[]): "synced" | "partial" | "failed" | null {
+  if (!results.length) return null;
+  if (results.every(r => r.state === "verified" && !!r.signal)) return "synced";
+  if (results.every(r => r.state === "failed" || (!r.state && calendarResultToDelivery(r.status).status === "failed"))) return "failed";
+  return "partial";
 }
 
 /**
@@ -55,22 +67,26 @@ export function overallSyncStatus(statuses: DeliveryStatus[]): "synced" | "parti
 
 export async function recordDelivery(supabaseAdmin: any, r: DeliveryRecord): Promise<void> {
   try {
-    const now = new Date().toISOString();
-    const { data: existing } = await supabaseAdmin
-      .from("event_recipient_delivery").select("attempt_count")
-      .eq("event_id", r.eventId).eq("technician_id", r.technicianId).eq("channel", r.channel).maybeSingle();
-    const row = {
-      event_id: r.eventId, technician_id: r.technicianId,
-      technician_user_id: r.technicianUserId ?? null, recipient_email: r.recipientEmail ?? null,
-      channel: r.channel, status: r.status, reason_code: r.reasonCode ?? null,
-      graph_status: r.graphStatus ?? null, detail: r.detail ? String(r.detail).slice(0, 500) : null,
-      attempted_by: r.attemptedBy ?? null, last_attempt_at: now,
-      sent_at: r.status === "sent" ? now : null, attempt_count: (existing?.attempt_count ?? 0) + 1,
-    };
-    const { error } = await supabaseAdmin.from("event_recipient_delivery")
-      .upsert(row, { onConflict: "event_id,technician_id,channel" });
-    if (error) console.error("[recipient-delivery] write failed:", error.message);
+    const state = r.state ?? (r.status === "sent" ? "accepted_by_graph" : r.status === "skipped" && r.reasonCode === "self_assigned" ? "not_required" : r.status === "skipped" ? "awaiting" : r.status);
+    const { error } = await supabaseAdmin.rpc("record_event_delivery", {
+      _event: r.eventId, _technician: r.technicianId, _channel: r.channel, _status: r.status, _state: state,
+      _user: r.technicianUserId ?? null, _email: r.recipientEmail ?? null, _reason: r.reasonCode ?? null,
+      _graph: r.graphStatus ?? null, _actor: r.attemptedBy ?? null, _signal: r.verificationSignal ?? null, _operation: r.operationKey ?? null,
+    });
+    if (error) throw new Error(`Delivery recording failed: ${error.message}`);
+    if (state === "failed" && r.attemptedBy) {
+      const { data: event } = await supabaseAdmin.from("events").select("company_id,title").eq("id", r.eventId).maybeSingle();
+      const { data: existingAlert } = await supabaseAdmin.from("notifications").select("id").eq("user_id", r.attemptedBy).eq("entity_id", r.eventId).eq("type", "m365_delivery_failed").eq("read", false).limit(1).maybeSingle();
+      if (existingAlert) return;
+      const { error: alertError } = await supabaseAdmin.from("notifications").insert({
+        user_id: r.attemptedBy, company_id: event?.company_id, type: "m365_delivery_failed", priority: "important",
+        title: "Microsoft-utsending feilet", message: `${event?.title ?? "Oppdrag"}: ${r.channel} – ${r.reasonCode ?? "ukjent feil"}`,
+        link_url: `/jobs/${r.eventId}`, entity_type: "event", entity_id: r.eventId, actor_name: "MCS Hub · Postkontoret",
+      });
+      if (alertError) throw new Error(`Planner alert failed: ${alertError.message}`);
+    }
   } catch (e) {
     console.error("[recipient-delivery] exception:", e);
+    throw e;
   }
 }

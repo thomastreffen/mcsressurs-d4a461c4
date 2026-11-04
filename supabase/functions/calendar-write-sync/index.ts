@@ -1,12 +1,12 @@
+import { syncOrganizer, organizerStore } from "../_shared/organizer-calendar.ts";
+import { organizerEnabled } from "../_shared/m365-sender.ts";
+import { getApprovalCallerId } from "../_shared/approval-auth.ts";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { resolveJobAddress } from "../_shared/job-address.ts";
-import { calendarResultToDelivery, overallSyncStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+
 
 /* ── Token helper ── */
 async function ensureValidMsToken(
@@ -471,9 +471,7 @@ async function resolveCallerUserId(req: Request, supabaseAdmin: any): Promise<st
     { global: { headers: { Authorization: authHeader } } }
   );
 
-  const { data, error } = await anonClient.auth.getUser(token);
-  if (error || !data?.user) return null;
-  return data.user.id;
+  return await getApprovalCallerId(req.headers.get("Authorization") ?? "", anonClient);
 }
 
 /* ── Per-technician calendar sync helper ── */
@@ -749,7 +747,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, event_id } = body;
 
-    if (!action || !event_id) {
+    if (!["create", "update", "force_update", "delete", "reconcile"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
       return new Response(JSON.stringify({ error: "Missing action or event_id" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -765,6 +763,7 @@ Deno.serve(async (req) => {
           id,
           technician_id,
           calendar_event_id,
+          start_at, end_at,
           technicians ( id, name, email, user_id )
         ),
         customers ( id, name, main_phone, main_email )
@@ -814,9 +813,9 @@ Deno.serve(async (req) => {
 
     // Get technicians with their event_technicians row info
     const techRows = (event.event_technicians ?? [])
-      .filter((et: any) => et.technicians?.user_id)
+      .filter((et: any) => et.technicians)
       .map((et: any) => ({
-        eventTechRow: { id: et.id, calendar_event_id: et.calendar_event_id },
+        eventTechRow: { id: et.id, calendar_event_id: et.calendar_event_id, start_at: et.start_at, end_at: et.end_at },
         tech: et.technicians,
       }));
 
@@ -829,7 +828,7 @@ Deno.serve(async (req) => {
 
       if (fallbackTech?.user_id) {
         techRows.push({
-          eventTechRow: { id: null, calendar_event_id: event.microsoft_event_id || null },
+          eventTechRow: { id: null, calendar_event_id: event.microsoft_event_id || null, start_at: null, end_at: null },
           tech: fallbackTech,
         });
       }
@@ -855,15 +854,19 @@ Deno.serve(async (req) => {
     // ── Sync for EACH technician independently ──
     const results: any[] = [];
     for (const { eventTechRow, tech } of techRows) {
-      const graphBody = buildGraphBody(event, customer, {
+      const recipientEvent = { ...event, start_time: eventTechRow.start_at || event.start_time, end_time: eventTechRow.end_at || event.end_time };
+      const graphBody = buildGraphBody(recipientEvent, customer, {
         eventTechnicianId: eventTechRow.id,
         technicianId: tech.id,
         techName: tech.name,
       });
-      const result = await syncForTechnician(
-        supabaseAdmin, tech, eventTechRow, event, customer,
-        graphBody, action, callerUserId, logAction
-      );
+      // Persisted organizer links keep routing stable even if the feature switch later turns off.
+      const { data: organizerLink } = await supabaseAdmin.from("m365_organizer_links").select("id").eq("event_id", event_id).eq("technician_id", tech.id).maybeSingle();
+      const useOrganizer = !!organizerLink || (organizerEnabled() && !eventTechRow.calendar_event_id);
+      await recordDelivery(supabaseAdmin, { eventId: event_id, technicianId: tech.id, channel: "calendar", status: "pending", attemptedBy: callerUserId });
+      const result = useOrganizer
+        ? { techId: tech.id, techName: tech.name, ...await syncOrganizer({ action, email: tech.email ?? "", body: graphBody, store: organizerStore(supabaseAdmin, event_id, tech.id) }) }
+        : await syncForTechnician(supabaseAdmin, tech, eventTechRow, recipientEvent, customer, graphBody, action, callerUserId, logAction);
       results.push(result);
     }
 
@@ -889,16 +892,15 @@ Deno.serve(async (req) => {
 
     // Update legacy microsoft_event_id on events table for backward compat
     const firstCreated = results.find(r => r.calendarEventId);
-    if (firstCreated && !event.microsoft_event_id) {
+    if (firstCreated && !event.microsoft_event_id && !results.some(r => r.state)) {
       await supabaseAdmin.from("events").update({
         microsoft_event_id: firstCreated.calendarEventId,
-        outlook_sync_status: "synced",
         outlook_last_synced_at: new Date().toISOString(),
       }).eq("id", event_id);
     }
 
     // ── Per-recipient delivery record + honest overall status (create/update) ──
-    if (action !== "delete") {
+    {
       const deliveryStatuses: DeliveryStatus[] = [];
       for (let i = 0; i < results.length; i++) {
         const r = results[i];
@@ -911,19 +913,10 @@ Deno.serve(async (req) => {
           recipientEmail: tech.email, channel: "calendar", status: mapped.status,
           reasonCode: mapped.reason, graphStatus: typeof r.code === "number" ? r.code : null,
           attemptedBy: callerUserId,
+          state: r.state, verificationSignal: r.signal,
         });
       }
-      // Assignments without a login link never reach techRows – record them too.
-      for (const et of event.event_technicians ?? []) {
-        if (et.technicians && !et.technicians.user_id) {
-          deliveryStatuses.push("failed");
-          await recordDelivery(supabaseAdmin, {
-            eventId: event_id, technicianId: et.technicians.id, recipientEmail: et.technicians.email,
-            channel: "calendar", status: "failed", reasonCode: "no_login_link", attemptedBy: callerUserId,
-          });
-        }
-      }
-      const overall = overallSyncStatus(deliveryStatuses);
+      const overall = syncEvidenceStatus(results);
       if (overall) {
         await supabaseAdmin.from("events").update({
           outlook_sync_status: overall,
@@ -932,7 +925,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (action === "delete" && overallStatus === "deleted") {
+    if (action === "delete" && results.every(r => r.status === "deleted")) {
       await supabaseAdmin.from("events").update({
         microsoft_event_id: null,
         microsoft_etag: null,
@@ -943,7 +936,7 @@ Deno.serve(async (req) => {
 
     console.log(`[calendar-write-sync] ${action} for event ${event_id}: ${results.length} technicians, status: ${overallStatus}`);
 
-    return new Response(JSON.stringify({ status: overallStatus, results }), {
+    return new Response(JSON.stringify({ status: overallStatus, results, deliveryStatus: syncEvidenceStatus(results) }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

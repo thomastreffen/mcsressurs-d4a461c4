@@ -1,5 +1,13 @@
 # Roadmap
 
+## Pålitelig Microsoft 365 – utvikling, brytere av
+- [x] Felles avsender i approval/resend/påminnelse/endring, pilotavgrenset og brytere fortsatt fraværende/av. Eksisterende Postkontoret-ruter beholdt.
+- [x] Separat arrangørkalender med stable IDs, claim og create/update/delete/reconcile for kjent ID; legacy-ID-er urørt, ingen ekte sending.
+- [x] Graph-aksept er ikke levering; kanalvisning, planleggervarsel og vedvarende kø med trigger-intensjon, begrenset create-dispatch. Additive schema/RPC/RLS installert uten historisk backfill.
+- [x] 524 tester i 65 filer og Deno-kontroll av fem tjenester består; automatisk bygg/typekontroll OK. Isolert retry/UI-test består; Playwright-layout og innlogget produksjonsflyt ikke sluttverifisert.
+- [ ] Full kødrift for endring/fjernet montør/sletting, automatisk svaravstemming og ukjent create uten ID gjenstår; disse veiene blokkeres i ny dispatcher. Eldre tasks-sync og direkte klientveier ikke samlet; ikke full driftsklar eller pilotklar.
+- [ ] Microsoft-admin bekrefter postboksavgrensede rettigheter og godkjenner avgrenset pilot før aktivering/publisering.
+
 ## Målrettet svarpakke fra funn
 - [x] Funnvalg og PDF-status bruker findingDisplayStatus med eksisterende live dokumentasjonsdekning. Koblet generert/original/tilgjengelig referansebevis teller; regelverk løses fra selskapsavgrenset kilde, generelle kategorier kun manuelle avanserte tillegg, semantiske dokumenttitler og kildededuplisering med samlet funnstøtte. Default venter på funn/bevis/tiltak/kilder, eksisterende manuelle utkast beholdes.
 - [x] 485 tester i 59 filer, automatisk typekontroll/bygg OK; isolert 63210-lignende 9-siders PDF med funn 1/2/3, innfelt organisasjon/revisjon/regelverk, identisk nedlasting og mobil uten overflow kontrollert. Historisk bevis beholdes med datoforbehold utenfor beviset. Ingen produksjonsskriving, sending eller publisering.
