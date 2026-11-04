@@ -39,7 +39,7 @@ Montører med samme rolle har ulike individuelle avslag. Dette er bevisste overs
 | Roller | Montør | Montør + Ressursplan |
 | resourceplan.view | **nei** (ingen kilde) | ja (rolle Ressursplan) |
 | leads.view | nekt (individuell) | nekt (individuell) |
-| regulation.review | tillat (individuell, selskapsbundet; gjelder globalt på server, jf. HØY-1) | – |
+| regulation.review | tillat (individuell, global) | – |
 
 Ressursplanforskjellen kommer fra rollen, ikke fra overstyring. Riktig handling for admin etter publisering er en av disse:
 - gi Marcus individuell «Se ressursplan»
@@ -54,3 +54,20 @@ Ressursplanforskjellen kommer fra rollen, ikke fra overstyring. Riktig handling 
 
 ## Rettighetsmatrise v1 (til godkjenning)
 Se planen. Den brukes som fasit i tester først etter godkjenning.
+
+## Beslutninger (bruker, 2026-11-04)
+- Selskapsgrense: strammes inn etter at diff er godkjent.
+- Sammenslått Ressursplan-rolle: UTEN security.view.
+- Matrise v1: godkjent.
+
+## Diff til godkjenning (ingen endring utført)
+**A. Selskapsgrense på overstyringer.** Faktisk tap etter innstramming:
+- Hans Jakob Risnes mister `regulation.review` og `task_thread.email_external` i MCS Service AS. De beholdes i BusBar AS.
+
+Uten endring:
+- Hans Jakob: `jobs.view` og `resourceplan.view_external_titles` dekkes av rollen.
+- Rune Ørbeck: bare medlem i MCS Service.
+
+**B. Rollesammenslåing.**
+- Emil Strid flyttes fra «Ressursplan» til den sammenslåtte rollen og mister `security.view`.
+- Eirik Oseth: ingen endring i rettigheter.
