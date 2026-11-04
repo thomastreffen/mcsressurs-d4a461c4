@@ -513,6 +513,24 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Per-recipient email delivery record (visible in the app, no secrets)
+    for (const r of results) {
+      const tech = technicians.find((t: any) => t.id === r.techId);
+      if (!tech) continue;
+      if (r.autoApproved) {
+        await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, technicianUserId: tech.user_id,
+          recipientEmail: tech.email, channel: "email", status: "skipped", reasonCode: "self_assigned", attemptedBy: callerUserId });
+        continue;
+      }
+      const reason = r.emailSent ? null
+        : !msToken ? "sender_no_ms_connection"
+        : !tech.email ? "no_email"
+        : r.error ? "graph_error" : "send_failed";
+      await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, technicianUserId: tech.user_id,
+        recipientEmail: tech.email, channel: "email", status: r.emailSent ? "sent" : "failed", reasonCode: reason,
+        detail: typeof r.error === "string" ? r.error : null, attemptedBy: callerUserId });
+    }
+
     // Audit: include info-changes in the same approval flow (so admin sees combined update in history)
     if (infoChanges.length > 0) {
       await supabaseAdmin.from("event_logs").insert({
