@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { toast } from "sonner";
 
 const REASON_LABEL: Record<string, string> = {
   no_ms_connection: "Mangler Microsoft-kobling",
@@ -31,11 +34,36 @@ export function deliveryLabel(r: Pick<Row, "channel" | "status" | "reason_code">
   return `${what} feilet${reason ? ` – ${reason}` : ""}`;
 }
 
+export type DeliveryLight = "green" | "yellow" | "red";
+
+/** Aggregate for a task: green only when every assigned technician has every channel sent. */
+export function deliveryLight(
+  technicianIds: string[],
+  rows: Pick<Row, "technician_id" | "status">[],
+): DeliveryLight {
+  if (technicianIds.length === 0) return "green";
+  let anyFailed = false, anyOpen = false;
+  for (const id of technicianIds) {
+    const mine = rows.filter((r) => r.technician_id === id);
+    if (mine.length === 0) { anyOpen = true; continue; }
+    if (mine.some((r) => r.status === "failed" || r.status === "skipped")) anyFailed = true;
+    else if (mine.some((r) => r.status !== "sent")) anyOpen = true;
+  }
+  return anyFailed ? "red" : anyOpen ? "yellow" : "green";
+}
+
+const LIGHT_TEXT: Record<DeliveryLight, string> = {
+  green: "Alle montører har fått avtalen",
+  yellow: "Venter på eller mangler status for noen montører",
+  red: "Noen montører har IKKE fått avtalen",
+};
+
 export function RecipientDeliveryStatus({ eventId, technicians }: {
   eventId: string;
   technicians: { id: string; name: string }[];
 }) {
-  const { data } = useQuery({
+  const [retrying, setRetrying] = useState(false);
+  const { data, refetch } = useQuery({
     queryKey: ["recipient-delivery", eventId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -47,14 +75,35 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
     },
     enabled: !!eventId,
   });
-  if (!data || data.length === 0 || technicians.length === 0) return null;
+  if (!data || technicians.length === 0) return null;
+  const light = deliveryLight(technicians.map((t) => t.id), data);
+  const retry = async () => {
+    setRetrying(true);
+    const { error } = await supabase.functions.invoke("calendar-write-sync", { body: { event_id: eventId, action: "create" } });
+    setRetrying(false);
+    if (error) toast.error("Nytt forsøk feilet"); else toast.success("Nytt forsøk fullført");
+    refetch();
+  };
 
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-medium text-muted-foreground">Utsending per montør</p>
+    <div className="space-y-1.5" data-light={light}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-muted-foreground">Utsending per montør</p>
+        {light !== "green" && (
+          <Button size="sm" variant="outline" className="h-7 text-xs" disabled={retrying} onClick={retry}>
+            {retrying ? "Prøver…" : "Prøv igjen"}
+          </Button>
+        )}
+      </div>
+      <Badge variant={light === "red" ? "destructive" : light === "yellow" ? "outline" : "secondary"}>{LIGHT_TEXT[light]}</Badge>
       {technicians.map((t) => {
         const rows = data.filter((r) => r.technician_id === t.id);
-        if (rows.length === 0) return null;
+        if (rows.length === 0) return (
+          <div key={t.id} className="flex flex-wrap items-center gap-1.5 text-sm">
+            <span className="min-w-0 truncate">{t.name}</span>
+            <Badge variant="outline">Ingen utsending registrert</Badge>
+          </div>
+        );
         return (
           <div key={t.id} className="flex flex-wrap items-center gap-1.5 text-sm">
             <span className="min-w-0 truncate">{t.name}</span>

@@ -21,3 +21,20 @@ describe("per-recipient delivery", () => {
       .toBe("E-post feilet – Avsender mangler Microsoft-kobling");
   });
 });
+
+import { deliveryLight } from "@/components/RecipientDeliveryStatus";
+describe("task delivery light", () => {
+  const ids = ["a", "b", "c"];
+  it("pending never counts as delivered", () => {
+    expect(overallSyncStatus(["sent", "pending"])).toBe("partial");
+  });
+  it("red when any technician failed (medarbeidermøte)", () => {
+    expect(deliveryLight(ids, [{ technician_id: "a", status: "sent" }, { technician_id: "b", status: "failed" }, { technician_id: "c", status: "sent" }])).toBe("red");
+  });
+  it("yellow when a technician has no recorded attempt", () => {
+    expect(deliveryLight(ids, [{ technician_id: "a", status: "sent" }, { technician_id: "b", status: "sent" }])).toBe("yellow");
+  });
+  it("green only when all sent", () => {
+    expect(deliveryLight(ids, ids.map((id) => ({ technician_id: id, status: "sent" as const })))).toBe("green");
+  });
+});
