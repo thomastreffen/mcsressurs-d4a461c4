@@ -17493,6 +17493,20 @@ export type Database = {
     }
     Functions: {
       _notif_admin_user_ids: { Args: never; Returns: string[] }
+      admin_tier_shadow_diff: {
+        Args: never
+        Returns: {
+          auth_user_id: string
+          company_admin_after: string[]
+          full_name: string
+          is_admin_now: boolean
+          legacy_admin: boolean
+          legacy_super_admin: boolean
+          member_of: string[]
+          superadmin_after: boolean
+          v1_manage_users: boolean
+        }[]
+      }
       answer_field_request_by_token: {
         Args: {
           _request_id: string
