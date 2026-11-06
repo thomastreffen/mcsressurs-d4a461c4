@@ -519,6 +519,13 @@
       "when": 1793965319268,
       "tag": "0073_order_intake_admin_and_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1793965901764,
+      "tag": "0074_route_new_order_notifications_to_intake_list",
+      "breakpoints": true
     }
   ]
 }
