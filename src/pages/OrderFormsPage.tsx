@@ -47,7 +47,7 @@ export default function OrderFormsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeCompanyId } = useCompanyContext();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, isSuperAdmin, user } = useAuth();
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -276,6 +276,9 @@ export default function OrderFormsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {isSuperAdmin && (
+            <Button size="sm" variant="outline" onClick={() => navigate("/orders/ansvar")}>Ansvar og varsling</Button>
+          )}
           {templates.length > 0 && (
             <Button size="sm" onClick={() => navigate(`/orders/new/${templates[0].slug}`)}>
               <Plus className="h-4 w-4 sm:mr-1" />
