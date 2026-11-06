@@ -17,7 +17,20 @@ import { nb } from "date-fns/locale";
 
 type Member = { user_account_id: string; full_name: string; email: string | null; is_superadmin: boolean; has_admin: boolean; notify: boolean };
 
-const rpc = supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data: any; error: any }>;
+// Must stay bound to the client: an unbound supabase.rpc loses `this` and throws before any request is sent.
+const rpc = (fn: string, args: Record<string, unknown>) =>
+  (supabase.rpc as unknown as (this: typeof supabase, f: string, a: Record<string, unknown>) => Promise<{ data: any; error: any }>).call(supabase, fn, args);
+
+function LoadError({ what, error, onRetry }: { what: string; error: unknown; onRetry: () => void }) {
+  const msg = (error as { message?: string })?.message ?? String(error);
+  return (
+    <div role="alert" className="flex flex-wrap items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+      <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+      <span className="flex-1">Kunne ikke hente {what}: {msg}</span>
+      <Button size="sm" variant="outline" onClick={onRetry}>Prøv igjen</Button>
+    </div>
+  );
+}
 
 export default function OrderIntakeSettingsPage() {
   const { isSuperAdmin, roleReady } = useAuth();
@@ -114,7 +127,9 @@ export default function OrderIntakeSettingsPage() {
               </div>
             </div>
           ))}
-          {members.isLoading && <p className="p-4 text-sm text-muted-foreground">Laster …</p>}
+          {(members.isLoading || (!members.isFetched && !members.isError)) && <p className="p-4 text-sm text-muted-foreground">Laster …</p>}
+          {members.isError && <div className="p-3"><LoadError what="ansvarlige" error={members.error} onRetry={() => members.refetch()} /></div>}
+          {members.isSuccess && list.length === 0 && <p className="p-4 text-sm text-muted-foreground">Ingen ansvarlige i dette selskapet.</p>}
         </CardContent>
       </Card>
 
@@ -126,10 +141,15 @@ export default function OrderIntakeSettingsPage() {
             <Input className="pl-8" placeholder="Søk ansatt (navn eller e-post)" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <p className="text-xs text-muted-foreground">Viser bare aktive ansatte med bekreftet innlogging i valgt selskap. Admin-tilgang og varsling slås på.</p>
-          {(candidates.data ?? []).filter((c) => !existing.has(c.user_account_id)).map((c) => (
+          {candidates.isFetching && <p className="text-sm text-muted-foreground">Søker …</p>}
+          {candidates.isError && <LoadError what="søkeresultater" error={candidates.error} onRetry={() => candidates.refetch()} />}
+          {candidates.isSuccess && candidates.data.length === 0 && <p className="text-sm text-muted-foreground">Ingen treff i valgt selskap.</p>}
+          {(candidates.data ?? []).map((c) => (
             <div key={c.user_account_id} className="flex items-center justify-between rounded-md border p-2">
               <div><div className="text-sm font-medium">{c.full_name}</div><div className="text-xs text-muted-foreground">{c.email}</div></div>
-              <Button size="sm" onClick={() => save(c.user_account_id, true, true)}>Legg til</Button>
+              {existing.has(c.user_account_id)
+                ? <Badge variant="secondary">Allerede ansvarlig</Badge>
+                : <Button size="sm" onClick={() => save(c.user_account_id, true, true)}>Legg til</Button>}
             </div>
           ))}
         </CardContent>
@@ -138,7 +158,9 @@ export default function OrderIntakeSettingsPage() {
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base">Historikk</CardTitle></CardHeader>
         <CardContent className="space-y-1 text-sm">
-          {(history.data ?? []).length === 0 && <p className="text-muted-foreground">Ingen endringer ennå.</p>}
+          {history.isLoading && <p className="text-muted-foreground">Laster …</p>}
+          {history.isError && <LoadError what="historikk" error={history.error} onRetry={() => history.refetch()} />}
+          {history.isSuccess && history.data.length === 0 && <p className="text-muted-foreground">Ingen endringer ennå.</p>}
           {(history.data ?? []).map((h, i) => (
             <div key={i} className="flex flex-wrap gap-x-2">
               <span className="text-muted-foreground">{format(new Date(h.performed_at), "d. MMM yyyy HH:mm", { locale: nb })}</span>
