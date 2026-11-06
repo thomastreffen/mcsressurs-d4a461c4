@@ -512,6 +512,13 @@
       "when": 1793784245139,
       "tag": "0072_company_admin_explicit_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1793965319268,
+      "tag": "0073_order_intake_admin_and_notifications",
+      "breakpoints": true
     }
   ]
 }
