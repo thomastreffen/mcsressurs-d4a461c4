@@ -292,3 +292,4 @@
 - [ ] Avklar betydningen av status `closed` (utført vs henlagt) – venter på eier
 - [ ] Avklar Hub-varsel ved ny bestilling (alle admin vs bestillingsansvarlige) – venter på eier
 - [ ] Fase 1 bygging (regeltabell, hendelseslogg, server-side statusvarsel, bryter av) – venter på godkjenning av helheten
+- [x] Beslutning 06.11: Lukket er administrativ; utfall Utført/Avsluttet uten utførelse kreves ved lukking og gir riktig e-post; ingen dobbel Utført-e-post (plan v3 godkjent)
