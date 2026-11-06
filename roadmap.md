@@ -286,3 +286,9 @@
 - [x] QA-retting 27.10.2026: offisielle Lovdata/DSB/NEK-referanser korrigert på alle 9 poster (El-tilsynsloven 1929, FEK 2013-739, FSE 2006-458, FEU 2017-1598); NEK 439 rettet til samlingsnivå A:2024/B:2025/C:2024; Fagstøtte primary_standards og funn 3-svartekst tilsvarende rettet; status fortsatt 'new'
 - [x] Lukkeflyt punkt 3 fullført 27.10.2026: ansvarlig Rune Ørbeck (person), svartekst godkjent av Thomas Treffen (auth-id), forhold rettet + dokumentasjon komplett bekreftet, 9 regelverk koblet som bevis, status documentation_ready (Klar for oversendelse), 9 hendelser logget; andre funn urørt, ingenting sendt til DLE
 - [ ] Punkt 3 oversendelse til DLE: krever egen godkjenning; status submitted/approved settes først ved faktisk utsending/lukking
+
+## Varslingsrevisjon bestilling – 06.11.2026
+- [x] Revisjon v2 godkjent: obligatorisk e-post til bestiller ved Mottatt/Planlagt/Utført/Avvist, kun ved faktisk overgang, idempotent, ingen dobbel mottaksbekreftelse; valgfrie interne e-poster på som standard
+- [ ] Avklar betydningen av status `closed` (utført vs henlagt) – venter på eier
+- [ ] Avklar Hub-varsel ved ny bestilling (alle admin vs bestillingsansvarlige) – venter på eier
+- [ ] Fase 1 bygging (regeltabell, hendelseslogg, server-side statusvarsel, bryter av) – venter på godkjenning av helheten
