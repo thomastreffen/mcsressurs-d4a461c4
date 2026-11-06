@@ -293,3 +293,7 @@
 - [ ] Avklar Hub-varsel ved ny bestilling (alle admin vs bestillingsansvarlige) – venter på eier
 - [ ] Fase 1 bygging (regeltabell, hendelseslogg, server-side statusvarsel, bryter av) – venter på godkjenning av helheten
 - [x] Beslutning 06.11: Lukket er administrativ; utfall Utført/Avsluttet uten utførelse kreves ved lukking og gir riktig e-post; ingen dobbel Utført-e-post (plan v3 godkjent)
+- [x] Plan v4 godkjent: Hub-varsel kun til bestillingsansvarlige (ny rettighet orders.intake, ikke adminrolle), reserve til global superadmin, postkontor-e-post uendret
+- [x] Fase 0 skyggeliste: .lovable/notification-audit-phase0.md
+- [ ] Eier: hvem får orders.intake i MCS Service (og hvilken konto er Henning?) – venter på eier
+- [ ] Fase 1 bygging – venter på svar over
