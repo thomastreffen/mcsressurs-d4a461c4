@@ -13245,6 +13245,51 @@ export type Database = {
           },
         ]
       }
+      order_notification_subscriptions: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          updated_by: string | null
+          user_account_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          user_account_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          user_account_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_notification_subscriptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notification_subscriptions_user_account_id_fkey"
+            columns: ["user_account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       overtime_approvals: {
         Row: {
           approved_at: string | null
@@ -18220,6 +18265,10 @@ export type Database = {
         Args: { _auth_user_id: string; _company_id: string }
         Returns: boolean
       }
+      has_order_intake: {
+        Args: { _company_id: string; _user_account_id: string }
+        Returns: boolean
+      }
       has_planning_project_access: {
         Args: { _project_id: string }
         Returns: boolean
@@ -18334,6 +18383,26 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _auth_user_id: string }; Returns: boolean }
+      list_order_intake_history: {
+        Args: { _company_id: string }
+        Returns: {
+          details: Json
+          performed_at: string
+          performed_by_name: string
+          person_name: string
+        }[]
+      }
+      list_order_intake_members: {
+        Args: { _company_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          has_admin: boolean
+          is_superadmin: boolean
+          notify: boolean
+          user_account_id: string
+        }[]
+      }
       mark_documentation_downloaded: {
         Args: { _export_id: string }
         Returns: undefined
@@ -18385,6 +18454,10 @@ export type Database = {
         }[]
       }
       normalize_project_search: { Args: { _value: string }; Returns: string }
+      order_intake_recipients: {
+        Args: { _company_id: string }
+        Returns: string[]
+      }
       order_submission_allows_public_child_insert: {
         Args: { _submission_id: string }
         Returns: boolean
@@ -18700,6 +18773,14 @@ export type Database = {
           tripletex_project_id: number
         }[]
       }
+      search_order_intake_candidates: {
+        Args: { _company_id: string; _q: string }
+        Returns: {
+          email: string
+          full_name: string
+          user_account_id: string
+        }[]
+      }
       search_resource_plan_projects: {
         Args: { _company_id: string; _q: string }
         Returns: {
@@ -18714,6 +18795,15 @@ export type Database = {
       send_planning_wp_to_resource_plan: {
         Args: { _wp_id: string }
         Returns: Json
+      }
+      set_order_intake_member: {
+        Args: {
+          _admin: boolean
+          _company_id: string
+          _notify: boolean
+          _user_account_id: string
+        }
+        Returns: undefined
       }
       set_planning_project_finance: {
         Args: { _patch: Json; _project_id: string }
