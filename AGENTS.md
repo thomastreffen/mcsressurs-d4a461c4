@@ -39,3 +39,4 @@
 - Inspection cards/KPIs/filters/exports share summarizeInspection and findingDisplayStatus/live evidence coverage. Why: read-only truth, not send authorization or closure.
 - DLE "Send test til meg" uses inspection-response-send mode test: inline preview HTML/manifest, recipient resolved server-side from the caller's work e-mail, no package row and no status/correspondence writes, only a response_test_sent event. Why: representative test that can never act as a final send.
 - Only is_global_superadmin manages access; is_company_admin is membership-bound. Why: no self-escalation.
+- Order intake responsibility is the company-scoped `orders.intake` v2 override plus a separate `order_notification_subscriptions` preference, managed only by global superadmin via `set_order_intake_member` (audited); `order_intake_recipients` falls back to superadmin when empty. Why: admin access and notification are distinct choices and orders never lack a recipient.
