@@ -43,3 +43,9 @@ Ingen rollback nødvendig nå; hele forsøket rullet automatisk tilbake. Ved sen
 - Snapshot før: 12 rader (1 super_admin Thomas, 4 admin, 7 montør).
 - Isolert test src/test/simen-superadmin-swap.test.ts: 4/4 OK (blokkering gjenskapt, nøyaktig én rad endret, idempotent, rollback rører ikke Thomas).
 - Status: VENTER på eksplisitt godkjenning av produksjons-UPDATE.
+
+## Utført 2026-11-09 (eksplisitt godkjent av Thomas Treffen)
+- Rad 7bf27509-… (Simen) endret admin→super_admin; revisjonspost `legacy_role_changed` i audit_log.
+- Etterkontroll: 12 rader (uendret antall); super_admin = Thomas + Simen; 3 admin og 7 montør identiske med snapshot.
+- Rollback: UPDATE user_roles SET role='admin' WHERE id='7bf27509-ed16-4cdc-b2a6-553bbef21b99' AND role='super_admin'.
+- Ikke testet: innlogget visning som Simen.
