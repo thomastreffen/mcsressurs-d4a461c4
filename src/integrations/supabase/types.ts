@@ -253,6 +253,27 @@ export type Database = {
           },
         ]
       }
+      app_runtime_secrets: {
+        Row: {
+          created_at: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -19052,6 +19073,7 @@ export type Database = {
         Args: { _auth_user_id: string; _company_id: string }
         Returns: boolean
       }
+      verify_cron_secret: { Args: { _token: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "montør" | "super_admin" | "customer_user"
