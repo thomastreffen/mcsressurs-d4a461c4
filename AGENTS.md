@@ -39,4 +39,3 @@
 - Inspection cards/KPIs/filters/exports share summarizeInspection and findingDisplayStatus/live evidence coverage. Why: read-only truth, not send authorization or closure.
 - DLE "Send test til meg" uses inspection-response-send mode test: inline preview HTML/manifest, recipient resolved server-side from the caller's work e-mail, no package row and no status/correspondence writes, only a response_test_sent event. Why: representative test that can never act as a final send.
 - Only is_global_superadmin manages access; is_company_admin is membership-bound. Why: no self-escalation.
-- Legacy admin (user_roles admin / v1 admin.manage_users) counts only inside the row's own company with active membership (legacy_admin_in_company in RLS, legacyAdminInCompany in edge); access tables, provisioning and system settings are global-superadmin only. Why: only designated superadmins may hold global control.
