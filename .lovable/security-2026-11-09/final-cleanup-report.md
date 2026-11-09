@@ -35,3 +35,10 @@ Ingen av de 9 hadde opprettede eller tildelte jobber i selskaper de ikke er akti
 - 0077: bytt has_role(auth.uid(),'super_admin') tilbake til is_admin() i de 6 policyene.
 - 0075: DROP POLICY "global_access_write_insert|update|delete" ON <tabell> (14 tabeller); hjelpefunksjonene kan stå.
 - Edge: gjenopprett forrige versjon av de 7 funksjonene og deploy.
+
+## Sindre – BusBar admin fjernet (godkjent Thomas 09.11 07:45 UTC)
+- Mekanismer kartlagt: legacy user_roles admin + v1 Planlegger/Admin (admin.manage_users) + aktivt BusBar-medlemskap → admin-gren i 120 selskapsavgrensede policyer. Ingen BusBar-ansettelse, CMA, planning-, selskapsadmin- eller scoped v2-rader. 0 BusBar-prosjekter/tildelinger/opprettede jobber.
+- Endring: ny unntakstabell (migrasjon 0078) + legacy_admin_in_company/legacyAdminInCompany respekterer unntak. Én rad: Sindre × BusBar. Audit: access_audit_log 'legacy_admin_company_excluded'.
+- Uendret: medlemskap (BusBar aktivt for operativ deltakelse), roller, Service/Elektrotavler-admin, Stian (radhash 513a4df1… før = etter), superadmin = Thomas+Simen, Hans Jakob Service inaktiv.
+- Rest: Sindres legacy admin virker fortsatt i de 44 uavgrensede policyene (gjelder alle selskap, ikke BusBar-spesifikt).
+- Rollback: UPDATE legacy_admin_company_exclusions SET revoked_at=now() WHERE auth_user_id='9138ec02-…' AND company_id=BusBar.

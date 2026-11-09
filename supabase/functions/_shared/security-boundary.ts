@@ -69,5 +69,8 @@ export async function legacyAdminInCompany(
     client.from("user_memberships").select("id").eq("user_id", callerId).eq("company_id", companyId).eq("is_active", true).limit(1),
   ]);
   const legacy = (roles ?? []).some((r: { role: string }) => r.role === "admin") || manageRes.data === true;
-  return legacy && Array.isArray(member) && member.length > 0;
+  if (!legacy || !Array.isArray(member) || member.length === 0) return false;
+  // Explicit per-company admin exclusion (owner-approved), mirrors public.legacy_admin_excluded.
+  const { data: excluded, error: exErr } = await client.rpc("legacy_admin_excluded", { _uid: callerId, _company: companyId });
+  return !exErr && excluded !== true;
 }

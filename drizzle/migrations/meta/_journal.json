@@ -547,6 +547,13 @@
       "when": 1794209715644,
       "tag": "0077_system_admin_tables_superadmin_only",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794210425497,
+      "tag": "0078_legacy_admin_company_exclusions",
+      "breakpoints": true
     }
   ]
 }
