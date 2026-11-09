@@ -75,3 +75,8 @@ GJENSTÅR / AVVIK
 - task-thread-daily-digest (13:30) og offer-followup-check (06:00) er ikke live-verifisert med ny auth ennå – første planlagte kjøring bekrefter.
 - Backlog: inbox-scan gikk glipp av kjøringer 02:45–08:30; neste kjøring dekker siste 24 t (SEARCH_WINDOW_HOURS=24) → ingen tap.
 Rollback: cron.alter_job tilbake til anon-bearer (kommandoer i cron.job-historikk), DROP FUNCTION verify_cron_secret + DROP TABLE app_runtime_secrets, gjenopprett forrige funksjonsversjoner.
+
+## Integrasjonsretting 09.11 09:30 UTC
+- inbox-scan: `$search`+`$orderby` (400 SearchWithOrderBy) fjernet; lokal sortering, `@odata.nextLink`-paging (maks 5 sider), tidsvindu-filter, dedupe på id. Status ok/partial/failed + feilkoder i svar. ms-mail fallback-søk rettet likt. Live 09:30: status ok, 5/5 brukere, 0 feil.
+- Rollback: redeploy forrige versjon av inbox-scan/ms-mail (kun spørringsformat).
+- Venter live: task-thread-daily-digest (13:30 man–fre), offer-followup-check (06:00), første planlagte Graph-fornyelse etter rotasjon (12:00).
