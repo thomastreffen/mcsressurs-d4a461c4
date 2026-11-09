@@ -39,3 +39,33 @@ describe("protocol-specific security boundaries", () => {
     expect(await requireGlobalAccessManager({ rpc: async () => ({ data: true, error: "failed" }) }, "thomas")).toBe(false);
   });
 });
+import { legacyAdminInCompany } from "../../supabase/functions/_shared/security-boundary";
+type Fixture = { superadmin: boolean; roles: string[]; manageUsers: boolean; members: string[] };
+function fakeClient(f: Fixture) {
+  const q = (rows: unknown[]) => {
+    const chain: any = { select: () => chain, eq: (col: string, v: string) => { if (col === "company_id") rows = (rows as any[]).filter((r) => r.company_id === v); return chain; },
+      limit: () => Promise.resolve({ data: rows, error: null }), then: (res: any) => res({ data: rows, error: null }) };
+    return chain;
+  };
+  return {
+    rpc: (name: string) => Promise.resolve({ data: name === "is_global_superadmin" ? f.superadmin : f.manageUsers, error: null }),
+    from: (t: string) => t === "user_roles" ? q(f.roles.map((role) => ({ role }))) : q(f.members.map((company_id) => ({ id: "m", company_id }))),
+  };
+}
+describe("company-bounded legacy admin in server functions", () => {
+  const base = { superadmin: false, roles: [] as string[], manageUsers: false, members: [] as string[] };
+  it("global superadmin passes in any company, even without membership", async () => {
+    expect(await legacyAdminInCompany(fakeClient({ ...base, superadmin: true }), "u", "busbar")).toBe(true);
+  });
+  it("legacy admin only passes in a company with active membership", async () => {
+    const c = fakeClient({ ...base, roles: ["admin"], members: ["service"] });
+    expect(await legacyAdminInCompany(c, "u", "service")).toBe(true);
+    expect(await legacyAdminInCompany(c, "u", "busbar")).toBe(false);
+    expect(await legacyAdminInCompany(c, "u", null)).toBe(false);
+  });
+  it("v1 admin.manage_users does not widen callers that previously required the admin role", async () => {
+    const c = fakeClient({ ...base, manageUsers: true, members: ["service"] });
+    expect(await legacyAdminInCompany(c, "u", "service", { includeV1ManageUsers: false })).toBe(false);
+    expect(await legacyAdminInCompany(c, "u", "service")).toBe(true);
+  });
+});
