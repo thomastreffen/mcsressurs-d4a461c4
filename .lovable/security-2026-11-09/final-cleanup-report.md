@@ -60,3 +60,18 @@ BLOKKERT
 - Cron: inbox-scan (*/15) og en timesjobb gir allerede 401 (før dagens endringer, minst siden 02:00). Krever egen cron-hemmelighet i hvelv + funksjonsstøtte; ikke byttet blindt.
 - Graph clientState (30 tegn, svakt tegnsett), abonnement utløper 11.11 09:36 UTC. Rotasjon krever nytt abonnement via Microsoft og koordinert bytte.
 Rollback 0079: sett legacy_admin_in_company tilbake til 0078-definisjon; policyuttrykk før endring i spørring over (44 stk) – lagret i policies-before-0079.txt; backfill: UPDATE … SET company_id=NULL WHERE id IN (logg).
+
+## Cron-auth + Graph clientState (godkjent «Enig det må vi få ryddet opp i», 09.11 08:28 UTC)
+AKTIVERT OG TESTET
+- Rotårsak 401: inbox-scan (og task-thread-daily-digest) krevde service-role/superadmin, men alle 9 cron-jobber sendte anon-nøkkel. 20×401 siden 02:45, kun inbox-scan rammet (de øvrige hadde ingen auth-sjekk).
+- Migrasjon 0080: app_runtime_secrets (kun service_role/postgres) + verify_cron_secret() (SECURITY DEFINER, kun service_role). Hemmelighet generert i databasen (gen_random_bytes), aldri eksponert.
+- Alle 9 cron-jobber bygger nå Authorization-header fra databasen (cron.alter_job, tidsplaner uendret).
+- Edge: isCronBearer + generateClientState i _shared/security-boundary.ts (import-fri, frontend-testbar); isSystemCaller i ny _shared/system-caller.ts. Porter: inbox-scan, contract-alerts-cron, task-thread-daily-digest (cron-secret lagt til), graph-subscription-renew-cron, outlook-schedule-sync, schedule-sweep-orphans, task-thread-escalation, graph-subscription-sync, graph-subscription-manage (ny superadmin/cron-port – tidligere helt åpne), offer-followup-check (cron/service ELLER innlogget bruker, UI-trigger bevart).
+- Live verifisert: alle 10 gir 401 anonymt; outlook-schedule-sync 200 (08:35/08:40), task-thread-escalation 200 (08:45), inbox-scan full kjøring 08:45 («Scanned 5 users»).
+- Graph: clientState rotert til kryptografisk tilfeldig (52 tegn) via ny rotate_state-handling på EKSISTERENDE abonnement 9d8b0306 (PATCH, ingen delete/recreate → ingen tapte varsler/duplikater). Ny utløp: 2026-11-12 06:09 UTC (var 11.11 09:36). Fremtidige abonnementer får tilfeldig clientState (mcs-postkontoret-<ts> / mcs-<company> fjernet).
+- Tester: 11/11 Deno (5 nye), 619/619 vitest, bygg OK.
+GJENSTÅR / AVVIK
+- inbox-scan har en ELDRE, urelatert Graph-feil: $orderBy støttes ikke med $search (400 SearchWithOrderBy) for noen brukere – ikke auth, bør rettes i egen omgang.
+- task-thread-daily-digest (13:30) og offer-followup-check (06:00) er ikke live-verifisert med ny auth ennå – første planlagte kjøring bekrefter.
+- Backlog: inbox-scan gikk glipp av kjøringer 02:45–08:30; neste kjøring dekker siste 24 t (SEARCH_WINDOW_HOURS=24) → ingen tap.
+Rollback: cron.alter_job tilbake til anon-bearer (kommandoer i cron.job-historikk), DROP FUNCTION verify_cron_secret + DROP TABLE app_runtime_secrets, gjenopprett forrige funksjonsversjoner.
