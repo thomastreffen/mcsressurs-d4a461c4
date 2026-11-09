@@ -35,3 +35,11 @@ Før eventuell schemaendring må alle lesere/skrivere som forventer én legacy-r
 
 ## Rollback
 Ingen rollback nødvendig nå; hele forsøket rullet automatisk tilbake. Ved senere vellykket grant skal den faktiske nye grant-ID lagres i audit_log. Rollback, kun etter godkjenning, fjerner akkurat den nye raden med både grant-ID, Simens user_id og role=super_admin samt kontrollerbar audit-proveniens; behold opprinnelig admin, alle andre roller, Thomas og audit-historikken. Ikke kjør generell sletting av Simens roller.
+## Oppfølging 2026-11-09 07:21 – kompatibilitetsanalyse (ingen produksjonsendring)
+- Begrensninger: UNIQUE(user_id) + UNIQUE(user_id, role); ingen triggere.
+- 0 RLS-regler/DB-funksjoner krever 'admin' uten å godta super_admin.
+- ~16 kodesteder forutsetter én rad (.single/.maybeSingle, manage-role upsert onConflict user_id, varsellister uten dedup) → å fjerne UNIQUE(user_id) ville låse Simen ute av adminfunksjoner.
+- Valgt løsning (B): UPDATE én rad 7bf27509-ed16-4cdc-b2a6-553bbef21b99 admin→super_admin. Rollback: samme rad super_admin→admin.
+- Snapshot før: 12 rader (1 super_admin Thomas, 4 admin, 7 montør).
+- Isolert test src/test/simen-superadmin-swap.test.ts: 4/4 OK (blokkering gjenskapt, nøyaktig én rad endret, idempotent, rollback rører ikke Thomas).
+- Status: VENTER på eksplisitt godkjenning av produksjons-UPDATE.
