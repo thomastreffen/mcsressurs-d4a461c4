@@ -312,3 +312,4 @@
 - [ ] Resterende globale veier: 44 policyer uten selskapsanker, can_view_planning_finance, edge-varsellister, rader uten selskap.
 - [ ] Beslutning: Sindre/Stian adminnivå i BusBar (krever godkjenning).
 - [ ] Cron-legitimering (9 jobber) og Graph state-rotasjon.
+- [x] 09.11 07:50: Sindre admin i BusBar avskåret (unntak), Stian uendret.
