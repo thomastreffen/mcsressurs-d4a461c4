@@ -6,8 +6,8 @@
 - [x] 15 nye isolerte tester: 45 staged RLS-write-grenser, selskap/forelder CRUD, egne jobber før/etter approval, webhook/provisioning/service; 592/592 i 79 filer to stabile sluttrunder, automatisk bygg OK.
 - [ ] Provisioning/global-RLS-aktivering: Simen-tildeling og HR/login-skrivediff krever særskilt godkjenning; komplette autorisasjonspatcher staged, ikke deployet.
 - [ ] Cron-autentisering: alle ni schedulere bruker anon-bearer; krever koordinert sikker credential-overgang før gate, ellers stopper integrasjonen. Forutsigbar Graph-state må roteres kontrollert.
-- [ ] Produksjonsaktivering: separat konkret godkjenning av Simen super_admin og tvetydige operative tilgangsdiffer.
-- [ ] Godkjenning A uttrykkelig gitt 09.11 kl. 07:17: Simen identitet verifisert, atomisk grant avvist av UNIQUE(user_id); null endringer bekreftet. Ekstra legacy-rolle krever separat kompatibilitets-/schemaovergang, ingen admin-rad erstattet. Se approval-A-result.md.
+- [ ] Produksjonsaktivering: separat konkret godkjenning av tvetydige operative tilgangsdiffer (Simen-steget er ferdig).
+- [x] Godkjenning A utført 09.11: Simens rad endret admin→super_admin (alternativ B, ingen skjemaendring), revisjonslogg og etterkontroll. Se approval-A-result.md.
 - [x] Norsk statusrapport og faktisk tilbakelesing: Thomas eneste super_admin, Simen fortsatt admin; ni legacy adminveier består. Sluttilstand ikke erklært oppnådd.
 
 ## Duplikat ved individuelle rettigheter
