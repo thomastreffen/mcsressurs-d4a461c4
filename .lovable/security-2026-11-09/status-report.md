@@ -11,7 +11,7 @@ Rune har fortsatt eksplisitt selskapsadmin MCS Service, orders.intake og tidlige
 - Deploy bekreftet eksplisitt av deploy-verktøyet. Ingen app-publisering.
 
 ### Produksjonsverifikasjon
-Etter eksplisitt deploy: Graph validationToken ga 200/text/plain; callback uten clientState ga processed=0. Daily digest med ugyldig bearer ga 401. Portal-notify ugyldig bearer ga 401 før eksplisitt deploy; ikke etterverifisert på nytt ennå.
+Etter eksplisitt deploy: Graph validationToken ga 200/text/plain; callback uten clientState ga processed=0. Daily digest og portal-notify med ugyldig bearer ga 401. Feilkø tilbakelest etter deploy/opprydding: null poster for sikkerhetsproben.
 Før eksplisitt deploy traff én avvisningstest gammel kode: ugyldig, ikke-eksisterende mailbox ble lest fra Graph (404) og én feilkøpost opprettet. Ingen e-post/invitasjon/bestilling/jobb. Den ene egenproduserte posten ble identifisert og fjernet med eksakt ID/tid/subscription, ingen andre data. Ny deployert kode prosesserte ikke samme payload. Dette er ikke en reell Microsoft-sendetest.
 
 ## Implementert og testet, IKKE aktivert
