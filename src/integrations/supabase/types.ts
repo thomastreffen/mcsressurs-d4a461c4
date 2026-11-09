@@ -10759,6 +10759,47 @@ export type Database = {
           },
         ]
       }
+      legacy_admin_company_exclusions: {
+        Row: {
+          auth_user_id: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string
+          revoked_at: string | null
+          revoked_by: string | null
+        }
+        Insert: {
+          auth_user_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Update: {
+          auth_user_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legacy_admin_company_exclusions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       m365_communication_queue: {
         Row: {
           attempt_count: number
@@ -18390,6 +18431,10 @@ export type Database = {
       is_super_admin: { Args: { _auth_user_id: string }; Returns: boolean }
       job_task_company_id: { Args: { _id: string }; Returns: string }
       lead_company_id: { Args: { _id: string }; Returns: string }
+      legacy_admin_excluded: {
+        Args: { _company: string; _uid: string }
+        Returns: boolean
+      }
       legacy_admin_in_company: { Args: { _company: string }; Returns: boolean }
       list_order_intake_history: {
         Args: { _company_id: string }
