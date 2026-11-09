@@ -78,3 +78,27 @@ describe("per-company admin exclusion", () => {
     expect(await legacyAdminInCompany(c, "sindre", "tavler")).toBe(true);
   });
 });
+
+import { companyAdminRecipients } from "../../supabase/functions/_shared/security-boundary";
+function recipientsClient(roles: { user_id: string; role: string }[], members: { user_id: string; company_id: string }[], excl: { auth_user_id: string; company_id: string }[]) {
+  const q = (rows: any[]) => { const c: any = {
+    select: () => c, eq: (k: string, v: any) => { rows = rows.filter((r) => k === "is_active" ? true : r[k] === v); return c; },
+    in: (k: string, vs: any[]) => { rows = rows.filter((r) => vs.includes(r[k])); return c; }, is: () => c,
+    then: (res: any) => res({ data: rows, error: null }) }; return c; };
+  return { rpc: async () => ({ data: null, error: null }),
+    from: (t: string) => q(t === "user_roles" ? roles : t === "user_memberships" ? members : excl) };
+}
+describe("company-scoped admin notification recipients", () => {
+  const roles = [{ user_id: "thomas", role: "super_admin" }, { user_id: "simen", role: "super_admin" }, { user_id: "john", role: "admin" }, { user_id: "sindre", role: "admin" }, { user_id: "marcus", role: "montør" }];
+  const members = [{ user_id: "john", company_id: "service" }, { user_id: "sindre", company_id: "service" }, { user_id: "sindre", company_id: "busbar" }];
+  const excl = [{ auth_user_id: "sindre", company_id: "busbar" }];
+  it("Service job: superadmins + Service admins, never technicians", async () => {
+    expect((await companyAdminRecipients(recipientsClient(roles, members, excl), "service")).sort()).toEqual(["john", "simen", "sindre", "thomas"]);
+  });
+  it("BusBar job: Sindre excluded, John not member", async () => {
+    expect((await companyAdminRecipients(recipientsClient(roles, members, excl), "busbar")).sort()).toEqual(["simen", "thomas"]);
+  });
+  it("unknown company: superadmins only, nobody dropped silently", async () => {
+    expect((await companyAdminRecipients(recipientsClient(roles, members, excl), null)).sort()).toEqual(["simen", "thomas"]);
+  });
+});
