@@ -59,4 +59,4 @@ GJENSTÅR
 BLOKKERT
 - Cron: inbox-scan (*/15) og en timesjobb gir allerede 401 (før dagens endringer, minst siden 02:00). Krever egen cron-hemmelighet i hvelv + funksjonsstøtte; ikke byttet blindt.
 - Graph clientState (30 tegn, svakt tegnsett), abonnement utløper 11.11 09:36 UTC. Rotasjon krever nytt abonnement via Microsoft og koordinert bytte.
-Rollback 0079: sett legacy_admin_in_company tilbake til 0078-definisjon; policyuttrykk før endring i spørring over (44 stk) – lagret i denne økten; backfill: UPDATE … SET company_id=NULL WHERE id IN (logg).
+Rollback 0079: sett legacy_admin_in_company tilbake til 0078-definisjon; policyuttrykk før endring i spørring over (44 stk) – lagret i policies-before-0079.txt; backfill: UPDATE … SET company_id=NULL WHERE id IN (logg).
