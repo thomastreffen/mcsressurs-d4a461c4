@@ -1,0 +1,155 @@
+{
+ "changed": {
+  "events": 3,
+  "event_technicians": 1,
+  "calculations": 1,
+  "calculation_items": 1,
+  "offers": 1,
+  "event_logs": 2,
+  "job_approvals": 1,
+  "notifications": 2,
+  "regulation_queries": 3,
+  "job_participants": 1,
+  "lead_participants": 2,
+  "lead_history": 2,
+  "leads": 4,
+  "lead_calendar_links": 2,
+  "job_calendar_links": 2,
+  "job_calendar_audit": 2,
+  "job_summaries": 4,
+  "contract_alerts": 3,
+  "documents": 4,
+  "document_analyses": 3,
+  "job_change_orders": 4,
+  "job_change_order_events": 2,
+  "job_risk_items": 4,
+  "job_task_notes": 3,
+  "job_tasks": 4,
+  "inbox_messages": 2,
+  "form_templates": 1,
+  "form_template_versions": 1,
+  "form_instances": 1,
+  "form_signatures": 2,
+  "cases": 3,
+  "case_items": 3,
+  "case_routing_rules": 2,
+  "work_orders": 2,
+  "service_jobs": 2,
+  "superoffice_settings": 1,
+  "fag_requests": 4,
+  "fag_answers": 3,
+  "task_assignees": 2,
+  "task_attachments": 2,
+  "job_document_links": 1,
+  "absence_requests": 3,
+  "customer_portal_users": 3,
+  "customer_portal_project_access": 3,
+  "customer_accounts": 2,
+  "portal_notification_preferences": 1,
+  "portal_notifications": 1,
+  "invoice_basis": 2,
+  "fag_company_profiles": 2,
+  "order_form_categories": 1,
+  "order_form_catalog_settings": 1,
+  "ai_match_runs": 1,
+  "confirmation_learnings": 1,
+  "cross_company_access_grants": 1,
+  "calc_cases": 1,
+  "company_reminder_settings": 1,
+  "customers": 1,
+  "customer_contacts": 1,
+  "employment_profiles": 1
+ },
+ "unchanged": {
+  "user_roles": [
+   "Admins can view all roles"
+  ],
+  "technicians": [
+   "Admins can insert technicians",
+   "Admins can update technicians",
+   "Admins can delete technicians"
+  ],
+  "storage.objects": [
+   "Admins can delete calculation attachments",
+   "Admins can upload attachments",
+   "Admins can view attachments",
+   "Admins can delete attachments",
+   "Admins can delete job attachments",
+   "Admins can manage user docs storage",
+   "fag_delete",
+   "fag_write",
+   "fag_read"
+  ],
+  "activity_log": [
+   "Admins can manage activity_log",
+   "Lead participants can view activity_log"
+  ],
+  "settings": [
+   "Admins can view settings"
+  ],
+  "communication_logs": [
+   "Admins can manage communication_logs",
+   "Users can view own communication_logs"
+  ],
+  "audit_log": [
+   "Admins can read audit_log"
+  ],
+  "contract_cron_runs": [
+   "Admins can manage cron runs"
+  ],
+  "tenant_settings": [
+   "Admins can manage tenant_settings",
+   "Admins view tenant_settings"
+  ],
+  "user_role_assignments": [
+   "Admins can manage role assignments",
+   "Users can view own assignments"
+  ],
+  "user_memberships": [
+   "Admins can manage memberships",
+   "Users can view own memberships"
+  ],
+  "user_permission_overrides": [
+   "Admins can manage overrides",
+   "Users can view own overrides"
+  ],
+  "user_documents": [
+   "Admins can manage user_documents"
+  ],
+  "form_pdf_imports": [
+   "Admins manage form_pdf_imports"
+  ],
+  "mailboxes": [
+   "Admins can manage mailboxes",
+   "Admins can view mailboxes"
+  ],
+  "permissions": [
+   "Admins manage permissions"
+  ],
+  "user_roles_v2": [
+   "Admins manage user_roles_v2",
+   "Users read own role assignments"
+  ],
+  "user_scopes": [
+   "Admins manage user_scopes",
+   "Users read own scopes"
+  ],
+  "user_permission_overrides_v2": [
+   "Admins manage overrides_v2",
+   "Users read own permission overrides"
+  ],
+  "import_logs": [
+   "Admins can manage import_logs"
+  ],
+  "import_results": [
+   "Admins can manage import_results"
+  ],
+  "user_accounts": [
+   "Admins can manage user_accounts"
+  ],
+  "people": [
+   "Users can read people in their companies",
+   "Admins can manage people"
+  ]
+ }
+}

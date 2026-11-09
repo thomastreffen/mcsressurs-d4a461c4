@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { isExactServiceBearer } from "../_shared/security-boundary.ts";
+import { isExactServiceBearer, legacyAdminInCompany } from "../_shared/security-boundary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,6 +65,7 @@ Deno.serve(async (req) => {
     }
 
     // Allow service role calls through, otherwise validate JWT and check admin role
+    let userCallerId: string | null = null;
     if (!isExactServiceBearer(authHeader, serviceRoleKey)) {
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
       const callerClient = createClient(supabaseUrl, anonKey, {
@@ -77,18 +78,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // Verify admin
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", caller.id)
-        .maybeSingle();
-      if (!roleData || !["admin", "super_admin"].includes(roleData.role)) {
-        return new Response(JSON.stringify({ error: "Admin required" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      userCallerId = caller.id;
     }
 
     const body: NotifyRequest = await req.json();
@@ -99,6 +89,17 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // User callers: legacy admin only inside the project's own company; global superadmin everywhere.
+    if (userCallerId) {
+      const { data: proj } = await supabase.from("events").select("company_id").eq("id", project_id).maybeSingle();
+      if (!(await legacyAdminInCompany(supabase, userCallerId, proj?.company_id, { includeV1ManageUsers: false }))) {
+        return new Response(JSON.stringify({ error: "Admin required" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const config = NOTIFICATION_CONFIG[notification_type];

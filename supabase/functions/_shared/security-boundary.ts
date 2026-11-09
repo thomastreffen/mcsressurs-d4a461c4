@@ -41,8 +41,33 @@ export interface BoundaryRpcClient {
   rpc(name: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: unknown }>;
 }
 
-/** Staged provisioning authorization; production wiring follows the Simen lockout approval. */
+/** Global system administration (provisioning, roles, access): only global superadmin. Fails closed. */
 export async function requireGlobalAccessManager(client: BoundaryRpcClient, callerId: string): Promise<boolean> {
   const { data, error } = await client.rpc("is_global_superadmin", { _auth_user_id: callerId });
   return !error && data === true;
+}
+
+export interface BoundaryQueryClient extends BoundaryRpcClient {
+  // deno-lint-ignore no-explicit-any
+  from(table: string): any;
+}
+
+/** Legacy admin (admin role or v1 admin.manage_users) only counts inside companies with active membership;
+ * global superadmin counts everywhere. Mirrors public.legacy_admin_in_company. */
+/** Set includeV1ManageUsers=false where the caller previously only accepted the legacy admin role, so no one is widened. */
+export async function legacyAdminInCompany(
+  client: BoundaryQueryClient, callerId: string, companyId: string | null | undefined,
+  { includeV1ManageUsers = true }: { includeV1ManageUsers?: boolean } = {},
+): Promise<boolean> {
+  if (await requireGlobalAccessManager(client, callerId)) return true;
+  if (!companyId) return false;
+  const [{ data: roles }, manageRes, { data: member }] = await Promise.all([
+    client.from("user_roles").select("role").eq("user_id", callerId),
+    includeV1ManageUsers
+      ? client.rpc("check_permission", { _user_id: callerId, _perm: "admin.manage_users" })
+      : Promise.resolve({ data: false, error: null }),
+    client.from("user_memberships").select("id").eq("user_id", callerId).eq("company_id", companyId).eq("is_active", true).limit(1),
+  ]);
+  const legacy = (roles ?? []).some((r: { role: string }) => r.role === "admin") || manageRes.data === true;
+  return legacy && Array.isArray(member) && member.length > 0;
 }

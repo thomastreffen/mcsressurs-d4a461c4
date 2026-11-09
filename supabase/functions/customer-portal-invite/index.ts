@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { legacyAdminInCompany, requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,14 +70,14 @@ Deno.serve(async (req) => {
       inviterAccountId = portalCaller.account_id;
       inviterIsAdmin = false; // portal admin, not system admin
     } else {
-      // System admin check
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", caller.id)
-        .maybeSingle();
-
-      if (!roleData || !["admin", "super_admin"].includes(roleData.role)) {
+      // Staff invite: global superadmin everywhere; legacy admin only for its own company and that
+      // company's projects (no cross-company portal grants).
+      let allowed = await legacyAdminInCompany(supabase, caller.id, company_id, { includeV1ManageUsers: false });
+      if (allowed && Array.isArray(project_ids) && project_ids.length > 0 && !(await requireGlobalAccessManager(supabase, caller.id))) {
+        const { data: projects } = await supabase.from("events").select("id, company_id").in("id", project_ids);
+        allowed = (projects ?? []).length === project_ids.length && (projects ?? []).every((p: any) => p.company_id === company_id);
+      }
+      if (!allowed) {
         return new Response(JSON.stringify({ error: "Admin required" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -209,7 +210,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("Error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Internal error" }),
+      JSON.stringify({ error: (err as any)?.message || "Internal error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

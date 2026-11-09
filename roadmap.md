@@ -307,3 +307,8 @@
 - [x] Fase 0 skyggeliste: .lovable/notification-audit-phase0.md
 - [ ] Eier: hvem får orders.intake i MCS Service (og hvilken konto er Henning?) – venter på eier
 - [ ] Fase 1 bygging – venter på svar over
+
+- [x] 09.11 07:45: Tilgangsgjerder (42), selskapsavgrenset legacy admin (120 policyer), systemtabeller kun superadmin, 7 edge-funksjoner. Se final-cleanup-report.md.
+- [ ] Resterende globale veier: 44 policyer uten selskapsanker, can_view_planning_finance, edge-varsellister, rader uten selskap.
+- [ ] Beslutning: Sindre/Stian adminnivå i BusBar (krever godkjenning).
+- [ ] Cron-legitimering (9 jobber) og Graph state-rotasjon.

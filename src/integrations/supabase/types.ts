@@ -17624,6 +17624,7 @@ export type Database = {
         Returns: string
       }
       backfill_commercial_cases_for_active: { Args: never; Returns: Json }
+      calculation_company_id: { Args: { _id: string }; Returns: string }
       can_access_dle_package_file: {
         Args: { _package: string }
         Returns: boolean
@@ -17832,10 +17833,12 @@ export type Database = {
             }
             Returns: Json
           }
+      customer_company_id: { Args: { _id: string }; Returns: string }
       deactivate_conversation_participant: {
         Args: { _participant_id: string }
         Returns: undefined
       }
+      document_company_id: { Args: { _id: string }; Returns: string }
       dry_run_duplicate_schedule_blocks: {
         Args: never
         Returns: {
@@ -17876,6 +17879,8 @@ export type Database = {
           technician_name: string
         }[]
       }
+      form_instance_company_id: { Args: { _id: string }; Returns: string }
+      form_template_company_id: { Args: { _id: string }; Returns: string }
       get_active_offer_for_source: {
         Args: { _source_id: string; _source_kind: string }
         Returns: string
@@ -18383,6 +18388,9 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _auth_user_id: string }; Returns: boolean }
+      job_task_company_id: { Args: { _id: string }; Returns: string }
+      lead_company_id: { Args: { _id: string }; Returns: string }
+      legacy_admin_in_company: { Args: { _company: string }; Returns: boolean }
       list_order_intake_history: {
         Args: { _company_id: string }
         Returns: {
@@ -18667,6 +18675,7 @@ export type Database = {
         Returns: undefined
       }
       planning_storage_access: { Args: { _name: string }; Returns: boolean }
+      portal_user_company_id: { Args: { _id: string }; Returns: string }
       read_my_assigned_job: { Args: { _event: string }; Returns: Json }
       record_event_delivery: {
         Args: {
@@ -18763,6 +18772,7 @@ export type Database = {
         Returns: undefined
       }
       scan_resource_plan_ghosts: { Args: never; Returns: Json }
+      schedule_block_company_id: { Args: { _id: string }; Returns: string }
       search_linked_financial_projects: {
         Args: { _company_id: string; _q: string }
         Returns: {
@@ -18842,6 +18852,7 @@ export type Database = {
         }[]
       }
       sweep_orphan_schedule_blocks: { Args: never; Returns: Json }
+      task_company_id: { Args: { _id: string }; Returns: string }
       technician_module_access: {
         Args: { _level?: string; _technician_user: string; _uid: string }
         Returns: boolean

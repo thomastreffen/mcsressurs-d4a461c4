@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -253,13 +254,9 @@ function json(data: any, status = 200) {
   });
 }
 
+// Cross-company bypass only for global superadmin; others need membership in the request's company.
 async function checkAdmin(client: any, userId: string): Promise<boolean> {
-  const { data } = await client
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .maybeSingle();
-  return data?.role === "admin" || data?.role === "super_admin";
+  return await requireGlobalAccessManager(client, userId);
 }
 
 // ─── System Prompts ────────────────────────────────────────

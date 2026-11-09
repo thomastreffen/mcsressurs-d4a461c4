@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -129,14 +130,8 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
     console.log("[fetch-employees] Authenticated userId:", userId);
 
-    // Check admin role
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .single();
-
-    if (!roleData || (roleData.role !== "admin" && roleData.role !== "super_admin")) {
+    // Employee import is global system administration: global superadmin only.
+    if (!(await requireGlobalAccessManager(supabaseAdmin, userId))) {
       return new Response(JSON.stringify({ error: "Forbidden - admin only" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

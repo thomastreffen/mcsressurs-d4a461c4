@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,13 +43,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: callerRole } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", caller.id)
-      .maybeSingle();
-
-    if (!callerRole || !["admin", "super_admin"].includes(callerRole.role)) {
+    // Creating logins, memberships and role assignments is global system administration.
+    if (!(await requireGlobalAccessManager(supabaseAdmin, caller.id))) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -283,8 +279,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("[create-person] Unhandled error:", err?.message || String(err));
-    return new Response(JSON.stringify({ error: err?.message || String(err) }), {
+    console.error("[create-person] Unhandled error:", (err as any)?.message || String(err));
+    return new Response(JSON.stringify({ error: (err as any)?.message || String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

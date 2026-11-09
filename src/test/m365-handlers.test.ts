@@ -36,7 +36,7 @@ function fixture(name: string, internal = false) {
   const source = readFileSync(`supabase/functions/${name}/index.ts`, "utf8").replace(/^import .*;\s*$/gm, "");
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   vm.runInNewContext(js, { Deno: { serve: (fn: typeof handler) => { handler = fn; }, env: { get: () => "mock" } }, createClient: () => db, corsHeaders: {}, formatJobSchedule, requiresApproval,
-    getApprovalCallerId: async () => "creator", resolveJobAddress: async () => "Mock address", buildOperationalJobBrief: () => ({}), briefEmailRows: () => "<tr>Mock</tr>",
+    getApprovalCallerId: async () => "creator", requireGlobalAccessManager: async () => false, resolveJobAddress: async () => "Mock address", buildOperationalJobBrief: () => ({}), briefEmailRows: () => "<tr>Mock</tr>",
     systemSenderEnabled: () => true, sendMail: async (input: any, opts: any) => { sends.push({ input, opts }); return input.to.startsWith("marcus") ? { ok: false, status: 403, reason: "graph_forbidden" } : { ok: true, status: 202 }; },
     jobInfoUrl, jobAttachmentLinks, recordDelivery: async (_: any, record: any) => records.push(record), crypto, Request, Response, Date, Map, Set, console: { error() {}, log() {} } });
   return { sends, records, writes, call: async (payload: unknown) => {
