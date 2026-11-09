@@ -146,9 +146,9 @@ describe("rollback", () => {
 
 describe("owner-approved per-company admin exclusion (Sindre / BusBar)", () => {
   it("Sindre loses admin branch in BusBar only; Service/Elektrotavler kept; others untouched", async () => {
+    await db.exec(eventsOnly(art("company-bounded-admin.policies.sql"))); // previous describe rolled back
     await db.exec(load("0078_legacy_admin_company_exclusions.sql"));
     await db.exec(`INSERT INTO legacy_admin_company_exclusions(auth_user_id,company_id,reason) VALUES ('${SINDRE}','${BUSBAR}','test')`);
-    console.log(JSON.stringify((await as(SINDRE, `SELECT legacy_admin_in_company('${BUSBAR}') a, legacy_admin_excluded('${SINDRE}','${BUSBAR}') e`)).rows));
     expect((await as(SINDRE, `UPDATE events SET title='x' WHERE id='${EV_BUSBAR}' RETURNING id`)).rows).toHaveLength(0);
     await denied(as(SINDRE, `INSERT INTO events VALUES (gen_random_uuid(),'${BUSBAR}','x')`));
     expect((await as(SINDRE, `UPDATE events SET title='s' WHERE id='${EV_SERVICE}' RETURNING id`)).rows).toHaveLength(1);
