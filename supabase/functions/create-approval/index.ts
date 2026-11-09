@@ -5,6 +5,7 @@ import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.t
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
+import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
 import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
 import { jobInfoUrl, jobAttachmentLinks } from "../_shared/job-access-policy.ts";
