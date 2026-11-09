@@ -63,6 +63,6 @@ describe("actual staged restrictive write SQL, isolated PostgreSQL roles", () =>
     await db.exec(`DELETE FROM root_users WHERE id='${SIMEN}'`);
     await expect(asUser(SIMEN, "INSERT INTO user_roles(marker) VALUES ('after-rollback')")).rejects.toThrow(/row-level security/i);
     await asUser(ROOT, "INSERT INTO user_roles(marker) VALUES ('thomas-retained')");
-    expect((await db.query("SELECT marker FROM user_roles ORDER BY marker")).rows.map(r => r.marker)).toEqual(["approved", "authorized", "thomas-retained"]);
+    expect((await db.query<{ marker: string }>("SELECT marker FROM user_roles ORDER BY marker")).rows.map(r => r.marker)).toEqual(["approved", "authorized", "thomas-retained"]);
   });
 });

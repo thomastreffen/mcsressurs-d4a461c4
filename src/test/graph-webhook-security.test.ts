@@ -18,7 +18,7 @@ function fixture() {
     };
     return chain;
   } };
-  const source = readFileSync("supabase/functions/graph-webhook-inbound/index.ts", "utf8").replace(/^import .*;\s*$/gm, "").replace(/^export \{ processMessage \};\s*$/gm, "");
+  const source = readFileSync(process.env.WEBHOOK_SOURCE_FILE || "supabase/functions/graph-webhook-inbound/index.ts", "utf8").replace(/^import .*;\s*$/gm, "").replace(/^export \{ processMessage \};\s*$/gm, "");
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   vm.runInNewContext(js, {
     Deno: { serve: (fn: typeof handler) => { handler = fn; }, env: { get: () => "isolated" } },
