@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
+import { isCronBearer, requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
@@ -85,8 +85,8 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Allow service_role key (for pg_cron / system calls)
-  if (jwt !== serviceRoleKey) {
+  // Allow service_role key or the pg_cron shared secret (for system calls)
+  if (jwt !== serviceRoleKey && !(await isCronBearer(supabaseAdmin, authHeader))) {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseAnon = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
