@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
     // Get preferences for all users (batch)
     const { data: allPrefs } = await supabase
       .from("portal_notification_preferences")
-      .select("portal_user_id, " + config.prefKey + ", channel_email")
+      .select("portal_user_id, notify_new_report, notify_pending_approval, notify_new_message, channel_email")
       .in("portal_user_id", portalUsers.map(u => u.id));
 
     const prefsMap = new Map((allPrefs || []).map(p => [p.portal_user_id, p]));
@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("portal-notify error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Internal error" }),
+      JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
