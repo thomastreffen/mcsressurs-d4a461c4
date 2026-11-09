@@ -533,6 +533,13 @@
       "when": 1794209619210,
       "tag": "0075_company_bounded_admin_helpers_and_access_write_gates",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1794209667391,
+      "tag": "0076_company_bounded_legacy_admin_policies",
+      "breakpoints": true
     }
   ]
 }
