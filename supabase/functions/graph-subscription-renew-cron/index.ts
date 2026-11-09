@@ -16,6 +16,13 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Auth: service-role, pg_cron shared secret, or global superadmin only
+    if (!(await isSystemCaller(supabase, supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, req.headers.get("Authorization")))) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const tenantId = Deno.env.get("AZURE_TENANT_ID");
     const clientId = Deno.env.get("AZURE_CLIENT_ID");
     const clientSecret = Deno.env.get("AZURE_CLIENT_SECRET");
