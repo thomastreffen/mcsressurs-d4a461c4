@@ -1,0 +1,555 @@
+[map[functions:[map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.notify_hms_incident_on_insert()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  uid uuid;
+  pri text;
+BEGIN
+  IF NEW.severity IN ('high', 'critical') THEN
+    pri := CASE WHEN NEW.severity = 'critical' THEN 'critical' ELSE 'important' END;
+
+    FOR uid IN
+      SELECT DISTINCT um.user_id
+      FROM public.user_memberships um
+      WHERE um.company_id = NEW.company_id
+        AND um.is_active = true
+        AND public.has_hms_manage(um.user_id, NEW.company_id)
+    LOOP
+      INSERT INTO public.notifications (
+        user_id, company_id, type, title, message,
+        priority, entity_type, entity_id, link_url, actor_user_id
+      ) VALUES (
+        uid,
+        NEW.company_id,
+        'hms.incident.reported',
+        CASE WHEN NEW.severity = 'critical' THEN 'Kritisk HMS-avvik meldt' ELSE 'HMS-avvik meldt (høy)' END,
+        COALESCE(NEW.title, 'Nytt HMS-avvik'),
+        pri,
+        'hms_incident',
+        NEW.id,
+        '/hms/incidents/' || NEW.id::text,
+        NEW.reported_by
+      );
+    END LOOP;
+  END IF;
+  RETURN NEW;
+END;
+$function$
+ name:notify_hms_incident_on_insert security_definer:true signature:] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public._notif_admin_user_ids()
+ RETURNS SETOF uuid
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT DISTINCT user_id FROM public.user_roles WHERE role IN ('admin','super_admin')
+  UNION
+  SELECT DISTINCT ua.auth_user_id
+    FROM public.user_roles_v2 urv
+    JOIN public.roles r ON r.id = urv.role_id
+    JOIN public.user_accounts ua ON ua.id = urv.user_account_id
+   WHERE ua.is_active AND ua.auth_user_id IS NOT NULL
+     AND r.name IN ('Planlegger/Admin','Superadmin');
+$function$
+ name:_notif_admin_user_ids security_definer:true signature:] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = _user_id AND role = _role
+  )
+$function$
+ name:has_role security_definer:true signature:_user_id uuid, _role app_role] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.is_admin()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT public.has_role(auth.uid(), 'admin')
+    OR public.has_role(auth.uid(), 'super_admin')
+    OR public.check_permission(auth.uid(), 'admin.manage_users')
+$function$
+ name:is_admin security_definer:true signature:] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.has_samtaler_access(_auth_user_id uuid, _project_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT
+    -- Company admin bypass
+    public.check_permission_v2(_auth_user_id, 'admin.manage_users')
+    -- Project admin
+    OR public.is_project_admin(_auth_user_id, _project_id)
+    -- Internal non-follower (auto room access)
+    OR public.is_internal_nonfollow_member(_auth_user_id, _project_id)
+    -- Explicit space member for samtaler
+    OR EXISTS (
+      SELECT 1 FROM project_spaces ps
+      JOIN space_members sm ON sm.space_id = ps.id
+      JOIN user_accounts ua ON ua.id = sm.user_account_id
+      WHERE ps.project_id = _project_id
+        AND ps.space_key = 'samtaler'
+        AND ps.is_enabled = true
+        AND ua.auth_user_id = _auth_user_id
+        AND ua.is_active = true
+    )
+$function$
+ name:has_samtaler_access security_definer:true signature:_auth_user_id uuid, _project_id uuid] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.user_has_company_access(_auth_user_id uuid, _company_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT 
+    -- scope.view.all bypasses company check
+    public.check_permission_v2(_auth_user_id, 'scope.view.all')
+    OR EXISTS (
+      SELECT 1 FROM public.user_memberships
+      WHERE user_id = _auth_user_id
+        AND company_id = _company_id
+        AND is_active = true
+    )
+$function$
+ name:user_has_company_access security_definer:true signature:_auth_user_id uuid, _company_id uuid] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.can_access_record(_user_id uuid, _record_company_id uuid, _record_department_id uuid, _record_created_by uuid, _record_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT CASE public.get_user_scope(_user_id)
+    WHEN 'all' THEN true
+    WHEN 'company' THEN
+      -- User has membership in the same company
+      EXISTS (
+        SELECT 1 FROM public.user_memberships um
+        WHERE um.user_id = _user_id
+          AND um.company_id = _record_company_id
+          AND um.is_active = true
+          AND (
+            -- Company-wide membership (department_id IS NULL) sees all departments
+            um.department_id IS NULL
+            -- Or department-specific membership must match
+            OR um.department_id = _record_department_id
+            -- Or record has no department
+            OR _record_department_id IS NULL
+          )
+      )
+    ELSE
+      -- 'own': created_by OR participant
+      _record_created_by = _user_id
+      OR EXISTS (
+        SELECT 1 FROM public.job_participants jp
+        WHERE jp.job_id = _record_id AND jp.user_id = _user_id
+      )
+      OR EXISTS (
+        SELECT 1 FROM public.event_technicians et
+        JOIN public.technicians t ON t.id = et.technician_id
+        WHERE et.event_id = _record_id AND t.user_id = _user_id
+      )
+  END
+$function$
+ name:can_access_record security_definer:true signature:_user_id uuid, _record_company_id uuid, _record_department_id uuid, _record_created_by uuid, _record_id uuid] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.is_project_admin(_auth_user_id uuid, _project_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.project_members pm
+    JOIN public.user_accounts ua ON ua.id = pm.user_account_id
+    WHERE pm.project_id = _project_id
+      AND ua.auth_user_id = _auth_user_id
+      AND ua.is_active = true
+      AND pm.role IN ('owner', 'manager')
+  )
+  -- System admin bypass
+  OR public.check_permission_v2(_auth_user_id, 'admin.manage_users')
+$function$
+ name:is_project_admin security_definer:true signature:_auth_user_id uuid, _project_id uuid] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.is_active_member_of(_company_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT _company_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.user_memberships um
+    WHERE um.user_id = auth.uid() AND um.company_id = _company_id AND um.is_active = true)
+$function$
+ name:is_active_member_of security_definer:true signature:_company_id uuid] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.is_company_member(_auth_user_id uuid, _company_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_memberships
+    WHERE user_id = _auth_user_id
+      AND company_id = _company_id
+      AND is_active = true
+  )
+$function$
+ name:is_company_member security_definer:true signature:_auth_user_id uuid, _company_id uuid] map[acl:[postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.planning_person_directory()
+ RETURNS TABLE(person_id uuid, full_name text, company_id uuid, company_name text, department_id uuid, department_name text, is_primary boolean, can_notify boolean)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT p.id, p.full_name, e.company_id, c.name, e.department_id, d.name,
+         coalesce(e.is_primary, false), public.person_has_verified_login(p.id)
+    FROM public.employment_profiles e
+    JOIN public.people p ON p.id = e.person_id AND p.is_active
+    JOIN public.internal_companies c ON c.id = e.company_id AND c.is_active
+    LEFT JOIN public.departments d ON d.id = e.department_id
+   WHERE e.archived_at IS NULL
+     AND coalesce(e.relationship_type,'employee') = 'employee'
+     AND EXISTS (SELECT 1 FROM public.user_memberships m WHERE m.user_id = auth.uid() AND m.is_active)
+   ORDER BY p.full_name, e.is_primary DESC NULLS LAST, c.name
+$function$
+ name:planning_person_directory security_definer:true signature:] map[acl:[=X/postgres postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.planning_eligible_participants()
+ RETURNS TABLE(user_id uuid, full_name text, company_id uuid, company_name text, department_id uuid, department_name text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT DISTINCT ON (um.user_id, um.company_id)
+    um.user_id, COALESCE(pe.full_name, t.name, 'Ukjent') AS full_name,
+    um.company_id, c.name, um.department_id, d.name
+  FROM public.user_memberships um
+  JOIN public.internal_companies c ON c.id = um.company_id
+  LEFT JOIN public.departments d ON d.id = um.department_id
+  LEFT JOIN public.user_accounts ua ON ua.auth_user_id = um.user_id
+  LEFT JOIN public.people pe ON pe.id = ua.person_id
+  LEFT JOIN public.technicians t ON t.user_id = um.user_id
+  WHERE um.is_active = true
+    AND NOT public.has_role(um.user_id, 'customer_user')
+    AND (public.is_super_admin(auth.uid()) OR public.is_active_member_of(um.company_id))
+  ORDER BY um.user_id, um.company_id
+$function$
+ name:planning_eligible_participants security_definer:true signature:] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.check_permission(_user_id uuid, _perm text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT COALESCE(
+    -- 1. Check override first
+    (SELECT allowed FROM public.user_permission_overrides
+     WHERE user_id = _user_id AND permission_key = _perm LIMIT 1),
+    -- 2. Check role permissions (any role grants it)
+    (SELECT bool_or(rp.allowed) FROM public.user_role_assignments ura
+     JOIN public.role_permissions rp ON rp.role_id = ura.role_id
+     WHERE ura.user_id = _user_id AND rp.permission_key = _perm),
+    -- 3. Default false
+    false
+  )
+$function$
+ name:check_permission security_definer:true signature:_user_id uuid, _perm text] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.check_permission_v2(_auth_user_id uuid, _perm text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT COALESCE(
+    (SELECT upo.mode = 'allow'
+       FROM public.user_permission_overrides_v2 upo
+       JOIN public.user_accounts ua ON ua.id = upo.user_account_id
+      WHERE ua.auth_user_id = _auth_user_id AND ua.is_active
+        AND upo.permission_key = _perm
+        AND (upo.scope_company_id IS NULL OR upo.scope_company_id = ua.company_id)
+      LIMIT 1),
+    (SELECT bool_or(rp.allowed)
+       FROM public.user_roles_v2 urv
+       JOIN public.user_accounts ua ON ua.id = urv.user_account_id
+       JOIN public.role_permissions rp ON rp.role_id = urv.role_id
+      WHERE ua.auth_user_id = _auth_user_id AND ua.is_active
+        AND rp.permission_key = _perm
+        AND (urv.scope_company_id IS NULL OR urv.scope_company_id = ua.company_id)),
+    false)
+$function$
+ name:check_permission_v2 security_definer:true signature:_auth_user_id uuid, _perm text] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.rename_submission_attachment(_attachment_id uuid, _display_name text, _description text DEFAULT NULL::text)
+ RETURNS order_form_submission_attachments
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  _row public.order_form_submission_attachments;
+  _company uuid;
+  _uid uuid := auth.uid();
+BEGIN
+  IF _uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  SELECT s.company_id INTO _company
+  FROM public.order_form_submission_attachments a
+  JOIN public.order_form_submissions s ON s.id = a.submission_id
+  WHERE a.id = _attachment_id;
+
+  IF _company IS NULL THEN
+    RAISE EXCEPTION 'Attachment not found';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.user_memberships um
+    WHERE um.user_id = _uid AND um.company_id = _company
+  ) THEN
+    RAISE EXCEPTION 'Access denied';
+  END IF;
+
+  UPDATE public.order_form_submission_attachments
+  SET display_name = NULLIF(btrim(_display_name), ''),
+      description  = NULLIF(btrim(_description), ''),
+      renamed_at   = now(),
+      renamed_by   = _uid
+  WHERE id = _attachment_id
+  RETURNING * INTO _row;
+
+  RETURN _row;
+END;
+$function$
+ name:rename_submission_attachment security_definer:true signature:_attachment_id uuid, _display_name text, _description text] map[acl:[=X/postgres postgres=X/postgres anon=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.can_view_planning_finance()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT public.is_admin() OR public.check_permission_v2(auth.uid(), 'jobs.view_pricing')
+$function$
+ name:can_view_planning_finance security_definer:true signature:] map[acl:[postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.company_role_permission(_uid uuid, _company uuid, _perm text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+SELECT COALESCE(
+ (SELECT o.mode='allow' FROM public.user_permission_overrides_v2 o JOIN public.user_accounts a ON a.id=o.user_account_id WHERE a.auth_user_id=_uid AND a.is_active AND o.permission_key=_perm AND (o.scope_company_id IS NULL OR o.scope_company_id=_company) ORDER BY o.scope_company_id NULLS LAST LIMIT 1),
+ (SELECT o.allowed FROM public.user_permission_overrides o WHERE o.user_id=_uid AND o.permission_key=_perm LIMIT 1),
+ (SELECT bool_or(rp.allowed) FROM public.role_permissions rp WHERE rp.permission_key=_perm AND rp.role_id IN (
+ SELECT um.role_id FROM public.user_memberships um WHERE um.user_id=_uid AND um.company_id=_company AND um.is_active AND um.role_id IS NOT NULL
+ UNION SELECT r.role_id FROM public.user_role_assignments r WHERE r.user_id=_uid AND NOT EXISTS(SELECT 1 FROM public.user_memberships um WHERE um.user_id=_uid AND um.company_id=_company AND um.is_active AND um.role_id IS NOT NULL)
+ UNION SELECT r.role_id FROM public.user_roles_v2 r JOIN public.user_accounts a ON a.id=r.user_account_id WHERE a.auth_user_id=_uid AND a.is_active AND NOT EXISTS(SELECT 1 FROM public.user_memberships um WHERE um.user_id=_uid AND um.company_id=_company AND um.is_active AND um.role_id IS NOT NULL)
+ )),false)
+$function$
+ name:company_role_permission security_definer:true signature:_uid uuid, _company uuid, _perm text] map[acl:[postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.is_company_admin(_auth_user_id uuid, _company_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT _company_id IS NOT NULL AND (
+    public.is_global_superadmin(_auth_user_id)
+    OR EXISTS (
+      SELECT 1 FROM public.company_admin_assignments a
+      JOIN public.user_memberships m ON m.user_id = a.auth_user_id AND m.company_id = a.company_id AND m.is_active
+      WHERE a.auth_user_id = _auth_user_id AND a.company_id = _company_id AND a.revoked_at IS NULL
+    )
+  )
+$function$
+ name:is_company_admin security_definer:true signature:_auth_user_id uuid, _company_id uuid] map[acl:[postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.save_permission_override_changes(_account uuid, _company uuid, _changes jsonb)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE item jsonb; current_row public.user_permission_overrides_v2%ROWTYPE; login_id uuid; desired text;
+BEGIN
+ IF NOT public.is_super_admin(auth.uid()) THEN RAISE EXCEPTION 'Forbidden' USING ERRCODE='42501'; END IF;
+ IF jsonb_typeof(_changes) <> 'array' OR jsonb_array_length(_changes)>300 THEN RAISE EXCEPTION 'Invalid changes'; END IF;
+ SELECT auth_user_id INTO login_id FROM public.user_accounts WHERE id=_account FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Account not found'; END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(_changes) x GROUP BY x->>'permission_key' HAVING count(*)>1) THEN RAISE EXCEPTION 'Duplicate permission keys'; END IF;
+ FOR item IN SELECT value FROM jsonb_array_elements(_changes) LOOP
+  desired := item->>'mode';
+  IF coalesce(item->>'permission_key','')='' OR length(item->>'permission_key')>200 OR (desired IS NOT NULL AND desired NOT IN ('allow','deny')) THEN RAISE EXCEPTION 'Invalid permission'; END IF;
+  SELECT * INTO current_row FROM public.user_permission_overrides_v2 WHERE user_account_id=_account AND permission_key=[REDACTED]'permission_key' FOR UPDATE;
+  IF FOUND THEN
+   IF current_row.scope_company_id IS DISTINCT FROM _company OR current_row.scope_department_id IS NOT NULL THEN RAISE EXCEPTION 'Permission exists in a different scope; edit original scope'; END IF;
+   IF desired IS NOT NULL AND current_row.mode=desired THEN CONTINUE; END IF;
+   IF item->'expected'->>'mode' IS DISTINCT FROM current_row.mode THEN RAISE EXCEPTION 'Permissions changed; reload before saving'; END IF;
+  ELSIF item->'expected' IS NOT NULL AND item->'expected'<>'null'::jsonb AND desired IS NOT NULL THEN RAISE EXCEPTION 'Permissions changed; reload before saving';
+  END IF;
+  IF desired IS NULL THEN
+   DELETE FROM public.user_permission_overrides_v2 WHERE user_account_id=_account AND permission_key=[REDACTED]'permission_key' AND scope_company_id IS NOT DISTINCT FROM _company;
+  ELSE
+   INSERT INTO public.user_permission_overrides_v2(user_account_id,permission_key,mode,scope_company_id) VALUES(_account,item->>'permission_key',desired,_company)
+   ON CONFLICT(user_account_id,permission_key) DO UPDATE SET mode=excluded.mode;
+  END IF;
+  DELETE FROM public.user_permission_overrides WHERE user_id=login_id AND permission_key=[REDACTED]'permission_key';
+  IF _company IS NULL AND desired IS NOT NULL THEN
+   INSERT INTO public.user_permission_overrides(user_id,permission_key,allowed) VALUES(login_id,item->>'permission_key',desired='allow') ON CONFLICT(user_id,permission_key) DO UPDATE SET allowed=excluded.allowed;
+  END IF;
+ END LOOP;
+END $function$
+ name:save_permission_override_changes security_definer:true signature:_account uuid, _company uuid, _changes jsonb] map[acl:[postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.check_permission_v2_company(_auth_user_id uuid, _perm text, _company_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT COALESCE(
+    (SELECT upo.mode = 'allow'
+       FROM public.user_permission_overrides_v2 upo
+       JOIN public.user_accounts ua ON ua.id = upo.user_account_id
+      WHERE ua.auth_user_id = _auth_user_id AND ua.is_active
+        AND upo.permission_key = _perm
+        AND (upo.scope_company_id IS NULL OR upo.scope_company_id = _company_id)
+      ORDER BY (upo.scope_company_id IS NOT NULL) DESC LIMIT 1),
+    (SELECT bool_or(rp.allowed)
+       FROM public.user_roles_v2 urv
+       JOIN public.user_accounts ua ON ua.id = urv.user_account_id
+       JOIN public.role_permissions rp ON rp.role_id = urv.role_id
+      WHERE ua.auth_user_id = _auth_user_id AND ua.is_active
+        AND rp.permission_key = _perm
+        AND (urv.scope_company_id IS NULL OR urv.scope_company_id = _company_id)),
+    false)
+$function$
+ name:check_permission_v2_company security_definer:true signature:_auth_user_id uuid, _perm text, _company_id uuid] map[acl:[postgres=X/postgres service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.order_intake_recipients(_company_id uuid)
+ RETURNS SETOF uuid
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  RETURN QUERY
+    SELECT DISTINCT ua.auth_user_id
+    FROM public.order_notification_subscriptions s
+    JOIN public.user_accounts ua ON ua.id = s.user_account_id
+    WHERE s.company_id = _company_id AND s.is_active
+      AND public.has_order_intake(ua.id, _company_id);
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT DISTINCT ur.user_id FROM public.user_roles ur WHERE ur.role = 'super_admin';
+  END IF;
+END $function$
+ name:order_intake_recipients security_definer:true signature:_company_id uuid] map[acl:[postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.admin_tier_shadow_diff()
+ RETURNS TABLE(auth_user_id uuid, full_name text, legacy_admin boolean, legacy_super_admin boolean, v1_manage_users boolean, is_admin_now boolean, superadmin_after boolean, company_admin_after text[], member_of text[])
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT au.id, p.full_name,
+    public.has_role(au.id,'admin'), public.has_role(au.id,'super_admin'),
+    public.check_permission(au.id,'admin.manage_users'),
+    (public.has_role(au.id,'admin') OR public.has_role(au.id,'super_admin') OR public.check_permission(au.id,'admin.manage_users')),
+    public.is_global_superadmin(au.id),
+    ARRAY(SELECT DISTINCT c.name FROM user_memberships m JOIN internal_companies c ON c.id=m.company_id WHERE m.user_id=au.id AND m.is_active AND public.is_company_admin(au.id,m.company_id)),
+    ARRAY(SELECT DISTINCT c.name FROM user_memberships m JOIN internal_companies c ON c.id=m.company_id WHERE m.user_id=au.id AND m.is_active)
+  FROM auth.users au
+  LEFT JOIN user_accounts ua ON ua.auth_user_id=au.id AND ua.is_active
+  LEFT JOIN people p ON p.id=ua.person_id
+  WHERE public.is_global_superadmin(auth.uid())
+    AND (public.has_role(au.id,'admin') OR public.has_role(au.id,'super_admin') OR public.check_permission(au.id,'admin.manage_users'))
+$function$
+ name:admin_tier_shadow_diff security_definer:true signature:] map[acl:[postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.has_order_intake(_user_account_id uuid, _company_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_accounts ua
+    WHERE ua.id = _user_account_id AND ua.is_active AND ua.auth_user_id IS NOT NULL
+      AND (
+        public.is_global_superadmin(ua.auth_user_id)
+        OR (
+          EXISTS (SELECT 1 FROM public.user_permission_overrides_v2 o
+                  WHERE o.user_account_id = ua.id AND o.permission_key = 'orders.intake'
+                    AND o.mode = 'allow' AND o.scope_company_id = _company_id)
+          AND EXISTS (SELECT 1 FROM public.user_memberships m
+                      WHERE m.user_id = ua.auth_user_id AND m.company_id = _company_id AND m.is_active)
+        )
+      )
+  )
+$function$
+ name:has_order_intake security_definer:true signature:_user_account_id uuid, _company_id uuid] map[acl:[=X/postgres postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.set_order_intake_member(_company_id uuid, _user_account_id uuid, _admin boolean, _notify boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_auth uuid; v_is_sa boolean; v_before_admin boolean; v_before_notify boolean; v_notify boolean;
+BEGIN
+  IF NOT public.is_global_superadmin(auth.uid()) THEN RAISE EXCEPTION 'Ingen tilgang' USING ERRCODE = '42501'; END IF;
+  SELECT auth_user_id INTO v_auth FROM public.user_accounts WHERE id = _user_account_id AND is_active;
+  IF v_auth IS NULL THEN RAISE EXCEPTION 'Ukjent eller inaktiv konto'; END IF;
+  v_is_sa := public.is_global_superadmin(v_auth);
+  IF _admin AND NOT v_is_sa AND NOT EXISTS (SELECT 1 FROM public.user_memberships WHERE user_id = v_auth AND company_id = _company_id AND is_active) THEN
+    RAISE EXCEPTION 'Personen er ikke aktivt medlem i selskapet';
+  END IF;
+  v_before_admin := public.has_order_intake(_user_account_id, _company_id);
+  v_before_notify := COALESCE((SELECT is_active FROM public.order_notification_subscriptions WHERE user_account_id = _user_account_id AND company_id = _company_id), false);
+  v_notify := _notify AND (_admin OR v_is_sa);
+
+  IF NOT v_is_sa THEN
+    IF _admin THEN
+      INSERT INTO public.user_permission_overrides_v2 (user_account_id, permission_key, scope_company_id, mode)
+      SELECT _user_account_id, 'orders.intake', _company_id, 'allow'
+      WHERE NOT EXISTS (SELECT 1 FROM public.user_permission_overrides_v2 WHERE user_account_id = _user_account_id AND permission_key = 'orders.intake' AND scope_company_id = _company_id);
+    ELSE
+      DELETE FROM public.user_permission_overrides_v2 WHERE user_account_id = _user_account_id AND permission_key = 'orders.intake' AND scope_company_id = _company_id;
+    END IF;
+  END IF;
+
+  INSERT INTO public.order_notification_subscriptions (user_account_id, company_id, is_active, updated_by, updated_at)
+  VALUES (_user_account_id, _company_id, v_notify, auth.uid(), now())
+  ON CONFLICT (user_account_id, company_id) DO UPDATE SET is_active = EXCLUDED.is_active, updated_by = EXCLUDED.updated_by, updated_at = now();
+
+  IF v_before_admin IS DISTINCT FROM (_admin OR v_is_sa) OR v_before_notify IS DISTINCT FROM v_notify THEN
+    INSERT INTO public.access_audit_log (user_id, company_id, module, level, action, details, performed_by)
+    VALUES (v_auth, _company_id, 'orders.intake', CASE WHEN _admin OR v_is_sa THEN 'admin' ELSE 'none' END, 'order_intake_changed',
+      jsonb_build_object('user_account_id', _user_account_id,
+        'before', jsonb_build_object('admin', v_before_admin, 'notify', v_before_notify),
+        'after', jsonb_build_object('admin', _admin OR v_is_sa, 'notify', v_notify)), auth.uid());
+  END IF;
+END $function$
+ name:set_order_intake_member security_definer:true signature:_company_id uuid, _user_account_id uuid, _admin boolean, _notify boolean] map[acl:[=X/postgres postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.list_order_intake_members(_company_id uuid)
+ RETURNS TABLE(user_account_id uuid, full_name text, email text, is_superadmin boolean, has_admin boolean, notify boolean)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF NOT public.is_global_superadmin(auth.uid()) THEN RAISE EXCEPTION 'Ingen tilgang' USING ERRCODE = '42501'; END IF;
+  RETURN QUERY
+  SELECT ua.id, p.full_name, au.email::text,
+         public.is_global_superadmin(ua.auth_user_id),
+         public.has_order_intake(ua.id, _company_id),
+         COALESCE((SELECT s.is_active FROM public.order_notification_subscriptions s
+                   WHERE s.user_account_id = ua.id AND s.company_id = _company_id), false)
+  FROM public.user_accounts ua
+  JOIN public.people p ON p.id = ua.person_id
+  LEFT JOIN auth.users au ON au.id = ua.auth_user_id
+  WHERE ua.is_active AND ua.auth_user_id IS NOT NULL
+    AND (public.is_global_superadmin(ua.auth_user_id)
+         OR EXISTS (SELECT 1 FROM public.user_permission_overrides_v2 o
+                    WHERE o.user_account_id = ua.id AND o.permission_key = 'orders.intake'
+                      AND o.scope_company_id = _company_id)
+         OR EXISTS (SELECT 1 FROM public.order_notification_subscriptions s
+                    WHERE s.user_account_id = ua.id AND s.company_id = _company_id AND s.is_active))
+  ORDER BY 4 DESC, 2;
+END $function$
+ name:list_order_intake_members security_definer:true signature:_company_id uuid] map[acl:[=X/postgres postgres=X/postgres authenticated=[REDACTED] service_role=X/postgres sandbox_exec_nmqycanqumelmfpdmkpr=X/postgres] definition:CREATE OR REPLACE FUNCTION public.search_order_intake_candidates(_company_id uuid, _q text)
+ RETURNS TABLE(user_account_id uuid, full_name text, email text)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF NOT public.is_global_superadmin(auth.uid()) THEN RAISE EXCEPTION 'Ingen tilgang' USING ERRCODE = '42501'; END IF;
+  RETURN QUERY
+  SELECT ua.id, p.full_name, au.email::text
+  FROM public.user_accounts ua
+  JOIN public.people p ON p.id = ua.person_id
+  LEFT JOIN auth.users au ON au.id = ua.auth_user_id
+  WHERE ua.is_active AND ua.verified_at IS NOT NULL AND ua.auth_user_id IS NOT NULL
+    AND EXISTS (SELECT 1 FROM public.user_memberships m WHERE m.user_id = ua.auth_user_id AND m.company_id = _company_id AND m.is_active)
+    AND (coalesce(_q,'') = '' OR p.full_name ILIKE '%'||_q||'%' OR au.email ILIKE '%'||_q||'%')
+  ORDER BY p.full_name LIMIT 20;
+END $function$
+ name:search_order_intake_candidates security_definer:true signature:_company_id uuid, _q text]]]]

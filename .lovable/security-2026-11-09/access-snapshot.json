@@ -1,0 +1,3555 @@
+{
+  "people": [
+    {
+      "roles_v1": [
+        {
+          "id": "9ca9f897-8205-4f4a-ad6b-242530cfd77b",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "user_id": "a76694bd-e1b5-42c3-8523-4fc2a39e040f",
+          "created_at": "2026-03-17T09:15:03.158934+00:00"
+        },
+        {
+          "id": "d1c1c24e-87ba-489a-87f5-3ea7da8adba9",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "user_id": "a76694bd-e1b5-42c3-8523-4fc2a39e040f",
+          "created_at": "2026-03-17T09:15:03.158934+00:00"
+        }
+      ],
+      "roles_v2": [
+        {
+          "id": "1b98d28c-c0ec-4910-9359-79516d4c1f7f",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-03-17T09:15:02.744917+00:00",
+          "user_account_id": "a39b91ba-f601-4d5b-9a2a-5ad940a46788",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "519a70bb-25d9-46b0-ab62-f5b253819fda",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "created_at": "2026-03-17T09:15:02.744917+00:00",
+          "user_account_id": "a39b91ba-f601-4d5b-9a2a-5ad940a46788",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ],
+      "full_name": "Lars Erik Huseby",
+      "is_active": true,
+      "person_id": "518e32e1-1a1a-458a-ae64-e149e11ce8fb",
+      "account_id": "a39b91ba-f601-4d5b-9a2a-5ad940a46788",
+      "company_id": "a3eb3912-cc88-4836-9f78-5207011aba55",
+      "memberships": [
+        {
+          "id": "ae4b4503-ecc1-43d9-9882-63de4df78c21",
+          "role_id": null,
+          "user_id": "a76694bd-e1b5-42c3-8523-4fc2a39e040f",
+          "is_active": true,
+          "company_id": "a3eb3912-cc88-4836-9f78-5207011aba55",
+          "created_at": "2026-03-17T09:15:04.089208+00:00",
+          "department_id": null
+        }
+      ],
+      "verified_at": "2026-10-23T07:51:03.375654+00:00",
+      "auth_user_id": "a76694bd-e1b5-42c3-8523-4fc2a39e040f",
+      "legacy_roles": [
+        "montør"
+      ],
+      "overrides_v1": null,
+      "overrides_v2": null
+    },
+    {
+      "roles_v1": [
+        {
+          "id": "90073c23-5a30-4b18-b18a-c0b000cf7c95",
+          "role_id": "b0000000-0000-0000-0000-000000000004",
+          "user_id": "9ee227c5-7cc0-409a-93aa-1ef0696d27ca",
+          "created_at": "2026-02-25T09:41:45.769671+00:00"
+        },
+        {
+          "id": "4289f34b-8c27-4fc0-8da7-b1199315663f",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "user_id": "9ee227c5-7cc0-409a-93aa-1ef0696d27ca",
+          "created_at": "2026-02-25T09:41:45.769671+00:00"
+        }
+      ],
+      "roles_v2": [
+        {
+          "id": "a685f055-aa92-4d96-9980-d691533ddfbb",
+          "role_id": "b0000000-0000-0000-0000-000000000004",
+          "created_at": "2026-03-02T10:28:52.906147+00:00",
+          "user_account_id": "507dc92c-72af-4d86-90c2-8ce5ef3c70ee",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "3f14e3e4-7d68-4ad4-8e77-b80b848a0f00",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "created_at": "2026-03-02T10:28:52.906147+00:00",
+          "user_account_id": "507dc92c-72af-4d86-90c2-8ce5ef3c70ee",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ],
+      "full_name": "Simen Kjeksli",
+      "is_active": true,
+      "person_id": "29884db7-d620-487a-a6e0-169b7bdfdacd",
+      "account_id": "507dc92c-72af-4d86-90c2-8ce5ef3c70ee",
+      "company_id": "a0000000-0000-0000-0000-000000000002",
+      "memberships": [
+        {
+          "id": "b22220b4-ab36-4c7c-b6e1-cad792f13fd3",
+          "role_id": null,
+          "user_id": "9ee227c5-7cc0-409a-93aa-1ef0696d27ca",
+          "is_active": true,
+          "company_id": "a0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-02-25T09:41:45.963612+00:00",
+          "department_id": null
+        },
+        {
+          "id": "40668905-ad02-4c23-a56f-10bd26b63a1a",
+          "role_id": null,
+          "user_id": "9ee227c5-7cc0-409a-93aa-1ef0696d27ca",
+          "is_active": true,
+          "company_id": "a0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-02-25T09:41:45.963612+00:00",
+          "department_id": "70f89b66-4b5a-4901-b47d-3e9e5fc5d50b"
+        }
+      ],
+      "verified_at": "2026-10-23T07:51:03.375654+00:00",
+      "auth_user_id": "9ee227c5-7cc0-409a-93aa-1ef0696d27ca",
+      "legacy_roles": [
+        "admin"
+      ],
+      "overrides_v1": null,
+      "overrides_v2": null
+    },
+    {
+      "roles_v1": [
+        {
+          "id": "8fac3de2-df48-4df9-b91d-fd6be5aed1c9",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "user_id": "88d51d9b-a6cb-40e8-9f24-3466caf2faad",
+          "created_at": "2026-03-17T11:12:45.493552+00:00"
+        },
+        {
+          "id": "ba9ffe90-aca9-45be-94a9-1a40af549502",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "user_id": "88d51d9b-a6cb-40e8-9f24-3466caf2faad",
+          "created_at": "2026-03-17T11:12:45.493552+00:00"
+        }
+      ],
+      "roles_v2": [
+        {
+          "id": "12852038-d277-4211-9ee1-a1a679fa0721",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "created_at": "2026-03-17T11:12:44.965712+00:00",
+          "user_account_id": "ecd7c275-b6f9-42d0-9d09-886465e9e5b9",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "9057d354-6709-4583-8d43-55ea6196ac8e",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-03-17T11:12:44.965712+00:00",
+          "user_account_id": "ecd7c275-b6f9-42d0-9d09-886465e9e5b9",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ],
+      "full_name": "Stian Aarstad",
+      "is_active": true,
+      "person_id": "45c3e2fb-182c-4376-ac4d-7b81ca8ffbd6",
+      "account_id": "ecd7c275-b6f9-42d0-9d09-886465e9e5b9",
+      "company_id": "a0000000-0000-0000-0000-000000000001",
+      "memberships": [
+        {
+          "id": "c4b66623-ad87-4c3c-bfb2-a2a7608f9913",
+          "role_id": null,
+          "user_id": "88d51d9b-a6cb-40e8-9f24-3466caf2faad",
+          "is_active": true,
+          "company_id": "a0000000-0000-0000-0000-000000000001",
+          "created_at": "2026-03-17T11:12:46.365148+00:00",
+          "department_id": null
+        },
+        {
+          "id": "79cf28da-49a5-4987-bce4-90cc2b963c99",
+          "role_id": null,
+          "user_id": "88d51d9b-a6cb-40e8-9f24-3466caf2faad",
+          "is_active": true,
+          "company_id": "a0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-03-17T11:12:46.365148+00:00",
+          "department_id": null
+        },
+        {
+          "id": "bee98f1c-fbbc-47bb-a92e-69be29f69d6d",
+          "role_id": null,
+          "user_id": "88d51d9b-a6cb-40e8-9f24-3466caf2faad",
+          "is_active": true,
+          "company_id": "a3eb3912-cc88-4836-9f78-5207011aba55",
+          "created_at": "2026-03-17T11:12:46.365148+00:00",
+          "department_id": null
+        }
+      ],
+      "verified_at": "2026-10-23T07:51:03.375654+00:00",
+      "auth_user_id": "88d51d9b-a6cb-40e8-9f24-3466caf2faad",
+      "legacy_roles": [],
+      "overrides_v1": null,
+      "overrides_v2": null
+    },
+    {
+      "roles_v1": [
+        {
+          "id": "4e69480e-008e-4995-ae07-a85f89ce1fa3",
+          "role_id": "b0000000-0000-0000-0000-000000000004",
+          "user_id": "5a50a16b-ed15-4720-8cd6-3c303100395f",
+          "created_at": "2026-02-25T09:40:15.07752+00:00"
+        }
+      ],
+      "roles_v2": [
+        {
+          "id": "a74c6e23-34ce-42aa-8fed-0a2b5cad0dab",
+          "role_id": "b0000000-0000-0000-0000-000000000004",
+          "created_at": "2026-03-02T10:28:52.906147+00:00",
+          "user_account_id": "5dc13849-bf9a-4e04-970e-4be8ad2a101f",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ],
+      "full_name": "Thomas Treffen",
+      "is_active": true,
+      "person_id": "c08e66f8-e4a7-489f-a773-60d5bf3ac6c6",
+      "account_id": "5dc13849-bf9a-4e04-970e-4be8ad2a101f",
+      "company_id": "a0000000-0000-0000-0000-000000000001",
+      "memberships": [
+        {
+          "id": "fc6cb8ce-9fd0-4b80-a502-e1b38e57eabe",
+          "role_id": null,
+          "user_id": "5a50a16b-ed15-4720-8cd6-3c303100395f",
+          "is_active": true,
+          "company_id": "a0000000-0000-0000-0000-000000000001",
+          "created_at": "2026-02-25T09:40:15.562446+00:00",
+          "department_id": null
+        }
+      ],
+      "verified_at": "2026-10-23T07:51:03.375654+00:00",
+      "auth_user_id": "5a50a16b-ed15-4720-8cd6-3c303100395f",
+      "legacy_roles": [
+        "super_admin"
+      ],
+      "overrides_v1": [
+        {
+          "id": "e9e60073-9361-4f2c-ad15-33d035c2192c",
+          "allowed": true,
+          "user_id": "5a50a16b-ed15-4720-8cd6-3c303100395f",
+          "permission_key": "sharepoint.delete"
+        },
+        {
+          "id": "d20e1832-c096-4586-b1b7-0afb4d5ce137",
+          "allowed": true,
+          "user_id": "5a50a16b-ed15-4720-8cd6-3c303100395f",
+          "permission_key": "sharepoint.link_job"
+        },
+        {
+          "id": "54eb3a73-9783-46cf-868e-11365fe4e9a4",
+          "allowed": true,
+          "user_id": "5a50a16b-ed15-4720-8cd6-3c303100395f",
+          "permission_key": "sharepoint.upload"
+        },
+        {
+          "id": "9c6c3e5d-1723-4172-86ba-7ba8f5636e95",
+          "allowed": true,
+          "user_id": "5a50a16b-ed15-4720-8cd6-3c303100395f",
+          "permission_key": "sharepoint.view"
+        }
+      ],
+      "overrides_v2": [
+        {
+          "id": "7b9fd8b9-cecd-45cf-8675-33b054f9fbf6",
+          "mode": "allow",
+          "created_at": "2026-03-02T11:45:48.936046+00:00",
+          "permission_key": "sharepoint.view",
+          "user_account_id": "5dc13849-bf9a-4e04-970e-4be8ad2a101f",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "cf92a0f8-3671-44ed-a190-e843dde96b74",
+          "mode": "allow",
+          "created_at": "2026-03-02T11:45:48.936046+00:00",
+          "permission_key": "sharepoint.upload",
+          "user_account_id": "5dc13849-bf9a-4e04-970e-4be8ad2a101f",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "033193d0-67e8-48dd-ae77-bb0e4c6c23c4",
+          "mode": "allow",
+          "created_at": "2026-03-02T11:45:48.936046+00:00",
+          "permission_key": "sharepoint.delete",
+          "user_account_id": "5dc13849-bf9a-4e04-970e-4be8ad2a101f",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "a9807675-9899-4ba0-8ddb-203dc10fe350",
+          "mode": "allow",
+          "created_at": "2026-03-02T11:45:48.936046+00:00",
+          "permission_key": "sharepoint.link_job",
+          "user_account_id": "5dc13849-bf9a-4e04-970e-4be8ad2a101f",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ]
+    },
+    {
+      "roles_v1": [
+        {
+          "id": "ed2387a5-4500-4642-9764-fdae51200b08",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "user_id": "8e8f360c-5299-4065-90fd-484bac6c575a",
+          "created_at": "2026-03-26T12:55:34.133211+00:00"
+        },
+        {
+          "id": "89fca2af-0326-4727-bd8f-0527c6ba3740",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "user_id": "8e8f360c-5299-4065-90fd-484bac6c575a",
+          "created_at": "2026-03-26T12:55:34.133211+00:00"
+        }
+      ],
+      "roles_v2": [
+        {
+          "id": "fbb96a1b-d43b-42c0-bb55-655e501624da",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-03-26T12:55:33.651847+00:00",
+          "user_account_id": "be3fbc89-89b5-4a7c-90a3-24f952aec768",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "ab11f073-b3a7-47bc-83fe-1799b4eed00a",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "created_at": "2026-03-26T12:55:33.651847+00:00",
+          "user_account_id": "be3fbc89-89b5-4a7c-90a3-24f952aec768",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ],
+      "full_name": "Hans Jakob Risnes",
+      "is_active": true,
+      "person_id": "e58b8264-0c27-400c-8f8d-5c811810e8fc",
+      "account_id": "be3fbc89-89b5-4a7c-90a3-24f952aec768",
+      "company_id": "a3eb3912-cc88-4836-9f78-5207011aba55",
+      "memberships": [
+        {
+          "id": "0434a953-360d-4de2-b4ba-3fbc08015964",
+          "role_id": null,
+          "user_id": "8e8f360c-5299-4065-90fd-484bac6c575a",
+          "is_active": true,
+          "company_id": "a3eb3912-cc88-4836-9f78-5207011aba55",
+          "created_at": "2026-03-26T12:55:34.698053+00:00",
+          "department_id": null
+        },
+        {
+          "id": "8da9c847-4bb3-4775-8a79-4c608920827f",
+          "role_id": "2c9226da-b200-4f8e-a160-675d97706a54",
+          "user_id": "8e8f360c-5299-4065-90fd-484bac6c575a",
+          "is_active": false,
+          "company_id": "a0000000-0000-0000-0000-000000000001",
+          "created_at": "2026-03-26T12:55:34.698053+00:00",
+          "department_id": null
+        }
+      ],
+      "verified_at": "2026-10-23T07:51:03.375654+00:00",
+      "auth_user_id": "8e8f360c-5299-4065-90fd-484bac6c575a",
+      "legacy_roles": [],
+      "overrides_v1": [
+        {
+          "id": "93f601c4-51e7-4736-b3f2-b6459dcd53f9",
+          "allowed": true,
+          "user_id": "8e8f360c-5299-4065-90fd-484bac6c575a",
+          "permission_key": "jobs.view"
+        },
+        {
+          "id": "b0922d2a-abae-48c3-af1e-f8f0f423cb69",
+          "allowed": true,
+          "user_id": "8e8f360c-5299-4065-90fd-484bac6c575a",
+          "permission_key": "regulation.review"
+        },
+        {
+          "id": "0cdc2c07-7895-4f15-ae2e-aeec239ba184",
+          "allowed": true,
+          "user_id": "8e8f360c-5299-4065-90fd-484bac6c575a",
+          "permission_key": "resourceplan.view_external_titles"
+        },
+        {
+          "id": "b67869ac-f031-4cea-8d81-295c2aaf93fe",
+          "allowed": true,
+          "user_id": "8e8f360c-5299-4065-90fd-484bac6c575a",
+          "permission_key": "task_thread.email_external"
+        }
+      ],
+      "overrides_v2": [
+        {
+          "id": "d9c9ba3a-b8b1-4dbf-b3b2-b3ec13a0b050",
+          "mode": "allow",
+          "created_at": "2026-03-26T12:53:34.427677+00:00",
+          "permission_key": "regulation.review",
+          "user_account_id": "be3fbc89-89b5-4a7c-90a3-24f952aec768",
+          "scope_company_id": "a3eb3912-cc88-4836-9f78-5207011aba55",
+          "scope_department_id": null
+        },
+        {
+          "id": "96be5da9-f0b1-4eb1-b889-abc88c054baa",
+          "mode": "allow",
+          "created_at": "2026-03-26T12:53:34.427677+00:00",
+          "permission_key": "task_thread.email_external",
+          "user_account_id": "be3fbc89-89b5-4a7c-90a3-24f952aec768",
+          "scope_company_id": "a3eb3912-cc88-4836-9f78-5207011aba55",
+          "scope_department_id": null
+        }
+      ]
+    },
+    {
+      "roles_v1": [
+        {
+          "id": "d550e52b-0e08-43ab-b6dc-45c7d943431b",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "created_at": "2026-03-11T14:24:38.876486+00:00"
+        },
+        {
+          "id": "9579ab1c-487f-42d8-839e-033a212843e8",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "created_at": "2026-03-11T14:24:38.876486+00:00"
+        }
+      ],
+      "roles_v2": [
+        {
+          "id": "999498b0-f550-4dec-9e8d-aa7311588437",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-03-11T14:24:38.599039+00:00",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "c2922ea3-dc60-448b-900c-3ac8872e4e44",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "created_at": "2026-03-11T14:24:38.599039+00:00",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ],
+      "full_name": "John Aleksander Mandt",
+      "is_active": true,
+      "person_id": "e3e7e064-887d-4a5f-9827-3eea4437988c",
+      "account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+      "company_id": "a0000000-0000-0000-0000-000000000001",
+      "memberships": [
+        {
+          "id": "15115156-3ce6-45d8-b792-acc20597adbb",
+          "role_id": null,
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "is_active": true,
+          "company_id": "a0000000-0000-0000-0000-000000000001",
+          "created_at": "2026-03-11T14:24:39.440761+00:00",
+          "department_id": null
+        }
+      ],
+      "verified_at": "2026-10-23T07:51:03.375654+00:00",
+      "auth_user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+      "legacy_roles": [
+        "admin"
+      ],
+      "overrides_v1": [
+        {
+          "id": "3b8e2d1b-80cc-4c78-9bbe-918a3941e8f1",
+          "allowed": true,
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "permission_key": "calendar.read_busy"
+        },
+        {
+          "id": "b0e95a81-c894-4e69-8f17-f74a7fd596a2",
+          "allowed": true,
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "permission_key": "contracts.admin"
+        },
+        {
+          "id": "e486c06a-4624-46eb-9ddd-3bcfe0877d5a",
+          "allowed": true,
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "permission_key": "contracts.edit"
+        },
+        {
+          "id": "10562443-48d0-45d1-aee6-3cdcfa00d729",
+          "allowed": true,
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "permission_key": "contracts.read"
+        },
+        {
+          "id": "8324b9b2-6986-4478-9c12-7177385062ad",
+          "allowed": true,
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "permission_key": "leads.create_meeting"
+        },
+        {
+          "id": "0e7cb675-0a58-4023-ae64-56ca1dd9d867",
+          "allowed": true,
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "permission_key": "leads.email_draft"
+        },
+        {
+          "id": "00959155-b6ff-4b27-bce1-62d38c3b5ee8",
+          "allowed": true,
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "permission_key": "regulation.review"
+        },
+        {
+          "id": "2bf96764-1685-4481-8fdf-dc06e3b00afd",
+          "allowed": true,
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "permission_key": "sharepoint.link_job"
+        },
+        {
+          "id": "e3ec0db1-1569-423e-8ba4-6ca29aa53889",
+          "allowed": true,
+          "user_id": "ca705be7-d75d-47e0-8848-fcf7f45a2613",
+          "permission_key": "sharepoint.view"
+        }
+      ],
+      "overrides_v2": [
+        {
+          "id": "75fc8924-8b62-43bc-9711-3690bd9d0d08",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:24:39.734449+00:00",
+          "permission_key": "leads.email_draft",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "68d4582f-aef1-42b8-9923-420eb6216b4b",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:24:39.734449+00:00",
+          "permission_key": "leads.create_meeting",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "7404ff3d-672c-4ab2-82e4-661fecaf921e",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:24:39.734449+00:00",
+          "permission_key": "calendar.read_busy",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "3fab93f3-8dae-4ead-9524-9ebcb597f1f5",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:24:39.734449+00:00",
+          "permission_key": "regulation.review",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "a8db880d-b7b3-4811-a27e-ce80d2938d5c",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:24:39.734449+00:00",
+          "permission_key": "contracts.read",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "ea42a3aa-4905-4f00-8f96-a43ee986bb42",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:24:39.734449+00:00",
+          "permission_key": "contracts.edit",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "7e6cf04e-4974-42cf-b7dd-12f5b8ea86a5",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:24:39.734449+00:00",
+          "permission_key": "contracts.admin",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "0fa87296-854d-4484-90d8-adaefe52e5c3",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:24:39.734449+00:00",
+          "permission_key": "sharepoint.view",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "506268b9-f27b-45cb-b81f-6f06314040fb",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:24:39.734449+00:00",
+          "permission_key": "sharepoint.link_job",
+          "user_account_id": "6848c22c-63c2-4482-aed2-fbca8ece6c35",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ]
+    },
+    {
+      "roles_v1": [
+        {
+          "id": "e04ebdac-ed94-404e-a2f7-de610cf0d89a",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "user_id": "9138ec02-d2fd-446b-a651-2c743a3d9858",
+          "created_at": "2026-03-17T13:09:13.7354+00:00"
+        },
+        {
+          "id": "72546ddd-a496-40e1-bb25-e0702ea0827e",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "user_id": "9138ec02-d2fd-446b-a651-2c743a3d9858",
+          "created_at": "2026-03-17T13:09:13.7354+00:00"
+        }
+      ],
+      "roles_v2": [
+        {
+          "id": "f33b81fc-4c5a-41b7-bcf8-2f7f13d37c4a",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-03-17T13:09:13.262106+00:00",
+          "user_account_id": "c640490c-b419-472a-927c-87bc21915951",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "04aa6975-8aab-460c-a8f9-9db40299f478",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "created_at": "2026-03-17T13:09:13.262106+00:00",
+          "user_account_id": "c640490c-b419-472a-927c-87bc21915951",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ],
+      "full_name": "Sindre Ulriksen",
+      "is_active": true,
+      "person_id": "4e63a0fc-1d8f-47ed-bcb6-127d2e310226",
+      "account_id": "c640490c-b419-472a-927c-87bc21915951",
+      "company_id": "a0000000-0000-0000-0000-000000000002",
+      "memberships": [
+        {
+          "id": "dfd724ed-a09e-4ddc-9076-bafe915d1f33",
+          "role_id": null,
+          "user_id": "9138ec02-d2fd-446b-a651-2c743a3d9858",
+          "is_active": true,
+          "company_id": "a0000000-0000-0000-0000-000000000001",
+          "created_at": "2026-03-17T13:09:14.555671+00:00",
+          "department_id": null
+        },
+        {
+          "id": "4b112c9c-84f5-4123-90a6-dd92e02faddd",
+          "role_id": null,
+          "user_id": "9138ec02-d2fd-446b-a651-2c743a3d9858",
+          "is_active": true,
+          "company_id": "a0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-03-17T13:09:14.555671+00:00",
+          "department_id": "86c5e322-8fd6-48f5-855f-90ce0f4aa641"
+        },
+        {
+          "id": "0009ee4d-0850-407b-81f9-8f041c13eeb2",
+          "role_id": null,
+          "user_id": "9138ec02-d2fd-446b-a651-2c743a3d9858",
+          "is_active": true,
+          "company_id": "a3eb3912-cc88-4836-9f78-5207011aba55",
+          "created_at": "2026-03-17T13:09:14.555671+00:00",
+          "department_id": null
+        },
+        {
+          "id": "373ab186-a210-4b19-ab19-8d16dfeb144c",
+          "role_id": null,
+          "user_id": "9138ec02-d2fd-446b-a651-2c743a3d9858",
+          "is_active": false,
+          "company_id": "a0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-03-17T13:09:14.555671+00:00",
+          "department_id": null
+        }
+      ],
+      "verified_at": "2026-10-23T07:51:03.375654+00:00",
+      "auth_user_id": "9138ec02-d2fd-446b-a651-2c743a3d9858",
+      "legacy_roles": [
+        "admin"
+      ],
+      "overrides_v1": null,
+      "overrides_v2": null
+    },
+    {
+      "roles_v1": [
+        {
+          "id": "1655c095-c296-4aa8-a75f-e07641e2df5e",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "created_at": "2026-03-11T14:26:38.314469+00:00"
+        },
+        {
+          "id": "057f5aba-ee27-4901-befd-b6d541289627",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "created_at": "2026-03-11T14:26:38.314469+00:00"
+        }
+      ],
+      "roles_v2": [
+        {
+          "id": "40aed351-d59f-4978-a80a-429031a905c4",
+          "role_id": "b0000000-0000-0000-0000-000000000002",
+          "created_at": "2026-03-11T14:26:37.977993+00:00",
+          "user_account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "08700c29-b228-44c7-82e1-4c4cabee4d38",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "created_at": "2026-03-11T14:26:37.977993+00:00",
+          "user_account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ],
+      "full_name": "Mats Lien Hansen",
+      "is_active": true,
+      "person_id": "b0716dc3-ddf7-4501-92af-2397a5180085",
+      "account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+      "company_id": "a0000000-0000-0000-0000-000000000001",
+      "memberships": [
+        {
+          "id": "567051f0-fdc2-4090-8bc2-d0bc3b25b876",
+          "role_id": null,
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "is_active": true,
+          "company_id": "a0000000-0000-0000-0000-000000000001",
+          "created_at": "2026-03-11T14:26:39.007571+00:00",
+          "department_id": null
+        }
+      ],
+      "verified_at": "2026-10-23T07:51:03.375654+00:00",
+      "auth_user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+      "legacy_roles": [
+        "admin"
+      ],
+      "overrides_v1": [
+        {
+          "id": "34f271ca-6535-4507-9d52-20e631af3fb0",
+          "allowed": false,
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "permission_key": "calendar.delete_events"
+        },
+        {
+          "id": "374c4ab3-c802-444b-9f76-ea6e437ab886",
+          "allowed": true,
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "permission_key": "calendar.read_busy"
+        },
+        {
+          "id": "716507b1-3973-459c-9956-96678664f7bc",
+          "allowed": true,
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "permission_key": "contracts.admin"
+        },
+        {
+          "id": "2e559e04-5e70-4fea-8cc2-73757e074502",
+          "allowed": true,
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "permission_key": "contracts.edit"
+        },
+        {
+          "id": "f9952046-79af-400a-b17b-2724d7af9003",
+          "allowed": true,
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "permission_key": "contracts.read"
+        },
+        {
+          "id": "54e82dc5-f6ba-48b1-8968-feedd1468b70",
+          "allowed": true,
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "permission_key": "regulation.review"
+        },
+        {
+          "id": "e66a44a6-68cd-4125-9571-b8221b7114ab",
+          "allowed": true,
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "permission_key": "sharepoint.link_job"
+        },
+        {
+          "id": "8ac03206-f4c2-4028-af35-0666e03926fd",
+          "allowed": true,
+          "user_id": "6f2823df-7944-4fd1-bab0-95fe08d0a61e",
+          "permission_key": "sharepoint.view"
+        }
+      ],
+      "overrides_v2": [
+        {
+          "id": "f88bd159-610c-4bb8-a30b-0cda6db6978d",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:26:39.353776+00:00",
+          "permission_key": "sharepoint.view",
+          "user_account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "a0f08141-b975-4dcc-b5a7-8944150af423",
+          "mode": "deny",
+          "created_at": "2026-03-11T14:26:39.353776+00:00",
+          "permission_key": "calendar.delete_events",
+          "user_account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "8fc06451-7672-465f-8254-ae42c47c9f3f",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:26:39.353776+00:00",
+          "permission_key": "calendar.read_busy",
+          "user_account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "07381918-f396-45b8-b4a3-1e6b383e4958",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:26:39.353776+00:00",
+          "permission_key": "regulation.review",
+          "user_account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "efdffd8f-f447-4347-8f73-036c8b7f81c1",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:26:39.353776+00:00",
+          "permission_key": "contracts.edit",
+          "user_account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "1e51f3d6-69df-4e92-8282-fd46645af949",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:26:39.353776+00:00",
+          "permission_key": "contracts.read",
+          "user_account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "02561c59-1948-4325-b760-a1b595fe0d24",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:26:39.353776+00:00",
+          "permission_key": "contracts.admin",
+          "user_account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "654aa38a-643c-4421-870b-f16fa287e477",
+          "mode": "allow",
+          "created_at": "2026-03-11T14:26:39.353776+00:00",
+          "permission_key": "sharepoint.link_job",
+          "user_account_id": "769900e7-0f3d-433f-a9ae-bb590adcc345",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ]
+    },
+    {
+      "roles_v1": null,
+      "roles_v2": null,
+      "full_name": "Rune Ørbeck",
+      "is_active": true,
+      "person_id": "de28674c-0006-455d-83d3-5e53167f61da",
+      "account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+      "company_id": "a0000000-0000-0000-0000-000000000001",
+      "memberships": [
+        {
+          "id": "9e13c28f-9f40-4b51-a772-06be23b3d702",
+          "role_id": "b0000000-0000-0000-0000-000000000003",
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "is_active": true,
+          "company_id": "a0000000-0000-0000-0000-000000000001",
+          "created_at": "2026-10-05T11:43:10.133871+00:00",
+          "department_id": null
+        }
+      ],
+      "verified_at": "2026-10-23T07:51:03.375654+00:00",
+      "auth_user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+      "legacy_roles": [],
+      "overrides_v1": [
+        {
+          "id": "71ae83c7-270b-498a-bf07-0047fec9933e",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "absence.approve"
+        },
+        {
+          "id": "b2ed401e-b3a0-4056-85f0-006fd5975b50",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "absence.create_for_others"
+        },
+        {
+          "id": "aa05912a-4530-423b-8b01-60ada1e004c9",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "absence.create_self"
+        },
+        {
+          "id": "3eb47ebd-09fd-49e2-9866-41cd132f7015",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "absence.view_company"
+        },
+        {
+          "id": "67f8ce6e-a2a1-435c-9c48-6e8e4492704b",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "absence.view_team"
+        },
+        {
+          "id": "6d7e1b10-9493-4ac2-b5c4-b03ac94a5060",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "admin.manage_companies"
+        },
+        {
+          "id": "d98ca05f-2437-4bbe-8a0a-899c4c8ca70e",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "admin.manage_users"
+        },
+        {
+          "id": "054d5bd8-80f2-4d88-be73-f981d894fe02",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "calendar.delete_events"
+        },
+        {
+          "id": "08034a98-7c2d-4d47-b79a-5eda043bb3e2",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "calendar.read_busy"
+        },
+        {
+          "id": "0636d429-b8d9-4e00-a752-b8cf0b52c9c6",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "calendar.write_events"
+        },
+        {
+          "id": "873c95ad-b58f-4935-8923-73b53a6cce74",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "comm.create_note"
+        },
+        {
+          "id": "25e27d14-ba37-402c-8ee4-77e3e406bf58",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "comm.delete_note"
+        },
+        {
+          "id": "5a27c729-974f-4513-97b2-5f0f5b152864",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "comm.restrict_to_participants"
+        },
+        {
+          "id": "6f011174-9cff-4028-b1fa-72afa3ea75b7",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "comm.view"
+        },
+        {
+          "id": "1142d725-0116-4744-a6d0-c3c6e8c54dcd",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "contracts.admin"
+        },
+        {
+          "id": "68615dc5-439d-4109-b873-7562d4c14af8",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "contracts.edit"
+        },
+        {
+          "id": "63ed0ac7-adce-4887-ae30-3d4bd0065314",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "contracts.read"
+        },
+        {
+          "id": "135a4e16-de54-4dc9-ab8e-46e73dba1266",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "docs.delete"
+        },
+        {
+          "id": "6860e978-5677-4c64-8b4c-9a086e1f0543",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "docs.restrict_to_participants"
+        },
+        {
+          "id": "ed6325e2-0512-4b5c-a2f9-d9f0ccffa483",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "docs.upload"
+        },
+        {
+          "id": "f2664714-335a-44df-abee-3b103afedca3",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "docs.view"
+        },
+        {
+          "id": "23cadac2-5ba6-4418-a7ec-ce6ff41072cb",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "jobs.archive"
+        },
+        {
+          "id": "c864bab1-dd18-41e9-a2d3-d620de08dd3e",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "jobs.assign_users"
+        },
+        {
+          "id": "e6f967d2-e8d1-40cd-a243-ad910c7ef6e3",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "jobs.create"
+        },
+        {
+          "id": "c89e509b-52e7-424f-a11c-8222bae9197d",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "jobs.delete"
+        },
+        {
+          "id": "fd9fe15b-ed6d-4d6b-9a8e-034aa8683d6b",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "jobs.edit"
+        },
+        {
+          "id": "8d913e4f-27e8-48e0-81e7-ed8d8e1a83fa",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "jobs.view"
+        },
+        {
+          "id": "80470f88-cd39-4b08-87b6-4133e2bf108b",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "offers.archive"
+        },
+        {
+          "id": "7526898c-4008-49ea-aa1e-0d4b73e71f73",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "offers.create"
+        },
+        {
+          "id": "d8a0ec87-146b-4698-8340-d0fe845a2e76",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "offers.delete"
+        },
+        {
+          "id": "7080429f-2619-434c-a3b6-faa3499938bc",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "offers.edit"
+        },
+        {
+          "id": "e29dd220-7b11-4000-88c0-78dc28b69c8a",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "offers.view"
+        },
+        {
+          "id": "87164381-df80-49c6-9fd4-0dd7783fa8b9",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "postkontor.admin"
+        },
+        {
+          "id": "801bb340-8aaf-4b5c-be0f-e3d71ce339ae",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "postkontor.view"
+        },
+        {
+          "id": "74f01abf-437c-4c47-8862-a64a4c5ceba0",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "regulation.review"
+        },
+        {
+          "id": "38f7cdf5-8d73-4680-839a-391fb134da9a",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "resourceplan.edit_others"
+        },
+        {
+          "id": "06297e9e-8c50-441d-ab6e-cb6edc240a93",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "resourceplan.schedule"
+        },
+        {
+          "id": "ddc8ee93-cee1-436a-ad91-7ce5dd001e61",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "resourceplan.view"
+        },
+        {
+          "id": "45ec238b-7e91-4812-aa41-5abcc817cc12",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "resourceplan.view_busy"
+        },
+        {
+          "id": "8f755b2b-dcf3-4bf7-a7c0-7bd5e6d59bd2",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "resourceplan.view_external_blocks"
+        },
+        {
+          "id": "67f85cd0-0414-41fa-b584-a0c8954eb3c5",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "sharepoint.admin"
+        },
+        {
+          "id": "f70ecf35-5c62-453c-876a-9c7df6e71651",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "sharepoint.link_job"
+        },
+        {
+          "id": "60fd326a-c229-4036-8bb3-0947292c1ab1",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "sharepoint.upload"
+        },
+        {
+          "id": "6b45a2bd-8a7a-4070-9228-4d7c0f484755",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "sharepoint.view"
+        },
+        {
+          "id": "39599dcf-566f-433f-be37-17892f7e89a4",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "task_thread.comment_internal"
+        },
+        {
+          "id": "2f4882cd-6a69-4d5f-a0b5-41d2c0d276df",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "task_thread.email_external"
+        },
+        {
+          "id": "a419f58a-5438-4cd9-9da1-15ff3045a62f",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "task_thread.manage"
+        },
+        {
+          "id": "abbec05e-911a-4687-9263-ab8b25ef95d5",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "task_thread.upload_attachments"
+        },
+        {
+          "id": "b7f66105-65e2-4429-b703-30ae9be60786",
+          "allowed": true,
+          "user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7",
+          "permission_key": "task_thread.view"
+        }
+      ],
+      "overrides_v2": [
+        {
+          "id": "49d0b0aa-0b25-4989-9c9d-f435e6343141",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "postkontor.admin",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "1e47a930-6ae9-4d26-8ba6-6aef32c353b5",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "sharepoint.view",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "31327ef2-d608-40f2-a5b3-051658e8b27e",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "sharepoint.upload",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "e4d84e9e-52dc-40ea-a1c3-ad111364694b",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "sharepoint.link_job",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "e257abf5-1f43-4019-b3fa-bb51cf549686",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "sharepoint.admin",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "791c86e5-725a-4ec8-a072-3324fa4aa8c8",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "task_thread.view",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "24396265-e8c6-4035-b757-cd3cb7254013",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "task_thread.comment_internal",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "81126fe0-8e69-4e84-89c4-b65423e7c07e",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "task_thread.upload_attachments",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "4ffe0d9c-5522-439d-a1d7-f1116b2dfd90",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "task_thread.email_external",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "6a35dbc8-0e5a-40a7-a0e0-9219bb1b3358",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "task_thread.manage",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "c9e41c40-4302-4b6d-b8a1-eaeadd2a96fd",
+          "mode": "allow",
+          "created_at": "2026-10-27T10:03:16.168187+00:00",
+          "permission_key": "hms.view",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": "a0000000-0000-0000-0000-000000000001",
+          "scope_department_id": null
+        },
+        {
+          "id": "903420ad-6c59-4474-948a-34245ed5b66f",
+          "mode": "allow",
+          "created_at": "2026-10-27T10:03:16.168187+00:00",
+          "permission_key": "hms.manage",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": "a0000000-0000-0000-0000-000000000001",
+          "scope_department_id": null
+        },
+        {
+          "id": "d87047b6-fbe0-4099-a0e0-acd9ae2fcf2d",
+          "mode": "allow",
+          "created_at": "2026-10-27T10:03:16.168187+00:00",
+          "permission_key": "module.hms",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": "a0000000-0000-0000-0000-000000000001",
+          "scope_department_id": null
+        },
+        {
+          "id": "47f855bb-9458-4a6c-bd28-3585c0e0c2ec",
+          "mode": "allow",
+          "created_at": "2026-10-27T10:03:16.168187+00:00",
+          "permission_key": "jobs.view_pricing",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": "a0000000-0000-0000-0000-000000000001",
+          "scope_department_id": null
+        },
+        {
+          "id": "a5755d91-9094-4e49-b9cc-c49ac5ddd8d5",
+          "mode": "allow",
+          "created_at": "2026-11-06T11:51:31.492101+00:00",
+          "permission_key": "orders.intake",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": "a0000000-0000-0000-0000-000000000001",
+          "scope_department_id": null
+        },
+        {
+          "id": "bda0baa2-0a82-4c52-8e0a-768bdf64d8ce",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "jobs.view",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "f9b58357-b620-40b2-9ff7-45ce768975bb",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "jobs.create",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "f093b5ee-f78b-4d78-85b4-4617f474c1e4",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "jobs.edit",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "28321231-1bab-44d2-969f-76b0c186085a",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "jobs.delete",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "c45aade9-5a2a-4400-9666-05a7078d2057",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "jobs.archive",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "ebd5944d-3d07-4f24-82da-c0bb514bde4b",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "jobs.assign_users",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "09440ad6-8479-4a67-8830-27bfb71ad1e3",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "offers.view",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "54fd3836-9df6-4340-93f7-34400d6b41e3",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "offers.create",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "ae598862-b937-47c1-9428-fa7efea62063",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "offers.edit",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "62680a37-7a3a-43f5-81be-07c69343c619",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "offers.delete",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "846880b3-b05d-4273-8702-424f4a520d51",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "offers.archive",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "42c4aadd-79e6-4588-84f2-6f4f5e82e770",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "absence.create_self",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "1329a93d-f3ad-4fe4-beaf-1019ccb105c2",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "absence.create_for_others",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "3f3df65a-21ed-4cf9-a685-3ce5df1f7678",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "absence.approve",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "a1ce799f-0fe5-4ed9-a489-8e0ad86ac9fa",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "absence.view_team",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "07e354e7-3d94-4c03-8efd-e41ab8949aeb",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "absence.view_company",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "bbde427d-b3ea-493a-824f-73fe46a9ba9c",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "docs.view",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "8e9a72f2-d288-4abb-9269-7d303368feab",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "docs.upload",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "c85fae4f-8b7c-400c-ad89-5e4d417ddb18",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "docs.delete",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "c690e019-6b15-4146-bf88-9dfab6b227c4",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "docs.restrict_to_participants",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "7835ecc6-5e32-4c36-bb3e-37b4e330ec82",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "comm.view",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "90a3a01a-d833-4f84-b7da-17606f1e8056",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "comm.create_note",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "8df70063-32bf-48c2-a505-50dd47fbeb3f",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "comm.delete_note",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "1b7b6988-7c27-4f09-a7a0-391e6e3ea4b6",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "comm.restrict_to_participants",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "ef6050b1-1e40-4b76-a9cd-8082ff572722",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "calendar.read_busy",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "8f293a03-9f92-4035-9033-58e41a418c59",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "calendar.write_events",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "7ddb92eb-c1be-4b64-98a2-ed666109390d",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "calendar.delete_events",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "16df4f44-5955-49f1-b90e-b462de5441f3",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "resourceplan.view",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "c2c802f3-a551-4648-ad92-ee4a9126fb52",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "resourceplan.view_busy",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "51c1e05d-4db7-4b79-b071-7c82ad5f74b0",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "resourceplan.view_external_blocks",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "42c0e9db-3dcf-45cb-87c9-e2a534b4effd",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "resourceplan.schedule",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "9c851e79-6ff0-453f-bd98-bba949134785",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "resourceplan.edit_others",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "48a4441f-7a2a-4bba-b01a-e7213a8c3f04",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "admin.manage_companies",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "9a950d40-c0dd-400b-a472-22f92fd238da",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "admin.manage_users",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "d0adc7ca-550a-46e2-96e4-631c1305c83d",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "regulation.review",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "871ed044-f4aa-4f5f-8d55-89e21cea883d",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "contracts.read",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "8e5fb433-788e-4760-bfeb-12cd72893f6d",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "contracts.edit",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "79cd9b74-ce0c-41ff-9f56-3dd275273449",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "contracts.admin",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        },
+        {
+          "id": "9b4aa5f5-6156-4b1c-93f7-b92113d93a07",
+          "mode": "allow",
+          "created_at": "2026-10-05T11:41:33.893008+00:00",
+          "permission_key": "postkontor.view",
+          "user_account_id": "0077824a-6db7-40ae-97f9-54c19bb12f66",
+          "scope_company_id": null,
+          "scope_department_id": null
+        }
+      ]
+    }
+  ],
+  "companies": [
+    {
+      "id": "a0000000-0000-0000-0000-000000000001",
+      "name": "MCS Service AS",
+      "is_active": true,
+      "created_at": "2026-02-20T09:17:11.478072+00:00",
+      "org_number": null,
+      "operating_profile": "office"
+    },
+    {
+      "id": "a0000000-0000-0000-0000-000000000002",
+      "name": "MCS Elektrotavler AS",
+      "is_active": true,
+      "created_at": "2026-02-20T09:17:11.478072+00:00",
+      "org_number": null,
+      "operating_profile": "office"
+    },
+    {
+      "id": "a3eb3912-cc88-4836-9f78-5207011aba55",
+      "name": "BusBar AS",
+      "is_active": true,
+      "created_at": "2026-03-02T09:14:48.788691+00:00",
+      "org_number": null,
+      "operating_profile": "industry"
+    }
+  ],
+  "captured_at": "2026-11-09T07:02:43.431336+00:00",
+  "role_catalog": [
+    {
+      "id": "b0000000-0000-0000-0000-000000000001",
+      "name": "Montør",
+      "created_at": "2026-02-20T09:17:11.478072+00:00",
+      "description": "Tekniker med begrenset tilgang",
+      "is_system_role": true
+    },
+    {
+      "id": "b0000000-0000-0000-0000-000000000002",
+      "name": "Prosjektleder",
+      "created_at": "2026-02-20T09:17:11.478072+00:00",
+      "description": "Prosjektleder med firmatilgang",
+      "is_system_role": true
+    },
+    {
+      "id": "b0000000-0000-0000-0000-000000000003",
+      "name": "Planlegger/Admin",
+      "created_at": "2026-02-20T09:17:11.478072+00:00",
+      "description": "Full jobb- og kalenderkontroll",
+      "is_system_role": true
+    },
+    {
+      "id": "b0000000-0000-0000-0000-000000000004",
+      "name": "Superadmin",
+      "created_at": "2026-02-20T09:17:11.478072+00:00",
+      "description": "Full tilgang til alt",
+      "is_system_role": true
+    },
+    {
+      "id": "2c9226da-b200-4f8e-a160-675d97706a54",
+      "name": "Ressursplan",
+      "created_at": "2026-03-11T11:37:50.550588+00:00",
+      "description": "Hovedsak kun se ressurser",
+      "is_system_role": false
+    },
+    {
+      "id": "987d4803-3d44-4950-9cd8-2ff27325cae7",
+      "name": "Ressursplan ",
+      "created_at": "2026-03-16T08:35:28.647052+00:00",
+      "description": null,
+      "is_system_role": false
+    }
+  ],
+  "role_permissions": [
+    {
+      "id": "21151d00-b447-4112-a5f3-6d5742a21e1d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "scope.view.own"
+    },
+    {
+      "id": "b0721ac2-e3af-4b05-a618-256736da1146",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "jobs.view"
+    },
+    {
+      "id": "aff58418-81db-4629-85cf-ea0bd3ec1324",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "jobs.edit"
+    },
+    {
+      "id": "eb3fe2aa-3fb6-48d6-bd66-13b44bb894a1",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "docs.view"
+    },
+    {
+      "id": "d5cef9ab-61e7-4a3f-96ad-1f0328d3e1a6",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "docs.upload"
+    },
+    {
+      "id": "d1b73a46-3025-400c-aa71-ade6cd5a0ad2",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "docs.restrict_to_participants"
+    },
+    {
+      "id": "97e58e74-ff28-4fd2-9a63-27c1d79b0306",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "comm.view"
+    },
+    {
+      "id": "bb7ebbfa-959d-4186-b60e-966604314b1f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "comm.create_note"
+    },
+    {
+      "id": "784b2ac2-8b0f-462d-ba40-a4c97082589e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "comm.restrict_to_participants"
+    },
+    {
+      "id": "b96302e7-0aab-4ac8-a74e-f1fbd1537ee5",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "calendar.read_busy"
+    },
+    {
+      "id": "262e52fe-bde0-4d9e-8792-68b3cc4342cb",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "scope.view.company"
+    },
+    {
+      "id": "5e9525c5-f404-4321-97f0-764f63203d37",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "jobs.view"
+    },
+    {
+      "id": "8a5a9dcf-9f43-43e4-935d-06736f6ce52e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "jobs.create"
+    },
+    {
+      "id": "6936ccdc-e906-4d90-8e7d-cf7e621f5a6e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "jobs.edit"
+    },
+    {
+      "id": "ab146394-2b66-421c-b5db-4092521c9a44",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "jobs.assign_users"
+    },
+    {
+      "id": "de213acd-1245-4d62-83fa-5912c4897ccb",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "jobs.archive"
+    },
+    {
+      "id": "e8206c6e-188f-4fad-9cf6-2fd648213d70",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "jobs.view_pricing"
+    },
+    {
+      "id": "b44fff50-0a16-43a2-9b18-0a4eaa5fecc5",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "offers.view"
+    },
+    {
+      "id": "ad3ca4e9-80db-459b-bc81-f6843d484e3e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "offers.create"
+    },
+    {
+      "id": "289bf018-280b-48aa-96c2-d52ab6f94cb5",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "offers.edit"
+    },
+    {
+      "id": "524c9b65-5d01-44f8-a020-b7740fabea97",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "calc.view"
+    },
+    {
+      "id": "d6af0998-7791-4db9-a65a-50a0e2a941d8",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "calc.edit"
+    },
+    {
+      "id": "3dfd4a3f-476f-4220-9643-c8cb42f81fde",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "docs.view"
+    },
+    {
+      "id": "39b0007b-5930-4e94-afc3-8328013327c8",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "comm.view"
+    },
+    {
+      "id": "4caf2a3c-7511-493a-98e6-02c408f376de",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "calendar.write_events"
+    },
+    {
+      "id": "b7a2e409-5897-4bcb-a276-d8a77812b33c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "scope.view.company"
+    },
+    {
+      "id": "21e54ce3-2073-4f51-9ec8-513ff6ad9dca",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "jobs.view"
+    },
+    {
+      "id": "aea8158a-918b-4833-bbf1-dc49f55b2ca1",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "jobs.create"
+    },
+    {
+      "id": "1052bb3e-4d22-4fce-9a25-c9b0751fa5df",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "jobs.edit"
+    },
+    {
+      "id": "581662a5-4220-411b-94d9-b829c640dc6d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "jobs.delete"
+    },
+    {
+      "id": "9bf98f40-ab49-48c1-b644-67912b906d43",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "jobs.archive"
+    },
+    {
+      "id": "ec7ae841-26d2-4c33-9975-88b4af127a29",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "jobs.assign_users"
+    },
+    {
+      "id": "8ca27b66-0dc7-44af-b03b-a954a7ad7a54",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "jobs.view_pricing"
+    },
+    {
+      "id": "53a1784c-3f8f-405d-9e67-3dde0f37ebd2",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "offers.view"
+    },
+    {
+      "id": "b9780708-2b55-46e6-be9c-c03934a48824",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "offers.create"
+    },
+    {
+      "id": "f62cd59b-154a-4c64-a5f2-d4b0ad563e8e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "offers.edit"
+    },
+    {
+      "id": "c9ad7b82-1e26-4306-b03a-694be14832d8",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "offers.delete"
+    },
+    {
+      "id": "f2cbfacd-f9f4-48e3-afae-ffba1b9117b1",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "offers.archive"
+    },
+    {
+      "id": "2f253e37-ef92-4d52-90ed-790578576465",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "calc.view"
+    },
+    {
+      "id": "5af03e95-19cc-41a5-8c6b-0d6e47e838bd",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "calc.edit"
+    },
+    {
+      "id": "0b2a22d4-dfdd-4622-900e-7dd2c606451a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "docs.view"
+    },
+    {
+      "id": "554eafb3-0db2-4567-9f75-ba982f10dc74",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "docs.upload"
+    },
+    {
+      "id": "ed64560b-9424-4965-b4a5-e34853c0bf73",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "docs.delete"
+    },
+    {
+      "id": "f8929017-8023-435f-9a72-119a28ef0c56",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "comm.view"
+    },
+    {
+      "id": "66cc47e8-7a76-41fc-8d69-38e4f288790a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "comm.create_note"
+    },
+    {
+      "id": "7ccaa832-a4b8-456d-9a9e-8cba5d1c5cdf",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "comm.delete_note"
+    },
+    {
+      "id": "80fbfeb7-5708-4115-aa2a-c40651f953a1",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "calendar.write_events"
+    },
+    {
+      "id": "cd461e5b-b498-4e0f-a9cb-ccda7494f827",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "calendar.delete_events"
+    },
+    {
+      "id": "dce951b5-3f9d-4163-bb41-0355a27b5ef6",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "scope.view.all"
+    },
+    {
+      "id": "944ed1d2-b455-4def-80be-aae12f24312b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "jobs.view"
+    },
+    {
+      "id": "a1d644e7-b223-441f-b152-c559756eea42",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "jobs.create"
+    },
+    {
+      "id": "b5d3a9d0-5049-4642-8aa0-f498730e9b8d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "jobs.edit"
+    },
+    {
+      "id": "fee10818-d1a5-47d4-b646-c699bf4ebde8",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "jobs.delete"
+    },
+    {
+      "id": "a6990f7c-5c22-4dd5-a600-0914bdbceb6a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "jobs.archive"
+    },
+    {
+      "id": "b782bfff-3840-4d0b-a4b4-4a62a15bec28",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "jobs.assign_users"
+    },
+    {
+      "id": "0746122a-6b71-4dd6-8095-2c40299ec726",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "jobs.view_pricing"
+    },
+    {
+      "id": "cfc9566a-8a1e-4780-9051-b5b8a8a09898",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "offers.view"
+    },
+    {
+      "id": "35c350ed-d6a8-4c9f-8c4f-91f6a4a811ee",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "offers.create"
+    },
+    {
+      "id": "df65f982-4394-4576-a22e-cd03fb74315d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "offers.edit"
+    },
+    {
+      "id": "6e24915b-a3fe-40c6-9298-e57afebaa75d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "offers.delete"
+    },
+    {
+      "id": "20373918-42f8-411a-966f-bc996e1da4ac",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "offers.archive"
+    },
+    {
+      "id": "352df865-d862-44e3-b6f6-670ae2807aaa",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "calc.view"
+    },
+    {
+      "id": "fe48179d-deaa-49d1-9b49-40bbb8efe3f6",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "calc.edit"
+    },
+    {
+      "id": "93a6338b-4af2-448f-8bf6-07089f5f63f8",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "docs.view"
+    },
+    {
+      "id": "6e09e02a-01ba-4511-9697-7d0c936b8d68",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "docs.upload"
+    },
+    {
+      "id": "757ed386-fce8-42da-a803-ba184b24c8d0",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "docs.delete"
+    },
+    {
+      "id": "cb462a1b-b675-48f4-a31a-2cb865e347e4",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "comm.view"
+    },
+    {
+      "id": "a0b8b977-1f72-4380-a86f-c83483cfe714",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "comm.create_note"
+    },
+    {
+      "id": "c7240eb0-833d-44a8-80c1-2c8cce87e906",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "comm.delete_note"
+    },
+    {
+      "id": "f8b496eb-61c3-4bb6-b24f-d1de328a89dc",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "calendar.read_busy"
+    },
+    {
+      "id": "9fc19769-f1ca-4a86-9b29-f1a154c06a39",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "calendar.write_events"
+    },
+    {
+      "id": "f5a45a3d-ac59-466a-8bbd-10bae3cd5686",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "calendar.delete_events"
+    },
+    {
+      "id": "520508e6-b2e4-43aa-92b0-cef12044f22b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "admin.manage_companies"
+    },
+    {
+      "id": "a9d788d2-cc3a-423c-a7dc-2c4530bea06e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "admin.manage_departments"
+    },
+    {
+      "id": "a3565867-0b62-42b6-b65c-f8d5ca351c5d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "admin.manage_users"
+    },
+    {
+      "id": "dfcbe3b0-4149-40d4-b34b-46d08f6720fa",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "admin.manage_roles"
+    },
+    {
+      "id": "f5832d31-36f5-48bb-b67b-c5e19013712c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "admin.manage_settings"
+    },
+    {
+      "id": "0044074a-9d1f-4b33-92c0-b7bf9f1d946a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "leads.view"
+    },
+    {
+      "id": "8a024a0a-9694-4364-8b27-bdcac22d4a65",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "leads.create"
+    },
+    {
+      "id": "3137585f-506c-4e40-93a9-3fae2d0a83dd",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "leads.edit"
+    },
+    {
+      "id": "3902f6cd-801b-46c1-9b14-272c6af7397a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "leads.transfer_owner"
+    },
+    {
+      "id": "6f877abd-8111-4fde-95e4-508d507b941a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "leads.manage_participants"
+    },
+    {
+      "id": "ce63894a-bacc-458c-b7af-08238da1bcf5",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "leads.convert"
+    },
+    {
+      "id": "0528b702-e726-4cef-ac70-f54722a1540a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "leads.view"
+    },
+    {
+      "id": "b55e4104-5e95-4ecf-b365-b425cbb681b8",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "leads.create"
+    },
+    {
+      "id": "9e4d9463-88a7-4c06-8e62-6c90289446a4",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "leads.edit"
+    },
+    {
+      "id": "e2b5c896-d79c-4784-a96d-de41ff1e50ff",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "leads.transfer_owner"
+    },
+    {
+      "id": "6f404b7c-8c1a-43bf-8148-54d6bbae4ea5",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "leads.manage_participants"
+    },
+    {
+      "id": "a56266a4-a5f5-49d8-b28d-850944b4f6ea",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "leads.convert"
+    },
+    {
+      "id": "22fd6576-d65e-4e8d-8ff7-6c56cce2a65f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "leads.view"
+    },
+    {
+      "id": "74e3510f-0ee6-43ff-9faa-0186d1685c5c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "leads.view"
+    },
+    {
+      "id": "71dddbca-8d33-41d1-ab0a-2a599b0aaa10",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "leads.create"
+    },
+    {
+      "id": "82e4a9ee-b7f9-4b19-814f-e796607f8077",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "leads.edit"
+    },
+    {
+      "id": "6340ebac-b472-4d2b-b671-6a17f0c237cb",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "leads.transfer_owner"
+    },
+    {
+      "id": "63137bc0-4856-4997-a72a-7f61c7561d12",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "leads.manage_participants"
+    },
+    {
+      "id": "13dd3f7c-d8aa-4a27-bd11-74262c842755",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "leads.convert"
+    },
+    {
+      "id": "23029c5f-2a9c-4cb4-b0fc-00cca9266384",
+      "allowed": true,
+      "role_id": "2c9226da-b200-4f8e-a160-675d97706a54",
+      "permission_key": "calendar.read_busy"
+    },
+    {
+      "id": "471464b4-8ab4-46c7-873e-242396ed4ea7",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "documents.upload"
+    },
+    {
+      "id": "60529b40-0487-4a19-a9d9-c4d5a3c10a50",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "documents.delete"
+    },
+    {
+      "id": "56cb9fce-46da-4aa5-82f1-0d32580398be",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "documents.analyze"
+    },
+    {
+      "id": "3e14c392-51f8-4fee-bf11-e046ff53eeeb",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "change_orders.create"
+    },
+    {
+      "id": "ee8dbbb0-8793-4bf2-b1f2-1bb2a28ecf4d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "change_orders.send"
+    },
+    {
+      "id": "1419819b-ca1e-4611-aa49-44985bf05c93",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "change_orders.cancel"
+    },
+    {
+      "id": "269c1500-4e21-412b-913b-0032ad181ec5",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "change_orders.mark_invoiced"
+    },
+    {
+      "id": "d365eefe-e9a0-4e23-85aa-c86657663a28",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "contracts.create"
+    },
+    {
+      "id": "9eb8b6eb-d961-49aa-8cdf-f951d0d53f58",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "contracts.analyze"
+    },
+    {
+      "id": "eb09b94c-6019-47b9-83ac-22dc2fc412ed",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "contracts.upload_document"
+    },
+    {
+      "id": "9a0a5f00-216f-4331-9b68-02a98c4b4138",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "calculations.create"
+    },
+    {
+      "id": "cdbb54f4-fa81-46ed-84f6-c10976bd038f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "calculations.edit"
+    },
+    {
+      "id": "c9ce0e16-44af-4312-a311-13b370f65f50",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "calculations.ai_generate"
+    },
+    {
+      "id": "2d0d2de0-fe7d-48df-a80e-0c7f16cb69f9",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "calculations.create_offer"
+    },
+    {
+      "id": "e4aa7457-4d45-4a91-b6fe-58cc457109f4",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "projects.edit_plan"
+    },
+    {
+      "id": "b3b08582-8109-46ff-99fd-a52df596decc",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "projects.delete_attachment"
+    },
+    {
+      "id": "5acce902-ddf0-4dfa-9e89-8ae8bcdedf77",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "admin.data_integrity"
+    },
+    {
+      "id": "71737553-3dd0-47bc-b1ac-3c31e8c581f5",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "documents.upload"
+    },
+    {
+      "id": "53e9a143-f2ef-4734-817a-a36a0a7091ec",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "documents.delete"
+    },
+    {
+      "id": "6d35b004-935e-405e-b40e-29318308baf1",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "documents.analyze"
+    },
+    {
+      "id": "98cd9426-9cf7-4802-9eb8-91a1b4f2f3de",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "change_orders.create"
+    },
+    {
+      "id": "397029c0-0699-4c6b-a8e4-6b00766ca969",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "change_orders.send"
+    },
+    {
+      "id": "761a3273-5086-410e-8540-3ce6f1dff33c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "change_orders.cancel"
+    },
+    {
+      "id": "13090f23-b5f2-4d73-81bb-bf06faa389b4",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "change_orders.mark_invoiced"
+    },
+    {
+      "id": "534bc511-d984-4ea5-a5d6-aa241c22217a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "contracts.create"
+    },
+    {
+      "id": "778bb2c5-56c0-4d38-b3a3-b70efcdc876c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "contracts.analyze"
+    },
+    {
+      "id": "3d77866d-9ded-423a-92cf-b293b531359b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "contracts.upload_document"
+    },
+    {
+      "id": "40edf76a-bc5a-43bd-aeb2-7264ca8c47fc",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "calculations.create"
+    },
+    {
+      "id": "13863378-4c66-4336-9f9d-bf054bceb8d0",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "calculations.edit"
+    },
+    {
+      "id": "70934891-da4c-4cff-96ca-335e5cbe9c7b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "calculations.ai_generate"
+    },
+    {
+      "id": "611ae223-8041-434f-a2fb-2510805f1520",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "calculations.create_offer"
+    },
+    {
+      "id": "ca3c120f-764a-4dae-b24e-aff24948fcc4",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "projects.edit_plan"
+    },
+    {
+      "id": "cc3117e5-1caa-4f5e-a253-d591aa470125",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "projects.delete_attachment"
+    },
+    {
+      "id": "7a9b950c-0194-4a67-83f5-79f713a43e5c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "admin.data_integrity"
+    },
+    {
+      "id": "fc361586-3bda-4ef9-899a-3e9c14726fbf",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "documents.upload"
+    },
+    {
+      "id": "5ed92d78-7b95-4303-bd87-7cd655b80843",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "documents.delete"
+    },
+    {
+      "id": "f47e0a3e-0040-485c-b17b-7fc43ec1478e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "documents.analyze"
+    },
+    {
+      "id": "3fb6b08b-6e85-4dd4-ba55-667714a31c90",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "change_orders.create"
+    },
+    {
+      "id": "0b75f592-a805-465b-acc2-77444b0291a7",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "change_orders.send"
+    },
+    {
+      "id": "c3747ffd-9053-4e59-95d1-371de91462e8",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "change_orders.cancel"
+    },
+    {
+      "id": "d4656250-182a-436e-b0d8-09cc56ec6e8c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "change_orders.mark_invoiced"
+    },
+    {
+      "id": "b20f6cb4-2062-41ee-aa3a-2c1943459f6a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "contracts.create"
+    },
+    {
+      "id": "cc271c6c-af6a-4411-b72d-2b43dfd960a1",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "contracts.analyze"
+    },
+    {
+      "id": "72e09d5c-dd88-4af8-a0cc-6d5129f6d9db",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "contracts.upload_document"
+    },
+    {
+      "id": "0bc30170-b57e-435a-8c1a-d4a0f3a81ec3",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "calculations.create"
+    },
+    {
+      "id": "088183b1-6f98-428e-8445-7a0258e77fa7",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "calculations.edit"
+    },
+    {
+      "id": "562d3014-6120-4018-b0e7-f009cd4a98a7",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "calculations.ai_generate"
+    },
+    {
+      "id": "888442bb-e82d-400d-b7e0-3cfe1a863b99",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "calculations.create_offer"
+    },
+    {
+      "id": "f8def948-fa31-436d-ad73-d65bbbd75b7f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "projects.edit_plan"
+    },
+    {
+      "id": "8c7e56ec-3cc2-4f04-ade0-eac6d0170ced",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "projects.delete_attachment"
+    },
+    {
+      "id": "4fe27a9a-18d0-4273-adc9-a24594256730",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "documents.upload"
+    },
+    {
+      "id": "8509968d-27c9-48de-9da8-349b341fb9f2",
+      "allowed": true,
+      "role_id": "987d4803-3d44-4950-9cd8-2ff27325cae7",
+      "permission_key": "calendar.read_busy"
+    },
+    {
+      "id": "b655357b-ca12-47b3-ac6e-d62049c2f9c0",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.overview"
+    },
+    {
+      "id": "e75eed53-6df8-4f91-ba86-bd5ab0ba638e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.projects"
+    },
+    {
+      "id": "c2de401b-00f9-4199-85ef-475df5f43fc8",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.resource_plan"
+    },
+    {
+      "id": "ce284c14-81ea-401a-9186-f3398fc411c7",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.absence"
+    },
+    {
+      "id": "4ad88ec4-08cf-4895-b028-a8e58428d2a1",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.invoice_basis"
+    },
+    {
+      "id": "49539201-4025-401c-af37-c6bc5f92fe11",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.fag"
+    },
+    {
+      "id": "64cec85b-313f-47e4-8044-a4d7fab9b3dc",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.inbox"
+    },
+    {
+      "id": "0fbb4dd6-65e8-4490-a06a-878a17798bc4",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.sales"
+    },
+    {
+      "id": "b22547e3-8bb7-44bc-81ae-f96402a94d1f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.customers"
+    },
+    {
+      "id": "8c628387-ef5c-4747-ba5b-1f73401895e0",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.management"
+    },
+    {
+      "id": "3d694fa4-87f5-44fd-81fc-54c84de2dc06",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.admin"
+    },
+    {
+      "id": "cd174f31-f8d7-4949-88af-4b4287adbb01",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.calendar"
+    },
+    {
+      "id": "5c8f24fe-5299-4882-ab3c-deb9950ca391",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.documents"
+    },
+    {
+      "id": "e36c3ed4-1535-43d4-88e7-06a2688eb3b3",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.communication"
+    },
+    {
+      "id": "1a491407-c91d-465a-a3d9-86764add1a0a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.contracts"
+    },
+    {
+      "id": "78307a1c-ce76-44fe-baf2-671afebbe933",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.sharepoint"
+    },
+    {
+      "id": "bbf87501-cbbb-4f1e-a42d-78ea11b8878c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "module.leads"
+    },
+    {
+      "id": "0f6ac9aa-d1d9-4bd0-9591-0e8d8097ee89",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.overview"
+    },
+    {
+      "id": "dd79cff3-aa5d-40de-b5a8-fac08c1eef05",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.projects"
+    },
+    {
+      "id": "6b0289ee-cd16-4a9a-bb71-67d884232a67",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.resource_plan"
+    },
+    {
+      "id": "1c7e8627-6148-46ea-93b5-41fb35906377",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.absence"
+    },
+    {
+      "id": "a98d5049-acdd-4f0f-9787-9f70535d341f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.invoice_basis"
+    },
+    {
+      "id": "6ae9b5d8-03e0-4323-a196-013a56a8e817",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.inbox"
+    },
+    {
+      "id": "4b64aa33-3e44-4ee3-bdec-d2ef26d74d3b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.sales"
+    },
+    {
+      "id": "dcc519a5-ef48-484c-9c90-6b4de9e5a37b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.customers"
+    },
+    {
+      "id": "c3d46d1a-8fd3-4260-ba72-4c426bb0fc50",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.management"
+    },
+    {
+      "id": "9e2dacde-5e35-4f05-9bab-763ba9097d82",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.admin"
+    },
+    {
+      "id": "78fd0ce8-7a90-4a72-b0af-d75267c99e93",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.calendar"
+    },
+    {
+      "id": "ca17af59-5de3-480c-b2b2-9276bc983477",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.documents"
+    },
+    {
+      "id": "f4a7e01d-b952-4419-a992-26f10eb87b34",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.communication"
+    },
+    {
+      "id": "99e51002-d8bc-4c6b-b604-68387bb2a93c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.contracts"
+    },
+    {
+      "id": "02578031-a275-4254-80e8-3db6da0f32c2",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.sharepoint"
+    },
+    {
+      "id": "09111f24-1eff-442b-bf79-01c73651588c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "module.leads"
+    },
+    {
+      "id": "1b9e4bb2-1c2e-4ef0-8973-d0b0a1284adf",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.overview"
+    },
+    {
+      "id": "4e171bf1-2249-4e5e-a082-dde1105e4af1",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.projects"
+    },
+    {
+      "id": "811d081e-d194-4649-88d6-f35c6b4b187d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.resource_plan"
+    },
+    {
+      "id": "2bdf8e50-bb7a-4d86-92ac-c30ace4ec45b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.absence"
+    },
+    {
+      "id": "db272036-c3af-4195-a1b9-0410407f4c12",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.invoice_basis"
+    },
+    {
+      "id": "318c30c6-687a-4c86-aa50-bbf457b84fea",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.sales"
+    },
+    {
+      "id": "0abe1b82-7710-4ca3-855a-ed5115d5bb5d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.customers"
+    },
+    {
+      "id": "82609881-34bb-4b0a-8cb1-953084597513",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.calendar"
+    },
+    {
+      "id": "b6312052-00ec-4961-baaf-28ee9f7f560e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.documents"
+    },
+    {
+      "id": "4ee7b3dc-210b-4428-a641-c83d6b7bd64f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.communication"
+    },
+    {
+      "id": "17aa4804-64e1-41cf-b8f9-7ccbd934dc6c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.contracts"
+    },
+    {
+      "id": "281b328e-f5c9-4f4d-bb7c-a8d8c9fe3392",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "module.leads"
+    },
+    {
+      "id": "f482e20a-f54f-413c-9846-6c88283df988",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "module.overview"
+    },
+    {
+      "id": "1cd040bf-5284-45ba-a987-e37dbc62afc0",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "module.projects"
+    },
+    {
+      "id": "232b1b2b-8715-48f8-9b56-0e72feb2c74b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "module.absence"
+    },
+    {
+      "id": "ba75b234-5f99-400a-aa31-2d7a444da2be",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "module.documents"
+    },
+    {
+      "id": "faa91432-22f9-484a-a0c3-df5e2cab3e7d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "module.communication"
+    },
+    {
+      "id": "c896fd79-75a0-4abc-9b9d-c2d6ea850e27",
+      "allowed": true,
+      "role_id": "2c9226da-b200-4f8e-a160-675d97706a54",
+      "permission_key": "module.overview"
+    },
+    {
+      "id": "5d501385-3889-4259-b8e3-f0702d211dae",
+      "allowed": true,
+      "role_id": "2c9226da-b200-4f8e-a160-675d97706a54",
+      "permission_key": "module.resource_plan"
+    },
+    {
+      "id": "54ddda81-2b64-4823-bd71-10d1fd5ced36",
+      "allowed": true,
+      "role_id": "987d4803-3d44-4950-9cd8-2ff27325cae7",
+      "permission_key": "module.overview"
+    },
+    {
+      "id": "49ee43c3-0d86-4532-b1b8-669783073da6",
+      "allowed": true,
+      "role_id": "987d4803-3d44-4950-9cd8-2ff27325cae7",
+      "permission_key": "module.resource_plan"
+    },
+    {
+      "id": "a42d8580-1756-41b4-96b3-778eed8b30ea",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "resourceplan.view"
+    },
+    {
+      "id": "42431df4-3d2c-4802-8cb2-f9af0b1d0127",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "resourceplan.view_busy"
+    },
+    {
+      "id": "bab6898d-2f7d-428c-b245-d46daf0d052c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "resourceplan.view_external_blocks"
+    },
+    {
+      "id": "411cbfc9-687c-4931-b11a-4b307e12a647",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "resourceplan.view_external_titles"
+    },
+    {
+      "id": "8e9ae295-710b-4008-aa11-51e6d9e5476c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "resourceplan.view_external_details"
+    },
+    {
+      "id": "446746e7-fb89-41a9-8caf-c09a4774009c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "resourceplan.schedule"
+    },
+    {
+      "id": "242a717d-aaa5-4abc-8f12-3c2e75fede39",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "resourceplan.edit_others"
+    },
+    {
+      "id": "05aef20d-ab44-4af4-b955-9746c2b5c996",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "resourceplan.cross_company"
+    },
+    {
+      "id": "1f314a3e-fd92-440e-9a02-acef7bea1b36",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "calendar.view_external"
+    },
+    {
+      "id": "b92b442d-8926-4c7a-b573-bfe391cd6156",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "postkontor.view"
+    },
+    {
+      "id": "fff8b353-d2c5-4138-afc0-cdb5fb811c64",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "postkontor.admin"
+    },
+    {
+      "id": "86449a88-3f91-4b53-aa00-1498f3aeb459",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "data.delete"
+    },
+    {
+      "id": "cdb434ea-4f6e-4397-938e-9471774496fd",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "contracts.read"
+    },
+    {
+      "id": "32eaca2f-52c4-4ce9-a04e-7faa481d761a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "contracts.edit"
+    },
+    {
+      "id": "47916583-c8b4-43b2-8374-a92684fa532e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "contracts.admin"
+    },
+    {
+      "id": "6257d321-11cd-4519-81af-e5c723b9c274",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "sharepoint.view"
+    },
+    {
+      "id": "faad6466-7267-4286-b365-7d6dc48aeea9",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "sharepoint.upload"
+    },
+    {
+      "id": "5155807c-0968-49ae-b193-0a640bb9bab0",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "sharepoint.delete"
+    },
+    {
+      "id": "f5403901-f7c4-471a-90e5-6cd6cbf57fd7",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "sharepoint.link_job"
+    },
+    {
+      "id": "c9e67ffa-dc6d-44b8-ab15-e1d60975c298",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "sharepoint.admin"
+    },
+    {
+      "id": "11ee35f7-cfc7-447e-b11c-a9f86aa5b5b2",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "regulation.review"
+    },
+    {
+      "id": "1effba65-9927-451c-b9be-7cc32d345704",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "leads.email_draft"
+    },
+    {
+      "id": "b91061a5-9905-4f17-ac9a-8dfccf3dd6dc",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "leads.create_meeting"
+    },
+    {
+      "id": "4b536bd2-1595-4d97-a0bf-9626d902e382",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "resourceplan.view"
+    },
+    {
+      "id": "acf1e71e-21f0-45d8-b17f-8e15ffba57b1",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "resourceplan.view_busy"
+    },
+    {
+      "id": "17b46ec9-c8f7-41b8-bf53-73434f0a971f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "resourceplan.view_external_blocks"
+    },
+    {
+      "id": "9006db57-b738-4b42-9423-f706925ad604",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "resourceplan.view_external_titles"
+    },
+    {
+      "id": "7614e346-9a97-4728-9254-78f3ef9d7f43",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "resourceplan.view_external_details"
+    },
+    {
+      "id": "eefb115e-8331-46d6-9299-b719d6cf2975",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "resourceplan.schedule"
+    },
+    {
+      "id": "fd4b2083-08eb-4d7c-9fca-7198c2b3a77a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "resourceplan.edit_others"
+    },
+    {
+      "id": "def7b7b3-f067-409d-b949-a037e1d214f6",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "calendar.read_busy"
+    },
+    {
+      "id": "1896e2e8-1825-499d-bb98-aee7ce48fb8f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "calendar.view_external"
+    },
+    {
+      "id": "91270c0e-de98-4b15-a435-4ee9d5726275",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "postkontor.view"
+    },
+    {
+      "id": "43c10ef1-ce86-4840-a1a3-f2c26b2d0527",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "postkontor.admin"
+    },
+    {
+      "id": "58c58c78-42d8-4076-94db-e4145c4610c6",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "data.delete"
+    },
+    {
+      "id": "50c7f0dd-2810-428d-a837-fa013464ed7b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "contracts.read"
+    },
+    {
+      "id": "e76eb80b-78ac-4d90-9347-9eab68c3020e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "contracts.edit"
+    },
+    {
+      "id": "be8abd54-5886-45f0-86bf-a44c17cf1423",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "contracts.admin"
+    },
+    {
+      "id": "ed075d7f-9d5d-4361-8f46-c881b48350ab",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "sharepoint.view"
+    },
+    {
+      "id": "1f8fc168-22b0-4f25-ac8d-0732af6ab6c9",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "sharepoint.upload"
+    },
+    {
+      "id": "bd85d9e9-ccd6-40e3-ab84-faad755b2a4d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "sharepoint.delete"
+    },
+    {
+      "id": "7bfd158f-4ac5-40f5-bf9f-d665800e4fc1",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "sharepoint.link_job"
+    },
+    {
+      "id": "29c92652-b084-4984-abe1-58899dfd4af6",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "admin.manage_companies"
+    },
+    {
+      "id": "0fbbd7a6-70f2-4328-a66b-c406361a401f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "admin.manage_departments"
+    },
+    {
+      "id": "c03ac15f-6972-47c0-ba4a-0ab259178ada",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "admin.manage_users"
+    },
+    {
+      "id": "a82aff60-e353-428c-8602-ec3e39cae822",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "admin.manage_roles"
+    },
+    {
+      "id": "76932e4a-a2de-49b1-b02e-0a0099c20ca3",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "admin.manage_settings"
+    },
+    {
+      "id": "8005a89c-6f7c-457d-801a-c6d962f6bdee",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "resourceplan.view"
+    },
+    {
+      "id": "e1326201-54e6-4fd3-885e-53d85be3adac",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "resourceplan.view_busy"
+    },
+    {
+      "id": "a9187f3e-29bb-4654-a4c5-ff9bad016ef6",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "resourceplan.view_external_blocks"
+    },
+    {
+      "id": "b098114e-15fb-4df2-b66b-48030a0e764b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "resourceplan.view_external_titles"
+    },
+    {
+      "id": "c74dbb21-3614-469c-953e-66daa90d034b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "calendar.read_busy"
+    },
+    {
+      "id": "432354cd-f5b7-4eb9-8cbf-70cb0f1887d2",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "contracts.read"
+    },
+    {
+      "id": "28f94e49-8eb3-4bbf-8a96-be155b15e7bd",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "sharepoint.view"
+    },
+    {
+      "id": "08360193-cec0-4c1f-ac5d-af4bd53bb8bc",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "sharepoint.upload"
+    },
+    {
+      "id": "59f92c2e-ed62-4d04-8e7d-0523c5af95c1",
+      "allowed": true,
+      "role_id": "2c9226da-b200-4f8e-a160-675d97706a54",
+      "permission_key": "resourceplan.view"
+    },
+    {
+      "id": "e939ab17-cc40-43f5-8844-bf5aec2036ab",
+      "allowed": true,
+      "role_id": "2c9226da-b200-4f8e-a160-675d97706a54",
+      "permission_key": "resourceplan.view_busy"
+    },
+    {
+      "id": "1403390c-d74e-4ee5-9d7d-a407975102f3",
+      "allowed": true,
+      "role_id": "987d4803-3d44-4950-9cd8-2ff27325cae7",
+      "permission_key": "resourceplan.view"
+    },
+    {
+      "id": "0204f30e-daa0-4017-9f0d-89e2871edaa4",
+      "allowed": true,
+      "role_id": "987d4803-3d44-4950-9cd8-2ff27325cae7",
+      "permission_key": "resourceplan.view_busy"
+    },
+    {
+      "id": "b6eac907-5e73-4766-96f8-a09a130dd104",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "absence.create_self"
+    },
+    {
+      "id": "57e9bc6d-895a-493b-aefd-6aafbad56a6e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "absence.create_self"
+    },
+    {
+      "id": "9bc13f9a-b55b-49db-966b-fe4aedaf69a5",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "absence.view_team"
+    },
+    {
+      "id": "4c07cc61-41d1-4d8d-9504-9caf9e33f1fc",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "absence.create_self"
+    },
+    {
+      "id": "ef3b0557-dc9f-40a0-a776-f83f0caf4399",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "absence.create_for_others"
+    },
+    {
+      "id": "522cfa18-1293-4011-bf35-626dbf64a290",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "absence.approve"
+    },
+    {
+      "id": "cbca3ad2-12f7-4132-b28e-71f7317d778b",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "absence.view_team"
+    },
+    {
+      "id": "b2cf5a3f-1578-4303-b118-90d8c29fa481",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "absence.view_company"
+    },
+    {
+      "id": "63c81f85-d3a7-4d40-97ab-d95dade6e92d",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "absence.create_self"
+    },
+    {
+      "id": "c4f1802f-9638-42fa-a4b7-7dcd8e602e5c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "absence.create_for_others"
+    },
+    {
+      "id": "9d90d60c-4300-4f3b-9c93-2c0cf2ac8633",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "absence.approve"
+    },
+    {
+      "id": "7e8f35d8-dd05-43bf-a2b1-7e9bebee2e90",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "absence.view_team"
+    },
+    {
+      "id": "6cee257d-d670-4c82-a97a-f7efea9f5c65",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "absence.view_company"
+    },
+    {
+      "id": "a495f5d3-278a-46a4-9da1-320e36fcf67c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "task_thread.view"
+    },
+    {
+      "id": "37996a6f-d1fa-47ab-9899-7db5b5ddb794",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "task_thread.comment_internal"
+    },
+    {
+      "id": "480b85a0-a8d7-42e7-8fb7-2f193fde721e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "task_thread.upload_attachments"
+    },
+    {
+      "id": "cee3af93-e283-4922-bd79-c81ede744d80",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "task_thread.email_external"
+    },
+    {
+      "id": "e171cfe6-3d92-4576-826e-90fad7b730e3",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "task_thread.manage"
+    },
+    {
+      "id": "44412756-d8f6-41fb-863a-1a3ba5a03b4f",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "task_thread.view"
+    },
+    {
+      "id": "5d8c9d3e-adbf-4d67-9588-ac996a397a44",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "task_thread.comment_internal"
+    },
+    {
+      "id": "021f413a-2cbe-4d2e-a9da-10bd5e9a3737",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "task_thread.upload_attachments"
+    },
+    {
+      "id": "233a8836-e0ec-42ef-b91a-ced8be567373",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "task_thread.manage"
+    },
+    {
+      "id": "c3605fb1-4a9b-45b1-be04-25a339764ab9",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "task_thread.view"
+    },
+    {
+      "id": "7d70c5a3-81c9-403e-9e00-5442e42e0bbe",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "task_thread.comment_internal"
+    },
+    {
+      "id": "64c1112a-7073-46e5-813d-76c96fe36453",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "task_thread.upload_attachments"
+    },
+    {
+      "id": "7faababc-c08a-4102-b720-d2121217bb3c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "task_thread.view"
+    },
+    {
+      "id": "98d659e1-096c-46a1-b49f-c681f27602f0",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "task_thread.comment_internal"
+    },
+    {
+      "id": "14b21ef7-c045-4da5-8281-e863037b6a31",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000001",
+      "permission_key": "task_thread.upload_attachments"
+    },
+    {
+      "id": "b9e32954-f00b-495d-b693-5b4a2e99335e",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "security.view"
+    },
+    {
+      "id": "4dccc084-8422-4a83-b4d5-98b82b1c7db8",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "security.manage"
+    },
+    {
+      "id": "7914a452-ee5f-4d4c-80c7-f7b4a2cb9c5a",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "security.sensitive.view"
+    },
+    {
+      "id": "31449190-3d87-4df6-9ef0-2149f2f6ce2c",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "security.export"
+    },
+    {
+      "id": "ec00bf1d-ca10-44e5-a879-612c5b50ff28",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000004",
+      "permission_key": "security.audit.view"
+    },
+    {
+      "id": "efe39879-23bc-467b-8e3a-5c93cd180883",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "security.view"
+    },
+    {
+      "id": "fdf70e84-58b7-4acb-b807-64dd81a480ff",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000003",
+      "permission_key": "security.manage"
+    },
+    {
+      "id": "f0c5fcd8-a355-42ea-bd88-5e818f193eb4",
+      "allowed": true,
+      "role_id": "b0000000-0000-0000-0000-000000000002",
+      "permission_key": "security.view"
+    },
+    {
+      "id": "7c370688-80c7-4c26-99d6-454e7e44b9ef",
+      "allowed": true,
+      "role_id": "2c9226da-b200-4f8e-a160-675d97706a54",
+      "permission_key": "security.view"
+    }
+  ],
+  "company_admin_assignments": [
+    {
+      "id": "c13cd783-6336-42bf-a313-6a6e4e2cefb1",
+      "reason": "Eier godkjent 2026-11-06: daglig leder, selskapsadmin MCS Service AS",
+      "company_id": "a0000000-0000-0000-0000-000000000001",
+      "created_at": "2026-11-06T11:51:31.492101+00:00",
+      "granted_by": "5a50a16b-ed15-4720-8cd6-3c303100395f",
+      "revoked_at": null,
+      "auth_user_id": "31868e90-61d7-4f27-8493-0b1b7cbc5ef7"
+    }
+  ]
+}
