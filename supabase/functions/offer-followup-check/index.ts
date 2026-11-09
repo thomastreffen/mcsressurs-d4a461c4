@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isCronBearer, isExactServiceBearer } from "../_shared/security-boundary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,6 +48,25 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const sb = createClient(supabaseUrl, serviceKey);
+
+  // Auth: service-role / pg_cron shared secret (scheduled sweep) or any authenticated user
+  // (UI single-offer trigger). Anonymous calls are rejected.
+  const authHeader = req.headers.get("Authorization");
+  const isSystem = isExactServiceBearer(authHeader, serviceKey) || (await isCronBearer(sb, authHeader));
+  if (!isSystem) {
+    const jwt = authHeader?.replace("Bearer ", "") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader ?? "" } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(jwt);
+    if (claimsErr || !claims?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
 
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
