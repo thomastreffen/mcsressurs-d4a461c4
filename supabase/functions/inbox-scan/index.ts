@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
@@ -95,13 +96,7 @@ Deno.serve(async (req) => {
       return respond({ error: "Unauthorized" }, 401);
     }
     const userId = claims.claims.sub as string;
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .in("role", ["admin", "super_admin"])
-      .limit(1);
-    if (!roleData || roleData.length === 0) {
+    if (!(await requireGlobalAccessManager(supabaseAdmin, userId))) {
       return respond({ error: "Forbidden" }, 403);
     }
   }

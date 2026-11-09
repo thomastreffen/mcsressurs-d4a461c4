@@ -74,3 +74,20 @@ export async function legacyAdminInCompany(
   const { data: excluded, error: exErr } = await client.rpc("legacy_admin_excluded", { _uid: callerId, _company: companyId });
   return !exErr && excluded !== true;
 }
+/** In-app admin notification recipients for one company: global superadmins (unchanged) plus legacy-role
+ * admins with active, non-excluded membership in that company. No company -> superadmins only. */
+export async function companyAdminRecipients(client: BoundaryQueryClient, companyId: string | null | undefined): Promise<string[]> {
+  const { data: roles } = await client.from("user_roles").select("user_id, role").in("role", ["admin", "super_admin"]);
+  const rows = (roles ?? []) as { user_id: string; role: string }[];
+  const out = new Set(rows.filter((r) => r.role === "super_admin").map((r) => r.user_id));
+  const admins = rows.filter((r) => r.role === "admin").map((r) => r.user_id);
+  if (companyId && admins.length) {
+    const [{ data: members }, { data: excl }] = await Promise.all([
+      client.from("user_memberships").select("user_id").eq("company_id", companyId).eq("is_active", true).in("user_id", admins),
+      client.from("legacy_admin_company_exclusions").select("auth_user_id").eq("company_id", companyId).is("revoked_at", null),
+    ]);
+    const excluded = new Set(((excl ?? []) as { auth_user_id: string }[]).map((x) => x.auth_user_id));
+    for (const m of (members ?? []) as { user_id: string }[]) if (!excluded.has(m.user_id)) out.add(m.user_id);
+  }
+  return [...out];
+}
