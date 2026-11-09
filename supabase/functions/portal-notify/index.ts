@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { isExactServiceBearer } from "../_shared/security-boundary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,7 +65,7 @@ Deno.serve(async (req) => {
     }
 
     // Allow service role calls through, otherwise validate JWT and check admin role
-    if (!authHeader.includes(serviceRoleKey)) {
+    if (!isExactServiceBearer(authHeader, serviceRoleKey)) {
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
       const callerClient = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
