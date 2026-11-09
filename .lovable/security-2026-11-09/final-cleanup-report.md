@@ -42,3 +42,21 @@ Ingen av de 9 hadde opprettede eller tildelte jobber i selskaper de ikke er akti
 - Uendret: medlemskap (BusBar aktivt for operativ deltakelse), roller, Service/Elektrotavler-admin, Stian (radhash 513a4df1… før = etter), superadmin = Thomas+Simen, Hans Jakob Service inaktiv.
 - Rest: Sindres legacy admin virker fortsatt i de 44 uavgrensede policyene (gjelder alle selskap, ikke BusBar-spesifikt).
 - Rollback: UPDATE legacy_admin_company_exclusions SET revoked_at=now() WHERE auth_user_id='9138ec02-…' AND company_id=BusBar.
+
+## Runde 09.11 ~08:00 (godkjent «Jepp, da gjør vi det»)
+AKTIVERT OG TESTET
+- 0079: alle 41 av 44 resterende globale is_admin-regler avgrenset (selskap på rad, forelder, felles medlemskap, mappens eier). Rader uten selskap: kun superadmin. 156 policyer bruker nå avgrensede hjelpere.
+- legacy_admin_in_company: null-selskap er ikke lenger globalt. Postkontoret (inbox_messages, 2 policyer) beholder synlighet for 26 ufordelte meldinger (egen hjelper) til beslutning.
+- Stian: eksplisitt, auditert bevaring (legacy_admin_global_retention). Radhash 513a4df1… uendret.
+- can_view_planning_finance: is_admin fjernet; alle 7 har jobs.view_pricing → ingen endring.
+- Selskap fylt inn sikkert: 1394 varsler, 8 dokumenter, 2 skjema, 4 tilbud (logget i security_company_backfill_log).
+- Edge: inbox-scan/contract-alerts-cron manuell trigger kun superadmin; handle-approval, outlook-sync, offer-public-view varsler kun superadmin + admin i jobbens/tilbudets selskap (Sindre ikke for BusBar).
+- Tester: 619/619 ×2, bygg OK.
+GJENSTÅR
+- 3 regler: settings-lesing (felles prisstandarder brukt i kalkyle), mailboxes-lesing (Postkontor-konfig), people WITH CHECK (opprett person). Globale delte innstillinger, ikke selskapsdata.
+- Til manuell gjennomgang: 26 innboksmeldinger, 8 skjemamaler, 1 lead, 1 kalkyle, 1 varsel uten selskap; 48 aktivitetslogger og 1 e-postlogg uten sporbar forelder (nå bare superadmin); 3 montører uten innlogging (redigering bare superadmin).
+- MS-token-valg i ms-calendar/outlook-sync bruker fortsatt admin-roller som tokenkilde (ikke tilgang).
+BLOKKERT
+- Cron: inbox-scan (*/15) og en timesjobb gir allerede 401 (før dagens endringer, minst siden 02:00). Krever egen cron-hemmelighet i hvelv + funksjonsstøtte; ikke byttet blindt.
+- Graph clientState (30 tegn, svakt tegnsett), abonnement utløper 11.11 09:36 UTC. Rotasjon krever nytt abonnement via Microsoft og koordinert bytte.
+Rollback 0079: sett legacy_admin_in_company tilbake til 0078-definisjon; policyuttrykk før endring i spørring over (44 stk) – lagret i policies-before-0079.txt; backfill: UPDATE … SET company_id=NULL WHERE id IN (logg).

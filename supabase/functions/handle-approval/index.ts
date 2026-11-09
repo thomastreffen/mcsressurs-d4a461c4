@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { companyAdminRecipients } from "../_shared/security-boundary.ts";
 import { jobAttachmentLinks } from "../_shared/job-access-policy.ts";
 import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.ts";
 import { formatJobSchedule } from "../_shared/job-time.ts";
@@ -475,17 +476,14 @@ Deno.serve(async (req) => {
     // Fetch job title for notification message
     const { data: jobForNotif } = await supabaseAdmin
       .from("events")
-      .select("title, internal_number, job_number")
+      .select("title, internal_number, job_number, company_id")
       .eq("id", approval.job_id)
       .single();
 
     const notifTitle = jobForNotif?.job_number || jobForNotif?.internal_number || jobForNotif?.title || "Jobb";
 
     // Get all admin user IDs to notify
-    const { data: adminRoles } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .in("role", ["admin", "super_admin"]);
+    const adminRoles = (await companyAdminRecipients(supabaseAdmin, (jobForNotif as any)?.company_id)).map((user_id) => ({ user_id }));
 
     if (adminRoles && adminRoles.length > 0) {
       const notificationType = action === "approve" ? "approval_pending" :

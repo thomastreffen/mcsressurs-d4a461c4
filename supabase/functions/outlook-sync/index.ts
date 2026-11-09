@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { companyAdminRecipients } from "../_shared/security-boundary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -228,10 +229,8 @@ Deno.serve(async (req) => {
     };
 
     const notifyAdmins = async (title: string, message: string, type: string) => {
-      const { data: adminRoles } = await supabaseAdmin
-        .from("user_roles")
-        .select("user_id")
-        .in("role", ["admin", "super_admin"]);
+      const { data: ev } = await supabaseAdmin.from("events").select("company_id").eq("id", event_id).maybeSingle();
+      const adminRoles = (await companyAdminRecipients(supabaseAdmin, ev?.company_id)).map((user_id) => ({ user_id }));
 
       if (adminRoles && adminRoles.length > 0) {
         await supabaseAdmin.from("notifications").insert(

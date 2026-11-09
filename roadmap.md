@@ -313,3 +313,4 @@
 - [ ] Beslutning: Sindre/Stian adminnivå i BusBar (krever godkjenning).
 - [ ] Cron-legitimering (9 jobber) og Graph state-rotasjon.
 - [x] 09.11 07:50: Sindre admin i BusBar avskåret (unntak), Stian uendret.
+- [x] 09.11 08:00: 41/44 globale regler avgrenset, null-selskap ikke globalt, backfill, edge-varsler per selskap. Rest: cron-hemmelighet, Graph-state, 3 delte konfig-regler, manuell gjennomgang.

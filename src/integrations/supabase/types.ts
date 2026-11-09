@@ -10800,6 +10800,33 @@ export type Database = {
           },
         ]
       }
+      legacy_admin_global_retention: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          id: string
+          reason: string
+          revoked_at: string | null
+          revoked_by: string | null
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          id?: string
+          reason: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Relationships: []
+      }
       m365_communication_queue: {
         Row: {
           attempt_count: number
@@ -15368,6 +15395,33 @@ export type Database = {
         }
         Relationships: []
       }
+      security_company_backfill_log: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: number
+          row_id: string
+          source: string
+          table_name: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: number
+          row_id: string
+          source: string
+          table_name: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: number
+          row_id?: string
+          source?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       service_jobs: {
         Row: {
           address: string | null
@@ -17617,6 +17671,11 @@ export type Database = {
     }
     Functions: {
       _notif_admin_user_ids: { Args: never; Returns: string[] }
+      account_auth_user: { Args: { _account: string }; Returns: string }
+      activity_entity_company: {
+        Args: { _commercial_case: string; _id: string; _type: string }
+        Returns: string
+      }
       admin_tier_shadow_diff: {
         Args: never
         Returns: {
@@ -17824,6 +17883,7 @@ export type Database = {
         Args: { _person_id: string }
         Returns: undefined
       }
+      conversation_thread_company_id: { Args: { _id: string }; Returns: string }
       create_material_suggestion: {
         Args: {
           p_comment: string
@@ -17904,6 +17964,7 @@ export type Database = {
         Args: { _auth_user_id: string; _event_id: string }
         Returns: boolean
       }
+      fag_request_company_id: { Args: { _id: string }; Returns: string }
       find_work_visit_conflicts: {
         Args: {
           p_end: string
@@ -18435,7 +18496,14 @@ export type Database = {
         Args: { _company: string; _uid: string }
         Returns: boolean
       }
+      legacy_admin_global_retained: { Args: { _uid: string }; Returns: boolean }
       legacy_admin_in_company: { Args: { _company: string }; Returns: boolean }
+      legacy_admin_in_company_or_unassigned: {
+        Args: { _company: string }
+        Returns: boolean
+      }
+      legacy_admin_over_person: { Args: { _person: string }; Returns: boolean }
+      legacy_admin_over_user: { Args: { _target: string }; Returns: boolean }
       list_order_intake_history: {
         Args: { _company_id: string }
         Returns: {
@@ -18870,6 +18938,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      storage_first_uuid: { Args: { _name: string }; Returns: string }
       submission_has_tracking_token: {
         Args: { _submission_id: string }
         Returns: boolean
