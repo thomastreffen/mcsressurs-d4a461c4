@@ -162,3 +162,31 @@ describe("owner-approved per-company admin exclusion (Sindre / BusBar)", () => {
     expect((await as(SINDRE, `UPDATE events SET title='back' WHERE id='${EV_BUSBAR}' RETURNING id`)).rows).toHaveLength(1);
   });
 });
+
+describe("0079: rows without company and access tables are no longer global for legacy admins", () => {
+  const m = () => {
+    const s = load("0079_close_remaining_global_legacy_admin.sql");
+    const pick = (start: string, end: string) => s.slice(s.indexOf(start), s.indexOf(end, s.indexOf(start)) + end.length);
+    return [
+      pick("CREATE TABLE public.legacy_admin_global_retention", "WHERE revoked_at IS NULL;"),
+      pick("CREATE OR REPLACE FUNCTION public.legacy_admin_global_retained", "$$;"),
+      pick("CREATE OR REPLACE FUNCTION public.legacy_admin_in_company(", "_company)))) $$;"),
+      pick("CREATE OR REPLACE FUNCTION public.legacy_admin_over_user", "company_id))))) $$;"),
+    ].join("\n");
+  };
+  it("John loses orphan rows; Stian-style retention keeps them; superadmin keeps all", async () => {
+    await db.exec(eventsOnly(art("company-bounded-admin.policies.sql")));
+    await db.exec(`UPDATE legacy_admin_company_exclusions SET revoked_at=now()`);
+    await db.exec(m());
+    expect((await as(JOHN, `UPDATE events SET title='x' WHERE id='${EV_NULL}' RETURNING id`)).rows).toHaveLength(0);
+    expect((await as(JOHN, `UPDATE events SET title='x' WHERE id='${EV_SERVICE}' RETURNING id`)).rows).toHaveLength(1);
+    expect((await as(THOMAS, `UPDATE events SET title='x' WHERE id='${EV_NULL}' RETURNING id`)).rows).toHaveLength(1);
+    await db.exec(`INSERT INTO legacy_admin_global_retention(auth_user_id,reason) VALUES ('${RUNE}','test')`);
+    expect((await as(RUNE, `UPDATE events SET title='x' WHERE id='${EV_NULL}' RETURNING id`)).rows).toHaveLength(1);
+    expect((await as(RUNE, `UPDATE events SET title='x' WHERE id='${EV_BUSBAR}' RETURNING id`)).rows).toHaveLength(1);
+  });
+  it("legacy admin sees other logins only through a shared company", async () => {
+    const r = await as(JOHN, `SELECT legacy_admin_over_user('${MARCUS}') a, legacy_admin_over_user('${SIMEN}') b`);
+    expect(r.rows[0]).toEqual({ a: true, b: false });
+  });
+});
