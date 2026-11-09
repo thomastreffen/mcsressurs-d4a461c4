@@ -1,3 +1,4 @@
+import { buildSearchUrl, searchAllPages } from "./graph-search.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { isCronBearer, requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -154,6 +155,9 @@ Deno.serve(async (req) => {
 
     let totalNewMessages = 0;
     let scannedUsers = 0;
+    let failedSearches = 0;
+    const failedUsers = new Set<string>();
+    const errorCodes: Record<string, number> = {};
 
     // 3. For each user, search inbox for ref codes
     for (const user of msUsers) {
@@ -176,19 +180,15 @@ Deno.serve(async (req) => {
 
       for (const searchQuery of searchQueries) {
         try {
-          const url = `${GRAPH_BASE}/me/messages?$search="${encodeURIComponent(searchQuery)}"&$top=50&$orderby=receivedDateTime desc&$select=id,subject,bodyPreview,from,toRecipients,receivedDateTime,webLink,internetMessageId,conversationId,isDraft`;
-          const res = await fetch(url, {
-            headers: { Authorization: `Bearer ${msToken}` },
-          });
-
-          if (!res.ok) {
-            const errText = await res.text();
-            console.log(`[inbox-scan] Graph search failed for user ${user.id}: ${res.status} ${errText.substring(0, 100)}`);
+          const result = await searchAllPages(buildSearchUrl(GRAPH_BASE, searchQuery), msToken, sinceDate);
+          if (!result.ok) {
+            failedSearches++;
+            failedUsers.add(user.id);
+            if (result.code) errorCodes[result.code] = (errorCodes[result.code] || 0) + 1;
+            console.log(`[inbox-scan] Graph search failed for user ${user.id}: ${result.status} ${result.code ?? "unknown"}`);
             continue;
           }
-
-          const data = await res.json();
-          const messages = data.value || [];
+          const messages = result.messages;
 
           for (const msg of messages) {
             if (msg.isDraft) continue;
@@ -265,15 +265,22 @@ Deno.serve(async (req) => {
             }
           }
         } catch (err) {
-          console.error(`[inbox-scan] Search error for user ${user.id}:`, err);
+          failedSearches++;
+          failedUsers.add(user.id);
+          console.error(`[inbox-scan] Search error for user ${user.id}:`, String(err).slice(0, 200));
         }
       }
     }
 
-    console.log(`[inbox-scan] Done. Scanned ${scannedUsers} users, stored ${totalNewMessages} new messages.`);
+    const status = failedSearches === 0 ? "ok" : failedUsers.size >= scannedUsers ? "failed" : "partial";
+    console.log(`[inbox-scan] Done status=${status}. Scanned ${scannedUsers} users, failed searches ${failedSearches} (${failedUsers.size} users), stored ${totalNewMessages} new messages. codes=${JSON.stringify(errorCodes)}`);
 
     return respond({
-      success: true,
+      success: status !== "failed",
+      status,
+      failed_searches: failedSearches,
+      failed_users: failedUsers.size,
+      error_codes: errorCodes,
       scanned_users: scannedUsers,
       new_messages: totalNewMessages,
       ref_codes_loaded: refMap.size,

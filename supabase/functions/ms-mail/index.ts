@@ -638,7 +638,7 @@ Deno.serve(async (req) => {
       if (conversationIds.length > 0) {
         for (const convId of conversationIds.slice(0, 3)) {
           const filterStr = `conversationId eq '${convId}'`;
-          const url = `${GRAPH_BASE}/me/messages?$filter=${encodeURIComponent(filterStr)}&$top=25&$orderby=receivedDateTime desc&$select=id,subject,bodyPreview,from,toRecipients,receivedDateTime,webLink,internetMessageId,conversationId,isDraft`;
+          const url = `${GRAPH_BASE}/me/messages?$filter=${encodeURIComponent(filterStr)}&$top=25&$select=id,subject,bodyPreview,from,toRecipients,receivedDateTime,webLink,internetMessageId,conversationId,isDraft`;
           const res = await fetch(url, {
             headers: { Authorization: `Bearer ${msToken}` },
           });
@@ -655,7 +655,7 @@ Deno.serve(async (req) => {
       // Fallback: search by ref_code if no results
       if (graphMessages.length === 0 && refCode) {
         log("Falling back to ref_code search");
-        const searchUrl = `${GRAPH_BASE}/me/messages?$search="${encodeURIComponent(`"${refCode}"`)}"&$top=25&$orderby=receivedDateTime desc&$select=id,subject,bodyPreview,from,toRecipients,receivedDateTime,webLink,internetMessageId,conversationId,isDraft`;
+        const searchUrl = `${GRAPH_BASE}/me/messages?$search="${encodeURIComponent(`"${refCode}"`)}"&$top=25&$select=id,subject,bodyPreview,from,toRecipients,receivedDateTime,webLink,internetMessageId,conversationId,isDraft`;
         const res = await fetch(searchUrl, {
           headers: { Authorization: `Bearer ${msToken}` },
         });
