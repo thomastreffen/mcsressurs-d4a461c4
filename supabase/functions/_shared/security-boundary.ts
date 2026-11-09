@@ -4,6 +4,26 @@ export function isExactServiceBearer(header: string | null, secret: string | und
   return header === `Bearer ${secret}`;
 }
 
+/** pg_cron / scheduler identity: a dedicated shared secret stored in public.app_runtime_secrets
+ * (service-role only), verified server-side via the verify_cron_secret RPC. Never accept the
+ * anon key or a user JWT as a cron identity. */
+export async function isCronBearer(client: BoundaryRpcClient, header: string | null): Promise<boolean> {
+  if (!header || !header.startsWith("Bearer ")) return false;
+  const token = header.slice("Bearer ".length).trim();
+  if (token.length < 32) return false;
+  const { data, error } = await client.rpc("verify_cron_secret", { _token: token });
+  return !error && data === true;
+}
+
+/** Cryptographically random Graph subscription clientState (replaces predictable
+ * `mcs-postkontoret-<timestamp>` / `mcs-<company_id>` values). */
+export function generateClientState(): string {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return `mcs-${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
+
 export interface BasicGraphNotification {
   subscriptionId?: unknown;
   clientState?: unknown;

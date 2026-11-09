@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateClientState } from "../_shared/security-boundary.ts";
+import { isSystemCaller } from "../_shared/system-caller.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,6 +42,13 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Auth: service-role, pg_cron shared secret, or global superadmin only
+    if (!(await isSystemCaller(supabase, supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, req.headers.get("Authorization")))) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { action, company_id } = await req.json();
 
@@ -93,7 +102,6 @@ Deno.serve(async (req) => {
     }
 
     const notificationUrl = `${supabaseUrl}/functions/v1/graph-webhook-inbound`;
-    const clientState = `mcs-${company_id}`;
 
     // ENSURE
     if (action === "ensure") {
@@ -125,8 +133,68 @@ Deno.serve(async (req) => {
       }
 
       // Create new
-      const result = await createSubscription(accessToken, notificationUrl, clientState, company_id, supabase);
+      const result = await createSubscription(accessToken, notificationUrl, company_id, supabase);
       return new Response(JSON.stringify({ status: "created", ...result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ROTATE STATE: new cryptographic clientState + extended expiration on the EXISTING
+    // subscription (no delete/recreate → no dropped notifications, no duplicates).
+    if (action === "rotate_state") {
+      const { data: sub } = await supabase
+        .from("ms_graph_subscriptions")
+        .select("*")
+        .eq("company_id", company_id)
+        .eq("status", "active")
+        .order("expiration_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!sub) {
+        return new Response(JSON.stringify({ error: "No active subscription to rotate" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const newState = generateClientState();
+      const newExpiration = new Date(Date.now() + 2.9 * 24 * 60 * 60 * 1000).toISOString();
+
+      const resp = await fetch(`https://graph.microsoft.com/v1.0/subscriptions/${sub.subscription_id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ expirationDateTime: newExpiration, clientState: newState }),
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        await supabase.from("ms_graph_subscriptions").update({
+          status: "error",
+          last_error: `Rotate failed: ${resp.status}`,
+          updated_at: new Date().toISOString(),
+        }).eq("id", sub.id);
+        console.error("Graph clientState rotation failed:", resp.status, errText);
+        return new Response(JSON.stringify({ error: `Rotate failed: ${resp.status}` }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      await resp.json();
+
+      // Graph accepted the new state -> persist it atomically with the new expiry.
+      await supabase.from("ms_graph_subscriptions").update({
+        client_state: newState,
+        expiration_at: newExpiration,
+        last_renewed_at: new Date().toISOString(),
+        status: "active",
+        last_error: null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", sub.id);
+
+      return new Response(JSON.stringify({
+        status: "rotated",
+        subscription_id: sub.subscription_id,
+        expiration_at: newExpiration,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -175,7 +243,7 @@ Deno.serve(async (req) => {
         await supabase.from("ms_graph_subscriptions").update({ status: "disabled" }).eq("id", old.id);
       }
 
-      const result = await createSubscription(accessToken, notificationUrl, clientState, company_id, supabase);
+      const result = await createSubscription(accessToken, notificationUrl, company_id, supabase);
       return new Response(JSON.stringify({ status: "recreated", ...result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -220,13 +288,13 @@ Deno.serve(async (req) => {
 async function createSubscription(
   accessToken: string,
   notificationUrl: string,
-  clientState: string,
   companyId: string,
   supabase: any
 ) {
   // Max expiration for mail resources is ~4230 minutes (~2.9 days)
   const expiration = new Date(Date.now() + 2.9 * 24 * 60 * 60 * 1000).toISOString();
   const resource = `users/${SYSTEM_MAILBOX}/mailFolders('Inbox')/messages`;
+  const clientState = generateClientState();
 
   const resp = await fetch("https://graph.microsoft.com/v1.0/subscriptions", {
     method: "POST",

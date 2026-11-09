@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateClientState } from "../_shared/security-boundary.ts";
+import { isSystemCaller } from "../_shared/system-caller.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,6 +49,14 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
+
+  // Auth: service-role, pg_cron shared secret, or global superadmin only
+  if (!(await isSystemCaller(supabase, supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, req.headers.get("Authorization")))) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const notificationUrl = `${supabaseUrl}/functions/v1/graph-webhook-inbound`;
   const resource = `users/${SYSTEM_MAILBOX}/mailFolders('Inbox')/messages`;
   const now = new Date();
@@ -187,9 +197,9 @@ async function createSubscription(
   now: Date,
 ) {
   const expiration = new Date(now.getTime() + MAX_EXPIRATION_HOURS * 60 * 60 * 1000).toISOString();
-  const clientState = `mcs-postkontoret-${Date.now()}`;
+  const clientState = generateClientState();
 
-  console.log("SUBSCRIPTION_CREATING", { resource, notificationUrl, expiration, clientState });
+  console.log("SUBSCRIPTION_CREATING", { resource, notificationUrl, expiration });
 
   const resp = await fetch("https://graph.microsoft.com/v1.0/subscriptions", {
     method: "POST",

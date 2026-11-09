@@ -18,7 +18,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { isExactServiceBearer } from "../_shared/security-boundary.ts";
+import { isCronBearer, isExactServiceBearer } from "../_shared/security-boundary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
     // ── Auth: require service_role or admin ──
     const authHeader = req.headers.get("authorization") || "";
-    const isServiceRole = isExactServiceBearer(authHeader, serviceKey);
+    const isServiceRole = isExactServiceBearer(authHeader, serviceKey) || (await isCronBearer(supabase, authHeader));
     if (!isServiceRole) {
       const jwt = authHeader.replace("Bearer ", "");
       const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt);

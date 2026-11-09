@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
+import { isCronBearer, requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -24,8 +24,8 @@ serve(async (req) => {
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
   const jwt = authHeader.replace("Bearer ", "");
-  // Allow service_role key (for pg_cron / system calls)
-  if (jwt !== serviceKey) {
+  // Allow service_role key or the pg_cron shared secret (for system calls)
+  if (jwt !== serviceKey && !(await isCronBearer(supabaseAdmin, authHeader))) {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseAnon = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
