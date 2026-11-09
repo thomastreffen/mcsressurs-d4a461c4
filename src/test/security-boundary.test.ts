@@ -40,7 +40,7 @@ describe("protocol-specific security boundaries", () => {
   });
 });
 import { legacyAdminInCompany } from "../../supabase/functions/_shared/security-boundary";
-type Fixture = { superadmin: boolean; roles: string[]; manageUsers: boolean; members: string[] };
+type Fixture = { superadmin: boolean; roles: string[]; manageUsers: boolean; members: string[]; excluded?: string[] };
 function fakeClient(f: Fixture) {
   const q = (rows: unknown[]) => {
     const chain: any = { select: () => chain, eq: (col: string, v: string) => { if (col === "company_id") rows = (rows as any[]).filter((r) => r.company_id === v); return chain; },
@@ -48,7 +48,7 @@ function fakeClient(f: Fixture) {
     return chain;
   };
   return {
-    rpc: (name: string) => Promise.resolve({ data: name === "is_global_superadmin" ? f.superadmin : f.manageUsers, error: null }),
+    rpc: (name: string, args: any) => Promise.resolve({ data: name === "is_global_superadmin" ? f.superadmin : name === "legacy_admin_excluded" ? (f.excluded ?? []).includes(args._company) : f.manageUsers, error: null }),
     from: (t: string) => t === "user_roles" ? q(f.roles.map((role) => ({ role }))) : q(f.members.map((company_id) => ({ id: "m", company_id }))),
   };
 }
@@ -67,5 +67,14 @@ describe("company-bounded legacy admin in server functions", () => {
     const c = fakeClient({ ...base, manageUsers: true, members: ["service"] });
     expect(await legacyAdminInCompany(c, "u", "service", { includeV1ManageUsers: false })).toBe(false);
     expect(await legacyAdminInCompany(c, "u", "service")).toBe(true);
+  });
+});
+
+describe("per-company admin exclusion", () => {
+  it("excluded company loses admin branch, other memberships keep it", async () => {
+    const c = fakeClient({ superadmin: false, roles: ["admin"], manageUsers: true, members: ["service", "tavler", "busbar"], excluded: ["busbar"] });
+    expect(await legacyAdminInCompany(c, "sindre", "busbar")).toBe(false);
+    expect(await legacyAdminInCompany(c, "sindre", "service")).toBe(true);
+    expect(await legacyAdminInCompany(c, "sindre", "tavler")).toBe(true);
   });
 });
