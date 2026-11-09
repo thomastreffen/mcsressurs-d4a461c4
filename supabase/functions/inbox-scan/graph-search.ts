@@ -20,13 +20,13 @@ export async function searchAllPages(
   const seen = new Set<string>();
   let url: string | undefined = firstUrl;
   for (let page = 0; url && page < maxPages; page++) {
-    const res = await fetchFn(url, { headers: { Authorization: `Bearer ${token}` } });
+    const res: Response = await fetchFn(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) {
       let code: string | undefined;
       try { code = (await res.json())?.error?.code; } catch { /* ignore */ }
       return { messages: out, ok: false, status: res.status, code };
     }
-    const data = await res.json();
+    const data: any = await res.json();
     for (const m of data.value || []) {
       if (!m?.id || seen.has(m.id)) continue;
       if (m.receivedDateTime && m.receivedDateTime < sinceIso) continue;
