@@ -220,15 +220,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check admin role
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", callerUserId)
-      .single();
-
-    // Global admins pass; others need company-scoped resource_plan edit on the job's company (checked after job fetch).
-    const isGlobalAdmin = !!roleData && (roleData.role === "admin" || roleData.role === "super_admin");
+    // Only global superadmin passes everywhere; everyone else (incl. legacy admins) needs company-scoped
+    // resource_plan edit on the job's own company (checked after job fetch).
+    const isGlobalAdmin = await requireGlobalAccessManager(supabaseAdmin, callerUserId);
 
     const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes, resend, technician_ids, queue_dispatch } = await req.json();
     const isResend = resend === true || queue_dispatch === true;
