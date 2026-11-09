@@ -279,8 +279,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("[create-person] Unhandled error:", err?.message || String(err));
-    return new Response(JSON.stringify({ error: err?.message || String(err) }), {
+    console.error("[create-person] Unhandled error:", (err as any)?.message || String(err));
+    return new Response(JSON.stringify({ error: (err as any)?.message || String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
