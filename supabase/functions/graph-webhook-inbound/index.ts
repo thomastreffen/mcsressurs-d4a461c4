@@ -680,6 +680,7 @@ async function processMessage(
   return { threadId, thread, post, senderEmail, internetMessageId, message };
 }
 
+// Basic Graph notifications use a stored subscription secret, not a Hub login.
 Deno.serve(async (req) => {
   // Graph validation handshake
   const url = new URL(req.url);
@@ -709,14 +710,6 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    const accessToken = await getGraphToken();
-    if (!accessToken) {
-      console.error("Missing Azure credentials for inbound webhook");
-      return new Response(JSON.stringify({ error: "Missing Azure credentials" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     let processed = 0;
 
     for (const notification of notifications) {
@@ -726,8 +719,11 @@ Deno.serve(async (req) => {
       try {
         // ── Validate subscription + clientState ──
         const clientState = notification.clientState;
-        if (clientState) {
-          companyId = clientState.replace("mcs-", "");
+        if (typeof clientState !== "string" || !clientState || typeof notification.subscriptionId !== "string") {
+          console.warn("Rejected inbound notification: missing subscription credentials");
+          continue;
+        }
+        {
           const { data: subRecord } = await supabase
             .from("ms_graph_subscriptions")
             .select("id, company_id")
@@ -736,26 +732,19 @@ Deno.serve(async (req) => {
             .eq("status", "active")
             .maybeSingle();
 
-          if (!subRecord) {
+          if (!subRecord?.company_id) {
             console.warn("ClientState mismatch or unknown subscription:", notification.subscriptionId);
-            try {
-              await supabase.from("conversation_email_dead_letters").insert({
-                company_id: companyId,
-                subscription_id: notification.subscriptionId,
-                raw_payload: notification,
-                error: "Unknown subscription or clientState mismatch",
-                status: "pending",
-              });
-            } catch (_dlErr) {
-              console.error("Failed to write dead letter:", _dlErr);
-            }
             continue;
           }
           companyId = subRecord.company_id;
         }
 
         const resourceUrl = notification.resource;
-        if (!resourceUrl) continue;
+        if (typeof resourceUrl !== "string" || !/^users\/[^/?#]+\/messages\/[^/?#]+$/i.test(resourceUrl)) continue;
+
+        // Acquire privileged Graph credentials only after validating this callback.
+        const accessToken = await getGraphToken();
+        if (!accessToken) throw new Error("Missing Azure credentials for inbound webhook");
 
         // Fetch message from Graph (request headers for matching)
         console.log("INBOUND_MESSAGE_FETCH_START", { resource: resourceUrl });

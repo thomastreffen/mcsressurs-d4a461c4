@@ -1,0 +1,287 @@
+import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    const supabaseAnon = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Verify caller is admin
+    const jwt = authHeader.replace("Bearer ", "");
+    const { data: { user: caller }, error: callerErr } = await supabaseAnon.auth.getUser(jwt);
+    if (callerErr || !caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // STAGED: activate after approved Simen assignment/read-back.
+    if (!await requireGlobalAccessManager(supabaseAdmin, caller.id)) {
+      return new Response(JSON.stringify({ error: "Global system administration required" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await req.json();
+    const { full_name, email, phone, company_id, department_id, is_plannable, is_active, role_ids, send_invite } = body;
+
+    if (!full_name || !email || !company_id) {
+      return new Response(JSON.stringify({ error: "Missing required fields: full_name, email, company_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // 1. Find or create auth user
+    let authUserId: string | null = null;
+    let authUserExisted = false;
+
+    // Single paginated lookup
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+    const existingAuth = existingUsers?.users?.find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+
+    if (existingAuth) {
+      authUserId = existingAuth.id;
+      authUserExisted = true;
+      console.log("[create-person] Auth user exists:", authUserId);
+    } else if (send_invite !== false) {
+      // Create user with invite (sends magic link email)
+      const siteUrl = Deno.env.get("SITE_URL") || req.headers.get("origin") || "https://mcsressurs.lovable.app";
+      const { data: invited, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(normalizedEmail, {
+        data: { full_name },
+        redirectTo: `${siteUrl}/activate`,
+      });
+      if (inviteErr) {
+        console.error("[create-person] Invite failed:", inviteErr.message);
+        // Fallback: create without invite
+        const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+          email: normalizedEmail,
+          email_confirm: false,
+          user_metadata: { full_name },
+        });
+        if (createErr || !created?.user) {
+          return new Response(JSON.stringify({ error: "Auth user creation failed: " + (createErr?.message || "unknown") }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        authUserId = created.user.id;
+      } else {
+        authUserId = invited?.user?.id || null;
+      }
+      console.log("[create-person] Auth user created/invited:", authUserId);
+    } else {
+      // Create without sending invite
+      const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email: normalizedEmail,
+        email_confirm: false,
+        user_metadata: { full_name },
+      });
+      if (createErr || !created?.user) {
+        return new Response(JSON.stringify({ error: "Auth user creation failed: " + (createErr?.message || "unknown") }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      authUserId = created.user.id;
+    }
+
+    // 2. Create or find people record
+    let personId: string | null = null;
+    const { data: existingPerson } = await supabaseAdmin
+      .from("people")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+
+    if (existingPerson) {
+      personId = existingPerson.id;
+      console.log("[create-person] Person exists:", personId);
+    } else {
+      const { data: newPerson, error: pErr } = await supabaseAdmin
+        .from("people")
+        .insert({
+          full_name: full_name.trim(),
+          email: normalizedEmail,
+          phone: phone?.trim() || null,
+          is_active: is_active !== false,
+        })
+        .select("id")
+        .single();
+
+      if (pErr || !newPerson) {
+        return new Response(JSON.stringify({ error: "Person creation failed: " + (pErr?.message || "unknown") }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      personId = newPerson.id;
+      console.log("[create-person] Person created:", personId);
+    }
+
+    // 3. Create employment_profile (check for existing)
+    const { data: existingEp } = await supabaseAdmin
+      .from("employment_profiles")
+      .select("id")
+      .eq("person_id", personId)
+      .eq("company_id", company_id)
+      .maybeSingle();
+
+    if (!existingEp) {
+      const { error: epErr } = await supabaseAdmin
+        .from("employment_profiles")
+        .insert({
+          person_id: personId,
+          company_id,
+          department_id: department_id || null,
+          is_plannable_resource: is_plannable || false,
+        });
+      if (epErr) {
+        console.error("[create-person] Employment profile error:", epErr.message);
+      }
+    }
+
+    // 4. Create user_account (check for existing)
+    let userAccountId: string | null = null;
+    if (authUserId) {
+      const { data: existingUa } = await supabaseAdmin
+        .from("user_accounts")
+        .select("id")
+        .eq("person_id", personId)
+        .maybeSingle();
+
+      if (existingUa) {
+        userAccountId = existingUa.id;
+      } else {
+        const { data: newUa, error: uaErr } = await supabaseAdmin
+          .from("user_accounts")
+          .insert({
+            person_id: personId,
+            auth_user_id: authUserId,
+            company_id,
+            is_active: true,
+          })
+          .select("id")
+          .single();
+
+        if (uaErr) {
+          console.error("[create-person] user_account error:", uaErr.message);
+        } else {
+          userAccountId = newUa?.id || null;
+        }
+      }
+
+      // 5. Assign roles via user_roles_v2
+      if (userAccountId && Array.isArray(role_ids) && role_ids.length > 0) {
+        // Clear existing
+        await supabaseAdmin.from("user_roles_v2").delete().eq("user_account_id", userAccountId);
+        await supabaseAdmin.from("user_roles_v2").insert(
+          role_ids.map((rid: string) => ({ user_account_id: userAccountId, role_id: rid }))
+        );
+      }
+
+      // 6. Create user_scopes for company access
+      const { data: existingScope } = await supabaseAdmin
+        .from("user_scopes")
+        .select("id")
+        .eq("user_account_id", userAccountId)
+        .eq("company_id", company_id)
+        .maybeSingle();
+
+      if (!existingScope && userAccountId) {
+        await supabaseAdmin.from("user_scopes").insert({
+          user_account_id: userAccountId,
+          company_id,
+          department_id: department_id || null,
+        });
+      }
+
+      // 7. Create user_memberships for company access (legacy)
+      const { data: existingMembership } = await supabaseAdmin
+        .from("user_memberships")
+        .select("id")
+        .eq("user_id", authUserId)
+        .eq("company_id", company_id)
+        .maybeSingle();
+
+      if (!existingMembership) {
+        await supabaseAdmin.from("user_memberships").insert({
+          user_id: authUserId,
+          company_id,
+          department_id: department_id || null,
+          is_active: true,
+        });
+      }
+
+      // 8. Legacy user_roles (for old permission checks)
+      const { data: existingLegacyRole } = await supabaseAdmin
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", authUserId)
+        .maybeSingle();
+
+      if (!existingLegacyRole) {
+        await supabaseAdmin.from("user_roles").insert({
+          user_id: authUserId,
+          role: "user",
+        });
+      }
+
+      // 9. Legacy user_role_assignments
+      if (Array.isArray(role_ids) && role_ids.length > 0) {
+        await supabaseAdmin.from("user_role_assignments").delete().eq("user_id", authUserId);
+        await supabaseAdmin.from("user_role_assignments").insert(
+          role_ids.map((rid: string) => ({ user_id: authUserId, role_id: rid }))
+        );
+      }
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      person_id: personId,
+      auth_user_id: authUserId,
+      user_account_id: userAccountId,
+      auth_user_existed: authUserExisted,
+      invite_sent: !authUserExisted && send_invite !== false,
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("[create-person] Unhandled error:", err?.message || String(err));
+    return new Response(JSON.stringify({ error: err?.message || String(err) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

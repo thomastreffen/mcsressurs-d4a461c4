@@ -1,5 +1,14 @@
 # Roadmap
 
+## Sikkerhetsrevisjon sluttføring – 09.11.2026
+- [x] Aktuell produksjonssnapshot, 902 policyer/155 is_admin, 100 forhøyede innganger, individuell selskapsdiff og rollback i .lovable/security-2026-11-09/.
+- [x] Webhook obligatorisk state og sikker ressurssti; eksakt service-bearer i portal/digest deployet, Deno består. Ingen ekte utsending/testbookinger.
+- [x] 15 nye isolerte tester: 45 staged RLS-write-grenser, selskap/forelder CRUD, egne jobber før/etter approval, webhook/provisioning/service; 592/592 i 79 filer to stabile sluttrunder, automatisk bygg OK.
+- [ ] Provisioning/global-RLS-aktivering: Simen-tildeling og HR/login-skrivediff krever særskilt godkjenning; komplette autorisasjonspatcher staged, ikke deployet.
+- [ ] Cron-autentisering: alle ni schedulere bruker anon-bearer; krever koordinert sikker credential-overgang før gate, ellers stopper integrasjonen. Forutsigbar Graph-state må roteres kontrollert.
+- [ ] Produksjonsaktivering: separat konkret godkjenning av Simen super_admin og tvetydige operative tilgangsdiffer.
+- [x] Norsk statusrapport og faktisk tilbakelesing: Thomas eneste super_admin, Simen fortsatt admin; ni legacy adminveier består. Sluttilstand ikke erklært oppnådd.
+
 ## Duplikat ved individuelle rettigheter
 - [x] Changed-key atomic RPC med konfliktmål account/key og scope-/concurrency-vakt; globale urørte rader bevares, scoped grants flattenes ikke til v1. Checkbox toggler effektivt og råt scope beholdes; uendrede roller/medlemskap skrives ikke om.
 - [x] Lesende produksjonskontroll: Marcus Montør; Emil Montør + Ressursplan (ikke samme samlede rolletildeling). Begge jobs.view via Montør. Egne aktive same-company oppdrag via read_my_assigned_job uten global ressursplanrettighet; bare operativ lesing og eksakt vedleggsmedlemskap.
