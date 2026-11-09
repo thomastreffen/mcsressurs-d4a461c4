@@ -661,7 +661,7 @@ Deno.serve(async (req) => {
         });
         if (res.ok) {
           const data = await res.json();
-          graphMessages = data.value || [];
+          graphMessages = (data.value || []).sort((x: any, y: any) => String(y.receivedDateTime || "").localeCompare(String(x.receivedDateTime || "")));
         } else {
           const errText = await res.text();
           log(`Graph search failed: ${res.status} ${errText.substring(0, 100)}`);
