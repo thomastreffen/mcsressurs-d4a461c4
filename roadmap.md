@@ -1,5 +1,12 @@
 # Roadmap
 
+## Sikkerhetsrevisjon sluttføring – 09.11.2026
+- [ ] Aktuell produksjonssnapshot, policy-/funksjonsinventar og presis individuell selskapsdiff med rollback.
+- [ ] Sikre rolletildeling/personopprettelse og test legitime/avviste kall isolert; protokollriktig webhook/cron-sikring.
+- [ ] Test gruppevis RLS-overgang og regresjoner to ganger uten ekte utsending/testbookinger.
+- [ ] Produksjonsaktivering: separat konkret godkjenning av Simen super_admin og tvetydige operative tilgangsdiffer.
+- [ ] Norsk sluttstatus med faktisk produksjonstilbakelesing; ikke erklær bare Thomas+Simen før verifisert.
+
 ## Duplikat ved individuelle rettigheter
 - [x] Changed-key atomic RPC med konfliktmål account/key og scope-/concurrency-vakt; globale urørte rader bevares, scoped grants flattenes ikke til v1. Checkbox toggler effektivt og råt scope beholdes; uendrede roller/medlemskap skrives ikke om.
 - [x] Lesende produksjonskontroll: Marcus Montør; Emil Montør + Ressursplan (ikke samme samlede rolletildeling). Begge jobs.view via Montør. Egne aktive same-company oppdrag via read_my_assigned_job uten global ressursplanrettighet; bare operativ lesing og eksakt vedleggsmedlemskap.
