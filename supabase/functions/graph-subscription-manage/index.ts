@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { generateClientState, isSystemCaller } from "../_shared/security-boundary.ts";
+import { generateClientState } from "../_shared/security-boundary.ts";
+import { isSystemCaller } from "../_shared/system-caller.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
