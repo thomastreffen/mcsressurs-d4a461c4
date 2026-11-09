@@ -1,0 +1,82 @@
+-- Company-bounded legacy admin: global superadmin everywhere; legacy admin/admin.manage_users only in companies with active membership.
+-- Rows without a resolvable company keep the previous admin behaviour (documented residual).
+CREATE OR REPLACE FUNCTION public.legacy_admin_in_company(_company uuid)
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $$ SELECT public.has_role(auth.uid(),'super_admin'::app_role)
+   OR (public.is_admin() AND (_company IS NULL OR public.is_active_member_of(_company))) $$;
+CREATE OR REPLACE FUNCTION public.lead_company_id(_id uuid) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT company_id FROM public.leads WHERE id=_id $$;
+CREATE OR REPLACE FUNCTION public.calculation_company_id(_id uuid) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT company_id FROM public.calculations WHERE id=_id $$;
+CREATE OR REPLACE FUNCTION public.customer_company_id(_id uuid) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT company_id FROM public.customers WHERE id=_id $$;
+CREATE OR REPLACE FUNCTION public.document_company_id(_id uuid) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT company_id FROM public.documents WHERE id=_id $$;
+CREATE OR REPLACE FUNCTION public.form_instance_company_id(_id uuid) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT company_id FROM public.form_instances WHERE id=_id $$;
+CREATE OR REPLACE FUNCTION public.form_template_company_id(_id uuid) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT company_id FROM public.form_templates WHERE id=_id $$;
+CREATE OR REPLACE FUNCTION public.schedule_block_company_id(_id uuid) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT company_id FROM public.schedule_blocks WHERE id=_id $$;
+CREATE OR REPLACE FUNCTION public.portal_user_company_id(_id uuid) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT company_id FROM public.customer_portal_users WHERE id=_id $$;
+CREATE OR REPLACE FUNCTION public.task_company_id(_id uuid) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT company_id FROM public.tasks WHERE id=_id $$;
+CREATE OR REPLACE FUNCTION public.job_task_company_id(_id uuid) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT e.company_id FROM public.job_tasks jt JOIN public.events e ON e.id=jt.job_id WHERE jt.id=_id $$;
+REVOKE ALL ON FUNCTION public.legacy_admin_in_company(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.legacy_admin_in_company(uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.lead_company_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.lead_company_id(uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.calculation_company_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.calculation_company_id(uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.customer_company_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.customer_company_id(uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.document_company_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.document_company_id(uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.form_instance_company_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.form_instance_company_id(uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.form_template_company_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.form_template_company_id(uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.schedule_block_company_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.schedule_block_company_id(uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.portal_user_company_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.portal_user_company_id(uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.task_company_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.task_company_id(uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.job_task_company_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.job_task_company_id(uuid) TO anon, authenticated, service_role;
+
+-- Superadmin-only writes on access sources (restrictive; reads unchanged)
+CREATE POLICY "global_access_write_insert" ON public.company_admin_assignments AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.company_admin_assignments AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.company_admin_assignments AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.company_module_access AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.company_module_access AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.company_module_access AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.module_user_overrides AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.module_user_overrides AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.module_user_overrides AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.permissions AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.permissions AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.permissions AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.role_permissions AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.role_permissions AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.role_permissions AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.roles AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.roles AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.roles AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.user_accounts AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.user_accounts AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.user_accounts AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.user_memberships AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.user_memberships AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.user_memberships AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.user_permission_overrides AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.user_permission_overrides AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.user_permission_overrides AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.user_permission_overrides_v2 AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.user_permission_overrides_v2 AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.user_permission_overrides_v2 AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.user_role_assignments AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.user_role_assignments AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.user_role_assignments AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.user_roles AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.user_roles AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.user_roles AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.user_roles_v2 AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.user_roles_v2 AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.user_roles_v2 AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_insert" ON public.user_scopes AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_update" ON public.user_scopes AS RESTRICTIVE FOR UPDATE TO authenticated USING (public.is_global_superadmin(auth.uid())) WITH CHECK (public.is_global_superadmin(auth.uid()));
+CREATE POLICY "global_access_write_delete" ON public.user_scopes AS RESTRICTIVE FOR DELETE TO authenticated USING (public.is_global_superadmin(auth.uid()));

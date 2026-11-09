@@ -526,6 +526,13 @@
       "when": 1793965901764,
       "tag": "0074_route_new_order_notifications_to_intake_list",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1794209619210,
+      "tag": "0075_company_bounded_admin_helpers_and_access_write_gates",
+      "breakpoints": true
     }
   ]
 }
