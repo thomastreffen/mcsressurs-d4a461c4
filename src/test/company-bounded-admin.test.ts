@@ -143,3 +143,21 @@ describe("rollback", () => {
     await as(JOHN, `INSERT INTO events VALUES (gen_random_uuid(),'${BUSBAR}','after rollback')`);
   });
 });
+
+describe("owner-approved per-company admin exclusion (Sindre / BusBar)", () => {
+  it("Sindre loses admin branch in BusBar only; Service/Elektrotavler kept; others untouched", async () => {
+    await db.exec(load("0078_legacy_admin_company_exclusions.sql"));
+    await db.exec(`INSERT INTO legacy_admin_company_exclusions(auth_user_id,company_id,reason) VALUES ('${SINDRE}','${BUSBAR}','test')`);
+    expect((await as(SINDRE, `UPDATE events SET title='x' WHERE id='${EV_BUSBAR}' RETURNING id`)).rows).toHaveLength(0);
+    await denied(as(SINDRE, `INSERT INTO events VALUES (gen_random_uuid(),'${BUSBAR}','x')`));
+    expect((await as(SINDRE, `UPDATE events SET title='s' WHERE id='${EV_SERVICE}' RETURNING id`)).rows).toHaveLength(1);
+    await as(SINDRE, `INSERT INTO events VALUES (gen_random_uuid(),'${ELEKTRO}','s')`);
+    await denied(as(SINDRE, `UPDATE events SET company_id='${BUSBAR}' WHERE id='${EV_SERVICE}'`));
+    await as(THOMAS, `INSERT INTO events VALUES (gen_random_uuid(),'${BUSBAR}','t')`);
+    await denied(as(SINDRE, `INSERT INTO legacy_admin_company_exclusions(auth_user_id,company_id,reason) VALUES ('${JOHN}','${SERVICE}','x')`));
+  });
+  it("rollback (revoke exclusion) restores Sindre's previous BusBar behaviour", async () => {
+    await db.exec(`UPDATE legacy_admin_company_exclusions SET revoked_at=now() WHERE auth_user_id='${SINDRE}'`);
+    expect((await as(SINDRE, `UPDATE events SET title='back' WHERE id='${EV_BUSBAR}' RETURNING id`)).rows).toHaveLength(1);
+  });
+});
