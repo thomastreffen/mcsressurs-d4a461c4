@@ -3,6 +3,7 @@ import { organizerEnabled } from "../_shared/m365-sender.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { resolveJobAddress } from "../_shared/job-address.ts";
+import { shouldQueueFallback } from "../_shared/job-outlook-app-core.ts";
 import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
 import { jobInfoUrl } from "../_shared/job-access-policy.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -912,6 +913,13 @@ Deno.serve(async (req) => {
           attemptedBy: callerUserId,
           state: r.state, verificationSignal: r.signal,
         });
+        // Record intent only (no network): central app-only sender may re-send once after activation.
+        if (shouldQueueFallback(mapped.reason)) {
+          const { error: qErr } = await supabaseAdmin.from("job_outlook_app_queue").insert({
+            company_id: event.company_id ?? null, event_id, technician_id: tech.id, reason: mapped.reason,
+          });
+          if (qErr && qErr.code !== "23505") console.error("[calendar-write-sync] queue insert failed:", qErr.message);
+        }
       }
       const overall = syncEvidenceStatus(results);
       if (overall) {

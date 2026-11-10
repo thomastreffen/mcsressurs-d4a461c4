@@ -95,6 +95,8 @@ Deno.serve(async (req) => {
   if (action === "sync_event") return json({ status: "ok", dry_run: flags.dryRun, results: await syncOne(body.event_id!) });
 
   const { data: items } = await sb.from("job_outlook_app_queue").select("*").eq("status", "pending").order("created_at").limit(clampBatch(body.limit));
+  // Dry-run never consumes one-time queue items.
+  if (flags.dryRun) return json({ status: "ok", dry_run: true, would_process: (items ?? []).map((i: any) => i.id) });
   const results: unknown[] = [];
   for (const it of items ?? []) {
     if (!canProcessQueueItem(it)) continue;
