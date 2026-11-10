@@ -7,3 +7,5 @@
 - Personal incident history groups existing visible rows with presentation-only helpers; desktop filters and incident workflows remain independent. Why: simpler phone history must not become a second data flow.- Role-driven UI (home redirect, sidebar, MobileTabBar, HMS mobile switch) reads `useEffectiveAppRole()`, never `user.role` directly. Why: superadmin preview must look like the previewed role without touching the real auth role.
 
 - Order intake = scoped `orders.intake` override + separate notify preference; superadmin-only audited RPC; superadmin fallback. Why: no unrecipiented orders.
+
+- Form save/complete/sign/unlock and required-form checks go only through server RPCs (migration 0081) with a guard trigger; evidence counts come from stored files. Why: client checks could fake completion.
