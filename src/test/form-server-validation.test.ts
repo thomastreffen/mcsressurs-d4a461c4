@@ -165,6 +165,11 @@ describe("server-authoritative form completion", () => {
   });
 
   it("required check: signed+validated passes; company scoped; outsiders blocked", async () => {
+    // Previous test unlocked the only signed form, so the job must now be blocked again.
+    expect((await rpc(TECH, "check_required_forms", `'${JOB}','required_before_completion'`)).ok).toBe(false);
+    const id = await newInstance(TECH, JOB);
+    await rpc(TECH, "save_form_answers", `'${id}',$1::jsonb,0`, [JSON.stringify(validAnswers)]);
+    await rpc(TECH, "sign_form_instance", `'${id}',1,'Ola Montør'`);
     expect((await rpc(TECH, "check_required_forms", `'${JOB}','required_before_completion'`)).ok).toBe(true);
     expect((await rpc(TECH, "check_required_forms", `'${JOB}','required_before_billing'`)).ok).toBe(true);
     await expect(rpc(BB_TECH, "check_required_forms", `'${JOB}','required_before_completion'`)).rejects.toThrow(/form_access_denied/);
