@@ -25,14 +25,16 @@ interface GraphEvent {
   iCalUId?: string;
   isCancelled?: boolean;
   seriesMasterId?: string;
+  responseStatus?: { response?: string };
+  isOrganizer?: boolean;
   // Delta removal marker
   "@removed"?: { reason: string };
 }
 
 const BATCH_SIZE = 10;
-const PRIVACY_VERSION = 2;
+const PRIVACY_VERSION = 3;
 const GRAPH_SELECT =
-  "id,subject,start,end,location,lastModifiedDateTime,body,bodyPreview,webLink,organizer,categories,sensitivity,showAs,isAllDay,iCalUId,isCancelled,type,seriesMasterId";
+  "id,subject,start,end,location,lastModifiedDateTime,body,bodyPreview,webLink,organizer,categories,sensitivity,showAs,isAllDay,iCalUId,isCancelled,type,seriesMasterId,responseStatus,isOrganizer";
 
 export function isPrivateSensitivity(s?: string | null): boolean {
   return s === "private" || s === "personal" || s === "confidential";
@@ -205,7 +207,8 @@ Deno.serve(async (req) => {
         // Process events
         for (const ev of events) {
           // ──── HANDLE DELETED EVENTS ────
-          if (ev["@removed"] || ev.isCancelled) {
+          // Declined invites are not planned time for this person
+          if (ev["@removed"] || ev.isCancelled || ev.responseStatus?.response === "declined") {
             // Delta signals this event was deleted in Outlook
             const { data: deletedBlock } = await supabase
               .from("schedule_blocks")
@@ -461,6 +464,8 @@ Deno.serve(async (req) => {
                 outlook_show_as: ev.showAs || null,
                 is_all_day: !!ev.isAllDay,
                 outlook_series_master_id: ev.seriesMasterId || null,
+                outlook_response_status: ev.responseStatus?.response || null,
+                is_organizer: ev.isOrganizer ?? null,
               } as any,
               { onConflict: "outlook_event_id,calendar_id" }
             );

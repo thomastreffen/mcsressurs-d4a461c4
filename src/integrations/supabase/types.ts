@@ -15549,6 +15549,7 @@ export type Database = {
           end_at: string
           id: string
           is_all_day: boolean
+          is_organizer: boolean | null
           is_private: boolean
           job_id: string | null
           last_modified: string | null
@@ -15563,6 +15564,7 @@ export type Database = {
           outlook_location: string | null
           outlook_organizer: string | null
           outlook_preview: string | null
+          outlook_response_status: string | null
           outlook_sensitivity: string | null
           outlook_series_master_id: string | null
           outlook_show_as: string | null
@@ -15588,6 +15590,7 @@ export type Database = {
           end_at: string
           id?: string
           is_all_day?: boolean
+          is_organizer?: boolean | null
           is_private?: boolean
           job_id?: string | null
           last_modified?: string | null
@@ -15602,6 +15605,7 @@ export type Database = {
           outlook_location?: string | null
           outlook_organizer?: string | null
           outlook_preview?: string | null
+          outlook_response_status?: string | null
           outlook_sensitivity?: string | null
           outlook_series_master_id?: string | null
           outlook_show_as?: string | null
@@ -15627,6 +15631,7 @@ export type Database = {
           end_at?: string
           id?: string
           is_all_day?: boolean
+          is_organizer?: boolean | null
           is_private?: boolean
           job_id?: string | null
           last_modified?: string | null
@@ -15641,6 +15646,7 @@ export type Database = {
           outlook_location?: string | null
           outlook_organizer?: string | null
           outlook_preview?: string | null
+          outlook_response_status?: string | null
           outlook_sensitivity?: string | null
           outlook_series_master_id?: string | null
           outlook_show_as?: string | null

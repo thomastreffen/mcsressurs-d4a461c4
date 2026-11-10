@@ -1,5 +1,6 @@
 import { useRef, useCallback, useMemo, useEffect, useState, memo } from "react";
 import { getNorwegianHolidays } from "@/lib/norwegian-holidays";
+import { outlookAppointmentLabel } from "@/lib/outlook-appointment-label";
 import type { AbsenceBlock } from "@/hooks/useAbsenceBlocks";
 import { CalendarOff } from "lucide-react";
 import FullCalendar from "@fullcalendar/react";
@@ -510,7 +511,7 @@ export const ResourceCalendar = memo(function ResourceCalendar({
                   sourceOrderNumber: blockOrderRef,
                   fallbackRef: block.job_number_resolved || block.internal_number,
                 }))
-              : displayTitle),
+              : outlookAppointmentLabel(block, displayTitle)),
 
         start: block.start_at,
         end: block.end_at,

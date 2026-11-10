@@ -15,6 +15,7 @@
 ## Outlook ↔ Hub toveis (Rune, 10.11)
 - [x] Etappe 1 gap/kontrakt (.lovable/outlook-hub-2way/gap-and-contract.md)
 - [x] Etappe 2 trygg import: privat=Opptatt, selskapsavgrenset forslag, ingen auto-kobling, kansellering, synkstatus
+- [x] Etappe 2c svarstatus per deltaker + «Avtale»-merking (avslått skjules)
 - [ ] Etappe 2b synkstatus/403 synlig i Ressursplan-admin
 - [ ] Etappe 3 Hub-oppgave → Outlook (app-token, flagg AV)
 - [ ] Etappe 4 Outlook-endring → Hub med konflikt (flagg AV)

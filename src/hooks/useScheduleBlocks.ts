@@ -30,6 +30,8 @@ export interface ScheduleBlock {
   outlook_preview: string | null;
   outlook_weblink: string | null;
   outlook_organizer: string | null;
+  is_private?: boolean;
+  outlook_response_status?: string | null;
   // AI matcher fields
   ai_match_reason: string | null;
   ai_confidence: number | null;
