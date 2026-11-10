@@ -135,11 +135,14 @@ Deno.serve(async (req) => {
         const now = new Date();
         const fourWeeks = new Date(now.getTime() + 28 * 86400000);
 
-        if (syncState?.delta_link) {
+        const fullDeltaUrl = `https://graph.microsoft.com/v1.0/users/${email}/calendarView/delta?startDateTime=${now.toISOString()}&endDateTime=${fourWeeks.toISOString()}&$select=${GRAPH_SELECT}`;
+        // privacy_version < 2 → one full re-read so existing rows get sensitivity scrubbing
+        if (syncState?.delta_link && ((syncState as any).privacy_version ?? 1) >= PRIVACY_VERSION) {
           calUrl = syncState.delta_link;
         } else {
-          calUrl = `https://graph.microsoft.com/v1.0/users/${email}/calendarView/delta?startDateTime=${now.toISOString()}&endDateTime=${fourWeeks.toISOString()}&$select=id,subject,start,end,location,lastModifiedDateTime,body,bodyPreview,webLink,organizer,categories`;
+          calUrl = fullDeltaUrl;
         }
+        let failCode: string | null = null;
 
         // Fetch events (follow @odata.nextLink for pagination)
         let events: GraphEvent[] = [];
@@ -156,8 +159,7 @@ Deno.serve(async (req) => {
 
           if (!calRes.ok) {
             if (calRes.status === 410 && syncState?.delta_link) {
-              const fullUrl = `https://graph.microsoft.com/v1.0/users/${email}/calendarView/delta?startDateTime=${now.toISOString()}&endDateTime=${fourWeeks.toISOString()}&$select=id,subject,start,end,location,lastModifiedDateTime,body,bodyPreview,webLink,organizer,categories`;
-              const retryRes = await fetch(fullUrl, {
+              const retryRes = await fetch(fullDeltaUrl, {
                 headers: {
                   Authorization: `Bearer ${graphToken}`,
                   "Prefer": 'outlook.timezone="UTC"',
@@ -165,6 +167,7 @@ Deno.serve(async (req) => {
               });
               if (!retryRes.ok) {
                 errors.push(`${tech.name}: Graph ${retryRes.status} on full resync`);
+                failCode = `graph_${retryRes.status}`;
                 break;
               }
               const retryData = await retryRes.json();
@@ -174,6 +177,7 @@ Deno.serve(async (req) => {
               continue;
             }
             errors.push(`${tech.name}: Graph ${calRes.status}`);
+            failCode = `graph_${calRes.status}`;
             break;
           }
 
