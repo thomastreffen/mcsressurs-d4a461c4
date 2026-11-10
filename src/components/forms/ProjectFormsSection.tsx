@@ -158,6 +158,7 @@ export function ProjectFormsSection({ projectId }: Props) {
 
   return (
     <section className="space-y-3">
+      <JobDocRequirementsPanel projectId={projectId} />
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <ClipboardCheck className="h-4 w-4 text-primary" />
