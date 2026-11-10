@@ -31,6 +31,7 @@ import type {
   RiskGrade,
 } from "@/lib/form-types";
 import { FORM_STATUS_CONFIG, fieldSupportsComment } from "@/lib/form-types";
+import { validateFormAnswers } from "@/lib/form-validation";
 
 const STATUS_OPTIONS: { val: ChecklistItemStatus; label: string; icon: React.ElementType; color: string }[] = [
   { val: "ok", label: "OK", icon: Check, color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
@@ -216,47 +217,53 @@ export default function FormFillPage() {
     return (answers[`${fieldId}_comment`] as string) || "";
   };
 
-  const canComplete = (): boolean => {
-    for (const field of fields) {
-      if (field.type !== "checkbox_list" || !field.require_photo_on_deviation) continue;
-      const items = getChecklistAnswers(field.id);
-      for (const [, item] of Object.entries(items)) {
-        if (item.status === "avvik" && (!item.photo_count || item.photo_count < 1)) {
-          return false;
-        }
-      }
-      if (field.enable_risk_grading) {
-        for (const [, item] of Object.entries(items)) {
-          if (item.risk_grade === "kritisk" && !item.comment?.trim()) {
-            return false;
-          }
-        }
-      }
-    }
-    return true;
-  };
+  const validationIssues = validateFormAnswers(fields, answers);
+  const canComplete = (): boolean => validationIssues.length === 0;
 
   const handleComplete = async () => {
     if (!id) return;
     if (!canComplete()) {
       toast.error("Kan ikke fullføre", {
-        description: "Sjekk at alle avvik har bilde og kritiske punkter har kommentar.",
+        description: validationIssues.slice(0, 3).map((i) => i.message).join(" · ") +
+          (validationIssues.length > 3 ? ` (+${validationIssues.length - 3} til)` : ""),
       });
       return;
     }
     setSaving(true);
-    await supabase
+    clearTimeout(autosaveTimer.current);
+    const flushed = await flushSave();
+    if (!flushed) {
+      toast.error("Kunne ikke lagre svarene", { description: "Sjekk nettverket og prøv igjen." });
+      setSaving(false);
+      return;
+    }
+    const { error } = await supabase
       .from("form_instances")
       .update({ answers: answers as any, status: "completed" })
       .eq("id", id);
+    if (error) {
+      toast.error("Kunne ikke markere som ferdig", { description: error.message });
+      setSaving(false);
+      return;
+    }
     toast.success("Skjema markert som ferdig");
-    fetchInstance();
+    await fetchInstance();
     setSaving(false);
   };
 
   const handleSign = async () => {
     if (!id || !signerName.trim()) return;
+    if (!canComplete()) {
+      toast.error("Kan ikke signere", { description: "Skjemaet har ubesvarte eller ufullstendige punkter." });
+      return;
+    }
     setSigning(true);
+    clearTimeout(autosaveTimer.current);
+    if (!(await flushSave())) {
+      toast.error("Kunne ikke lagre svarene før signering");
+      setSigning(false);
+      return;
+    }
     const { error } = await supabase.from("form_signatures").insert({
       instance_id: id,
       signer_name: signerName,
@@ -268,7 +275,7 @@ export default function FormFillPage() {
       setSigning(false);
       return;
     }
-    await supabase
+    const { error: lockError } = await supabase
       .from("form_instances")
       .update({
         status: "signed",
@@ -276,9 +283,15 @@ export default function FormFillPage() {
         locked_by: user?.id,
       })
       .eq("id", id);
+    if (lockError) {
+      toast.error("Signaturen er lagret, men skjemaet ble ikke låst", { description: lockError.message });
+      setSigning(false);
+      await fetchInstance();
+      return;
+    }
     toast.success("Skjema signert og låst");
     setShowSignDialog(false);
-    fetchInstance();
+    await fetchInstance();
     setSigning(false);
   };
 
