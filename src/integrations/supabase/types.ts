@@ -15548,6 +15548,8 @@ export type Database = {
           description: string | null
           end_at: string
           id: string
+          is_all_day: boolean
+          is_private: boolean
           job_id: string | null
           last_modified: string | null
           location: string | null
@@ -15557,9 +15559,13 @@ export type Database = {
           mcs_block_id: string | null
           outlook_etag: string | null
           outlook_event_id: string | null
+          outlook_ical_uid: string | null
           outlook_location: string | null
           outlook_organizer: string | null
           outlook_preview: string | null
+          outlook_sensitivity: string | null
+          outlook_series_master_id: string | null
+          outlook_show_as: string | null
           outlook_subject: string | null
           outlook_weblink: string | null
           project_id: string | null
@@ -15581,6 +15587,8 @@ export type Database = {
           description?: string | null
           end_at: string
           id?: string
+          is_all_day?: boolean
+          is_private?: boolean
           job_id?: string | null
           last_modified?: string | null
           location?: string | null
@@ -15590,9 +15598,13 @@ export type Database = {
           mcs_block_id?: string | null
           outlook_etag?: string | null
           outlook_event_id?: string | null
+          outlook_ical_uid?: string | null
           outlook_location?: string | null
           outlook_organizer?: string | null
           outlook_preview?: string | null
+          outlook_sensitivity?: string | null
+          outlook_series_master_id?: string | null
+          outlook_show_as?: string | null
           outlook_subject?: string | null
           outlook_weblink?: string | null
           project_id?: string | null
@@ -15614,6 +15626,8 @@ export type Database = {
           description?: string | null
           end_at?: string
           id?: string
+          is_all_day?: boolean
+          is_private?: boolean
           job_id?: string | null
           last_modified?: string | null
           location?: string | null
@@ -15623,9 +15637,13 @@ export type Database = {
           mcs_block_id?: string | null
           outlook_etag?: string | null
           outlook_event_id?: string | null
+          outlook_ical_uid?: string | null
           outlook_location?: string | null
           outlook_organizer?: string | null
           outlook_preview?: string | null
+          outlook_sensitivity?: string | null
+          outlook_series_master_id?: string | null
+          outlook_show_as?: string | null
           outlook_subject?: string | null
           outlook_weblink?: string | null
           project_id?: string | null
@@ -15711,28 +15729,43 @@ export type Database = {
       schedule_sync_state: {
         Row: {
           calendar_id: string
+          consecutive_failures: number
           created_at: string
           delta_link: string | null
           id: string
+          last_error_at: string | null
+          last_error_code: string | null
+          last_status: string | null
           last_synced_at: string | null
+          privacy_version: number
           technician_id: string
           updated_at: string
         }
         Insert: {
           calendar_id: string
+          consecutive_failures?: number
           created_at?: string
           delta_link?: string | null
           id?: string
+          last_error_at?: string | null
+          last_error_code?: string | null
+          last_status?: string | null
           last_synced_at?: string | null
+          privacy_version?: number
           technician_id: string
           updated_at?: string
         }
         Update: {
           calendar_id?: string
+          consecutive_failures?: number
           created_at?: string
           delta_link?: string | null
           id?: string
+          last_error_at?: string | null
+          last_error_code?: string | null
+          last_status?: string | null
           last_synced_at?: string | null
+          privacy_version?: number
           technician_id?: string
           updated_at?: string
         }

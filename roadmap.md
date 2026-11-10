@@ -11,3 +11,12 @@
 - [ ] B: Tripletex TEST-arkivering
 - [ ] C: Fakturavedlegg (manuelt valg først)
 - [ ] Superadmin-UI for å tildele unntaksgodkjennere (i dag kun via server)
+
+## Outlook ↔ Hub toveis (Rune, 10.11)
+- [x] Etappe 1 gap/kontrakt (.lovable/outlook-hub-2way/gap-and-contract.md)
+- [x] Etappe 2 trygg import: privat=Opptatt, selskapsavgrenset forslag, ingen auto-kobling, kansellering, synkstatus
+- [ ] Etappe 2b synkstatus/403 synlig i Ressursplan-admin
+- [ ] Etappe 3 Hub-oppgave → Outlook (app-token, flagg AV)
+- [ ] Etappe 4 Outlook-endring → Hub med konflikt (flagg AV)
+- [ ] Etappe 5 kontrollert test på isolert postkasse (venter godkjenning)
+- [ ] BLOKKERT: Microsoft-tilgang for Eirik, Hans Jakob, Lars Erik, Rune (Thomas/Simen)

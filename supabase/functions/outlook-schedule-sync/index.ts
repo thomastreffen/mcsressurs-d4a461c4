@@ -19,11 +19,24 @@ interface GraphEvent {
   webLink?: string;
   organizer?: { emailAddress?: { name?: string; address?: string } };
   categories?: string[];
+  sensitivity?: string;
+  showAs?: string;
+  isAllDay?: boolean;
+  iCalUId?: string;
+  isCancelled?: boolean;
+  seriesMasterId?: string;
   // Delta removal marker
   "@removed"?: { reason: string };
 }
 
 const BATCH_SIZE = 10;
+const PRIVACY_VERSION = 2;
+const GRAPH_SELECT =
+  "id,subject,start,end,location,lastModifiedDateTime,body,bodyPreview,webLink,organizer,categories,sensitivity,showAs,isAllDay,iCalUId,isCancelled,type,seriesMasterId";
+
+export function isPrivateSensitivity(s?: string | null): boolean {
+  return s === "private" || s === "personal" || s === "confidential";
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -135,11 +148,14 @@ Deno.serve(async (req) => {
         const now = new Date();
         const fourWeeks = new Date(now.getTime() + 28 * 86400000);
 
-        if (syncState?.delta_link) {
+        const fullDeltaUrl = `https://graph.microsoft.com/v1.0/users/${email}/calendarView/delta?startDateTime=${now.toISOString()}&endDateTime=${fourWeeks.toISOString()}&$select=${GRAPH_SELECT}`;
+        // privacy_version < 2 → one full re-read so existing rows get sensitivity scrubbing
+        if (syncState?.delta_link && ((syncState as any).privacy_version ?? 1) >= PRIVACY_VERSION) {
           calUrl = syncState.delta_link;
         } else {
-          calUrl = `https://graph.microsoft.com/v1.0/users/${email}/calendarView/delta?startDateTime=${now.toISOString()}&endDateTime=${fourWeeks.toISOString()}&$select=id,subject,start,end,location,lastModifiedDateTime,body,bodyPreview,webLink,organizer,categories`;
+          calUrl = fullDeltaUrl;
         }
+        let failCode: string | null = null;
 
         // Fetch events (follow @odata.nextLink for pagination)
         let events: GraphEvent[] = [];
@@ -156,8 +172,7 @@ Deno.serve(async (req) => {
 
           if (!calRes.ok) {
             if (calRes.status === 410 && syncState?.delta_link) {
-              const fullUrl = `https://graph.microsoft.com/v1.0/users/${email}/calendarView/delta?startDateTime=${now.toISOString()}&endDateTime=${fourWeeks.toISOString()}&$select=id,subject,start,end,location,lastModifiedDateTime,body,bodyPreview,webLink,organizer,categories`;
-              const retryRes = await fetch(fullUrl, {
+              const retryRes = await fetch(fullDeltaUrl, {
                 headers: {
                   Authorization: `Bearer ${graphToken}`,
                   "Prefer": 'outlook.timezone="UTC"',
@@ -165,6 +180,7 @@ Deno.serve(async (req) => {
               });
               if (!retryRes.ok) {
                 errors.push(`${tech.name}: Graph ${retryRes.status} on full resync`);
+                failCode = `graph_${retryRes.status}`;
                 break;
               }
               const retryData = await retryRes.json();
@@ -174,6 +190,7 @@ Deno.serve(async (req) => {
               continue;
             }
             errors.push(`${tech.name}: Graph ${calRes.status}`);
+            failCode = `graph_${calRes.status}`;
             break;
           }
 
@@ -188,7 +205,7 @@ Deno.serve(async (req) => {
         // Process events
         for (const ev of events) {
           // ──── HANDLE DELETED EVENTS ────
-          if (ev["@removed"]) {
+          if (ev["@removed"] || ev.isCancelled) {
             // Delta signals this event was deleted in Outlook
             const { data: deletedBlock } = await supabase
               .from("schedule_blocks")
@@ -240,6 +257,17 @@ Deno.serve(async (req) => {
 
           console.log(`[outlook-schedule-sync] ${tech.name}: ${ev.subject} | raw start=${rawStart} tz=${ev.start.timeZone} → parsed=${startAt.toISOString()} | raw end=${rawEnd} tz=${ev.end.timeZone} → parsed=${endAt.toISOString()}`);
 
+          // Privacy: private/personal/confidential → only busy time, never content
+          const isPrivate = isPrivateSensitivity(ev.sensitivity);
+          if (isPrivate) {
+            ev.subject = "";
+            ev.body = undefined;
+            ev.bodyPreview = undefined;
+            ev.location = undefined;
+            ev.organizer = undefined;
+            ev.webLink = undefined;
+          }
+
           const bodyContent = ev.body?.content || "";
           const mcsMatch = bodyContent.match(/MCS_BLOCK_ID:([a-f0-9-]+)/);
           const existingBlockId = mcsMatch?.[1] || null;
@@ -282,13 +310,15 @@ Deno.serve(async (req) => {
             }
 
             // 2. Fuzzy match on subject + aliases
-            if (!projectId && ev.subject) {
+            if (!projectId && ev.subject && !isPrivate) {
               const words = ev.subject.split(/[\s–\-,]+/).filter((w: string) => w.length > 2);
-              const firstWord = words[0];
-              if (firstWord) {
+              // Only letters/digits reach the filter string (no PostgREST filter injection)
+              const firstWord = (words[0] || "").replace(/[^\p{L}\p{N}]/gu, "");
+              if (firstWord.length > 2) {
                 const { data: matchedProjects } = await supabase
                   .from("events")
                   .select("id, title, customer, address, project_aliases")
+                  .eq("company_id", companyId)
                   .or(`title.ilike.%${firstWord}%,customer.ilike.%${firstWord}%,project_aliases.cs.{${firstWord}}`)
                   .is("deleted_at", null)
                   .limit(10);
@@ -334,11 +364,12 @@ Deno.serve(async (req) => {
                     }
                   }
 
+                  // Text similarity is only a suggestion; a user must confirm the link.
                   if (bestScore >= 80) {
                     projectId = bestMatch.id;
                     matchConfidence = Math.min(bestScore, 100);
                     matchReason = `Subject/location match: ${bestMatch.title}`;
-                    matchState = "auto";
+                    matchState = "needs_confirmation";
                   } else if (bestScore >= 50) {
                     projectId = bestMatch.id;
                     matchConfidence = bestScore;
@@ -350,11 +381,12 @@ Deno.serve(async (req) => {
             }
 
             // 3. Recent affinity
-            if (!projectId && matchConfidence < 50) {
+            if (!projectId && matchConfidence < 50 && !isPrivate) {
               const { data: recentBlocks } = await supabase
                 .from("schedule_blocks")
-                .select("project_id, events(title)")
+                .select("project_id, events!schedule_blocks_project_id_fkey(title)")
                 .eq("technician_id", tech.id)
+                .eq("company_id", companyId)
                 .not("project_id", "is", null)
                 .order("start_at", { ascending: false })
                 .limit(5);
@@ -423,7 +455,13 @@ Deno.serve(async (req) => {
                 outlook_preview: ev.bodyPreview || null,
                 outlook_weblink: ev.webLink || null,
                 outlook_organizer: ev.organizer?.emailAddress?.name || null,
-              },
+                outlook_sensitivity: ev.sensitivity || null,
+                is_private: isPrivate,
+                outlook_ical_uid: ev.iCalUId || null,
+                outlook_show_as: ev.showAs || null,
+                is_all_day: !!ev.isAllDay,
+                outlook_series_master_id: ev.seriesMasterId || null,
+              } as any,
               { onConflict: "outlook_event_id,calendar_id" }
             );
 
@@ -434,8 +472,19 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Save deltaLink
-        if (nextDeltaLink) {
+        // Save deltaLink + visible per-employee connection status
+        const nowIso = new Date().toISOString();
+        if (failCode) {
+          await supabase.from("schedule_sync_state").upsert({
+            technician_id: tech.id,
+            calendar_id: email,
+            last_status: failCode === "graph_403" ? "access_denied" : "error",
+            last_error_code: failCode,
+            last_error_at: nowIso,
+            consecutive_failures: ((syncState as any)?.consecutive_failures ?? 0) + 1,
+            updated_at: nowIso,
+          } as any, { onConflict: "technician_id,calendar_id" });
+        } else if (nextDeltaLink) {
           await supabase
             .from("schedule_sync_state")
             .upsert(
@@ -443,9 +492,13 @@ Deno.serve(async (req) => {
                 technician_id: tech.id,
                 calendar_id: email,
                 delta_link: nextDeltaLink,
-                last_synced_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
+                last_synced_at: nowIso,
+                updated_at: nowIso,
+                last_status: "ok",
+                last_error_code: null,
+                consecutive_failures: 0,
+                privacy_version: PRIVACY_VERSION,
+              } as any,
               { onConflict: "technician_id,calendar_id" }
             );
         }
