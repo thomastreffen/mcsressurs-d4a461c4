@@ -124,24 +124,69 @@ export default function FormFillPage() {
   const isLocked = !!instance?.locked_at;
   const status = (instance?.status as FormInstanceStatus) || "not_started";
 
-  const saveAnswers = useCallback(
-    async (newAnswers: Record<string, any>) => {
-      if (!id || isLocked) return;
+  const [saveState, setSaveState] = useState<"saved" | "pending" | "saving" | "error">("saved");
+  const pendingAnswers = useRef<Record<string, any> | null>(null);
+  const savingPromise = useRef<Promise<boolean> | null>(null);
+  const retryCount = useRef(0);
+
+  const draftKey = id ? `form-draft:${id}` : null;
+
+  // Serialized save: one request at a time; latest answers always win; errors are surfaced and retried.
+  const flushSave = useCallback(async (): Promise<boolean> => {
+    if (!id || isLocked) return true;
+    if (savingPromise.current) {
+      await savingPromise.current;
+      if (!pendingAnswers.current) return true;
+    }
+    const toSave = pendingAnswers.current;
+    if (!toSave) return true;
+    pendingAnswers.current = null;
+    setSaveState("saving");
+    const run = (async () => {
       const newStatus = status === "not_started" ? "in_progress" : status;
-      await supabase
+      const { error } = await supabase
         .from("form_instances")
-        .update({ answers: newAnswers as any, status: newStatus })
+        .update({ answers: toSave as any, status: newStatus })
         .eq("id", id);
-    },
-    [id, isLocked, status]
-  );
+      if (error) {
+        if (!pendingAnswers.current) pendingAnswers.current = toSave;
+        setSaveState("error");
+        const delay = Math.min(30000, 2000 * 2 ** retryCount.current++);
+        clearTimeout(autosaveTimer.current);
+        autosaveTimer.current = setTimeout(() => { void flushSave(); }, delay);
+        return false;
+      }
+      retryCount.current = 0;
+      if (!pendingAnswers.current) {
+        setSaveState("saved");
+        if (draftKey) try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+      }
+      return true;
+    })();
+    savingPromise.current = run;
+    const ok = await run;
+    savingPromise.current = null;
+    if (ok && pendingAnswers.current) return flushSave();
+    return ok;
+  }, [id, isLocked, status, draftKey]);
 
   const handleAnswerChange = (fieldId: string, value: any) => {
     const updated = { ...answers, [fieldId]: value };
     setAnswers(updated);
+    pendingAnswers.current = updated;
+    setSaveState("pending");
+    if (draftKey) try { localStorage.setItem(draftKey, JSON.stringify(updated)); } catch { /* ignore */ }
     clearTimeout(autosaveTimer.current);
-    autosaveTimer.current = setTimeout(() => saveAnswers(updated), 1500);
+    autosaveTimer.current = setTimeout(() => { void flushSave(); }, 1500);
   };
+
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === "hidden" && pendingAnswers.current) void flushSave(); };
+    const onUnload = (e: BeforeUnloadEvent) => { if (pendingAnswers.current || savingPromise.current) { e.preventDefault(); e.returnValue = ""; } };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("beforeunload", onUnload);
+    return () => { document.removeEventListener("visibilitychange", onHide); window.removeEventListener("beforeunload", onUnload); };
+  }, [flushSave]);
 
   const toggleComment = (key: string) => {
     setExpandedComments((prev) => {
@@ -161,7 +206,7 @@ export default function FormFillPage() {
     const key = String(itemIdx);
     const updated = {
       ...current,
-      [key]: { ...(current[key] || { status: "ok" as const }), ...patch },
+      [key]: { ...(current[key] || {}), ...patch } as ChecklistItemAnswer,
     };
     handleAnswerChange(fieldId, updated);
   };
@@ -311,7 +356,7 @@ export default function FormFillPage() {
       <div className="space-y-1">
         {(field.options || []).map((opt, idx) => {
           const key = String(idx);
-          const item: ChecklistItemAnswer = items[key] || { status: "ok" as const };
+          const item = (items[key] || {}) as Partial<ChecklistItemAnswer>;
           const commentKey = `${field.id}_${idx}`;
           const hasComment = !!item.comment?.trim();
           const isCommentOpen = expandedComments.has(commentKey);
