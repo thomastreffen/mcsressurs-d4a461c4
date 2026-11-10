@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { blockStatusKey, TEAM_STATUS_OPTIONS, type TeamStatusKey } from "./TeamView";
 import { resourceBlocksForDay } from "@/lib/mobile-resource-day";
+import { cellKind, orderCellBlocks, formatBlockTime, appointmentTypeLabel } from "@/lib/team-cell-layout";
 import { formatProjectLabel } from "@/lib/project-reference";
 import { JOB_STATUS_CONFIG, type JobStatus } from "@/lib/job-status";
 import type { ScheduleBlock } from "@/hooks/useScheduleBlocks";
@@ -60,7 +61,7 @@ export function MobileResourceDayView(props: Props) {
       {techs.length === 0 && <p className="py-8 text-center text-muted-foreground">Ingen montører tilgjengelig i dette selskapet.</p>}
       {techs.map(tech => {
         const allBlocks = resourceBlocksForDay(props.scheduleBlocks, props.referenceDate, tech.id);
-        const blocks = allBlocks.filter(b => props.visibleStatuses.has(blockStatusKey(b.job_status)));
+        const blocks = orderCellBlocks(allBlocks.filter(b => cellKind(b) === "appointment" || props.visibleStatuses.has(blockStatusKey(b.job_status))));
         const absences = props.absenceBlocks.filter(a => a.technicianId === tech.id && isSameDay(a.date, props.referenceDate));
         const capacity = props.techCapacities?.find(c => c.techId === tech.id)?.days.find(d => isSameDay(d.date, props.referenceDate));
         const free = capacity ? Math.max(0, capacity.availableMinutes - capacity.totalMinutes) : null;
@@ -71,9 +72,14 @@ export function MobileResourceDayView(props: Props) {
               {props.onCellCreate && <Button variant="outline" className="shrink-0" onClick={() => props.onCellCreate?.(tech.id, props.referenceDate)}><Plus />Planlegg</Button>}
             </div>
             {props.visibleStatuses.has("absence") && absences.map(a => <div key={a.id} className="rounded-lg border border-dashed border-border bg-muted px-3 py-3 text-sm">{a.label} · {a.isFullDay ? "Hele dagen" : `${a.startTime ?? ""}–${a.endTime ?? ""}`}</div>)}
-            {blocks.map(block => <Button key={block.id} variant="outline" className="h-auto w-full justify-start items-start whitespace-normal p-4 text-left bg-card" onClick={() => props.onBlockClick(block)}>
+            {blocks.map(block => cellKind(block) === "appointment" ? (
+              <button key={block.id} type="button" onClick={() => props.onBlockClick(block)} className="w-full min-h-[44px] rounded-lg border border-dashed border-border bg-muted/50 px-3 py-2 text-left text-sm text-muted-foreground">
+                <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 shrink-0" /><span className="tabular-nums">{formatBlockTime(block)}</span><span className="truncate font-medium text-foreground/80">{block.is_private ? "Opptatt" : (block.outlook_subject || block.title || "Avtale")}</span></span>
+                {!block.is_private && <span className="block pl-6 text-xs">{appointmentTypeLabel(block)}</span>}
+              </button>
+            ) : <Button key={block.id} variant="outline" className="h-auto w-full justify-start items-start whitespace-normal p-4 text-left bg-card" onClick={() => props.onBlockClick(block)}>
               <div className="min-w-0 w-full space-y-2">
-                <p className="flex items-center gap-2 text-sm font-semibold"><Clock className="shrink-0" />{format(block.start_at, "HH:mm")}–{format(block.end_at, "HH:mm")}{!isSameDay(block.start_at, block.end_at) && <span className="text-xs text-muted-foreground">{format(block.end_at, "d. MMM", { locale: nb })}</span>}</p>
+                <p className="flex items-center gap-2 text-sm font-semibold"><Clock className="shrink-0" />{formatBlockTime(block)}</p>
                 <p className="text-base font-semibold break-words">{formatProjectLabel(block.financial_project_number ?? block.job_number_resolved ?? block.internal_number, block.job_title ?? block.title ?? block.project_title ?? "Oppdrag")}</p>
                 {block.location && <p className="text-sm text-muted-foreground break-words">{block.location}</p>}
                 <Badge variant="secondary">{JOB_STATUS_CONFIG[block.job_status as JobStatus]?.label ?? (block.match_state === "needs_confirmation" ? "Må avklares" : "Planlagt")}</Badge>
