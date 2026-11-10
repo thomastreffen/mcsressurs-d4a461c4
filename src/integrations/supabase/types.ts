@@ -9886,6 +9886,120 @@ export type Database = {
           },
         ]
       }
+      hub_outlook_event_links: {
+        Row: {
+          company_id: string
+          created_at: string
+          dedup_key: string
+          hub_version: string | null
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          mailbox: string
+          outlook_change_key: string | null
+          outlook_event_id: string | null
+          state: string
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          dedup_key: string
+          hub_version?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          mailbox: string
+          outlook_change_key?: string | null
+          outlook_event_id?: string | null
+          state?: string
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          dedup_key?: string
+          hub_version?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          mailbox?: string
+          outlook_change_key?: string | null
+          outlook_event_id?: string | null
+          state?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hub_outlook_sync_log: {
+        Row: {
+          action: string
+          company_id: string | null
+          created_at: string
+          detail: Json | null
+          direction: string
+          dry_run: boolean
+          id: string
+          link_id: string | null
+          mailbox: string | null
+          task_id: string | null
+        }
+        Insert: {
+          action: string
+          company_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          direction: string
+          dry_run: boolean
+          id?: string
+          link_id?: string | null
+          mailbox?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          action?: string
+          company_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          direction?: string
+          dry_run?: boolean
+          id?: string
+          link_id?: string | null
+          mailbox?: string | null
+          task_id?: string | null
+        }
+        Relationships: []
+      }
+      hub_outlook_sync_settings: {
+        Row: {
+          dry_run: boolean
+          enabled: boolean
+          id: boolean
+          pilot_mailboxes: string[]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          dry_run?: boolean
+          enabled?: boolean
+          id?: boolean
+          pilot_mailboxes?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          dry_run?: boolean
+          enabled?: boolean
+          id?: boolean
+          pilot_mailboxes?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       image_text_extracts: {
         Row: {
           created_at: string
