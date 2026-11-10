@@ -8,6 +8,7 @@ import { ClipboardCheck, Loader2, AlertTriangle, ChevronRight, Users, RefreshCw,
 import { FORM_STATUS_CONFIG, type FormInstanceStatus } from "@/lib/form-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { JobDocRequirementsPanel } from "@/components/forms/JobDocRequirementsPanel";
 
 const FORM_TYPE_LABELS: Record<string, string> = {
   checklist: "Sjekkliste",
@@ -139,7 +140,7 @@ export function ProjectFormsSection({ projectId }: Props) {
     );
   }
 
-  if (templates.length === 0 && instances.length === 0) return null;
+  if (templates.length === 0 && instances.length === 0) return <JobDocRequirementsPanel projectId={projectId} />;
 
   // Map instances by template
   const instanceMap = new Map<string, FormInstance[]>();
@@ -157,6 +158,7 @@ export function ProjectFormsSection({ projectId }: Props) {
 
   return (
     <section className="space-y-3">
+      <JobDocRequirementsPanel projectId={projectId} />
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <ClipboardCheck className="h-4 w-4 text-primary" />

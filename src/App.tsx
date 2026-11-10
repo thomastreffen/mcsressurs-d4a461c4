@@ -112,6 +112,7 @@ import CompanyMigrationPage from "./pages/CompanyMigrationPage";
 import HelpCenterPage from "./pages/HelpCenterPage";
 import OrderFormsPage from "./pages/OrderFormsPage";
 import OrderIntakeSettingsPage from "./pages/OrderIntakeSettingsPage";
+import DocRequirementsSettingsPage from "./pages/DocRequirementsSettingsPage";
 import OrderFormDetailPage from "./pages/OrderFormDetailPage";
 import OrderFormSubmitPage from "./pages/OrderFormSubmitPage";
 import OrderFormTemplatesPage from "./pages/OrderFormTemplatesPage";
@@ -354,6 +355,7 @@ const App = () => (
               <Route path="/fag" element={<RegulationPage />} />
               <Route path="/help" element={<HelpCenterPage />} />
               <Route path="/forms/:id" element={<FormFillPage />} />
+              <Route path="/dokumentasjonskrav" element={<DocRequirementsSettingsPage />} />
               <Route
                 path="/admin/forms"
                 element={

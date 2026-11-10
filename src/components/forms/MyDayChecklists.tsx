@@ -7,6 +7,7 @@ import { ClipboardCheck, AlertTriangle, ChevronRight, Loader2, RefreshCw, Info }
 import { FORM_STATUS_CONFIG, type FormInstanceStatus } from "@/lib/form-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { MyDayDocProgress } from "@/components/forms/MyDayDocProgress";
 
 const FORM_TYPE_LABELS: Record<string, string> = {
   checklist: "Sjekkliste",
@@ -108,7 +109,7 @@ export function MyDayChecklists({ projectId }: Props) {
     }
   };
 
-  if (loading) return null;
+  if (loading) return <MyDayDocProgress projectId={projectId} />;
 
   if (error) {
     return (
@@ -123,7 +124,7 @@ export function MyDayChecklists({ projectId }: Props) {
     );
   }
 
-  if (templates.length === 0) return null;
+  if (templates.length === 0) return <MyDayDocProgress projectId={projectId} />;
 
   const instanceMap = new Map<string, FormInstance>();
   for (const inst of instances) {
@@ -140,6 +141,8 @@ export function MyDayChecklists({ projectId }: Props) {
   }).length;
 
   return (
+    <>
+    <MyDayDocProgress projectId={projectId} />
     <Card>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -217,5 +220,6 @@ export function MyDayChecklists({ projectId }: Props) {
         </div>
       </CardContent>
     </Card>
+    </>
   );
 }

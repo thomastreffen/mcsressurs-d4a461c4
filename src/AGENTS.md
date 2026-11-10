@@ -9,3 +9,4 @@
 - Order intake = scoped `orders.intake` override + separate notify preference; superadmin-only audited RPC; superadmin fallback. Why: no unrecipiented orders.
 
 - Form save/complete/sign/unlock and required-form checks go only through server RPCs (migration 0081) with a guard trigger; evidence counts come from stored files. Why: client checks could fake completion.
+- Documentation requirements: per-company matrix (doc_* tables, migration 0082) snapshotted onto jobs via RPC; job classification lives in doc_job_profiles, never on events. Why: no retroactive rules and no events-trigger side effects.
