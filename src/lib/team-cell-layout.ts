@@ -39,14 +39,15 @@ export function orderCellBlocks<T extends CellBlockLike>(blocks: T[]): T[] {
   );
 }
 
-/** Ids of blocks that overlap in time with at least one other block in the same cell. */
+/** Ids of blocks overlapping another block of the SAME kind (job↔job, appointment↔appointment).
+ *  A short Outlook appointment inside a long job day is normal and not flagged (low noise). */
 export function overlappingIds(blocks: CellBlockLike[]): Set<string> {
   const out = new Set<string>();
   const timed = blocks.filter((b) => !b.is_all_day);
   for (let i = 0; i < timed.length; i++) {
     for (let j = i + 1; j < timed.length; j++) {
       const a = timed[i], c = timed[j];
-      if (a.start_at < c.end_at && c.start_at < a.end_at) {
+      if (cellKind(a) === cellKind(c) && a.start_at < c.end_at && c.start_at < a.end_at) {
         out.add(a.id);
         out.add(c.id);
       }

@@ -603,7 +603,7 @@ export function TeamView({
                             <div className="flex items-start gap-1.5">
                               <span className={cn("mt-1 h-1.5 w-1.5 rounded-full shrink-0", dotCls)} aria-hidden />
                               <div className="min-w-0 flex-1">
-                                <div className="font-semibold line-clamp-2 break-words">{primaryTitle}{isOverlap && <AlertTriangle className="inline h-3 w-3 ml-1 text-amber-600" aria-label="Overlapper" />}</div>
+                                <div className="font-semibold line-clamp-2 break-words">{primaryTitle}{isOverlap && <AlertTriangle className="inline h-3 w-3 ml-1 text-amber-600" aria-label="Overlapper annen av samme type" />}</div>
                                 <div className="text-[10px] opacity-70 tabular-nums truncate font-normal mt-0.5">{secondary}</div>
                               </div>
                             </div>
@@ -644,7 +644,7 @@ export function TeamView({
         <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm border border-sky-300 bg-sky-200 border-l-[3px] border-l-sky-500" />Prosjektjobb (farge = status)</span>
         <span className="flex items-center gap-1.5"><CalendarDays className="h-3 w-3" />Avtale/oppgave (Outlook)</span>
         <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" />Opptatt (privat)</span>
-        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3 text-amber-600" />Overlapper</span>
+        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3 text-amber-600" />Overlapp</span>
       </div>
     </div>
     </div>

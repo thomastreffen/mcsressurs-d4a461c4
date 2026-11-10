@@ -19,6 +19,9 @@ describe("team cell layout", () => {
     expect(orderCellBlocks(blocks)).toHaveLength(2);
     expect([...overlappingIds(blocks)].sort()).toEqual(["x", "y"]);
   });
+  it("lunch appointment inside a job day is not flagged as overlap", () => {
+    expect(overlappingIds([job("j", d(7), d(15)), appt("a", d(12), d(12, 30))]).size).toBe(0);
+  });
   it("short meeting shows minutes instead of 13–13", () => {
     expect(formatBlockTime({ start_at: d(13), end_at: d(13, 30) })).toBe("13:00–13:30");
     expect(formatBlockTime({ start_at: d(13), end_at: d(13), is_all_day: false })).toBe("13:00");
