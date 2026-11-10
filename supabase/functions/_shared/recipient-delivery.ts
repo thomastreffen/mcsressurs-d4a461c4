@@ -65,6 +65,24 @@ export function overallSyncStatus(statuses: DeliveryStatus[]): "synced" | "parti
   return "partial";
 }
 
+const REASON_TEXT: Record<string, string> = {
+  no_ms_connection: "mangler gyldig Microsoft-pålogging i Hub (må logge inn på nytt med Microsoft)",
+  no_login_link: "har ingen Hub-bruker koblet",
+  no_email: "mangler e-postadresse",
+  graph_conflict: "kalenderkonflikt i Outlook",
+  sender_no_ms_connection: "avsender mangler Microsoft-pålogging",
+};
+
+export function failureLine(person: string, channel: string, reason?: string | null): string {
+  const what = channel === "calendar" ? "Outlook-kalender" : "e-post";
+  return `• ${person}: ${what} ikke oppdatert – ${REASON_TEXT[reason ?? ""] ?? reason ?? "ukjent feil"}`;
+}
+
+/** Planner alert text: Hub save is OK; only the named person's Outlook/e-mail failed. */
+export function deliveryFailureMessage(title: string, person: string, channel: string, reason?: string | null): string {
+  return `${title}: Jobben er lagret og planlagt i Hub og vises i Ressursplan. Ikke sendt på nytt automatisk; send kalender på nytt fra jobben når tilgangen er ordnet.\n${failureLine(person, channel, reason)}`;
+}
+
 export async function recordDelivery(supabaseAdmin: any, r: DeliveryRecord): Promise<void> {
   try {
     const state = r.state ?? (r.status === "sent" ? "accepted_by_graph" : r.status === "skipped" && r.reasonCode === "self_assigned" ? "not_required" : r.status === "skipped" ? "awaiting" : r.status);
@@ -76,11 +94,21 @@ export async function recordDelivery(supabaseAdmin: any, r: DeliveryRecord): Pro
     if (error) throw new Error(`Delivery recording failed: ${error.message}`);
     if (state === "failed" && r.attemptedBy) {
       const { data: event } = await supabaseAdmin.from("events").select("company_id,title").eq("id", r.eventId).maybeSingle();
-      const { data: existingAlert } = await supabaseAdmin.from("notifications").select("id").eq("user_id", r.attemptedBy).eq("entity_id", r.eventId).eq("type", "m365_delivery_failed").eq("read", false).limit(1).maybeSingle();
-      if (existingAlert) return;
+      const { data: techRow } = await supabaseAdmin.from("technicians").select("name").eq("id", r.technicianId).maybeSingle();
+      const person = techRow?.name ?? r.recipientEmail ?? "ukjent montør";
+      const { data: existingAlert } = await supabaseAdmin.from("notifications").select("id,message").eq("user_id", r.attemptedBy).eq("entity_id", r.eventId).eq("type", "m365_delivery_failed").eq("read", false).limit(1).maybeSingle();
+      if (existingAlert) {
+        // One alert per job; append further affected people instead of hiding them.
+        const line = failureLine(person, r.channel, r.reasonCode);
+        if (!String(existingAlert.message ?? "").includes(line)) {
+          await supabaseAdmin.from("notifications").update({ message: `${existingAlert.message}\n${line}` }).eq("id", existingAlert.id);
+        }
+        return;
+      }
       const { error: alertError } = await supabaseAdmin.from("notifications").insert({
         user_id: r.attemptedBy, company_id: event?.company_id, type: "m365_delivery_failed", priority: "important",
-        title: "Microsoft-utsending feilet", message: `${event?.title ?? "Oppdrag"}: ${r.channel} – ${r.reasonCode ?? "ukjent feil"}`,
+        title: "Outlook ikke oppdatert – jobben er lagret i Hub",
+        message: deliveryFailureMessage(event?.title ?? "Oppdrag", person, r.channel, r.reasonCode),
         link_url: `/jobs/${r.eventId}`, entity_type: "event", entity_id: r.eventId, actor_name: "MCS Hub · Postkontoret",
       });
       if (alertError) throw new Error(`Planner alert failed: ${alertError.message}`);
