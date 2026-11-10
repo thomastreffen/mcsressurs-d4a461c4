@@ -140,7 +140,7 @@ export function ProjectFormsSection({ projectId }: Props) {
     );
   }
 
-  if (templates.length === 0 && instances.length === 0) return null;
+  if (templates.length === 0 && instances.length === 0) return <JobDocRequirementsPanel projectId={projectId} />;
 
   // Map instances by template
   const instanceMap = new Map<string, FormInstance[]>();
