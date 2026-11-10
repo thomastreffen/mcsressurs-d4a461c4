@@ -21,4 +21,6 @@
 - [ ] Etappe 4 Outlook-endring → Hub med konflikt (flagg AV)
 - [ ] Etappe 5 kontrollert test på isolert postkasse (venter godkjenning)
 - [ ] BLOKKERT: Microsoft-tilgang for Eirik, Hans Jakob, Lars Erik, Rune (Thomas/Simen)
-- [ ] Ressursplan rekkestruktur: jobber øverst, avtaler under, kronologisk, +N, legend, filter Alle/Jobber/Avtaler, «13–13»-analyse
+- [x] Ressursplan rekkestruktur: jobber øverst, avtaler under, kronologisk, +N, legend, filter, klokkeslett med minutter
+- [ ] «Outlook ikke tilkoblet»-merke per montør (trenger selskapsavgrenset lesetilgang til synkstatus)
+- [ ] Microsoft-admin: legg Rune m.fl. i tillatt gruppe for Hub-appens tilgangspolicy (RAOP) – Thomas/Simen
