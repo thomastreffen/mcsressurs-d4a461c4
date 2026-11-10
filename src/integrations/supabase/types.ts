@@ -5603,6 +5603,96 @@ export type Database = {
           },
         ]
       }
+      doc_audit_log: {
+        Row: {
+          action: string
+          actor: string | null
+          company_id: string
+          created_at: string
+          details: Json
+          entity: string
+          entity_id: string | null
+          id: string
+          job_id: string | null
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          company_id: string
+          created_at?: string
+          details?: Json
+          entity: string
+          entity_id?: string | null
+          id?: string
+          job_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          company_id?: string
+          created_at?: string
+          details?: Json
+          entity?: string
+          entity_id?: string | null
+          id?: string
+          job_id?: string | null
+        }
+        Relationships: []
+      }
+      doc_company_settings: {
+        Row: {
+          company_id: string
+          enforcement_enabled: boolean
+          rules_version: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          enforcement_enabled?: boolean
+          rules_version?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          enforcement_enabled?: boolean
+          rules_version?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      doc_exception_approvers: {
+        Row: {
+          auth_user_id: string
+          company_id: string
+          granted_at: string
+          granted_by: string
+          id: string
+          revoked_at: string | null
+          revoked_by: string | null
+        }
+        Insert: {
+          auth_user_id: string
+          company_id: string
+          granted_at?: string
+          granted_by: string
+          id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Update: {
+          auth_user_id?: string
+          company_id?: string
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Relationships: []
+      }
       doc_folders: {
         Row: {
           created_at: string
@@ -5660,6 +5750,261 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doc_job_categories: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      doc_job_profiles: {
+        Row: {
+          category_id: string | null
+          company_id: string
+          conditions: string[]
+          job_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          company_id: string
+          conditions?: string[]
+          job_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          company_id?: string
+          conditions?: string[]
+          job_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doc_job_profiles_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "doc_job_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doc_job_requirements: {
+        Row: {
+          company_id: string
+          condition: string
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          kind: string
+          label: string
+          rule_id: string | null
+          rules_version: number
+          status: string
+          substitute_template_id: string | null
+          template_id: string | null
+        }
+        Insert: {
+          company_id: string
+          condition?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          kind: string
+          label: string
+          rule_id?: string | null
+          rules_version: number
+          status?: string
+          substitute_template_id?: string | null
+          template_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          condition?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          kind?: string
+          label?: string
+          rule_id?: string | null
+          rules_version?: number
+          status?: string
+          substitute_template_id?: string | null
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doc_job_requirements_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "doc_requirement_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doc_requirement_exceptions: {
+        Row: {
+          company_id: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: string
+          job_id: string
+          job_requirement_id: string
+          kind: string
+          reason: string
+          requested_at: string
+          requested_by: string
+          rules_version: number
+          status: string
+          substitute_template_id: string | null
+        }
+        Insert: {
+          company_id: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          job_id: string
+          job_requirement_id: string
+          kind: string
+          reason: string
+          requested_at?: string
+          requested_by: string
+          rules_version: number
+          status?: string
+          substitute_template_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          job_id?: string
+          job_requirement_id?: string
+          kind?: string
+          reason?: string
+          requested_at?: string
+          requested_by?: string
+          rules_version?: number
+          status?: string
+          substitute_template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doc_requirement_exceptions_job_requirement_id_fkey"
+            columns: ["job_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "doc_job_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doc_requirement_rules: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          category_id: string
+          company_id: string
+          condition: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          kind: string
+          label: string
+          rule_version: number | null
+          sort_order: number
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category_id: string
+          company_id: string
+          condition?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          kind: string
+          label: string
+          rule_version?: number | null
+          sort_order?: number
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category_id?: string
+          company_id?: string
+          condition?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          label?: string
+          rule_version?: number | null
+          sort_order?: number
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doc_requirement_rules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "doc_job_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doc_requirement_rules_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -17736,6 +18081,7 @@ export type Database = {
         Returns: Json
       }
       apply_duplicate_schedule_blocks_cleanup: { Args: never; Returns: Json }
+      approve_doc_rule: { Args: { _rule_id: string }; Returns: Json }
       assess_person_requirement: {
         Args: {
           _client_request_id?: string
@@ -17983,6 +18329,24 @@ export type Database = {
         Args: { _participant_id: string }
         Returns: undefined
       }
+      decide_doc_exception: {
+        Args: { _approve: boolean; _exception_id: string; _note: string }
+        Returns: undefined
+      }
+      doc_audit: {
+        Args: {
+          _action: string
+          _company: string
+          _details: Json
+          _entity: string
+          _entity_id: string
+          _job: string
+        }
+        Returns: undefined
+      }
+      doc_can_manage: { Args: { _company: string }; Returns: boolean }
+      doc_can_view: { Args: { _company: string }; Returns: boolean }
+      doc_can_view_job: { Args: { _job: string }; Returns: boolean }
       document_company_id: { Args: { _id: string }; Returns: string }
       dry_run_duplicate_schedule_blocks: {
         Args: never
@@ -18103,6 +18467,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_job_doc_progress: { Args: { _job_id: string }; Returns: Json }
       get_linked_event_for_tracking_token: {
         Args: { _token: string }
         Returns: {
@@ -18508,6 +18873,10 @@ export type Database = {
         Args: { _auth_user_id: string; _company_id: string }
         Returns: boolean
       }
+      is_doc_exception_approver: {
+        Args: { _company: string; _uid: string }
+        Returns: boolean
+      }
       is_employee_of: {
         Args: { _company: string; _uid: string }
         Returns: boolean
@@ -18907,6 +19276,15 @@ export type Database = {
         }
       }
       repair_resource_plan_ghosts: { Args: never; Returns: Json }
+      request_doc_exception: {
+        Args: {
+          _kind: string
+          _reason: string
+          _requirement_id: string
+          _substitute_template_id: string
+        }
+        Returns: string
+      }
       resource_plan_parent_context: {
         Args: { _company_id: string; _event_id: string }
         Returns: {
@@ -18978,6 +19356,14 @@ export type Database = {
         Args: { _wp_id: string }
         Returns: Json
       }
+      set_doc_exception_approver: {
+        Args: { _active: boolean; _company: string; _user: string }
+        Returns: undefined
+      }
+      set_job_doc_category: {
+        Args: { _category_id: string; _conditions: string[]; _job_id: string }
+        Returns: undefined
+      }
       set_order_intake_member: {
         Args: {
           _admin: boolean
@@ -19000,6 +19386,14 @@ export type Database = {
       sign_form_instance: {
         Args: { _expected_revision: number; _id: string; _signer_name: string }
         Returns: Json
+      }
+      snapshot_job_doc_requirements: {
+        Args: { _job_id: string }
+        Returns: Json
+      }
+      start_requirement_form: {
+        Args: { _requirement_id: string }
+        Returns: string
       }
       storage_first_uuid: { Args: { _name: string }; Returns: string }
       submission_has_tracking_token: {
