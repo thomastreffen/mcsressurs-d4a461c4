@@ -10,3 +10,4 @@
 
 - Form save/complete/sign/unlock and required-form checks go only through server RPCs (migration 0081) with a guard trigger; evidence counts come from stored files. Why: client checks could fake completion.
 - Documentation requirements: per-company matrix (doc_* tables, migration 0082) snapshotted onto jobs via RPC; job classification lives in doc_job_profiles, never on events. Why: no retroactive rules and no events-trigger side effects.
+- Resource Plan Outlook status per person comes only from resource_plan_outlook_sync_status (reuses resource_plan_personnel company scope); schedule_sync_state stays service-role only. Why: no cross-company leakage of sync errors.

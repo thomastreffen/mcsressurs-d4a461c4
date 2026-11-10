@@ -19324,6 +19324,15 @@ export type Database = {
         }
         Returns: string
       }
+      resource_plan_outlook_sync_status: {
+        Args: { _company_ids: string[] }
+        Returns: {
+          last_error_at: string
+          last_synced_at: string
+          status: string
+          technician_id: string
+        }[]
+      }
       resource_plan_parent_context: {
         Args: { _company_id: string; _event_id: string }
         Returns: {
