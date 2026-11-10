@@ -17,10 +17,10 @@
 - [x] Etappe 2 trygg import: privat=Opptatt, selskapsavgrenset forslag, ingen auto-kobling, kansellering, synkstatus
 - [x] Etappe 2c svarstatus per deltaker + «Avtale»-merking (avslått skjules)
 - [ ] Etappe 2b synkstatus/403 synlig i Ressursplan-admin
-- [ ] Etappe 3 Hub-oppgave → Outlook (app-token, flagg AV)
-- [ ] Etappe 4 Outlook-endring → Hub med konflikt (flagg AV)
+- [x] Etappe 3 Hub-oppgave → Outlook bygget bak flagg AV + dry-run (aktivering venter på testpostkasse)
+- [ ] Etappe 4 Outlook-endring → Hub: konfliktlogikk testet, kobling mot webhook gjenstår
 - [ ] Etappe 5 kontrollert test på isolert postkasse (venter godkjenning)
 - [ ] BLOKKERT: Microsoft-tilgang for Eirik, Hans Jakob, Lars Erik, Rune (Thomas/Simen)
 - [x] Ressursplan rekkestruktur: jobber øverst, avtaler under, kronologisk, +N, legend, filter, klokkeslett med minutter
-- [ ] «Outlook ikke tilkoblet»-merke per montør (trenger selskapsavgrenset lesetilgang til synkstatus)
+- [x] «Outlook ikke tilkoblet»-merke per montør (trenger selskapsavgrenset lesetilgang til synkstatus)
 - [ ] Microsoft-admin: legg Rune m.fl. i tillatt gruppe for Hub-appens tilgangspolicy (RAOP) – Thomas/Simen
