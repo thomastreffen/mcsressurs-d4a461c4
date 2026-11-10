@@ -484,6 +484,17 @@ export default function FormFillPage() {
               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusCfg.color}`}>
                 {statusCfg.label}
               </span>
+              {!isLocked && (
+                <span
+                  role="status"
+                  className={`text-[10px] ${saveState === "error" ? "text-destructive font-medium" : "text-muted-foreground"}`}
+                >
+                  {saveState === "saved" && "Lagret"}
+                  {saveState === "pending" && "Endringer ikke lagret ennå"}
+                  {saveState === "saving" && "Lagrer…"}
+                  {saveState === "error" && "Ikke lagret – prøver igjen"}
+                </span>
+              )}
               {isLocked && (
                 <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
                   <Lock className="h-3 w-3" /> Låst
