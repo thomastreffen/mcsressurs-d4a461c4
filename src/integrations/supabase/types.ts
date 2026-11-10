@@ -6895,8 +6895,11 @@ export type Database = {
         Row: {
           activity_id: string | null
           answers: Json
+          answers_revision: number
           assigned_to: string | null
           company_id: string | null
+          completed_at: string | null
+          completed_by: string | null
           created_at: string
           created_by: string
           id: string
@@ -6907,13 +6910,18 @@ export type Database = {
           template_id: string
           unlock_reason: string | null
           updated_at: string
+          validated_at: string | null
+          validated_by: string | null
           version_id: string
         }
         Insert: {
           activity_id?: string | null
           answers?: Json
+          answers_revision?: number
           assigned_to?: string | null
           company_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -6924,13 +6932,18 @@ export type Database = {
           template_id: string
           unlock_reason?: string | null
           updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
           version_id: string
         }
         Update: {
           activity_id?: string | null
           answers?: Json
+          answers_revision?: number
           assigned_to?: string | null
           company_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by?: string
           id?: string
@@ -6941,6 +6954,8 @@ export type Database = {
           template_id?: string
           unlock_reason?: string | null
           updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
           version_id?: string
         }
         Relationships: [
@@ -17788,6 +17803,10 @@ export type Database = {
         Args: { _auth_user_id: string; _company_id: string; _perm: string }
         Returns: boolean
       }
+      check_required_forms: {
+        Args: { _project_id: string; _rule: string }
+        Returns: Json
+      }
       claim_calendar_sync: {
         Args: {
           _job_id: string
@@ -17811,6 +17830,10 @@ export type Database = {
       competence_document_can_view: {
         Args: { _actor: string; _competence_id: string }
         Returns: boolean
+      }
+      complete_form_instance: {
+        Args: { _expected_revision: number; _id: string }
+        Returns: Json
       }
       compliance_active_requirement_assessment: {
         Args: {
@@ -18002,8 +18025,19 @@ export type Database = {
           technician_name: string
         }[]
       }
+      form_evidence_count: {
+        Args: { _instance: string; _prefix: string }
+        Returns: number
+      }
+      form_instance_can_edit: { Args: { _id: string }; Returns: boolean }
       form_instance_company_id: { Args: { _id: string }; Returns: string }
+      form_instance_id_from_path: { Args: { _name: string }; Returns: string }
+      form_instance_issues: { Args: { _id: string }; Returns: Json }
       form_template_company_id: { Args: { _id: string }; Returns: string }
+      form_validate_answers: {
+        Args: { _answers: Json; _fields: Json; _instance: string; _rules: Json }
+        Returns: Json
+      }
       get_active_offer_for_source: {
         Args: { _source_id: string; _source_kind: string }
         Returns: string
@@ -18901,6 +18935,10 @@ export type Database = {
           test_search_enabled: boolean
         }[]
       }
+      save_form_answers: {
+        Args: { _answers: Json; _expected_revision: number; _id: string }
+        Returns: Json
+      }
       save_permission_override_changes: {
         Args: { _account: string; _changes: Json; _company: string }
         Returns: undefined
@@ -18959,6 +18997,10 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      sign_form_instance: {
+        Args: { _expected_revision: number; _id: string; _signer_name: string }
+        Returns: Json
+      }
       storage_first_uuid: { Args: { _name: string }; Returns: string }
       submission_has_tracking_token: {
         Args: { _submission_id: string }
@@ -19008,6 +19050,10 @@ export type Database = {
           created: boolean
           event_id: string
         }[]
+      }
+      unlock_form_instance: {
+        Args: { _id: string; _reason: string }
+        Returns: Json
       }
       update_commercial_case_crm: {
         Args: {
