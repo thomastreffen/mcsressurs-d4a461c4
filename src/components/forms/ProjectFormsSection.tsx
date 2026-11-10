@@ -287,7 +287,7 @@ export async function checkRequiredForms(projectId: string, rule: "required_befo
     };
   } catch (err) {
     console.error("[checkRequiredForms]", err);
-    // On network error, allow completion but warn
-    return { canComplete: true, missingForms: [] };
+    // Fail closed: if requirements cannot be verified, block completion/billing.
+    return { canComplete: false, missingForms: ["Kunne ikke kontrollere skjemakrav – prøv igjen"] };
   }
 }
