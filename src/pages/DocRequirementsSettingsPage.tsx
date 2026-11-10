@@ -142,7 +142,7 @@ export default function DocRequirementsSettingsPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {catRules.map((r) => (
-                <div key={r.id} className="grid gap-2 rounded-lg border border-border p-2 md:grid-cols-[130px_1fr_200px_150px_auto] md:items-center">
+                <div key={r.id} className="grid gap-2 rounded-lg border border-border p-2 md:grid-cols-[170px_1fr_200px_150px_auto] md:items-center">
                   <Badge variant="secondary" className="w-fit text-[10px]">{KIND_LABEL[r.kind]}</Badge>
                   <Input defaultValue={r.label} disabled={!canManage} className="h-8 text-xs"
                     onBlur={(e) => e.target.value.trim() !== r.label && updateRule(r.id, { label: e.target.value.trim() })} />
