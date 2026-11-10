@@ -445,13 +445,10 @@ export default function FormFillPage() {
                       kommentar
                     </button>
                   )}
-                  <button
-                    className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Camera className="h-3 w-3" />
-                    Bilde {item.photo_count ? `(${item.photo_count})` : ""}
-                  </button>
-                  {field.require_photo_on_deviation && item.status === "avvik" && !item.photo_count && (
+                  {id && (
+                    <FormEvidenceUpload compact instanceId={id} path={checklistEvidencePath(field.id, idx)} locked={isLocked} onCountChange={onEvidenceCount} />
+                  )}
+                  {field.require_photo_on_deviation && item.status === "avvik" && !(evidence[checklistEvidencePath(field.id, idx)] > 0) && (
                     <span className="text-[10px] text-destructive">Bilde påkrevd</span>
                   )}
                 </div>
@@ -487,7 +484,7 @@ export default function FormFillPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" className="rounded-xl" onClick={goBack} aria-label="Tilbake">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -499,12 +496,15 @@ export default function FormFillPage() {
               {!isLocked && (
                 <span
                   role="status"
-                  className={`text-[10px] ${saveState === "error" ? "text-destructive font-medium" : "text-muted-foreground"}`}
+                  className={`text-[10px] ${saveState === "error" || saveState === "conflict" ? "text-destructive font-medium" : "text-muted-foreground"}`}
                 >
                   {saveState === "saved" && "Lagret"}
                   {saveState === "pending" && "Endringer ikke lagret ennå"}
                   {saveState === "saving" && "Lagrer…"}
-                  {saveState === "error" && "Ikke lagret – prøver igjen"}
+                  {saveState === "error" && "Kunne ikke lagre – prøver igjen"}
+                  {saveState === "conflict" && (
+                    <button type="button" className="underline" onClick={reloadAfterConflict}>Endret et annet sted – last inn på nytt</button>
+                  )}
                 </span>
               )}
               {isLocked && (
@@ -642,9 +642,7 @@ export default function FormFillPage() {
                 )}
 
                 {field.type === "file_upload" && (
-                  <div className="rounded-lg border-2 border-dashed border-border bg-muted/10 p-4 text-center">
-                    <p className="text-xs text-muted-foreground">📎 Filopplasting (kommer snart)</p>
-                  </div>
+                  id ? <FormEvidenceUpload kind="file" instanceId={id} path={field.id} locked={isLocked} onCountChange={onEvidenceCount} /> : null
                 )}
 
                 {field.type === "checkbox_yes_no" && (
@@ -719,9 +717,7 @@ export default function FormFillPage() {
                 )}
 
                 {field.type === "photo_upload" && (
-                  <div className="rounded-lg border-2 border-dashed border-border bg-muted/10 p-4 text-center">
-                    <p className="text-xs text-muted-foreground">Bildeopplasting (kommer snart)</p>
-                  </div>
+                  id ? <FormEvidenceUpload instanceId={id} path={field.id} locked={isLocked} onCountChange={onEvidenceCount} /> : null
                 )}
 
                 {/* Required comment on "Nei" */}
@@ -756,7 +752,9 @@ export default function FormFillPage() {
       {/* Bottom action bar */}
       {!isLocked && (
         <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border p-4 flex items-center justify-between z-30">
-          <p className="text-xs text-muted-foreground">Autolagring aktiv</p>
+          <p className="text-xs text-muted-foreground">
+            {validationIssues.length > 0 ? `${validationIssues.length} punkt gjenstår` : "Klar til ferdigstilling"}
+          </p>
           <div className="flex items-center gap-2">
             {status !== "signed" && status !== "completed" && (
               <Button
@@ -789,9 +787,17 @@ export default function FormFillPage() {
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Lock className="h-3 w-3" /> Skjemaet er låst etter signering
           </p>
-          <Button size="sm" variant="outline" className="rounded-xl" onClick={handleUnlock}>
-            Lås opp (admin)
-          </Button>
+          {unlockOpen ? (
+            <div className="flex items-center gap-2">
+              <Input value={unlockReason} onChange={(e) => setUnlockReason(e.target.value)} placeholder="Begrunnelse…" className="h-9 w-44 rounded-xl text-xs" />
+              <Button size="sm" className="rounded-xl" disabled={unlockReason.trim().length < 5} onClick={handleUnlock}>Lås opp</Button>
+              <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => setUnlockOpen(false)}>Avbryt</Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setUnlockOpen(true)}>
+              Lås opp (admin)
+            </Button>
+          )}
         </div>
       )}
 
