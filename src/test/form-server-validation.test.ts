@@ -75,6 +75,7 @@ beforeAll(async () => {
     CREATE POLICY adm ON form_instances FOR ALL TO authenticated USING (legacy_admin_in_company(company_id)) WITH CHECK (legacy_admin_in_company(company_id));
     CREATE POLICY "Users insert form_signatures" ON form_signatures FOR INSERT TO authenticated WITH CHECK (true);
     CREATE POLICY sigsel ON form_signatures FOR SELECT TO authenticated USING (true);
+    CREATE POLICY sigadm ON form_signatures FOR ALL TO authenticated USING (legacy_admin_in_company((SELECT company_id FROM form_instances WHERE id=instance_id)));
     INSERT INTO form_templates(id,title,active_version_id,company_id,required_before_completion) VALUES ('${TPL}','Sluttkontroll','${VER}',null,true);
     INSERT INTO form_template_versions VALUES ('${VER}','${TPL}','${JSON.stringify(fields)}','[]');`);
   // Legacy completed + signed history created before the guard existed.
