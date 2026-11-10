@@ -31,6 +31,7 @@ export interface ScheduleBlock {
   outlook_weblink: string | null;
   outlook_organizer: string | null;
   is_private?: boolean;
+  is_all_day?: boolean;
   outlook_response_status?: string | null;
   // AI matcher fields
   ai_match_reason: string | null;
