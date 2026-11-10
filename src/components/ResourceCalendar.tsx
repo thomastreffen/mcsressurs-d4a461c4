@@ -1,5 +1,6 @@
 import { useRef, useCallback, useMemo, useEffect, useState, memo } from "react";
 import { getNorwegianHolidays } from "@/lib/norwegian-holidays";
+import { outlookAppointmentLabel } from "@/lib/outlook-appointment-label";
 import type { AbsenceBlock } from "@/hooks/useAbsenceBlocks";
 import { CalendarOff } from "lucide-react";
 import FullCalendar from "@fullcalendar/react";
