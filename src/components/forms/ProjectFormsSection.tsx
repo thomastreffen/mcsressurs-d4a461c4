@@ -257,37 +257,20 @@ export function ProjectFormsSection({ projectId }: Props) {
  * Check if all required-before-completion forms are done for a project.
  * Returns { canComplete, missingForms } 
  */
-export async function checkRequiredForms(projectId: string, rule: "required_before_completion" | "required_before_billing") {
-  try {
-    const { data: tpls, error: tplError } = await (supabase as any)
-      .from("form_templates")
-      .select("id, title")
-      .eq("available_in_projects", true)
-      .eq("is_active", true)
-      .eq(rule, true)
-      .is("deleted_at", null);
-
-    if (tplError) throw tplError;
-    if (!tpls || tpls.length === 0) return { canComplete: true, missingForms: [] };
-
-    const { data: instances, error: instError } = await supabase
-      .from("form_instances")
-      .select("template_id, status")
-      .eq("project_id", projectId)
-      .in("status", ["completed", "signed"]);
-
-    if (instError) throw instError;
-
-    const completedTemplates = new Set((instances || []).map((i: any) => i.template_id));
-    const missing = tpls.filter((t: any) => !completedTemplates.has(t.id));
-
-    return {
-      canComplete: missing.length === 0,
-      missingForms: missing.map((t: any) => t.title as string),
-    };
-  } catch (err) {
-    console.error("[checkRequiredForms]", err);
-    // Fail closed: if requirements cannot be verified, block completion/billing.
-    return { canComplete: false, missingForms: ["Kunne ikke kontrollere skjemakrav – prøv igjen"] };
+export async function checkRequiredForms(projectId: string, rule: "required_before_completion" | "required_before_billing"): Promise<{
+  status: "ok" | "missing" | "unknown";
+  canComplete: boolean;
+  missingForms: string[];
+}> {
+  // Server-side, company-scoped check. Legacy completed forms without server validation are re-checked, never trusted.
+  const { data, error } = await supabase.rpc("check_required_forms", { _project_id: projectId, _rule: rule });
+  if (error || !data) {
+    console.error("[checkRequiredForms]", error);
+    return { status: "unknown", canComplete: false, missingForms: ["Kunne ikke kontrollere skjemakrav – prøv igjen"] };
   }
+  const res = data as { ok: boolean; missing: { title: string; reason: string }[] };
+  const label = (m: { title: string; reason: string }) =>
+    m.reason === "signature_missing" ? `${m.title} (mangler signatur)`
+    : m.reason === "legacy_unvalidated" ? `${m.title} (må kontrolleres)` : m.title;
+  return { status: res.ok ? "ok" : "missing", canComplete: res.ok, missingForms: (res.missing || []).map(label) };
 }

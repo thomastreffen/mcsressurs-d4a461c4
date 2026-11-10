@@ -31,7 +31,8 @@ import type {
   RiskGrade,
 } from "@/lib/form-types";
 import { FORM_STATUS_CONFIG, fieldSupportsComment } from "@/lib/form-types";
-import { validateFormAnswers } from "@/lib/form-validation";
+import { validateFormAnswers, formRpcErrorMessage, checklistEvidencePath, type EvidenceCounts } from "@/lib/form-validation";
+import { FormEvidenceUpload } from "@/components/forms/FormEvidenceUpload";
 
 const STATUS_OPTIONS: { val: ChecklistItemStatus; label: string; icon: React.ElementType; color: string }[] = [
   { val: "ok", label: "OK", icon: Check, color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
@@ -64,6 +65,7 @@ export default function FormFillPage() {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
 
   const autosaveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const revisionRef = useRef<number>(0);
 
   const fetchInstance = useCallback(async () => {
     if (!id) return;
@@ -79,6 +81,7 @@ export default function FormFillPage() {
     }
 
     setInstance(data);
+    revisionRef.current = (data as any).answers_revision ?? 0;
     setAnswers(((data as any).answers as Record<string, any>) || {});
 
     // Try loading the version used at creation; fallback to latest version of the template
@@ -125,43 +128,59 @@ export default function FormFillPage() {
   const isLocked = !!instance?.locked_at;
   const status = (instance?.status as FormInstanceStatus) || "not_started";
 
-  const [saveState, setSaveState] = useState<"saved" | "pending" | "saving" | "error">("saved");
+  type SaveState = "saved" | "pending" | "saving" | "error" | "conflict";
+  const [saveState, setSaveState] = useState<SaveState>("saved");
   const pendingAnswers = useRef<Record<string, any> | null>(null);
   const savingPromise = useRef<Promise<boolean> | null>(null);
   const retryCount = useRef(0);
+  const conflictRef = useRef(false);
+  const [evidence, setEvidence] = useState<EvidenceCounts>({});
+  const onEvidenceCount = useCallback((p: string, c: number) => {
+    setEvidence((prev) => (prev[p] === c ? prev : { ...prev, [p]: c }));
+  }, []);
+  const [unlockOpen, setUnlockOpen] = useState(false);
+  const [unlockReason, setUnlockReason] = useState("");
 
-  const draftKey = id ? `form-draft:${id}` : null;
-
-  // Serialized save: one request at a time; latest answers always win; errors are surfaced and retried.
+  // Serialized save via server RPC with optimistic revision check: one request at a time,
+  // latest answers win, stale writes from another device are rejected instead of overwriting.
   const flushSave = useCallback(async (): Promise<boolean> => {
     if (!id || isLocked) return true;
-    if (savingPromise.current) {
-      await savingPromise.current;
-      if (!pendingAnswers.current) return true;
-    }
+    if (savingPromise.current) await savingPromise.current;
     const toSave = pendingAnswers.current;
     if (!toSave) return true;
+    if (conflictRef.current) return false;
     pendingAnswers.current = null;
     setSaveState("saving");
     const run = (async () => {
-      const newStatus = status === "not_started" ? "in_progress" : status;
-      const { error } = await supabase
-        .from("form_instances")
-        .update({ answers: toSave as any, status: newStatus })
-        .eq("id", id);
+      const { data, error } = await supabase.rpc("save_form_answers", {
+        _id: id,
+        _answers: toSave as any,
+        _expected_revision: revisionRef.current,
+      });
       if (error) {
         if (!pendingAnswers.current) pendingAnswers.current = toSave;
+        const msg = error.message || "";
+        if (msg.includes("form_revision_conflict")) {
+          conflictRef.current = true;
+          setSaveState("conflict");
+          toast.error("Kunne ikke lagre", { description: formRpcErrorMessage(error), duration: 10000 });
+          return false;
+        }
         setSaveState("error");
+        if (msg.includes("form_access_denied") || msg.includes("form_locked") || msg.includes("form_invalid")) {
+          toast.error("Kunne ikke lagre", { description: formRpcErrorMessage(error) });
+          return false;
+        }
         const delay = Math.min(30000, 2000 * 2 ** retryCount.current++);
         clearTimeout(autosaveTimer.current);
         autosaveTimer.current = setTimeout(() => { void flushSave(); }, delay);
         return false;
       }
+      const res = data as { revision: number; status: string };
+      revisionRef.current = res.revision;
+      setInstance((prev: any) => (prev ? { ...prev, status: res.status, answers_revision: res.revision } : prev));
       retryCount.current = 0;
-      if (!pendingAnswers.current) {
-        setSaveState("saved");
-        if (draftKey) try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
-      }
+      if (!pendingAnswers.current) setSaveState("saved");
       return true;
     })();
     savingPromise.current = run;
@@ -169,16 +188,16 @@ export default function FormFillPage() {
     savingPromise.current = null;
     if (ok && pendingAnswers.current) return flushSave();
     return ok;
-  }, [id, isLocked, status, draftKey]);
+  }, [id, isLocked]);
 
   const handleAnswerChange = (fieldId: string, value: any) => {
+    if (isLocked) return;
     const updated = { ...answers, [fieldId]: value };
     setAnswers(updated);
     pendingAnswers.current = updated;
-    setSaveState("pending");
-    if (draftKey) try { localStorage.setItem(draftKey, JSON.stringify(updated)); } catch { /* ignore */ }
+    if (!conflictRef.current) setSaveState("pending");
     clearTimeout(autosaveTimer.current);
-    autosaveTimer.current = setTimeout(() => { void flushSave(); }, 1500);
+    autosaveTimer.current = setTimeout(() => { void flushSave(); }, 1200);
   };
 
   useEffect(() => {
@@ -188,6 +207,23 @@ export default function FormFillPage() {
     window.addEventListener("beforeunload", onUnload);
     return () => { document.removeEventListener("visibilitychange", onHide); window.removeEventListener("beforeunload", onUnload); };
   }, [flushSave]);
+
+  const goBack = async () => {
+    clearTimeout(autosaveTimer.current);
+    if (pendingAnswers.current || savingPromise.current) {
+      const ok = await flushSave();
+      if (!ok && !window.confirm("Endringene dine er ikke lagret. Vil du forlate skjemaet likevel?")) return;
+    }
+    navigate(-1);
+  };
+
+  const reloadAfterConflict = async () => {
+    conflictRef.current = false;
+    pendingAnswers.current = null;
+    setSaveState("saved");
+    setLoading(true);
+    await fetchInstance();
+  };
 
   const toggleComment = (key: string) => {
     setExpandedComments((prev) => {
@@ -217,94 +253,70 @@ export default function FormFillPage() {
     return (answers[`${fieldId}_comment`] as string) || "";
   };
 
-  const validationIssues = validateFormAnswers(fields, answers);
+  const validationIssues = validateFormAnswers(fields, answers, rules, evidence);
   const canComplete = (): boolean => validationIssues.length === 0;
+  const describeIssues = (list: { message: string }[]) =>
+    list.slice(0, 3).map((i) => i.message).join(" · ") + (list.length > 3 ? ` (+${list.length - 3} til)` : "");
 
   const handleComplete = async () => {
     if (!id) return;
     if (!canComplete()) {
-      toast.error("Kan ikke fullføre", {
-        description: validationIssues.slice(0, 3).map((i) => i.message).join(" · ") +
-          (validationIssues.length > 3 ? ` (+${validationIssues.length - 3} til)` : ""),
-      });
+      toast.error("Kan ikke fullføre", { description: describeIssues(validationIssues) });
       return;
     }
     setSaving(true);
     clearTimeout(autosaveTimer.current);
-    const flushed = await flushSave();
-    if (!flushed) {
-      toast.error("Kunne ikke lagre svarene", { description: "Sjekk nettverket og prøv igjen." });
+    try {
+      if (!(await flushSave())) {
+        toast.error("Kunne ikke lagre svarene", { description: "Skjemaet er ikke ferdigstilt. Sjekk nettverket og prøv igjen." });
+        return;
+      }
+      const { data, error } = await supabase.rpc("complete_form_instance", { _id: id, _expected_revision: revisionRef.current });
+      if (error) { toast.error("Kunne ikke ferdigstille", { description: formRpcErrorMessage(error) }); return; }
+      const res = data as { ok: boolean; issues: { message: string }[] };
+      if (!res.ok) { toast.error("Kan ikke fullføre", { description: describeIssues(res.issues) }); return; }
+      toast.success("Skjema ferdigstilt");
+      await fetchInstance();
+    } finally {
       setSaving(false);
-      return;
     }
-    const { error } = await supabase
-      .from("form_instances")
-      .update({ answers: answers as any, status: "completed" })
-      .eq("id", id);
-    if (error) {
-      toast.error("Kunne ikke markere som ferdig", { description: error.message });
-      setSaving(false);
-      return;
-    }
-    toast.success("Skjema markert som ferdig");
-    await fetchInstance();
-    setSaving(false);
   };
 
   const handleSign = async () => {
     if (!id || !signerName.trim()) return;
     if (!canComplete()) {
-      toast.error("Kan ikke signere", { description: "Skjemaet har ubesvarte eller ufullstendige punkter." });
+      toast.error("Kan ikke signere", { description: describeIssues(validationIssues) });
       return;
     }
     setSigning(true);
     clearTimeout(autosaveTimer.current);
-    if (!(await flushSave())) {
-      toast.error("Kunne ikke lagre svarene før signering");
-      setSigning(false);
-      return;
-    }
-    const { error } = await supabase.from("form_signatures").insert({
-      instance_id: id,
-      signer_name: signerName,
-      signer_role: isAdmin ? "admin" : "user",
-      signature_data: `Signert av ${signerName} den ${new Date().toISOString()}`,
-    });
-    if (error) {
-      toast.error("Kunne ikke signere", { description: error.message });
-      setSigning(false);
-      return;
-    }
-    const { error: lockError } = await supabase
-      .from("form_instances")
-      .update({
-        status: "signed",
-        locked_at: new Date().toISOString(),
-        locked_by: user?.id,
-      })
-      .eq("id", id);
-    if (lockError) {
-      toast.error("Signaturen er lagret, men skjemaet ble ikke låst", { description: lockError.message });
-      setSigning(false);
+    try {
+      if (!(await flushSave())) {
+        toast.error("Kunne ikke lagre svarene før signering", { description: "Skjemaet er ikke signert." });
+        return;
+      }
+      const { data, error } = await supabase.rpc("sign_form_instance", {
+        _id: id, _expected_revision: revisionRef.current, _signer_name: signerName,
+      });
+      if (error) { toast.error("Kunne ikke signere", { description: formRpcErrorMessage(error) }); return; }
+      const res = data as { ok: boolean; issues: { message: string }[] };
+      if (!res.ok) { toast.error("Kan ikke signere", { description: describeIssues(res.issues) }); return; }
+      toast.success("Skjema signert og låst");
+      setShowSignDialog(false);
       await fetchInstance();
-      return;
+    } finally {
+      setSigning(false);
     }
-    toast.success("Skjema signert og låst");
-    setShowSignDialog(false);
-    await fetchInstance();
-    setSigning(false);
   };
 
   const handleUnlock = async () => {
-    if (!id || !isAdmin) return;
-    const reason = prompt("Begrunnelse for opplåsing:");
-    if (!reason) return;
-    await supabase
-      .from("form_instances")
-      .update({ locked_at: null, locked_by: null, unlock_reason: reason, status: "completed" })
-      .eq("id", id);
-    toast.success("Skjema låst opp");
-    fetchInstance();
+    if (!id) return;
+    const { error } = await supabase.rpc("unlock_form_instance", { _id: id, _reason: unlockReason });
+    if (error) { toast.error("Kunne ikke låse opp", { description: formRpcErrorMessage(error) }); return; }
+    toast.success("Skjema låst opp – må signeres på nytt");
+    setUnlockOpen(false);
+    setUnlockReason("");
+    await fetchInstance();
   };
 
   if (loading) {
@@ -433,13 +445,10 @@ export default function FormFillPage() {
                       kommentar
                     </button>
                   )}
-                  <button
-                    className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Camera className="h-3 w-3" />
-                    Bilde {item.photo_count ? `(${item.photo_count})` : ""}
-                  </button>
-                  {field.require_photo_on_deviation && item.status === "avvik" && !item.photo_count && (
+                  {id && (
+                    <FormEvidenceUpload compact instanceId={id} path={checklistEvidencePath(field.id, idx)} locked={isLocked} onCountChange={onEvidenceCount} />
+                  )}
+                  {field.require_photo_on_deviation && item.status === "avvik" && !(evidence[checklistEvidencePath(field.id, idx)] > 0) && (
                     <span className="text-[10px] text-destructive">Bilde påkrevd</span>
                   )}
                 </div>
@@ -475,7 +484,7 @@ export default function FormFillPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" className="rounded-xl" onClick={goBack} aria-label="Tilbake">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -487,12 +496,15 @@ export default function FormFillPage() {
               {!isLocked && (
                 <span
                   role="status"
-                  className={`text-[10px] ${saveState === "error" ? "text-destructive font-medium" : "text-muted-foreground"}`}
+                  className={`text-[10px] ${saveState === "error" || saveState === "conflict" ? "text-destructive font-medium" : "text-muted-foreground"}`}
                 >
                   {saveState === "saved" && "Lagret"}
                   {saveState === "pending" && "Endringer ikke lagret ennå"}
                   {saveState === "saving" && "Lagrer…"}
-                  {saveState === "error" && "Ikke lagret – prøver igjen"}
+                  {saveState === "error" && "Kunne ikke lagre – prøver igjen"}
+                  {saveState === "conflict" && (
+                    <button type="button" className="underline" onClick={reloadAfterConflict}>Endret et annet sted – last inn på nytt</button>
+                  )}
                 </span>
               )}
               {isLocked && (
@@ -630,9 +642,7 @@ export default function FormFillPage() {
                 )}
 
                 {field.type === "file_upload" && (
-                  <div className="rounded-lg border-2 border-dashed border-border bg-muted/10 p-4 text-center">
-                    <p className="text-xs text-muted-foreground">📎 Filopplasting (kommer snart)</p>
-                  </div>
+                  id ? <FormEvidenceUpload kind="file" instanceId={id} path={field.id} locked={isLocked} onCountChange={onEvidenceCount} /> : null
                 )}
 
                 {field.type === "checkbox_yes_no" && (
@@ -707,9 +717,7 @@ export default function FormFillPage() {
                 )}
 
                 {field.type === "photo_upload" && (
-                  <div className="rounded-lg border-2 border-dashed border-border bg-muted/10 p-4 text-center">
-                    <p className="text-xs text-muted-foreground">Bildeopplasting (kommer snart)</p>
-                  </div>
+                  id ? <FormEvidenceUpload instanceId={id} path={field.id} locked={isLocked} onCountChange={onEvidenceCount} /> : null
                 )}
 
                 {/* Required comment on "Nei" */}
@@ -744,7 +752,9 @@ export default function FormFillPage() {
       {/* Bottom action bar */}
       {!isLocked && (
         <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border p-4 flex items-center justify-between z-30">
-          <p className="text-xs text-muted-foreground">Autolagring aktiv</p>
+          <p className="text-xs text-muted-foreground">
+            {validationIssues.length > 0 ? `${validationIssues.length} punkt gjenstår` : "Klar til ferdigstilling"}
+          </p>
           <div className="flex items-center gap-2">
             {status !== "signed" && status !== "completed" && (
               <Button
@@ -777,9 +787,17 @@ export default function FormFillPage() {
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Lock className="h-3 w-3" /> Skjemaet er låst etter signering
           </p>
-          <Button size="sm" variant="outline" className="rounded-xl" onClick={handleUnlock}>
-            Lås opp (admin)
-          </Button>
+          {unlockOpen ? (
+            <div className="flex items-center gap-2">
+              <Input value={unlockReason} onChange={(e) => setUnlockReason(e.target.value)} placeholder="Begrunnelse…" className="h-9 w-44 rounded-xl text-xs" />
+              <Button size="sm" className="rounded-xl" disabled={unlockReason.trim().length < 5} onClick={handleUnlock}>Lås opp</Button>
+              <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => setUnlockOpen(false)}>Avbryt</Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setUnlockOpen(true)}>
+              Lås opp (admin)
+            </Button>
+          )}
         </div>
       )}
 

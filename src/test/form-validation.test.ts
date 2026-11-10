@@ -18,7 +18,8 @@ describe("validateFormAnswers", () => {
   });
   it("requires comment on critical deviation", () => {
     const a = { c: { "0": { status: "ok" }, "1": { status: "avvik", risk_grade: "kritisk", photo_count: 1 } } };
-    expect(validateFormAnswers([checklist], a)).toHaveLength(1);
+    expect(validateFormAnswers([checklist], a)).toHaveLength(2); // photo_count is ignored; real evidence required
+    expect(validateFormAnswers([checklist], a, [], { "c/1": 1 })).toHaveLength(1);
   });
   it("requires mandatory fields", () => {
     expect(validateFormAnswers([text], { t: "  " })).toHaveLength(1);
