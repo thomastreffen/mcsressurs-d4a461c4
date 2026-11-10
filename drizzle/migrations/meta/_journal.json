@@ -610,6 +610,13 @@
       "when": 1794302673729,
       "tag": "0086_hub_outlook_appointment_sync_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1794303691494,
+      "tag": "0087_job_outlook_app_only_calendar_foundation",
+      "breakpoints": true
     }
   ]
 }
