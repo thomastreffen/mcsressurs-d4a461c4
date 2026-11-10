@@ -510,7 +510,7 @@ export const ResourceCalendar = memo(function ResourceCalendar({
                   sourceOrderNumber: blockOrderRef,
                   fallbackRef: block.job_number_resolved || block.internal_number,
                 }))
-              : displayTitle),
+              : outlookAppointmentLabel(block, displayTitle)),
 
         start: block.start_at,
         end: block.end_at,
