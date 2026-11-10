@@ -3,7 +3,8 @@ import { LocalExportMenu } from '@/components/LocalExportMenu';
 import type { ExportRow } from '@/lib/local-export';
 import { addDays, startOfWeek, format, isSameDay } from "date-fns";
 import { nb } from "date-fns/locale";
-import { Palmtree, Plus, CalendarDays, Lock, AlertTriangle } from "lucide-react";
+import { Palmtree, Plus, CalendarDays, Lock, AlertTriangle, CalendarOff } from "lucide-react";
+import { useOutlookSyncStatus, outlookStatusLabel } from "@/hooks/useOutlookSyncStatus";
 import { cellKind, matchesKindFilter, orderCellBlocks, overlappingIds, formatBlockTime, appointmentTypeLabel, CELL_VISIBLE_LIMIT, type CellKindFilter } from "@/lib/team-cell-layout";
 import { cn } from "@/lib/utils";
 import { getResourceCardTitle, getResourceCardSecondary, extractOrderRef } from "@/lib/resource-card-title";
@@ -184,6 +185,9 @@ export function TeamView({
 }: TeamViewProps) {
   const [colorPickerOpenFor, setColorPickerOpenFor] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState<CellKindFilter>("all");
+  const { data: outlookStatus } = useOutlookSyncStatus(
+    (technicians as Array<{ company_id?: string | null }>).map((t) => t.company_id ?? "").filter(Boolean),
+  );
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
   const weekStart = useMemo(
     () => startOfWeek(referenceDate, { weekStartsOn: 1 }),
@@ -456,6 +460,15 @@ export function TeamView({
                             : `${Math.round(freeHours ?? 0)}t ledig${weekAbsenceHours > 0 ? ` · ${Math.round(weekAbsenceHours)}t ferie` : ""}`
                       ) : "—"}
                     </div>
+                    {outlookStatusLabel(outlookStatus?.get(t.id)) && (
+                      <div
+                        className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground"
+                        title="Hub kan ikke lese denne personens Outlook-kalender. Avtaler fra Outlook vises derfor ikke."
+                      >
+                        <CalendarOff className="h-3 w-3 shrink-0" aria-hidden />
+                        <span className="truncate">{outlookStatusLabel(outlookStatus?.get(t.id))}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
