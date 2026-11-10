@@ -8,6 +8,7 @@ import { ClipboardCheck, Loader2, AlertTriangle, ChevronRight, Users, RefreshCw,
 import { FORM_STATUS_CONFIG, type FormInstanceStatus } from "@/lib/form-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { JobDocRequirementsPanel } from "@/components/forms/JobDocRequirementsPanel";
 
 const FORM_TYPE_LABELS: Record<string, string> = {
   checklist: "Sjekkliste",
