@@ -10790,6 +10790,177 @@ export type Database = {
           },
         ]
       }
+      job_outlook_app_links: {
+        Row: {
+          attempt_count: number
+          company_id: string
+          created_at: string
+          dedup_key: string
+          event_id: string
+          hub_version: string | null
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          mailbox: string
+          outlook_change_key: string | null
+          outlook_event_id: string | null
+          state: string
+          technician_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          company_id: string
+          created_at?: string
+          dedup_key: string
+          event_id: string
+          hub_version?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          mailbox: string
+          outlook_change_key?: string | null
+          outlook_event_id?: string | null
+          state?: string
+          technician_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          company_id?: string
+          created_at?: string
+          dedup_key?: string
+          event_id?: string
+          hub_version?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          mailbox?: string
+          outlook_change_key?: string | null
+          outlook_event_id?: string | null
+          state?: string
+          technician_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      job_outlook_app_log: {
+        Row: {
+          action: string
+          company_id: string | null
+          created_at: string
+          detail: Json | null
+          direction: string
+          dry_run: boolean
+          event_id: string | null
+          id: string
+          link_id: string | null
+          mailbox: string | null
+          technician_id: string | null
+        }
+        Insert: {
+          action: string
+          company_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          direction: string
+          dry_run: boolean
+          event_id?: string | null
+          id?: string
+          link_id?: string | null
+          mailbox?: string | null
+          technician_id?: string | null
+        }
+        Update: {
+          action?: string
+          company_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          direction?: string
+          dry_run?: boolean
+          event_id?: string | null
+          id?: string
+          link_id?: string | null
+          mailbox?: string | null
+          technician_id?: string | null
+        }
+        Relationships: []
+      }
+      job_outlook_app_queue: {
+        Row: {
+          attempts: number
+          company_id: string | null
+          created_at: string
+          event_id: string
+          id: string
+          max_attempts: number
+          processed_at: string | null
+          reason: string
+          result: string | null
+          status: string
+          technician_id: string
+        }
+        Insert: {
+          attempts?: number
+          company_id?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          max_attempts?: number
+          processed_at?: string | null
+          reason: string
+          result?: string | null
+          status?: string
+          technician_id: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          max_attempts?: number
+          processed_at?: string | null
+          reason?: string
+          result?: string | null
+          status?: string
+          technician_id?: string
+        }
+        Relationships: []
+      }
+      job_outlook_app_sync_settings: {
+        Row: {
+          dry_run: boolean
+          enabled: boolean
+          id: boolean
+          pilot_mailboxes: string[]
+          scope_verified_at: string | null
+          scope_verified_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          dry_run?: boolean
+          enabled?: boolean
+          id?: boolean
+          pilot_mailboxes?: string[]
+          scope_verified_at?: string | null
+          scope_verified_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          dry_run?: boolean
+          enabled?: boolean
+          id?: boolean
+          pilot_mailboxes?: string[]
+          scope_verified_at?: string | null
+          scope_verified_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       job_participants: {
         Row: {
           created_at: string
