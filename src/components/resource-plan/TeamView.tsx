@@ -3,7 +3,8 @@ import { LocalExportMenu } from '@/components/LocalExportMenu';
 import type { ExportRow } from '@/lib/local-export';
 import { addDays, startOfWeek, format, isSameDay } from "date-fns";
 import { nb } from "date-fns/locale";
-import { Palmtree, Plus } from "lucide-react";
+import { Palmtree, Plus, CalendarDays, Lock, AlertTriangle } from "lucide-react";
+import { cellKind, matchesKindFilter, orderCellBlocks, overlappingIds, formatBlockTime, appointmentTypeLabel, CELL_VISIBLE_LIMIT, type CellKindFilter } from "@/lib/team-cell-layout";
 import { cn } from "@/lib/utils";
 import { getResourceCardTitle, getResourceCardSecondary, extractOrderRef } from "@/lib/resource-card-title";
 import { formatProjectLabel } from "@/lib/project-reference";
@@ -92,9 +93,6 @@ function initials(name: string) {
   return name.split(" ").map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
-function fmtHour(d: Date) {
-  return format(d, "H");
-}
 
 /**
  * Status tones — stronger contrast for at-a-glance status read.
@@ -185,6 +183,8 @@ export function TeamView({
   onTechColorChange,
 }: TeamViewProps) {
   const [colorPickerOpenFor, setColorPickerOpenFor] = useState<string | null>(null);
+  const [kindFilter, setKindFilter] = useState<CellKindFilter>("all");
+  const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
   const weekStart = useMemo(
     () => startOfWeek(referenceDate, { weekStartsOn: 1 }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -248,9 +248,11 @@ export function TeamView({
     const inWindow = dedupedBlocks.filter(
       (b) => b.start_at >= weekStart && b.start_at < weekEndExclusive,
     );
-    if (!visibleStatuses) return inWindow;
-    return inWindow.filter((b) => visibleStatuses.has(blockStatusKey(b.job_status)));
-  }, [dedupedBlocks, visibleStatuses, weekStart, weekEndExclusive]);
+    const byKind = inWindow.filter((b) => matchesKindFilter(b, kindFilter));
+    if (!visibleStatuses) return byKind;
+    // Job-status filter applies to jobs only; appointments have no job status.
+    return byKind.filter((b) => cellKind(b) === "appointment" || visibleStatuses.has(blockStatusKey(b.job_status)));
+  }, [dedupedBlocks, visibleStatuses, weekStart, weekEndExclusive, kindFilter]);
 
   const showAbsence = !visibleStatuses || visibleStatuses.has("absence");
 
@@ -267,7 +269,7 @@ export function TeamView({
       arr.push(b);
       map.set(key, arr);
     }
-    for (const arr of map.values()) arr.sort((a, b) => a.start_at.getTime() - b.start_at.getTime());
+    for (const [k, arr] of map) map.set(k, orderCellBlocks(arr));
     return map;
   }, [filteredBlocks]);
 
@@ -302,7 +304,15 @@ export function TeamView({
 
   return (
     <div className="space-y-2">
-    <div className="flex justify-end"><LocalExportMenu title="Ressursplan" module="resource_plan" filters={{Uke:format(weekStart,'w', {locale:nb}),Periode:`${format(weekStart,'dd.MM.yyyy')} – ${format(addDays(weekStart,6),'dd.MM.yyyy')}`,Status:TEAM_STATUS_OPTIONS.filter(s=>!visibleStatuses||visibleStatuses.has(s.key)).map(s=>s.label).join(', ')}} rows={exportRows}/></div>
+    <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div role="radiogroup" aria-label="Vis type" className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5 text-xs">
+        {([["all","Alle"],["jobs","Jobber"],["appointments","Avtaler/oppgaver"]] as const).map(([k,l]) => (
+          <button key={k} type="button" role="radio" aria-checked={kindFilter===k} onClick={() => setKindFilter(k)}
+            className={cn("px-3 py-1.5 rounded-md transition-colors min-h-[32px]", kindFilter===k ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button>
+        ))}
+      </div>
+      <LocalExportMenu title="Ressursplan" module="resource_plan" filters={{Uke:format(weekStart,'w', {locale:nb}),Periode:`${format(weekStart,'dd.MM.yyyy')} – ${format(addDays(weekStart,6),'dd.MM.yyyy')}`,Status:TEAM_STATUS_OPTIONS.filter(s=>!visibleStatuses||visibleStatuses.has(s.key)).map(s=>s.label).join(', ')}} rows={exportRows}/>
+    </div>
     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <div className="overflow-auto">
         <div className="min-w-[920px]">
@@ -513,7 +523,37 @@ export function TeamView({
                       ))}
 
 
-                      {cellBlocks.map((b) => {
+                      {(() => { const overlaps = overlappingIds(cellBlocks); const expanded = expandedCells.has(key); const shown = expanded ? cellBlocks : cellBlocks.slice(0, CELL_VISIBLE_LIMIT); const hidden = cellBlocks.length - shown.length; return (<>
+                      {shown.map((b, idx) => {
+                        const isAppt = cellKind(b) === "appointment";
+                        const prev = shown[idx - 1];
+                        const startsApptGroup = isAppt && prev && cellKind(prev) === "job";
+                        const isOverlap = overlaps.has(b.id);
+                        const timeLabel = formatBlockTime(b);
+                        if (isAppt) {
+                          const typeLabel = appointmentTypeLabel(b);
+                          const apptTitle = b.is_private ? "Opptatt" : (b.outlook_subject || b.title || "Avtale");
+                          return (
+                            <div key={b.id} data-chip role="button" tabIndex={0}
+                              aria-label={`${typeLabel}: ${apptTitle}, ${timeLabel}${isOverlap ? ", overlapper" : ""}`}
+                              onClick={(e) => { e.stopPropagation(); setSelectedBlockId(b.id); onBlockClick?.(b); }}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedBlockId(b.id); onBlockClick?.(b); } }}
+                              className={cn(
+                                "rounded border border-dashed border-border bg-muted/50 px-1.5 py-0.5 text-[10.5px] leading-tight text-muted-foreground cursor-pointer hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                                startsApptGroup && "mt-1",
+                                selectedBlockId === b.id && "ring-2 ring-primary",
+                              )}
+                              title={`${typeLabel} · ${timeLabel}${b.is_private ? "" : ` · ${apptTitle}`}`}
+                            >
+                              <div className="flex items-center gap-1 min-w-0">
+                                {b.is_private ? <Lock className="h-3 w-3 shrink-0" aria-hidden /> : <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />}
+                                <span className="truncate font-medium text-foreground/80">{apptTitle}</span>
+                                {isOverlap && <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" aria-hidden />}
+                              </div>
+                              <div className="tabular-nums truncate">{timeLabel}{b.is_private ? "" : ` · ${typeLabel}`}</div>
+                            </div>
+                          );
+                        }
                         const tone = statusTone(b);
                         const dotCls = statusDot(b);
                         const isSelected = selectedBlockId === b.id;
@@ -530,7 +570,7 @@ export function TeamView({
                         }));
                         // Secondary: BST-ref / JOB-ID / internal number + time
                         const refId = b.job_number_resolved || b.internal_number || null;
-                        const timeStr = `${fmtHour(b.start_at)}–${fmtHour(b.end_at)}`;
+                        const timeStr = timeLabel;
                         const secondary = getResourceCardSecondary([orderRef, refId, timeStr]);
 
                         return (
@@ -563,13 +603,22 @@ export function TeamView({
                             <div className="flex items-start gap-1.5">
                               <span className={cn("mt-1 h-1.5 w-1.5 rounded-full shrink-0", dotCls)} aria-hidden />
                               <div className="min-w-0 flex-1">
-                                <div className="font-semibold line-clamp-2 break-words">{primaryTitle}</div>
+                                <div className="font-semibold line-clamp-2 break-words">{primaryTitle}{isOverlap && <AlertTriangle className="inline h-3 w-3 ml-1 text-amber-600" aria-label="Overlapper annen av samme type" />}</div>
                                 <div className="text-[10px] opacity-70 tabular-nums truncate font-normal mt-0.5">{secondary}</div>
                               </div>
                             </div>
                           </div>
                         );
                       })}
+                      {(hidden > 0 || expanded) && cellBlocks.length > CELL_VISIBLE_LIMIT && (
+                        <span data-chip role="button" tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); setExpandedCells((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; }); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setExpandedCells((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; }); } }}
+                          className="self-start text-[10.5px] font-medium text-primary hover:underline px-1 cursor-pointer">
+                          {expanded ? "Vis færre" : `+${hidden} til`}
+                        </span>
+                      )}
+                      </>); })()}
                     </button>
                   );
                 })}
@@ -590,6 +639,12 @@ export function TeamView({
         <LegendDot className="bg-amber-200 border-amber-300" label="Pågår" />
         <LegendDot className="bg-rose-200 border-rose-300" label="Avslått" />
         <LegendDot className="bg-stone-200 border-stone-300" label="Ferie/fravær" />
+        <span className="h-4 w-px bg-border" aria-hidden />
+        <span className="font-medium text-foreground/70">Type:</span>
+        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm border border-sky-300 bg-sky-200 border-l-[3px] border-l-sky-500" />Prosjektjobb (farge = status)</span>
+        <span className="flex items-center gap-1.5"><CalendarDays className="h-3 w-3" />Avtale/oppgave (Outlook)</span>
+        <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" />Opptatt (privat)</span>
+        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3 text-amber-600" />Overlapp</span>
       </div>
     </div>
     </div>
