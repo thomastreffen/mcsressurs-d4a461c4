@@ -44,7 +44,7 @@ beforeAll(async () => {
   await db.exec(`CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role;
     CREATE SCHEMA auth; CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     CREATE SCHEMA storage; CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), bucket_id text, name text);
-    ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY; GRANT USAGE ON SCHEMA auth, storage TO authenticated;
     CREATE TABLE memberships(user_id uuid, company_id uuid); CREATE TABLE admins(user_id uuid, company_id uuid); CREATE TABLE members(user_id uuid, project_id uuid);
     INSERT INTO memberships VALUES ('${TECH}','${SERVICE}'),('${ADMIN}','${SERVICE}'),('${INSTALLER}','${SERVICE}'),('${BB_ADMIN}','${BUSBAR}');
     INSERT INTO admins VALUES ('${ADMIN}','${SERVICE}'),('${BB_ADMIN}','${BUSBAR}');
