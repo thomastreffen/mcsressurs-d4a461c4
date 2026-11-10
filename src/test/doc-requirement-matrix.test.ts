@@ -168,6 +168,8 @@ describe("documentation requirement matrix (A1.5)", () => {
   it("approver cannot approve own request", async () => {
     await as(ADMIN, `INSERT INTO doc_requirement_rules(company_id,category_id,kind,label,template_id) VALUES ('${SERVICE}','${catService}','additional','Bilder','${T_ALT}')`);
     await rpc(INSTALLER, "approve_doc_rule", `(SELECT id FROM doc_requirement_rules WHERE label='Bilder')`);
+    // Edited rule lost its approval earlier, so it must be re-approved before new snapshots.
+    await rpc(INSTALLER, "approve_doc_rule", `(SELECT id FROM doc_requirement_rules WHERE label='Endret rapport')`);
     await rpc(ADMIN, "set_job_doc_category", `'${JOB2}','${catService}','{}'`);
     await rpc(ADMIN, "snapshot_job_doc_requirements", `'${JOB2}'`);
     const req = (await as(ADMIN, `SELECT id FROM doc_job_requirements WHERE job_id='${JOB2}' AND kind='additional'`)).rows[0].id;
