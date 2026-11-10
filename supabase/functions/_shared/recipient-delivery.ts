@@ -80,7 +80,7 @@ export function failureLine(person: string, channel: string, reason?: string | n
 
 /** Planner alert text: Hub save is OK; only the named person's Outlook/e-mail failed. */
 export function deliveryFailureMessage(title: string, person: string, channel: string, reason?: string | null): string {
-  return `${title}: Jobben er lagret og planlagt i Hub og vises i Ressursplan. Ikke sendt på nytt automatisk; send kalender på nytt fra jobben når tilgangen er ordnet.\n${failureLine(person, channel, reason)}`;
+  return `${title}: Jobben er lagret og planlagt i Hub og vises i Ressursplan. Ingen automatisk ny utsending; kalenderen sendes på nytt for personen først når Microsoft-tilgangen er ordnet.\n${failureLine(person, channel, reason)}`;
 }
 
 export async function recordDelivery(supabaseAdmin: any, r: DeliveryRecord): Promise<void> {
