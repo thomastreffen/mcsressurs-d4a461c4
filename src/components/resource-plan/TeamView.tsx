@@ -93,9 +93,6 @@ function initials(name: string) {
   return name.split(" ").map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
-function fmtHour(d: Date) {
-  return format(d, "H");
-}
 
 /**
  * Status tones — stronger contrast for at-a-glance status read.
