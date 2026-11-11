@@ -47,6 +47,7 @@ import { JobStatusBadge, JobStatusGroup } from "./JobStatusBadge";
 import { useJobApprovals } from "@/hooks/useJobApprovals";
 import { getExecutionStatus, BILLING_STATUSES, ACCEPTANCE_STATUSES } from "@/lib/job-status";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { invokeWithSession } from "@/lib/invoke-session";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -128,8 +129,6 @@ interface PendingSaveState {
   criticalChanges: ChangeDescriptor[];
   allChanges: ChangeDescriptor[];
   impactedTechIds: string[];
-  sendNotifications: boolean;
-  updateOutlook: boolean;
 }
 
 interface DeliveryStatusSummary {
@@ -1147,13 +1146,11 @@ export function EventDrawer({
 
        if (isEditing && editEvent) {
          const criticalChanges = detectedChanges.filter((change) => change.severity === "critical");
-         if (criticalChanges.length > 0) {
+          if (criticalChanges.length > 0) {
            setPendingSave({
              criticalChanges,
              allChanges: detectedChanges,
              impactedTechIds: techIds,
-             sendNotifications: true,
-             updateOutlook: true,
            });
            setSaving(false);
            return;
