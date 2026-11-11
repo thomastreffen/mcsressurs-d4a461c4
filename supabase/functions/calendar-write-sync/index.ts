@@ -752,6 +752,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { action, event_id } = body;
+    // update_only: eksplisitt «Oppdater Outlook» fra jobbkortet – kun PATCH av
+    // eksisterende kalenderkoblinger, aldri opprettelse av nye hendelser.
+    const updateOnly = body.update_only === true;
 
     if (!["create", "update", "force_update", "delete", "reconcile"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
       return new Response(JSON.stringify({ error: "Missing action or event_id" }), {
@@ -872,7 +875,7 @@ Deno.serve(async (req) => {
       await recordDelivery(supabaseAdmin, { eventId: event_id, technicianId: tech.id, channel: "calendar", status: "pending", attemptedBy: callerUserId });
       const result = useOrganizer
         ? { techId: tech.id, techName: tech.name, ...await syncOrganizer({ action, email: tech.email ?? "", body: graphBody, store: organizerStore(supabaseAdmin, event_id, tech.id) }) }
-        : await syncForTechnician(supabaseAdmin, tech, eventTechRow, recipientEvent, customer, graphBody, action, callerUserId, logAction);
+        : await syncForTechnician(supabaseAdmin, tech, eventTechRow, recipientEvent, customer, graphBody, action, callerUserId, logAction, updateOnly);
       results.push(result);
     }
 
@@ -885,10 +888,12 @@ Deno.serve(async (req) => {
     const hasError = results.some(r => r.status === "error");
     const hasAlreadyExists = results.some(r => r.status === "already_exists");
     const hasInProgress = results.some(r => r.status === "in_progress");
+    const hasNoLink = results.some(r => r.status === "no_link");
 
     let overallStatus = "ok";
     if (action === "create" && (hasCreated || hasAlreadyExists || hasInProgress)) overallStatus = "created";
     else if (action === "update" && hasUpdated) overallStatus = "updated";
+    else if (action === "update" && hasNoLink && !hasError && !hasConflict) overallStatus = "no_link";
     else if (action === "force_update" && (hasUpdated || hasCreated)) overallStatus = "force_updated";
     else if (action === "delete" && hasDeleted) overallStatus = "deleted";
     else if (action === "delete" && hasNotFound) overallStatus = "not_found";
