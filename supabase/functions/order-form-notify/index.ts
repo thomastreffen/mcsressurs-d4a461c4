@@ -253,8 +253,8 @@ Deno.serve(async (req) => {
         },
         waiting_customer: {
           subject: `Oppdatering: ${submission.submission_no} - Vi venter på svar fra deg`,
-          heading: "Vi trenger svar fra deg",
-          body: "Bestillingen venter på svar fra deg. Se meldingen på sporingslenken og svar der eller på denne e-posten.",
+          heading: "Status endret til Venter på kunde",
+          body: "Status endret til Venter på kunde. Vi avventer tilbakemelding fra deg. Følg saken via sporingslenken.",
           color: "#FEF3C7", colorFg: "#92400E",
         },
         rejected: {
@@ -351,15 +351,22 @@ Deno.serve(async (req) => {
       const trackingToken = submission.public_tracking_token;
       const trackingUrl = trackingToken ? `${appUrl}/bestilling/status/${trackingToken}` : null;
 
-      subject = `Melding: ${submission.submission_no} - ${oppdragstittel}`;
+      // Optional combined status: one e-mail for «Venter kunde» + the personal message.
+      const combinedWaiting = body.status_event_key === "waiting_customer";
+      subject = combinedWaiting
+        ? `Oppdatering: ${submission.submission_no} - Vi venter på svar fra deg`
+        : `Melding: ${submission.submission_no} - ${oppdragstittel}`;
       recipients = [bestillerEpost];
 
+      const baseText = messageBody || "Du har fått en ny melding angående din bestilling. Se sporingslenken for detaljer.";
       bodyHtml = buildCustomerUpdateEmail({
         submissionNo: submission.submission_no,
         kundenavn,
         oppdragstittel,
-        heading: "Ny melding fra " + senderName,
-        bodyText: messageBody || "Du har fått en ny melding angående din bestilling. Se sporingslenken for detaljer.",
+        heading: combinedWaiting ? "Status endret til Venter på kunde" : "Ny melding fra " + senderName,
+        bodyText: combinedWaiting
+          ? `${baseText}\n\n— ${senderName}\n\nVi avventer tilbakemelding fra deg. Følg saken via sporingslenken.`
+          : baseText,
         headingBg: "#DBEAFE",
         headingFg: "#1E40AF",
         trackingUrl,

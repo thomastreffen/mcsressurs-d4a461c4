@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { allowedAddressees, validateOutgoingMessage, statusRequiresCustomerMessage, shouldEmailRequester, statusNotifyPolicy, statusEventKey, shouldEmailOnStatusChange } from "@/lib/order-message-rules";
+import { allowedAddressees, validateOutgoingMessage, shouldEmailRequester, statusNotifyPolicy, statusEventKey, shouldEmailOnStatusChange } from "@/lib/order-message-rules";
 import {
   ArrowLeft, MessageSquare, Clock, Paperclip, AlertTriangle,
   ArrowRight, FileText, Download, Mail, MailCheck, MailX, ExternalLink, UserPlus,
