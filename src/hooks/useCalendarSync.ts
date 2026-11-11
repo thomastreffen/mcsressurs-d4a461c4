@@ -29,7 +29,9 @@ export function useCalendarSync() {
         return;
       }
       if (data?.deliveryStatus === "partial" || data?.deliveryStatus === "failed") {
-        toast.error("Outlook er ikke bekreftet for alle montører", { description: "Se utsending per montør." });
+        // Lav varselstøy: jobben er lagret, og status per montør ligger vedvarende
+        // i jobbkortet (Utsending per montør). Ingen oransje alarm per ny jobb.
+        toast.info("Jobben er lagret – se Outlook-status per montør i jobbkortet");
       } else if (data?.status === "created") {
         console.log("[CalendarSync] Outlook event created:", data.graph_event_id);
       } else if (data?.status === "no_token") {
