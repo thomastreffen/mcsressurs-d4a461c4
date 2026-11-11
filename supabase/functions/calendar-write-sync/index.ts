@@ -5,6 +5,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { resolveJobAddress } from "../_shared/job-address.ts";
 import { shouldQueueFallback } from "../_shared/job-outlook-app-core.ts";
 import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
+import { planCalendarUpdate } from "../_shared/job-save-flow.ts";
 import { jobInfoUrl } from "../_shared/job-access-policy.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -587,18 +588,20 @@ async function syncForTechnician(
   }
 
   if (action === "update" || action === "force_update") {
-    if (existingCalEventId?.startsWith("pending:")) {
+    // Én felles beslutningsregel (testet i job-save-flow.test.ts):
+    // pending-markør → in_progress, manglende kobling + update_only → no_link
+    // (aldri opprett duplikat), manglende kobling i legacy-flyt → create.
+    const updatePlan = planCalendarUpdate(existingCalEventId, updateOnly);
+    if (updatePlan === "in_progress") {
       return { techId: tech.id, techName: tech.name, status: "in_progress" };
     }
 
-    if (!existingCalEventId) {
-      // Eksplisitt «Oppdater Outlook» (update_only) skal ALDRI opprette en ny
-      // kalenderhendelse når koblingen mangler – det ville gitt duplikater.
-      // Rapporter som no_link (ventende) i stedet.
-      if (updateOnly) {
-        await logAction("outlook_update_skipped", `Outlook-oppdatering hoppet over for ${tech.name}: ingen kalenderkobling (opprettes ikke automatisk)`);
-        return { techId: tech.id, techName: tech.name, status: "no_link" };
-      }
+    if (updatePlan === "no_link") {
+      await logAction("outlook_update_skipped", `Outlook-oppdatering hoppet over for ${tech.name}: ingen kalenderkobling (opprettes ikke automatisk)`);
+      return { techId: tech.id, techName: tech.name, status: "no_link" };
+    }
+
+    if (updatePlan === "create") {
       // No existing calendar event → create instead
       const res = await fetch(
         `https://graph.microsoft.com/v1.0/users/${techEmail}/events`,
