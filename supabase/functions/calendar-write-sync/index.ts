@@ -7,6 +7,8 @@ import { shouldQueueFallback } from "../_shared/job-outlook-app-core.ts";
 import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
 import { planCalendarUpdate } from "../_shared/job-save-flow.ts";
 import { jobInfoUrl } from "../_shared/job-access-policy.ts";
+import { syncTechnicianDays, type DayStore, type DayGraph } from "../_shared/multi-day-sync.ts";
+import { dayOperationKey, type DayPlanItem, type DayLinkRow } from "../_shared/multi-day-calendar.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 
