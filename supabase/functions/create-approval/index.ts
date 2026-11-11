@@ -4,6 +4,7 @@ import { resolveJobAddress } from "../_shared/job-address.ts";
 import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
+import { formatPlannedDays } from "../_shared/multi-day-calendar.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
@@ -282,6 +283,14 @@ Deno.serve(async (req) => {
     rRequired = requiresApproval(job, response_required);
     // Operative address: newest event address, else the order's oppdragssted
     job.address = (await resolveJobAddress(supabaseAdmin, job)) || null;
+    // Multi-day scope: all planned days must be visible in the technician e-mail,
+    // and the approval covers every listed day – not just day 1.
+    const { data: jobBlocks } = await supabaseAdmin
+      .from("schedule_blocks")
+      .select("start_at,end_at")
+      .eq("project_id", job_id)
+      .is("deleted_at", null);
+    const plannedDays = formatPlannedDays(jobBlocks ?? []);
     // Operational brief: edited event fields win, linked order fills the gaps (same helper as the app view).
     {
       let orderId: string | null = job.source_order_form_id ?? null;
