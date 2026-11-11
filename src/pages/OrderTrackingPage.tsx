@@ -175,9 +175,12 @@ function CustomerTimeline({ token }: { token: string }) {
 
   const statusChangeLabel = (payload: any): string | null => {
     const statusLabels: Record<string, string> = {
+      under_review: "MCS har tatt tak i bestillingen",
+      waiting_customer: "Vi venter på svar fra deg",
       task_created: "Oppgaven er planlagt",
       in_progress: "Arbeidet er startet",
-      closed: "Bestillingen er ferdig behandlet",
+      closed: "Saken er avsluttet",
+      rejected: "Bestillingen er avvist",
       ready_for_planning: "Klar for planlegging",
     };
     return statusLabels[payload?.to] || null;

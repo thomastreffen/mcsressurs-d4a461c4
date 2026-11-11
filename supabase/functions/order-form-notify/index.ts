@@ -209,6 +209,24 @@ Deno.serve(async (req) => {
           body: "Det er nå satt en ansvarlig for oppfølging av din bestilling. Vi vil holde deg oppdatert om videre fremdrift.",
           color: "#DBEAFE", colorFg: "#1E40AF",
         },
+        received: {
+          subject: `Bekreftelse: ${submission.submission_no} - Bestilling mottatt`,
+          heading: "Vi har mottatt bestillingen",
+          body: "Bestillingen din er registrert hos MCS. Du kan følge saken på sporingslenken.",
+          color: "#DBEAFE", colorFg: "#1E40AF",
+        },
+        under_review: {
+          subject: `Oppdatering: ${submission.submission_no} - Vi har tatt tak i saken`,
+          heading: "Vi har tatt tak i bestillingen",
+          body: "MCS har startet behandlingen av bestillingen din. Du får beskjed når den er planlagt.",
+          color: "#DBEAFE", colorFg: "#1E40AF",
+        },
+        closed: {
+          subject: `Oppdatering: ${submission.submission_no} - Saken er avsluttet`,
+          heading: "Saken er avsluttet",
+          body: "Bestillingen er avsluttet hos MCS. Se sporingslenken for status, og ta kontakt om du har spørsmål.",
+          color: "#F3F4F6", colorFg: "#374151",
+        },
         status_changed: {
           subject: `Oppdatering: ${submission.submission_no} - Status endret`,
           heading: "Status er oppdatert",

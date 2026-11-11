@@ -53,3 +53,55 @@ export function shouldEmailRequester(visibility: ComposerVisibility, requesterEm
 export function customerVisibleMessages<T extends { is_visible_to_customer?: boolean | null; visibility?: string | null }>(messages: T[]): T[] {
   return messages.filter((m) => !!m.is_visible_to_customer && m.visibility !== "internal");
 }
+
+/**
+ * Customer notification policy per status change.
+ * mandatory: bestiller always gets e-mail (cannot be opted out).
+ * default_on: e-mail is the default; staff must actively choose «Ikke varsle bestiller».
+ * internal: purely internal status, never e-mails the customer.
+ * via_message: e-mail is sent through the required shared message (avoids double mail).
+ */
+export type StatusNotifyPolicy = "mandatory" | "default_on" | "internal" | "via_message";
+
+export function statusNotifyPolicy(status: string): StatusNotifyPolicy {
+  switch (status) {
+    case "new":
+    case "task_created":
+    case "ready_for_planning":
+    case "closed":
+    case "rejected":
+      return "mandatory";
+    case "waiting_customer":
+      return "via_message";
+    case "under_review":
+    case "in_progress":
+    case "missing_info":
+      return "default_on";
+    default:
+      return "internal";
+  }
+}
+
+/** Template key used by order-form-notify for a status change. */
+export function statusEventKey(status: string): string {
+  const map: Record<string, string> = {
+    new: "received",
+    under_review: "under_review",
+    missing_info: "status_changed",
+    ready_for_planning: "task_created",
+    task_created: "task_created",
+    in_progress: "in_progress",
+    closed: "closed",
+    rejected: "rejected",
+  };
+  return map[status] || "status_changed";
+}
+
+/** Whether a status change sends a customer e-mail, given the staff's opt-out choice. */
+export function shouldEmailOnStatusChange(status: string, requesterEmail: string | null | undefined, optOut: boolean): boolean {
+  if (!requesterEmail) return false;
+  const p = statusNotifyPolicy(status);
+  if (p === "mandatory") return true;
+  if (p === "default_on") return !optOut;
+  return false;
+}
