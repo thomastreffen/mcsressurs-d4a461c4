@@ -54,3 +54,29 @@ describe("automatic status after Venter kunde", () => {
     expect(deriveOrderConversationState("waiting_customer", [old], [], "2026-11-11T09:18:30Z").statusSyncTarget).toBeNull();
   });
 });
+
+import { statusNotifyPolicy, shouldEmailOnStatusChange, statusEventKey } from "@/lib/order-message-rules";
+describe("status-varsling til bestiller", () => {
+  it("Mottatt/Planlagt/Avvist/Lukket er obligatorisk og kan ikke fravelges", () => {
+    for (const s of ["new", "task_created", "ready_for_planning", "rejected", "closed"]) {
+      expect(statusNotifyPolicy(s)).toBe("mandatory");
+      expect(shouldEmailOnStatusChange(s, "k@x.no", true)).toBe(true);
+    }
+  });
+  it("Under arbeid/Til vurdering varsles som standard, fravalg er aktivt", () => {
+    expect(shouldEmailOnStatusChange("in_progress", "k@x.no", false)).toBe(true);
+    expect(shouldEmailOnStatusChange("under_review", "k@x.no", true)).toBe(false);
+  });
+  it("Venter internt sender aldri kundemail", () => {
+    expect(shouldEmailOnStatusChange("waiting_internal", "k@x.no", false)).toBe(false);
+  });
+  it("Venter kunde sendes via delt melding, ikke dobbelt", () => {
+    expect(shouldEmailOnStatusChange("waiting_customer", "k@x.no", false)).toBe(false);
+  });
+  it("Lukket er ikke samme e-post som Utført", () => {
+    expect(statusEventKey("closed")).toBe("closed");
+  });
+  it("uten bestiller-epost sendes ingenting", () => {
+    expect(shouldEmailOnStatusChange("rejected", null, false)).toBe(false);
+  });
+});
