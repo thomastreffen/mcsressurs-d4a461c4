@@ -358,8 +358,8 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           schedules: techEmails,
-          startTime: { dateTime: start, timeZone: "UTC" },
-          endTime: { dateTime: end, timeZone: "UTC" },
+          startTime: { dateTime: queryStart, timeZone: "UTC" },
+          endTime: { dateTime: queryEnd, timeZone: "UTC" },
           availabilityViewInterval: 15,
         }),
       });
