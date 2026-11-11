@@ -18,8 +18,9 @@
 - [x] Etappe 2c svarstatus per deltaker + «Avtale»-merking (avslått skjules)
 - [ ] Etappe 2b synkstatus/403 synlig i Ressursplan-admin
 - [x] Etappe 3 Hub-oppgave → Outlook bygget bak flagg AV + dry-run (aktivering venter på testpostkasse)
-- [ ] Etappe 4 Outlook-endring → Hub: konfliktlogikk testet, kobling mot webhook gjenstår
+- [x] Etappe 4 Outlook-endring → Hub: `hub-appointment-inbound-sync` (migrasjon 0088) – idempotent via changeKey, konfliktmodell (begge sider endret / avlyst / gjentakende / heldags → «Krever avklaring»), aldri stille overskriving, flagg AV + dry_run PÅ; status- og konfliktpanel i Ressursplan («Synkstatus») med Behold Hub/Behold Outlook + superadmin pilotinnstillinger
 - [ ] Etappe 5 kontrollert test på isolert postkasse (venter godkjenning)
+- [ ] Webhook/delta-kobling for umiddelbar innsynk (i dag: batch-funksjon, ingen cron koblet)
 - [ ] BLOKKERT: Microsoft-tilgang for Eirik, Hans Jakob, Lars Erik, Rune (Thomas/Simen)
 - [x] Ressursplan rekkestruktur: jobber øverst, avtaler under, kronologisk, +N, legend, filter, klokkeslett med minutter
 - [x] «Outlook ikke tilkoblet»-merke per montør (trenger selskapsavgrenset lesetilgang til synkstatus)

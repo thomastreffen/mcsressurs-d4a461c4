@@ -3,8 +3,9 @@ import { LocalExportMenu } from '@/components/LocalExportMenu';
 import type { ExportRow } from '@/lib/local-export';
 import { addDays, startOfWeek, format, isSameDay } from "date-fns";
 import { nb } from "date-fns/locale";
-import { Palmtree, Plus, CalendarDays, Lock, AlertTriangle, CalendarOff } from "lucide-react";
+import { Palmtree, Plus, CalendarDays, Lock, AlertTriangle, CalendarOff, CalendarSync } from "lucide-react";
 import { useOutlookSyncStatus, outlookStatusLabel } from "@/hooks/useOutlookSyncStatus";
+import { OutlookSyncStatusPanel } from "@/components/resource-plan/OutlookSyncStatusPanel";
 import { cellKind, matchesKindFilter, orderCellBlocks, overlappingIds, formatBlockTime, appointmentTypeLabel, CELL_VISIBLE_LIMIT, type CellKindFilter } from "@/lib/team-cell-layout";
 import { cn } from "@/lib/utils";
 import { getResourceCardTitle, getResourceCardSecondary, extractOrderRef } from "@/lib/resource-card-title";
@@ -185,8 +186,12 @@ export function TeamView({
 }: TeamViewProps) {
   const [colorPickerOpenFor, setColorPickerOpenFor] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState<CellKindFilter>("all");
-  const { data: outlookStatus } = useOutlookSyncStatus(
-    (technicians as Array<{ company_id?: string | null }>).map((t) => t.company_id ?? "").filter(Boolean),
+  const [syncStatusOpen, setSyncStatusOpen] = useState(false);
+  const companyIds = useMemo(
+    () => (technicians as Array<{ company_id?: string | null }>).map((t) => t.company_id ?? "").filter(Boolean),
+    [technicians],
+  );
+  const { data: outlookStatus } = useOutlookSyncStatus(companyIds,
   );
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
   const weekStart = useMemo(
@@ -315,7 +320,13 @@ export function TeamView({
             className={cn("px-3 py-1.5 rounded-md transition-colors min-h-[32px]", kindFilter===k ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button>
         ))}
       </div>
-      <LocalExportMenu title="Ressursplan" module="resource_plan" filters={{Uke:format(weekStart,'w', {locale:nb}),Periode:`${format(weekStart,'dd.MM.yyyy')} – ${format(addDays(weekStart,6),'dd.MM.yyyy')}`,Status:TEAM_STATUS_OPTIONS.filter(s=>!visibleStatuses||visibleStatuses.has(s.key)).map(s=>s.label).join(', ')}} rows={exportRows}/>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => setSyncStatusOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors min-h-[32px]">
+          <CalendarSync className="h-3.5 w-3.5" /> Synkstatus
+        </button>
+        <LocalExportMenu title="Ressursplan" module="resource_plan" filters={{Uke:format(weekStart,'w', {locale:nb}),Periode:`${format(weekStart,'dd.MM.yyyy')} – ${format(addDays(weekStart,6),'dd.MM.yyyy')}`,Status:TEAM_STATUS_OPTIONS.filter(s=>!visibleStatuses||visibleStatuses.has(s.key)).map(s=>s.label).join(', ')}} rows={exportRows}/>
+      </div>
     </div>
     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <div className="overflow-auto">
@@ -660,6 +671,7 @@ export function TeamView({
         <span className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3 text-amber-600" />Overlapp</span>
       </div>
     </div>
+    <OutlookSyncStatusPanel companyIds={companyIds} open={syncStatusOpen} onOpenChange={setSyncStatusOpen} />
     </div>
   );
 }

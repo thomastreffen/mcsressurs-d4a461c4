@@ -9889,6 +9889,7 @@ export type Database = {
       hub_outlook_event_links: {
         Row: {
           company_id: string
+          conflict_reason: string | null
           created_at: string
           dedup_key: string
           hub_version: string | null
@@ -9898,12 +9899,14 @@ export type Database = {
           mailbox: string
           outlook_change_key: string | null
           outlook_event_id: string | null
+          outlook_snapshot: Json | null
           state: string
           task_id: string
           updated_at: string
         }
         Insert: {
           company_id: string
+          conflict_reason?: string | null
           created_at?: string
           dedup_key: string
           hub_version?: string | null
@@ -9913,12 +9916,14 @@ export type Database = {
           mailbox: string
           outlook_change_key?: string | null
           outlook_event_id?: string | null
+          outlook_snapshot?: Json | null
           state?: string
           task_id: string
           updated_at?: string
         }
         Update: {
           company_id?: string
+          conflict_reason?: string | null
           created_at?: string
           dedup_key?: string
           hub_version?: string | null
@@ -9928,6 +9933,7 @@ export type Database = {
           mailbox?: string
           outlook_change_key?: string | null
           outlook_event_id?: string | null
+          outlook_snapshot?: Json | null
           state?: string
           task_id?: string
           updated_at?: string
@@ -9978,6 +9984,7 @@ export type Database = {
           dry_run: boolean
           enabled: boolean
           id: boolean
+          inbound_enabled: boolean
           pilot_mailboxes: string[]
           updated_at: string
           updated_by: string | null
@@ -9986,6 +9993,7 @@ export type Database = {
           dry_run?: boolean
           enabled?: boolean
           id?: boolean
+          inbound_enabled?: boolean
           pilot_mailboxes?: string[]
           updated_at?: string
           updated_by?: string | null
@@ -9994,6 +10002,7 @@ export type Database = {
           dry_run?: boolean
           enabled?: boolean
           id?: boolean
+          inbound_enabled?: boolean
           pilot_mailboxes?: string[]
           updated_at?: string
           updated_by?: string | null
@@ -19187,6 +19196,19 @@ export type Database = {
       }
       hms_handbook_open_by_token: { Args: { p_token: string }; Returns: Json }
       home_company_of: { Args: { _uid: string }; Returns: string }
+      hub_outlook_link_status: {
+        Args: { _company_ids: string[] }
+        Returns: {
+          conflict_reason: string
+          last_error: string
+          link_id: string
+          mailbox: string
+          state: string
+          task_id: string
+          task_title: string
+          updated_at: string
+        }[]
+      }
       is_active_member_of: { Args: { _company_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_company_admin: {
@@ -19609,6 +19631,10 @@ export type Database = {
         }
         Returns: string
       }
+      resolve_hub_outlook_conflict: {
+        Args: { p_link_id: string; p_resolution: string }
+        Returns: Json
+      }
       resource_plan_outlook_sync_status: {
         Args: { _company_ids: string[] }
         Returns: {
@@ -19692,6 +19718,15 @@ export type Database = {
       set_doc_exception_approver: {
         Args: { _active: boolean; _company: string; _user: string }
         Returns: undefined
+      }
+      set_hub_outlook_sync_settings: {
+        Args: {
+          p_dry_run: boolean
+          p_enabled: boolean
+          p_inbound_enabled: boolean
+          p_pilot_mailboxes: string[]
+        }
+        Returns: Json
       }
       set_job_doc_category: {
         Args: { _category_id: string; _conditions: string[]; _job_id: string }
