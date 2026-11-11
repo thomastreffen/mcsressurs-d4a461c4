@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { allowedAddressees, validateOutgoingMessage, statusRequiresCustomerMessage, shouldEmailRequester } from "@/lib/order-message-rules";
+import { allowedAddressees, validateOutgoingMessage, statusRequiresCustomerMessage, shouldEmailRequester, statusNotifyPolicy, statusEventKey, shouldEmailOnStatusChange } from "@/lib/order-message-rules";
 import {
   ArrowLeft, MessageSquare, Clock, Paperclip, AlertTriangle,
   ArrowRight, FileText, Download, Mail, MailCheck, MailX, ExternalLink, UserPlus,
@@ -89,7 +89,7 @@ export default function OrderFormDetailPage() {
   const [commentFiles, setCommentFiles] = useState<File[]>([]);
   const [commentFileNames, setCommentFileNames] = useState<Record<number, string>>({});
   const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null);
-  const [commentVisibility, setCommentVisibility] = useState<"internal" | "shared">("internal");
+  const [commentVisibility, setCommentVisibility] = useState<"internal" | "shared">("shared");
   const [sendEmailNotification, setSendEmailNotification] = useState(true);
   // Set when the planner chose "Venter kunde": status is applied only together with a shared message.
   const [pendingWaitingCustomer, setPendingWaitingCustomer] = useState(false);
@@ -100,7 +100,7 @@ export default function OrderFormDetailPage() {
   const [previewAttIdx, setPreviewAttIdx] = useState<number | null>(null);
   const [assignPopoverOpen, setAssignPopoverOpen] = useState(false);
   const [assignSearch, setAssignSearch] = useState("");
-  const [notifyOnStatusChange, setNotifyOnStatusChange] = useState(false);
+  const [skipStatusNotify, setSkipStatusNotify] = useState(false);
   const [notifyOnAssign, setNotifyOnAssign] = useState(false);
   const [recipientOverrideOpen, setRecipientOverrideOpen] = useState(false);
   const [recipientOverrideEmail, setRecipientOverrideEmail] = useState("");
@@ -471,6 +471,7 @@ export default function OrderFormDetailPage() {
   const updateStatus = useMutation({
     mutationFn: async (newStatus: string) => {
       const nextStatus = newStatus as OrderFormSubmissionStatus;
+      const willNotify = shouldEmailOnStatusChange(newStatus, bestillerEpost, skipStatusNotify);
       const { error } = await supabase
         .from("order_form_submissions")
         .update({
@@ -483,21 +484,14 @@ export default function OrderFormDetailPage() {
       await supabase.from("order_form_activity_log").insert({
         submission_id: id!,
         event_type: "status_changed",
-        payload: { from: submission?.status, to: newStatus, notified_requester: !!notifyOnStatusChange },
+        payload: { from: submission?.status, to: newStatus, notified_requester: willNotify, notify_policy: statusNotifyPolicy(newStatus) },
         created_by: user?.id,
       });
       // Send customer notification if toggle is on
       let notify: { attempted: boolean; sent: boolean; error?: string } = { attempted: false, sent: false };
-      if (notifyOnStatusChange) {
+      if (willNotify) {
         notify.attempted = true;
-        const eventKeyMap: Record<string, string> = {
-          in_progress: "in_progress",
-          closed: "completed",
-          rejected: "rejected",
-          task_created: "task_created",
-          ready_for_planning: "task_created",
-        };
-        const eventKey = eventKeyMap[newStatus] || "status_changed";
+        const eventKey = statusEventKey(newStatus);
         try {
           const { data, error: invErr } = await supabase.functions.invoke("order-form-notify", {
             body: { submission_id: id, notification_type: "customer_update", event_key: eventKey },
@@ -514,7 +508,7 @@ export default function OrderFormDetailPage() {
     onSuccess: (notify) => {
       qc.invalidateQueries({ queryKey: ["order-form-submission", id] });
       qc.invalidateQueries({ queryKey: ["order-form-activity", id] });
-      setNotifyOnStatusChange(false);
+      setSkipStatusNotify(false);
       if (notify.attempted && notify.sent) {
         toast.success("Status oppdatert og bestiller varslet");
       } else if (notify.attempted && !notify.sent) {
@@ -1124,13 +1118,18 @@ export default function OrderFormDetailPage() {
           {bestillerEpost && (
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
               <Checkbox
-                checked={notifyOnStatusChange}
-                onCheckedChange={(c) => setNotifyOnStatusChange(!!c)}
+                checked={skipStatusNotify}
+                onCheckedChange={(c) => setSkipStatusNotify(!!c)}
                 className="h-3.5 w-3.5"
               />
               <Bell className="h-3 w-3" />
-              Varsle bestiller nå
+              Ikke varsle bestiller ved valgfrie statuser
             </label>
+          )}
+          {bestillerEpost && (
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+              Mottatt, planlagt, avvist og lukket varsles alltid på e-post
+            </span>
           )}
         </div>
 
