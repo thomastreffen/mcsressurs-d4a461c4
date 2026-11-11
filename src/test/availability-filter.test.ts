@@ -31,17 +31,17 @@ describe("parseGraphUtcDateTime", () => {
 describe("formatSlotOslo – UTC → Europe/Oslo med dato", () => {
   it("november (CET): 07:00 UTC vises som 08:00 Oslo med dato", () => {
     expect(formatSlotOslo(graphUtc("2026-11-19T07:00:00.000Z"), graphUtc("2026-11-19T15:00:00.000Z")))
-      .toBe("on. 19. nov 08:00–16:00");
+      .toBe("tor. 19. nov. 08:00–16:00");
   });
 
   it("DST (juli, CEST): 07:00 UTC vises som 09:00 Oslo", () => {
     expect(formatSlotOslo(graphUtc("2026-07-15T07:00:00.000Z"), graphUtc("2026-07-15T15:00:00.000Z")))
-      .toBe("on. 15. jul 09:00–17:00");
+      .toBe("on. 15. jul. 09:00–17:00");
   });
 
   it("Mats' reelle møte: 12:00–12:30 UTC vises som 13:00–13:30 Oslo", () => {
     expect(formatSlotOslo(graphUtc("2026-11-19T12:00:00.000Z"), graphUtc("2026-11-19T12:30:00.000Z")))
-      .toBe("on. 19. nov 13:00–13:30");
+      .toBe("tor. 19. nov. 13:00–13:30");
   });
 });
 
