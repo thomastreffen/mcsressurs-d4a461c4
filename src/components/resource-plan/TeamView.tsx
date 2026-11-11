@@ -671,6 +671,7 @@ export function TeamView({
         <span className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3 text-amber-600" />Overlapp</span>
       </div>
     </div>
+    <OutlookSyncStatusPanel companyIds={companyIds} open={syncStatusOpen} onOpenChange={setSyncStatusOpen} />
     </div>
   );
 }
