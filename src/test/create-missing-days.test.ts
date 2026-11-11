@@ -139,7 +139,7 @@ describe("technician summary row (one row per event+tech+channel)", () => {
 describe("receipt and dormant central-app intents", () => {
   it("receipt reports missing Microsoft connection as not created", () => {
     const lines = buildMissingDaysReceipt([
-      { techId: EMIL, techName: "Emil", status: "created", dayResults: [{ workDate: "2026-11-19", state: "synket" }, { workDate: "2026-11-20", state: "synket" }] },
+      { techId: EMIL, techName: "Emil", status: "created", dayResults: [{ workDate: "2026-11-19", state: "synket", outcome: "unchanged" }, { workDate: "2026-11-20", state: "synket", outcome: "created" }] },
       { techId: "m", techName: "Mats", status: "no_token" },
       { techId: "s", techName: "Solo", status: "not_applicable" },
     ]);
@@ -150,5 +150,38 @@ describe("receipt and dormant central-app intents", () => {
   it("untouched queue intent is named and labelled as not activated", () => {
     expect(queueLine({ operation: "create", status: "pending", reason_code: null, attempt_count: 0 }, "Emil Strid"))
       .toBe("Emil Strid · Sentral Microsoft-kalender (opprettelse): ikke aktivert før pilot – ingenting sendes");
+  });
+});
+
+describe("receipt wording: 'Opprettet' only for an actual Graph POST in this run", () => {
+  const args = (store: DayStore, graph: DayGraph) => ({ eventId: EVENT, technicianId: EMIL, email: "emil@x", blocks, action: "create" as const, createMissingOnly: true, store, graph, buildBody });
+
+  it("60570: 19 Nov already synced → 'Allerede synket', 20 Nov → 'Opprettet', exactly one POST", async () => {
+    const { store } = memStore([day19Synced]);
+    const { graph, calls } = memGraph();
+    const res = await syncTechnicianDays(args(store, graph));
+    expect(calls).toEqual([{ op: "create", date: "2026-11-20" }]);
+    expect(res.map((r) => r.outcome)).toEqual(["unchanged", "created"]);
+    const lines = buildMissingDaysReceipt([{ techId: EMIL, techName: "Emil", status: "created", dayResults: res }]);
+    expect(lines.map((l) => l.text)).toEqual(["Allerede synket – ingen endring", "Opprettet i Outlook (hendelses-ID mottatt)"]);
+  });
+
+  it("second and third click: zero POSTs and no day reported as 'Opprettet'", async () => {
+    const { store, rows } = memStore([day19Synced]);
+    const { graph, calls } = memGraph();
+    await syncTechnicianDays(args(store, graph));
+    const r2 = await syncTechnicianDays(args(store, graph));
+    const r3 = await syncTechnicianDays(args(store, graph));
+    expect(calls).toHaveLength(1);
+    expect(rows).toHaveLength(2);
+    for (const res of [r2, r3]) {
+      const texts = buildMissingDaysReceipt([{ techId: EMIL, techName: "Emil", status: "created", dayResults: res }]).map((l) => l.text);
+      expect(texts).toEqual(["Allerede synket – ingen endring", "Allerede synket – ingen endring"]);
+    }
+  });
+
+  it("result without outcome (older server) never claims 'Opprettet'", () => {
+    const lines = buildMissingDaysReceipt([{ techId: EMIL, techName: "Emil", status: "created", dayResults: [{ workDate: "2026-11-19", state: "synket" }] }]);
+    expect(lines[0].text).toBe("Allerede synket – ingen endring");
   });
 });
