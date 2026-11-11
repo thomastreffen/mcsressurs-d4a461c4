@@ -261,12 +261,12 @@ Deno.serve(async (req) => {
 
       const canViewExternal = await checkPerm("calendar.view_external");
 
-      const { user_ids, start, end } = body;
+      const { user_ids, start, end, job_id } = body;
       if (!user_ids?.length || !start || !end) {
         return respond({ error: "Missing user_ids, start, end", logs }, 400);
       }
 
-      log(`Checking availability for ${user_ids.length} users, ${start} → ${end}`);
+      log(`Checking availability for ${user_ids.length} users, ${start} → ${end}${job_id ? ` (job ${job_id})` : ""}`);
 
       const { data: techs } = await supabaseAdmin
         .from("technicians")
@@ -276,6 +276,57 @@ Deno.serve(async (req) => {
       if (!techs?.length) {
         log("No technicians found for given user_ids");
         return respond({ results: [], logs });
+      }
+
+      // ── Own-event windows per technician (the job's own Outlook copies must
+      //    never be reported as conflicts) + expanded span for multi-day jobs ──
+      const ownWindowsByTech = new Map<string, OwnWindow[]>();
+      let queryStart = start;
+      let queryEnd = end;
+      if (job_id) {
+        const addOwn = (techId: string | null, startAt: string | null, endAt: string | null) => {
+          if (!techId || !startAt || !endAt) return;
+          const list = ownWindowsByTech.get(techId) ?? [];
+          list.push({ startAt, endAt });
+          ownWindowsByTech.set(techId, list);
+        };
+
+        const { data: jobRow } = await supabaseAdmin
+          .from("events")
+          .select("id, start_time, end_time")
+          .eq("id", job_id)
+          .maybeSingle();
+
+        // Planned blocks = exact windows of per-day Outlook copies
+        const { data: blocks } = await supabaseAdmin
+          .from("schedule_blocks")
+          .select("technician_id, start_at, end_at")
+          .eq("project_id", job_id)
+          .is("deleted_at", null);
+        for (const b of blocks || []) {
+          addOwn(b.technician_id, b.start_at, b.end_at);
+          if (b.start_at && b.start_at < queryStart) queryStart = b.start_at;
+          if (b.end_at && b.end_at > queryEnd) queryEnd = b.end_at;
+        }
+
+        // Per-day links (incl. adopted legacy copies) – exact stored windows
+        const { data: dayLinks } = await supabaseAdmin
+          .from("job_calendar_day_links")
+          .select("technician_id, start_at, end_at")
+          .eq("event_id", job_id);
+        for (const l of dayLinks || []) addOwn(l.technician_id, l.start_at, l.end_at);
+
+        // Legacy single-event copies: techs with a link have an event at job start/end
+        if (jobRow?.start_time && jobRow?.end_time) {
+          const { data: legacyLinks } = await supabaseAdmin
+            .from("job_calendar_links")
+            .select("technician_id")
+            .eq("job_id", job_id)
+            .not("calendar_event_id", "is", null);
+          for (const l of legacyLinks || []) addOwn(l.technician_id, jobRow.start_time, jobRow.end_time);
+        }
+
+        log(`Own-event windows: ${Array.from(ownWindowsByTech.values()).reduce((n, w) => n + w.length, 0)} across ${ownWindowsByTech.size} techs; span ${queryStart} → ${queryEnd}`);
       }
 
       const techEmails = techs.map((t: any) => t.email).filter(Boolean);
