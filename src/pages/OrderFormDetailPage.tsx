@@ -2115,15 +2115,26 @@ export default function OrderFormDetailPage() {
 
 
 
+                {pendingWaitingCustomer && (
+                  <div className="flex items-start justify-between gap-2 rounded-md border border-warning/50 bg-warning/10 p-2 text-xs">
+                    <span>Status settes til <strong>Venter kunde</strong> først når du sender en beskjed til kunden om hva de må svare på. Bestiller får e-post.</span>
+                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setPendingWaitingCustomer(false)}>Avbryt</Button>
+                  </div>
+                )}
                 {/* Row 1: Synlighet */}
-                <div className="space-y-1.5">
+                <div className={`space-y-1.5 rounded-md border-2 p-2 ${commentVisibility === "internal" ? "border-muted-foreground/30 bg-muted/40" : "border-primary/60 bg-primary/5"}`}>
                   <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Synlighet</label>
                   <div className="flex items-center gap-1.5">
                     <Button
                       size="sm"
                       variant={commentVisibility === "internal" ? "default" : "outline"}
                       className="text-xs h-7 gap-1.5"
-                      onClick={() => setCommentVisibility("internal")}
+                      disabled={pendingWaitingCustomer}
+                      onClick={() => {
+                        setCommentVisibility("internal");
+                        const a = (participants as any[]).find((p: any) => p.id === addressedTo);
+                        if (a && (a.participant_type === "customer" || a.participant_type === "external")) setAddressedTo(null);
+                      }}
                     >
                       <LockKeyhole className="h-3 w-3" />
                       Intern
@@ -2132,7 +2143,7 @@ export default function OrderFormDetailPage() {
                       size="sm"
                       variant={commentVisibility === "shared" ? "default" : "outline"}
                       className="text-xs h-7 gap-1.5"
-                      onClick={() => setCommentVisibility("shared")}
+                      onClick={() => { setCommentVisibility("shared"); setSendEmailNotification(true); }}
                     >
                       <Eye className="h-3 w-3" />
                       Delt med kunde
@@ -2154,7 +2165,7 @@ export default function OrderFormDetailPage() {
                       <label htmlFor="send-email-now" className="flex-1 cursor-pointer select-none">
                         <span className="text-xs font-medium flex items-center gap-1">
                           <Mail className="h-3 w-3 text-blue-600" />
-                          Send e-postvarsel nå
+                          Send e-post til bestiller
                         </span>
                         <p className="text-[10px] text-muted-foreground">
                           {sendEmailNotification
@@ -2176,7 +2187,7 @@ export default function OrderFormDetailPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">Til alle</SelectItem>
-                        {participants.map((p: any) => (
+                        {allowedAddressees(participants as any[], commentVisibility as any).map((p: any) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.name} ({p.role_label || "Deltaker"})
                           </SelectItem>
@@ -2204,7 +2215,13 @@ export default function OrderFormDetailPage() {
                     ) : (
                       <Send className="h-3.5 w-3.5" />
                     )}
-                    {addComment.isPending ? "Sender…" : "Send melding"}
+                    {addComment.isPending
+                      ? "Lagrer…"
+                      : commentVisibility === "internal"
+                        ? "Lagre internt notat"
+                        : pendingWaitingCustomer
+                          ? "Send til kunde og sett «Venter kunde»"
+                          : "Send til kunde"}
                   </Button>
                 </div>
               </div>
