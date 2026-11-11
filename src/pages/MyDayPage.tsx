@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMyDay, type MyDayBlock } from "@/hooks/useMyDay";
 import { useMyJobUnreadMessages } from "@/hooks/useMyJobUnreadMessages";
 import { supabase } from "@/integrations/supabase/client";
+import { osloDayKey } from "../../supabase/functions/_shared/multi-day-calendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { MyDayChecklists } from "@/components/forms/MyDayChecklists";
@@ -157,7 +158,12 @@ function BlockCard({ block, onOpen, outlookGap }: { block: MyDayBlock; onOpen: (
             )}
             {st && (
               <Badge variant="outline" className={cn("text-[10px] px-2 py-0 border-0 rounded-md", st.color)}>
-                {st.label}
+                 {st.label}
+              </Badge>
+            )}
+            {outlookGap && (
+              <Badge variant="outline" className="text-[10px] px-2 py-0 border-0 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                Outlook mangler – Hub gjelder
               </Badge>
             )}
             {block.project_id && (
