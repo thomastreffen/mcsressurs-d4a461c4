@@ -9886,6 +9886,33 @@ export type Database = {
           },
         ]
       }
+      hub_calendar_diagnostic_runs: {
+        Row: {
+          app_roles: string[]
+          checks: Json
+          id: string
+          overall: string
+          run_at: string
+          run_by: string
+        }
+        Insert: {
+          app_roles?: string[]
+          checks?: Json
+          id?: string
+          overall: string
+          run_at?: string
+          run_by: string
+        }
+        Update: {
+          app_roles?: string[]
+          checks?: Json
+          id?: string
+          overall?: string
+          run_at?: string
+          run_by?: string
+        }
+        Relationships: []
+      }
       hub_outlook_event_links: {
         Row: {
           company_id: string

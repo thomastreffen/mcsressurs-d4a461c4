@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { HubCalendarDiagnosticsCard } from "@/components/admin/HubCalendarDiagnosticsCard";
 import {
   RefreshCw, ShieldOff, Plus, RotateCcw, CheckCircle2,
   AlertTriangle, XCircle, Clock, Mail, Info, Inbox, RotateCw, Ban, Send,
@@ -233,6 +234,8 @@ export default function MicrosoftAdminPage() {
           Administrer Graph-subscriptions og overvåk all e-postutsending med leveringsbevis.
         </p>
       </div>
+
+      <HubCalendarDiagnosticsCard />
 
       {/* Health summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
