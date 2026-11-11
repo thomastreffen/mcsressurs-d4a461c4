@@ -220,10 +220,19 @@ export function buildUnifiedOrderConversation(
   return combined.map((message) => byId.get(message.id) || message);
 }
 
+/** A real reply from the customer side – never Postkontoret/system forwards. */
+export function isGenuineCustomerReply(m: { sender_type?: string | null; sender_name?: string | null; message_type?: string | null }): boolean {
+  if (m.sender_type !== "customer") return false;
+  if (m.message_type === "system") return false;
+  if (/postkontor/i.test(m.sender_name || "")) return false;
+  return true;
+}
+
 export function deriveOrderConversationState(
   submissionStatus: string | null | undefined,
   orderMessages: OrderMessageLike[] = [],
   legacyComments: LegacyCommentLike[] = [],
+  statusChangedAt?: string | null,
 ): DerivedOrderConversationState {
   const rawStatus = toOrderStatus(submissionStatus);
   const conversation = buildUnifiedOrderConversation(orderMessages, legacyComments);
@@ -233,13 +242,23 @@ export function deriveOrderConversationState(
   const latestCustomerReplyAt =
     [...conversation].reverse().find((message) => message.sender_type === "customer")?.created_at || null;
 
+  // A manual "waiting for customer"/"missing info" status only resolves on a
+  // GENUINE customer reply written after that status was set. Postkontoret's
+  // forwarded order e-mail and older replies never count.
+  const changedMs = statusChangedAt ? new Date(statusChangedAt).getTime() : NaN;
+  const hasCustomerReplyAfterStatus = conversation.some(
+    (m) =>
+      isGenuineCustomerReply(m) &&
+      (Number.isNaN(changedMs) ? false : new Date(m.created_at).getTime() > changedMs),
+  );
+
   let effectiveInternalStatus = rawStatus;
 
   if (hasOpenRequest && rawStatus !== "closed" && rawStatus !== "rejected") {
     effectiveInternalStatus = "missing_info";
   } else if (
     ((hasUnreviewedReply && REVIEWABLE_STATUSES.includes(rawStatus)) ||
-      ((rawStatus === "missing_info" || rawStatus === "waiting_customer") && !hasOpenRequest)) &&
+      ((rawStatus === "missing_info" || rawStatus === "waiting_customer") && !hasOpenRequest && hasCustomerReplyAfterStatus)) &&
     rawStatus !== "closed" &&
     rawStatus !== "rejected"
   ) {

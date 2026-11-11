@@ -353,8 +353,8 @@ export default function OrderFormDetailPage() {
   }, [values]);
 
   const conversationState = useMemo(
-    () => deriveOrderConversationState(submission?.status, orderMessages as any[], comments as any[]),
-    [submission?.status, orderMessages, comments],
+    () => deriveOrderConversationState(submission?.status, orderMessages as any[], comments as any[], (submission as any)?.external_status_updated_at),
+    [submission, orderMessages, comments],
   );
 
   const autoStatusSyncRef = useRef<string | null>(null);
