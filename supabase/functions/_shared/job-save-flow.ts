@@ -9,18 +9,20 @@
  *   missing (that would risk duplicates), and never sends e-mail.
  */
 
-export type CalendarUpdatePlan = "patch" | "create" | "no_link";
+export type CalendarUpdatePlan = "patch" | "create" | "no_link" | "in_progress";
 
 /**
  * Decide what an "update" action may do for one recipient.
+ * - A "pending:" marker means another sync is in flight → "in_progress"
+ *   (never double-create).
  * - updateOnly=true (explicit "Oppdater Outlook"): missing link → "no_link"
  *   (report as pending, never create a duplicate event).
  * - updateOnly=false (legacy flows, e.g. first sync after approval): missing
  *   link → "create" is allowed.
  */
 export function planCalendarUpdate(existingCalEventId: string | null | undefined, updateOnly: boolean): CalendarUpdatePlan {
-  if (existingCalEventId && !existingCalEventId.startsWith("pending:")) return "patch";
-  if (existingCalEventId?.startsWith("pending:")) return "no_link"; // another sync in flight – do not double-create
+  if (existingCalEventId?.startsWith("pending:")) return "in_progress";
+  if (existingCalEventId) return "patch";
   return updateOnly ? "no_link" : "create";
 }
 

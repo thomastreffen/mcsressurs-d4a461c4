@@ -16,9 +16,9 @@ describe("planCalendarUpdate (explicit «Oppdater Outlook»)", () => {
     expect(planCalendarUpdate(null, false)).toBe("create");
   });
 
-  it("treats a pending marker as no_link (sync in flight, no double create)", () => {
-    expect(planCalendarUpdate("pending:abc", true)).toBe("no_link");
-    expect(planCalendarUpdate("pending:abc", false)).toBe("no_link");
+  it("treats a pending marker as in_progress (sync in flight, no double create)", () => {
+    expect(planCalendarUpdate("pending:abc", true)).toBe("in_progress");
+    expect(planCalendarUpdate("pending:abc", false)).toBe("in_progress");
   });
 });
 
