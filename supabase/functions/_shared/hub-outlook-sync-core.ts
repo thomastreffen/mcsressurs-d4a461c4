@@ -97,3 +97,78 @@ export function decideInbound(current: HubAppointment, mapping: Mapping, change:
   if (change.isCancelled) return { kind: "mark_cancelled" };
   return { kind: "apply_to_hub", fields: { title: change.subject, start_at: change.start, end_at: change.end } };
 }
+
+// ---- Inbound classification (conservative: block unsupported variants instead of losing data) ----
+
+/** Graph returns dateTime without offset when Prefer: outlook.timezone="UTC" is used; treat as UTC instant. */
+export function parseGraphInstant(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const s = raw.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(raw) ? raw : raw + "Z";
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+export type GraphEventShape = {
+  id: string;
+  changeKey?: string | null;
+  subject?: string | null;
+  start?: { dateTime?: string } | null;
+  end?: { dateTime?: string } | null;
+  isCancelled?: boolean;
+  isAllDay?: boolean;
+  type?: string | null; // singleInstance | occurrence | exception | seriesMaster
+  seriesMasterId?: string | null;
+};
+
+export type InboundClassification =
+  | { kind: "change"; change: InboundChange }
+  | { kind: "blocked"; reason: string };
+
+/** Maps a Graph event to a safe inbound change. Recurring series and all-day events are explicitly
+ * blocked (never silently truncated); cancellations pass through; missing/invalid times are blocked. */
+export function classifyGraphEvent(ev: GraphEventShape): InboundClassification {
+  if (!ev.changeKey) return { kind: "blocked", reason: "missing_change_key" };
+  if (ev.isCancelled) {
+    return { kind: "change", change: { outlook_change_key: ev.changeKey, subject: ev.subject ?? "", start: "", end: "", isCancelled: true } };
+  }
+  if (ev.type && ev.type !== "singleInstance") return { kind: "blocked", reason: "recurring_unsupported" };
+  if (ev.seriesMasterId) return { kind: "blocked", reason: "recurring_unsupported" };
+  if (ev.isAllDay) return { kind: "blocked", reason: "all_day_unsupported" };
+  const start = parseGraphInstant(ev.start?.dateTime ?? null);
+  const end = parseGraphInstant(ev.end?.dateTime ?? null);
+  if (!start || !end) return { kind: "blocked", reason: "invalid_time" };
+  if (new Date(end) <= new Date(start)) return { kind: "blocked", reason: "invalid_range" };
+  return { kind: "change", change: { outlook_change_key: ev.changeKey, subject: ev.subject ?? "", start, end, isCancelled: false } };
+}
+
+// ---- Conflict resolution ----
+
+export type ConflictResolution = "keep_hub" | "keep_outlook";
+
+/** Snapshot stored on the link when a conflict is detected; fingerprint lets keep_outlook mark the link
+ * synced without a redundant re-push. */
+export type OutlookSnapshot = { title: string; start_at: string; end_at: string; change_key: string; hub_fingerprint: string };
+
+export function buildSnapshot(change: InboundChange, current: HubAppointment): OutlookSnapshot {
+  return {
+    title: change.subject,
+    start_at: change.start,
+    end_at: change.end,
+    change_key: change.outlook_change_key,
+    hub_fingerprint: hubFingerprint({ ...current, title: change.subject, start_at: change.start, end_at: change.end }),
+  };
+}
+
+/** Pure resolution decision; the RPC performs the writes. keep_hub re-queues an outbound push;
+ * keep_outlook adopts the snapshot into Hub and marks the link synced. */
+export function planResolution(resolution: ConflictResolution, snapshot: OutlookSnapshot | null):
+  | { kind: "keep_hub"; nextState: "pending" }
+  | { kind: "keep_outlook"; nextState: "synced"; fields: { title: string; start_at: string; end_at: string }; hub_version: string }
+  | { kind: "invalid"; reason: string } {
+  if (resolution === "keep_hub") return { kind: "keep_hub", nextState: "pending" };
+  if (resolution === "keep_outlook") {
+    if (!snapshot) return { kind: "invalid", reason: "missing_snapshot" };
+    return { kind: "keep_outlook", nextState: "synced", fields: { title: snapshot.title, start_at: snapshot.start_at, end_at: snapshot.end_at }, hub_version: snapshot.hub_fingerprint };
+  }
+  return { kind: "invalid", reason: "unknown_resolution" };
+}
