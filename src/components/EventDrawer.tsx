@@ -2565,7 +2565,7 @@ export function EventDrawer({
               );
             })()}
 
-            <AlertDialogFooter>
+            <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
               <AlertDialogCancel disabled={saving}>Avbryt</AlertDialogCancel>
               <Button
                 variant="outline"
@@ -2592,7 +2592,7 @@ export function EventDrawer({
                 {saving ? (
                   <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Lagrer...</span>
                 ) : (
-                  "Lagre uten varsling"
+                  "Lagre (uten varsling)"
                 )}
               </Button>
               <AlertDialogAction
@@ -2603,8 +2603,8 @@ export function EventDrawer({
                   setSaving(true);
                   try {
                     await persistEventChanges({
-                      sendNotifications: pendingSave.sendNotifications,
-                      updateOutlook: pendingSave.updateOutlook,
+                      sendNotifications: true,
+                      updateOutlook: false,
                       changeSet: pendingSave.allChanges,
                     });
                   } catch (err: any) {
@@ -2618,9 +2618,9 @@ export function EventDrawer({
                 }}
               >
                 {saving ? (
-                  <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Oppdaterer...</span>
+                  <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Lagrer og varsler...</span>
                 ) : (
-                  "Fortsett og oppdater"
+                  "Lagre og varsle montører"
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>
