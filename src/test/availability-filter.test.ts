@@ -36,7 +36,7 @@ describe("formatSlotOslo – UTC → Europe/Oslo med dato", () => {
 
   it("DST (juli, CEST): 07:00 UTC vises som 09:00 Oslo", () => {
     expect(formatSlotOslo(graphUtc("2026-07-15T07:00:00.000Z"), graphUtc("2026-07-15T15:00:00.000Z")))
-      .toBe("on. 15. jul. 09:00–17:00");
+      .toBe("ons. 15. juli 09:00–17:00");
   });
 
   it("Mats' reelle møte: 12:00–12:30 UTC vises som 13:00–13:30 Oslo", () => {
