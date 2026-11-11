@@ -24,9 +24,10 @@ function fixture(name: string, internal = false) {
         if (table === "technicians") return techs;
         if (table === "company_reminder_settings") return [{ company_id: "company", enabled: true, max_reminders: 3 }];
         if (table === "job_approvals") return single ? { token: "mock-approval" } : techs.map(t => ({ id: t.id, job_id: eventId, technician_user_id: t.user_id, token: "mock-approval", reminder_profile: "standard", reminder_count: 0, created_at: "2020-01-01", expires_at: "2035-01-01" }));
+        if (table === "event_logs") return writes.filter(w => w.table === "event_logs").map(w => w.values);
         return single ? null : [];
       };
-      const chain: any = { select: () => chain, eq: () => chain, in: () => chain, is: () => chain, neq: () => chain, order: () => chain, limit: () => chain,
+      const chain: any = { select: () => chain, eq: () => chain, in: () => chain, is: () => chain, neq: () => chain, gte: () => chain, order: () => chain, limit: () => chain,
         insert: (values: any) => { writes.push({ table, values }); return chain; }, update: (values: any) => { writes.push({ table, values }); return chain; },
         single: async () => { single = true; return { data: result(), error: null }; },
         maybeSingle: async () => { single = true; return { data: result(), error: null }; },
@@ -67,5 +68,16 @@ describe("Actual handlers, mocked Cloud and Graph only", () => {
     const f = fixture("notify-event-changes"); await f.call({ job_id: eventId, changes: [{ label: "Adresse", newValue: "Mock" }] });
     expect(f.sends).toHaveLength(2); expect(f.records.filter(r => r.status === "pending")).toHaveLength(2);
     expect(f.records.some(r => r.status === "failed")).toBe(true);
+  });
+  it("identical change notification within the dedup window is not sent twice", async () => {
+    const f = fixture("notify-event-changes");
+    const first = await f.call({ job_id: eventId, changes: [{ label: "Adresse", newValue: "Mock" }] });
+    expect(first.status).toBe(200); expect(f.sends).toHaveLength(2);
+    const second = await f.call({ job_id: eventId, changes: [{ label: "Adresse", newValue: "Mock" }] });
+    expect(second.status).toBe(200); expect(second.body.skipped_duplicate).toBe(true);
+    expect(f.sends).toHaveLength(2); // fortsatt bare første utsending
+    const third = await f.call({ job_id: eventId, changes: [{ label: "Adresse", newValue: "Annet" }] });
+    expect(third.body.skipped_duplicate).toBeUndefined();
+    expect(f.sends).toHaveLength(4); // reell endring sendes
   });
 });
