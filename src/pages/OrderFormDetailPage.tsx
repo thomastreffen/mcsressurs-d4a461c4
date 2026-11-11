@@ -666,9 +666,6 @@ export default function OrderFormDetailPage() {
       }
       return { isShared, emailResult, statusApplied };
     },
-    onError: (e: any) => {
-      toast.error(e?.message || "Meldingen ble ikke lagret");
-    },
     onSuccess: (result) => {
       setComment("");
       setCommentFiles([]);
