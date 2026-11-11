@@ -1,5 +1,6 @@
 import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
+import { notifyFingerprint, shouldSendInfoUpdate, NOTIFY_DEDUP_WINDOW_MINUTES } from "../_shared/job-save-flow.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -202,6 +203,26 @@ Deno.serve(async (req) => {
     const { data: technicians } = await supabaseAdmin
       .from("technicians").select("id, name, email, user_id").in("id", techIds);
 
+    // Idempotens: identisk varsel (samme jobb, samme endringer, samme mottakere)
+    // innen kort tid etter forrige utsending sendes ikke på nytt. Beskytter mot
+    // dobbeltklikk og gjentatte «Lagre og varsle» uten reelle endringer.
+    const fingerprint = notifyFingerprint(job.id, body.changes, techIds);
+    const windowStart = new Date(Date.now() - NOTIFY_DEDUP_WINDOW_MINUTES * 60 * 1000).toISOString();
+    const { data: recentSends } = await supabaseAdmin
+      .from("event_logs")
+      .select("metadata")
+      .eq("event_id", job.id)
+      .eq("action_type", "info_update_sent")
+      .gte("created_at", windowStart);
+    const recentFingerprints = (recentSends || [])
+      .map((row: any) => row?.metadata?.fingerprint)
+      .filter((fp: unknown): fp is string => typeof fp === "string");
+    if (!shouldSendInfoUpdate(fingerprint, recentFingerprints)) {
+      return new Response(JSON.stringify({ success: true, skipped_duplicate: true, results: [] }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const displayNumber = job.job_number || job.internal_number || "—";
     const useSystem = systemSenderEnabled();
     const msToken = useSystem ? null : await getValidMsToken(supabaseAdmin, callerUserId);
@@ -243,7 +264,7 @@ Deno.serve(async (req) => {
       performed_by: callerUserId,
       action_type: "info_update_sent",
       change_summary: `Info-varsel sendt til ${technicians?.length || 0} montør(er) om ${body.changes.length} endring(er) (uten ny godkjenning)`,
-      metadata: { changes: body.changes, technician_ids: techIds },
+      metadata: { changes: body.changes, technician_ids: techIds, fingerprint },
     } as any);
 
     return new Response(JSON.stringify({ success: true, results }), {
