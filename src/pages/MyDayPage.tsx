@@ -631,6 +631,21 @@ export default function MyDayPage() {
   const importantChanges = notifications.filter(n => !n.read && n.event_id && n.priority !== "info");
   const jobIds = [...todayBlocks, ...upcomingBlocks].map((b) => b.project_id).filter(Boolean) as string[];
   const unreadMessages = useMyJobUnreadMessages(jobIds);
+
+  // Known Outlook gaps per (job, day): only failed/pending day links – never noise for legacy jobs.
+  const { data: outlookGaps } = useQuery({
+    queryKey: ["my-day-outlook-gaps", jobIds.join(",")],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("job_calendar_day_links")
+        .select("event_id,work_date,status")
+        .in("event_id", jobIds)
+        .neq("status", "synced");
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => `${r.event_id}|${r.work_date}`));
+    },
+    enabled: jobIds.length > 0,
+  });
   const titleFor = (id: string) => [...todayBlocks, ...upcomingBlocks].find((b) => b.project_id === id);
 
   const handleRefresh = async () => {
@@ -720,7 +735,7 @@ export default function MyDayPage() {
         ) : (
           <>
             {todayBlocks.length > 0 ? (
-              <DayGroup label="I dag" blocks={todayBlocks} onOpen={setSelectedBlock} />
+              <DayGroup label="I dag" blocks={todayBlocks} onOpen={setSelectedBlock} gaps={outlookGaps} />
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
@@ -767,7 +782,7 @@ export default function MyDayPage() {
                 {Object.entries(upcomingByDate).map(([dateStr, blocks]) => {
                   const d = new Date(dateStr);
                   const label = isTomorrow(d) ? "I morgen" : format(d, "EEEE d. MMM", { locale: nb });
-                  return <DayGroup key={dateStr} label={label} blocks={blocks} onOpen={setSelectedBlock} />;
+                  return <DayGroup key={dateStr} label={label} blocks={blocks} onOpen={setSelectedBlock} gaps={outlookGaps} />;
                 })}
               </div>
             )}
