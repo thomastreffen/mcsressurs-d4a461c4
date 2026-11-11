@@ -2550,34 +2550,16 @@ export function EventDrawer({
                     </div>
                   )}
 
-                  <div className="space-y-3 rounded-lg border border-border/40 bg-card p-3">
-                    <label className="flex items-start gap-3 text-sm">
-                      <Checkbox
-                        checked={pendingSave?.sendNotifications ?? true}
-                        onCheckedChange={(checked) => setPendingSave((prev) => prev ? { ...prev, sendNotifications: checked === true } : prev)}
-                      />
-                      <div>
-                        <p className="font-medium">Varsle berørte montører</p>
-                        <p className="text-muted-foreground">
-                          {requiresApproval.length > 0 && infoOnly.length > 0
-                            ? "Sender én samlet e-post: ny godkjenningsforespørsel for tid/montør, og en tydelig seksjon med øvrige praktiske endringer."
-                            : requiresApproval.length > 0
-                              ? "Sender ny godkjenningsforespørsel for tid/montør."
-                              : "Sender info-e-post om endringene. Montørene trenger ikke å godkjenne på nytt."}
-                        </p>
-                      </div>
-                    </label>
-
-                    <label className="flex items-start gap-3 text-sm">
-                      <Checkbox
-                        checked={pendingSave?.updateOutlook ?? true}
-                        onCheckedChange={(checked) => setPendingSave((prev) => prev ? { ...prev, updateOutlook: checked === true } : prev)}
-                      />
-                      <div>
-                        <p className="font-medium">Oppdater Outlook-kalenderhendelser</p>
-                        <p className="text-muted-foreground">Forsøker å oppdatere eksisterende kalenderkobling.</p>
-                      </div>
-                    </label>
+                  <div className="rounded-lg border border-border/40 bg-card p-3 text-sm">
+                    <p className="font-medium">Velg hvordan du vil lagre</p>
+                    <p className="text-muted-foreground">
+                      {requiresApproval.length > 0 && infoOnly.length > 0
+                        ? "«Lagre og varsle» sender én samlet e-post: ny godkjenningsforespørsel for tid/montør, og en tydelig seksjon med øvrige praktiske endringer."
+                        : requiresApproval.length > 0
+                          ? "«Lagre og varsle» sender ny godkjenningsforespørsel for tid/montør."
+                          : "«Lagre og varsle» sender info-e-post om endringene. Montørene trenger ikke å godkjenne på nytt."}
+                      {" "}«Lagre» lagrer kun i Hub – ingenting sendes. Outlook-kalender oppdateres separat fra jobbkortet.
+                    </p>
                   </div>
                 </div>
               );
