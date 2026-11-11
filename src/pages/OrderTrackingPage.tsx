@@ -805,7 +805,7 @@ export default function OrderTrackingPage() {
 
   const visibleSummary = summaryFields.filter((f) => valuesMap[f.key]);
   const hasMessages = allMessages.length > 0;
-  const isClosed = externalStatus === "completed" || externalStatus === "closed";
+  const isClosed = view.step === "completed";
 
   const openLightbox = (att: ChatAttachment, idx: number, list: ChatAttachment[]) => {
     setLightboxAtts(list);
