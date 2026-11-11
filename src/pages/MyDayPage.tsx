@@ -109,7 +109,7 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 
 /* ─── Block Card ─── */
 
-function BlockCard({ block, onOpen }: { block: MyDayBlock; onOpen: (b: MyDayBlock) => void }) {
+function BlockCard({ block, onOpen, outlookGap }: { block: MyDayBlock; onOpen: (b: MyDayBlock) => void; outlookGap?: boolean }) {
   const startTime = format(new Date(block.start_at), "HH:mm");
   const endTime = format(new Date(block.end_at), "HH:mm");
   const st = block.project_status ? statusConfig[block.project_status] : null;
@@ -601,13 +601,13 @@ function ActionButton({ icon: Icon, label, onClick }: { icon: React.ElementType;
 
 /* ─── Day Group ─── */
 
-function DayGroup({ label, blocks, onOpen }: { label: string; blocks: MyDayBlock[]; onOpen: (b: MyDayBlock) => void }) {
+function DayGroup({ label, blocks, onOpen, gaps }: { label: string; blocks: MyDayBlock[]; onOpen: (b: MyDayBlock) => void; gaps?: Set<string> }) {
   return (
     <section>
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">{label}</h2>
       <div className="space-y-2">
         {blocks.map((b) => (
-          <BlockCard key={b.id} block={b} onOpen={onOpen} />
+          <BlockCard key={b.id} block={b} onOpen={onOpen} outlookGap={!!b.project_id && !!gaps?.has(`${b.project_id}|${osloDayKey(b.start_at)}`)} />
         ))}
       </div>
     </section>
