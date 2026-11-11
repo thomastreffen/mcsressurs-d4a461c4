@@ -119,6 +119,7 @@ function buildApprovalEmail(
   techStartAt?: string | null,
   techEndAt?: string | null,
   infoChanges: InfoChange[] = [],
+  plannedDays: string[] = [],
 ): { subject: string; body: string } {
   // Use technician-specific time override if available, otherwise fall back to event times
   const { startDate, startTime, endTime } = formatJobSchedule(job.start_time, job.end_time, techStartAt, techEndAt);
@@ -166,6 +167,14 @@ function buildApprovalEmail(
     <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
       ${briefEmailRows(job.__brief ?? buildOperationalJobBrief({ event: { ...job, job_number: displayNumber } }), { date: startDate, time: `${startTime} – ${endTime}` })}
     </table>
+
+    ${plannedDays.length > 1 ? `
+    <div style="margin: 4px 0 16px; padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;">
+      <p style="margin: 0 0 6px; font-weight: 600; color: #166534; font-size: 13px;">📅 Oppdraget er planlagt over ${plannedDays.length} dager – godkjenningen gjelder alle dagene:</p>
+      <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #1a1a2e;">
+        ${plannedDays.map((d) => `<li>${d}</li>`).join("")}
+      </ul>
+    </div>` : ""}
     
     ${attachmentsHtml}
     ${buildInfoChangesHtml(infoChanges)}
