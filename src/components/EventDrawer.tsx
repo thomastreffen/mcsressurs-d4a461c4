@@ -78,6 +78,7 @@ import {
   BellOff,
   Check,
 } from "lucide-react";
+import { CriticalChangeRow } from "@/components/event-drawer/CriticalChangeRow";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -2510,7 +2511,7 @@ export function EventDrawer({
         </AlertDialog>
 
         <AlertDialog open={!!pendingSave} onOpenChange={(open) => !open && setPendingSave(null)}>
-          <AlertDialogContent>
+          <AlertDialogContent className="flex max-h-[90dvh] flex-col gap-3 overflow-hidden p-4 sm:p-6">
             <AlertDialogHeader>
               <AlertDialogTitle>Bekreft endringer på oppdraget</AlertDialogTitle>
               <AlertDialogDescription>
@@ -2528,7 +2529,7 @@ export function EventDrawer({
               );
 
               return (
-                <div className="space-y-3">
+                <div className="-mx-1 min-h-0 flex-1 space-y-3 overflow-y-auto px-1" data-testid="critical-save-body">
                   {requiresApproval.length > 0 && (
                     <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
                       <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
@@ -2536,10 +2537,7 @@ export function EventDrawer({
                         <p className="text-xs font-semibold uppercase tracking-wide">Krever ny godkjenning fra montør</p>
                       </div>
                       {requiresApproval.map((change) => (
-                        <div key={change.key} className="space-y-0.5 text-sm">
-                          <p className="font-medium">{change.label}</p>
-                          <p className="text-muted-foreground">{change.oldValue || "Tomt"} → {change.newValue || "Tomt"}</p>
-                        </div>
+                        <CriticalChangeRow key={change.key} label={change.label} oldValue={change.oldValue} newValue={change.newValue} />
                       ))}
                     </div>
                   )}
@@ -2551,10 +2549,7 @@ export function EventDrawer({
                         <p className="text-xs font-semibold uppercase tracking-wide">Sendes som informasjon (ingen ny godkjenning)</p>
                       </div>
                       {infoOnly.map((change) => (
-                        <div key={change.key} className="space-y-0.5 text-sm">
-                          <p className="font-medium">{change.label}</p>
-                          <p className="text-muted-foreground">{change.oldValue || "Tomt"} → {change.newValue || "Tomt"}</p>
-                        </div>
+                        <CriticalChangeRow key={change.key} label={change.label} oldValue={change.oldValue} newValue={change.newValue} />
                       ))}
                     </div>
                   )}
@@ -2574,8 +2569,8 @@ export function EventDrawer({
               );
             })()}
 
-            <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-              <AlertDialogCancel disabled={saving}>Avbryt</AlertDialogCancel>
+            <AlertDialogFooter className="shrink-0 flex-col gap-2 border-t border-border/40 pt-3 sm:flex-col sm:space-x-0">
+              <AlertDialogCancel disabled={saving} className="mt-0">Avbryt</AlertDialogCancel>
               <Button
                 variant="outline"
                 disabled={saving}
