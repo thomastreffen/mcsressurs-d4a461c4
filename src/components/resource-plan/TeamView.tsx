@@ -315,7 +315,13 @@ export function TeamView({
             className={cn("px-3 py-1.5 rounded-md transition-colors min-h-[32px]", kindFilter===k ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button>
         ))}
       </div>
-      <LocalExportMenu title="Ressursplan" module="resource_plan" filters={{Uke:format(weekStart,'w', {locale:nb}),Periode:`${format(weekStart,'dd.MM.yyyy')} – ${format(addDays(weekStart,6),'dd.MM.yyyy')}`,Status:TEAM_STATUS_OPTIONS.filter(s=>!visibleStatuses||visibleStatuses.has(s.key)).map(s=>s.label).join(', ')}} rows={exportRows}/>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => setSyncStatusOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors min-h-[32px]">
+          <CalendarSync className="h-3.5 w-3.5" /> Synkstatus
+        </button>
+        <LocalExportMenu title="Ressursplan" module="resource_plan" filters={{Uke:format(weekStart,'w', {locale:nb}),Periode:`${format(weekStart,'dd.MM.yyyy')} – ${format(addDays(weekStart,6),'dd.MM.yyyy')}`,Status:TEAM_STATUS_OPTIONS.filter(s=>!visibleStatuses||visibleStatuses.has(s.key)).map(s=>s.label).join(', ')}} rows={exportRows}/>
+      </div>
     </div>
     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <div className="overflow-auto">

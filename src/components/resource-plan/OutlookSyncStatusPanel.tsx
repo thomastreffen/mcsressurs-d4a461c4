@@ -136,7 +136,7 @@ function PilotSettings() {
         <Switch checked={enabled} onCheckedChange={setEnabled} />
       </label>
       <label className="flex items-center justify-between gap-3 text-sm">
-        Kun testkjøring (dry run – ingen echte endringer i Outlook)
+        Kun testkjøring (dry run – ingen reelle endringer i Outlook)
         <Switch checked={dryRun} onCheckedChange={setDryRun} />
       </label>
       <label className="flex items-center justify-between gap-3 text-sm">
