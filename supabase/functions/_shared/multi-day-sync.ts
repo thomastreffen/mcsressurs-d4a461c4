@@ -40,6 +40,8 @@ export async function syncTechnicianDays(args: {
   email: string;
   blocks: { technician_id: string; start_at: string; end_at: string }[];
   action: "create" | "update" | "delete";
+  /** Explicit "Oppdater Outlook": only PATCH existing links, never create new events. */
+  updateOnly?: boolean;
   store: DayStore;
   graph: DayGraph;
   buildBody: (item: DayPlanItem) => unknown;
@@ -76,6 +78,11 @@ export async function syncTechnicianDays(args: {
   }
 
   for (const item of diff.creates) {
+    if (args.updateOnly) {
+      // No link → never auto-create from an explicit update (no duplicates).
+      results.push({ technicianId, workDate: item.workDate, state: "venter" });
+      continue;
+    }
     const claim = await store.claimCreate(eventId, item);
     if (claim === "exists") {
       results.push({ technicianId, workDate: item.workDate, state: "synket" });
