@@ -1,27 +1,9 @@
-# Roadmap – Hub-dokumentasjon → Tripletex
+# Flerdags kalender ende-til-ende (jobb 60570-funn)
 
-- [x] A0/A1/A3: Skjemaintegritet, serverkontroll, autolagring, bildelagring (migrasjon 0081)
-- [x] A1.5 Kravmatrise (grunnlag levert; maler mangler faglig godkjenning, godkjennere ikke tildelt) per selskap (jobbtype/arbeidstype, regelversjon, betingede krav) med to faste kategorier per jobb: Risikovurdering/SJA + Avslutningsdokumentasjon; snapshot på jobb ved planlegging/oppstart; ukjent jobbtype/feil = «Dokumentasjonskrav må avklares»; lederstyrte tillegg/unntak/likeverdig dokument med audit, montør kan kun be om «ikke relevant»
-- [~] A1.6 Fremdrift (lesevisning på Min dag levert; separate statuser kontroll/godkjent/fakturaklar gjenstår) på Min dag/jobbkort: «Fullfør sluttkontroll», separate statuser (Arbeid utført / Dokumentasjon fullført / Til kontroll / Godkjent / Klar for faktura)
-- [ ] A1.5b Dokumentasjonsrettigheter: ansvarlig montør fyller/signerer egen jobb; hjelpearbeider avgrenset; signere-som-utførende ≠ faglig godkjenning ≠ dispensasjon; per person/rolle/skjematype på eksisterende permission-system; server/RLS + rollematrise-tester
-- [ ] A1.7 Fail-closed port «Dokumentasjon komplett» + Hub «Klar for fakturering», bak av-bryter per selskap (ingen massaktivering)
-- [ ] A1.8 Auditert unntak for hele skjema (autorisert rolle, begrunnelse); N/A-begrunnelse per punkt etter malpolicy
-- [ ] A1.9 Oversikt for installatør/PL + målrettet påminnelse/eskalering (aldri til alle admins)
-- [ ] A2/A4: Tegnet signatur, PDF-snapshot, PL-godkjenning/retur
-- [ ] B: Tripletex TEST-arkivering
-- [ ] C: Fakturavedlegg (manuelt valg først)
-- [ ] Superadmin-UI for å tildele unntaksgodkjennere (i dag kun via server)
-
-## Outlook ↔ Hub toveis (Rune, 10.11)
-- [x] Etappe 1 gap/kontrakt (.lovable/outlook-hub-2way/gap-and-contract.md)
-- [x] Etappe 2 trygg import: privat=Opptatt, selskapsavgrenset forslag, ingen auto-kobling, kansellering, synkstatus
-- [x] Etappe 2c svarstatus per deltaker + «Avtale»-merking (avslått skjules)
-- [ ] Etappe 2b synkstatus/403 synlig i Ressursplan-admin
-- [x] Etappe 3 Hub-oppgave → Outlook bygget bak flagg AV + dry-run (aktivering venter på testpostkasse)
-- [x] Etappe 4 Outlook-endring → Hub: `hub-appointment-inbound-sync` (migrasjon 0088) – idempotent via changeKey, konfliktmodell (begge sider endret / avlyst / gjentakende / heldags → «Krever avklaring»), aldri stille overskriving, flagg AV + dry_run PÅ; status- og konfliktpanel i Ressursplan («Synkstatus») med Behold Hub/Behold Outlook + superadmin pilotinnstillinger
-- [ ] Etappe 5 kontrollert test på isolert postkasse (venter godkjenning)
-- [ ] Webhook/delta-kobling for umiddelbar innsynk (i dag: batch-funksjon, ingen cron koblet)
-- [ ] BLOKKERT: Microsoft-tilgang for Eirik, Hans Jakob, Lars Erik, Rune (Thomas/Simen)
-- [x] Ressursplan rekkestruktur: jobber øverst, avtaler under, kronologisk, +N, legend, filter, klokkeslett med minutter
-- [x] «Outlook ikke tilkoblet»-merke per montør (trenger selskapsavgrenset lesetilgang til synkstatus)
-- [ ] Microsoft-admin: legg Rune m.fl. i tillatt gruppe for Hub-appens tilgangspolicy (RAOP) – Thomas/Simen
+- [ ] Per-dag plankjerne: delt ren TS (bygg plan per jobb×montør×dag, idempotensnøkler, diff for endring/fjerning, Europe/Oslo)
+- [ ] Mapping-tabell job_calendar_day_links (migrasjon, GRANT, RLS)
+- [ ] calendar-write-sync: én Outlook-hendelse per (jobb, montør, dag) via eksisterende personlig-token-vei; legacy én-hendelse beholdes uten planblokker
+- [ ] create-approval: infomail/aksept lister ALLE planlagte dager
+- [ ] UI: per-dag/per-montør leveringsstatus + samleindikator; montørflate «Outlook mangler»-merke
+- [ ] Mock-testharness: flerdag, endret dato, fjernet montør, dobbelklikk/idempotens, partial fail, replay, TZ/DST
+- [ ] Full test + build + deploy; job-outlook-app-sync forblir AV/dry-run
