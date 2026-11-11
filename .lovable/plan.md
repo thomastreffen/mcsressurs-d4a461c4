@@ -73,3 +73,38 @@ MCS Elektrotavler er et søsterselskap i MCS-konsernet. Avklar om det skal være
 6. **Tripletex-kobling** via stabil ID, deretter lokalkontorer for pilotkundene.
 
 Hvert steg logges med gammel og ny verdi og hvem som godkjente.
+
+---
+
+# Tillegg: Sikkerhetskontroll etter Simens oppdatering 11.11 kl. 10:18
+
+Kun lesing. Ingen endringer i Microsoft, kalendere, brytere, secrets eller tokens.
+
+## Status i Hub (verifisert)
+- Secrets: bare `AZURE_*` (eksisterende Postkontor-app), `LOVABLE_API_KEY`, `MAIL_INGEST_DEBUG` og `TRIPLETEX_TEST_API_TOKEN`. **Ingen `HUB_CALENDAR_*` er lagt inn**, så den nye appen er ikke koblet. Synken kan ikke hente token og gjør ingen kall.
+- Brytere (lest 11.11): jobbsynk av, testmodus på, ingen pilotpostkasser, ikke merket som verifisert. Avtalesynk av (også innkommende), testmodus på.
+
+## Vurdering
+1. **En ekte ApplicationAccessPolicy med RestrictAccess** på den nye AppId-en og en egen gruppe begrenser den tenant-wide `Calendars.ReadWrite` til gruppens postkasser. Resultatet Granted for Thomas og Denied for Simen er i tråd med det. Men `Test-ApplicationAccessPolicy` er bare en policy-evaluering i Exchange, **ikke bevis ende-til-ende**. Det er ikke dokumentert at policyen er `RestrictAccess` (ikke `DenyAccess`), at den gjelder riktig AppId, eller hvilken gruppe den peker på.
+2. **Live Graph-kontroll med den nye appens eget token** (ikke Postkontor-appen) må vise:
+   - kalender i pilotpostkassen → 200
+   - kalender i en postkasse utenfor gruppen → 403
+   - Mail API i pilotpostkassen → 403, fordi appen ikke har mailtillatelse
+
+   Bruk metadata-kall som `GET /users/{id}/calendar?$select=id,name`, aldri kall som leser møteinnhold. Ingen skriving. Helst mot en dedikert testpostkasse. Merk at policyen kan bruke opptil cirka én time på å tre i kraft.
+3. **Før aktivering:**
+   - Simen eller Thomas lager en ny secret og legger den inn selv i Hub sine Secrets. Ingen overføring i chat eller e-post.
+   - Velg én pilotpostkasse og legg bare den på pilotlisten, med testmodus fortsatt på.
+   - Thomas og Rune er ekte brukere med ekte kalendere. De brukes ikke til kalenderskriving uten egen godkjenning.
+   - Gruppen bør i første omgang inneholde bare testpostkassen.
+
+## Melding til Simen (videresendbar)
+> Takk! For å kunne bekrefte oppsettet trenger vi:
+> 1. Utskrift av `Get-ApplicationAccessPolicy` for den nye «MCS Hub Kalender»-appen, som viser AppId, AccessRight = RestrictAccess og hvilken gruppe den peker på.
+> 2. Bekreftelse på at den gamle secret-en er slettet i Entra, og at ny secret legges inn direkte i Hub sine Secrets av deg eller Thomas, ikke sendt på e-post eller chat.
+> 3. En dedikert testpostkasse (f.eks. kalendertest@…) lagt til i gruppen. Den blir vår eneste pilot. Thomas og Rune kan gjerne stå i gruppen, men brukes ikke til testskriving før egen godkjenning.
+> 4. Thomas som gruppeeier bare hvis han faktisk skal administrere medlemskap. Ellers beholder IT eierskapet.
+> 5. Når secret er lagt inn: vi kjører en lesende kontroll med den nye appens token (kalender 200 for testpostkassen, 403 for en annen ansatt, og Mail 403) og sender deg resultatet før noe slås på.
+
+## Trygg neste handling
+Vent på punkt 1–3 fra Simen. Deretter, med egen godkjenning: én lesende Graph-kontroll med nytt token. Først etter den settes «verifisert» og testpostkassen på pilotlisten.
