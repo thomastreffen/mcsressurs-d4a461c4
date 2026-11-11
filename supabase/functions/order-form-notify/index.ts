@@ -1,3 +1,4 @@
+import { customerStatusView } from "../_shared/order-customer-status.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -253,9 +254,9 @@ Deno.serve(async (req) => {
           color: "#DCFCE7", colorFg: "#166534",
         },
         waiting_customer: {
-          subject: `Oppdatering: ${submission.submission_no} - Vi venter på svar fra deg`,
-          heading: "Status endret til Venter på kunde",
-          body: "Status endret til Venter på kunde. Vi avventer tilbakemelding fra deg. Følg saken via sporingslenken.",
+          subject: `Oppdatering: ${submission.submission_no} - ${customerStatusView("waiting_customer").label}`,
+          heading: `Status endret til ${customerStatusView("waiting_customer").label}`,
+          body: `Status endret til ${customerStatusView("waiting_customer").label}. MCS har tatt tak i saken, og vi avventer tilbakemelding fra deg. Følg saken via sporingslenken.`,
           color: "#FEF3C7", colorFg: "#92400E",
         },
         rejected: {
@@ -355,7 +356,7 @@ Deno.serve(async (req) => {
       // Optional combined status: one e-mail for «Venter kunde» + the personal message.
       const combinedWaiting = body.status_event_key === "waiting_customer";
       subject = combinedWaiting
-        ? `Oppdatering: ${submission.submission_no} - Vi venter på svar fra deg`
+        ? `Oppdatering: ${submission.submission_no} - ${customerStatusView("waiting_customer").label}`
         : `Melding: ${submission.submission_no} - ${oppdragstittel}`;
       recipients = [bestillerEpost];
 
@@ -364,7 +365,7 @@ Deno.serve(async (req) => {
         submissionNo: submission.submission_no,
         kundenavn,
         oppdragstittel,
-        heading: combinedWaiting ? "Status endret til Venter på kunde" : "Ny melding fra " + senderName,
+        heading: combinedWaiting ? `Status endret til ${customerStatusView("waiting_customer").label}` : "Ny melding fra " + senderName,
         bodyText: combinedWaiting
           ? `${baseText}<br><br>— ${senderName}<br><br>Vi avventer tilbakemelding fra deg. Følg saken via sporingslenken.`
           : baseText,

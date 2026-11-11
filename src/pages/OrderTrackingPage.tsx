@@ -52,38 +52,6 @@ const STATUS_MASCOT: Record<ExternalStatus, string> = {
   closed: mascotCompleted,
 };
 
-/* ── Friendly "what's happening now" copy per status ── */
-const STATUS_HUMAN_COPY: Record<ExternalStatus, { headline: string; body: string }> = {
-  received: {
-    headline: "Vi har mottatt bestillingen din",
-    body: "Takk! Bestillingen ligger trygt hos oss og blir gjennomgått av vårt team. Du trenger ikke gjøre noe mer akkurat nå.",
-  },
-  processing: {
-    headline: "Vi ser nå gjennom bestillingen",
-    body: "Vi vurderer hva som trengs og planlegger neste steg. Du får oppdatering så snart vi har en plan klar.",
-  },
-  needs_info: {
-    headline: "Vi trenger litt mer fra deg",
-    body: "For å gå videre trenger vi en kjapp avklaring. Se meldingen lenger ned og svar når det passer.",
-  },
-  planned: {
-    headline: "Oppdraget er planlagt",
-    body: "Ansvarlig montør er varslet og oppdraget er satt opp. Vi gir beskjed når vi er på vei.",
-  },
-  in_progress: {
-    headline: "Vi er i gang",
-    body: "Arbeidet er nå under utførelse. Du får beskjed så snart vi er ferdige.",
-  },
-  completed: {
-    headline: "Oppdraget er fullført",
-    body: "Alt arbeid er ferdigstilt. Tusen takk for at du valgte MCS Service – ta kontakt om du lurer på noe.",
-  },
-  closed: {
-    headline: "Saken er avsluttet",
-    body: "Denne bestillingen er avsluttet. Du kan fortsatt se historikken her.",
-  },
-};
-
 /* ── Journey stepper – numbered circles + connecting lines ── */
 function JourneyStepper({ status, subLabel }: { status: CustomerStep; subLabel?: string | null }) {
   const cfg = EXTERNAL_STATUS_CONFIG[status] || EXTERNAL_STATUS_CONFIG.received;
@@ -1034,7 +1002,7 @@ export default function OrderTrackingPage() {
 
           {/* Journey stepper */}
           <div className="relative z-10 px-6 sm:px-12 pb-7 pt-5 mt-2 border-t border-foreground/10 bg-white/50 dark:bg-background/40 backdrop-blur-sm rounded-b-[32px]">
-            <JourneyStepper status={externalStatus} />
+            <JourneyStepper status={view.step} subLabel={view.subLabel} />
           </div>
         </div>
 
