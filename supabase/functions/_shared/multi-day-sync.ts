@@ -42,6 +42,11 @@ export async function syncTechnicianDays(args: {
   action: "create" | "update" | "delete";
   /** Explicit "Oppdater Outlook": only PATCH existing links, never create new events. */
   updateOnly?: boolean;
+  /**
+   * Explicit "Opprett manglende kalenderdager": ONLY create days without an Outlook
+   * event (or earlier failures). Never PATCH or DELETE existing events.
+   */
+  createMissingOnly?: boolean;
   store: DayStore;
   graph: DayGraph;
   buildBody: (item: DayPlanItem) => unknown;
@@ -104,6 +109,11 @@ export async function syncTechnicianDays(args: {
   }
 
   for (const { item, link } of diff.updates) {
+    if (args.createMissingOnly) {
+      // Existing Outlook event with changed time: not this action's job – report honestly.
+      results.push({ technicianId, workDate: item.workDate, state: "venter", outlookEventId: link.outlook_event_id });
+      continue;
+    }
     try {
       await graph.updateEvent(email, link.outlook_event_id!, buildBody(item));
       await store.markSynced(eventId, item, link.outlook_event_id!);
@@ -115,6 +125,7 @@ export async function syncTechnicianDays(args: {
   }
 
   for (const link of diff.deletes) {
+    if (args.createMissingOnly) continue; // never delete from a create-missing action
     if (link.outlook_event_id) {
       try {
         await graph.deleteEvent(email, link.outlook_event_id);
