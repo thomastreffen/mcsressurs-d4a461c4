@@ -37,7 +37,6 @@ import { Input } from "@/components/ui/input";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
@@ -47,6 +46,7 @@ import { JobStatusBadge, JobStatusGroup } from "./JobStatusBadge";
 import { useJobApprovals } from "@/hooks/useJobApprovals";
 import { getExecutionStatus, BILLING_STATUSES, ACCEPTANCE_STATUSES } from "@/lib/job-status";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { invokeWithSession } from "@/lib/invoke-session";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -128,8 +128,6 @@ interface PendingSaveState {
   criticalChanges: ChangeDescriptor[];
   allChanges: ChangeDescriptor[];
   impactedTechIds: string[];
-  sendNotifications: boolean;
-  updateOutlook: boolean;
 }
 
 interface DeliveryStatusSummary {
@@ -262,6 +260,8 @@ export function EventDrawer({
   const [editCompanyId, setEditCompanyId] = useState<string | null>(null);
   const [originalSnapshot, setOriginalSnapshot] = useState<Record<string, any> | null>(null);
   const [pendingSave, setPendingSave] = useState<PendingSaveState | null>(null);
+  const [outlookUpdating, setOutlookUpdating] = useState(false);
+  const queryClient = useQueryClient();
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatusSummary>({
     notifiedAt: null,
     notifiedNames: [],
@@ -1093,6 +1093,34 @@ export function EventDrawer({
     onSaved?.(editEvent.id);
   };
 
+  // Eksplisitt «Oppdater Outlook»: kun kalender-PATCH på eksisterende koblinger.
+  // Sender aldri e-post eller Hub-varsel, og oppretter aldri nye hendelser
+  // (update_only). Status vises per montør i mottakerlisten under.
+  const handleOutlookUpdate = async () => {
+    if (!editEvent || outlookUpdating) return;
+    setOutlookUpdating(true);
+    try {
+      const result = await syncUpdate(editEvent.id, { silent: true, updateOnly: true });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["recipient-delivery", editEvent.id] }),
+        queryClient.invalidateQueries({ queryKey: ["m365-queue", editEvent.id] }),
+      ]);
+      if (result === "synced") {
+        toast.success("Outlook oppdatert", { description: "Kalenderhendelsene er oppdatert. Se status per montør under." });
+      } else if (result === "no_link") {
+        toast.info("Ingen kalenderkobling å oppdatere", { description: "Det finnes ingen Outlook-kobling å oppdatere. Ny hendelse opprettes ikke automatisk." });
+      } else if (result === "no_token") {
+        toast.info("Outlook venter på Microsoft-tilkobling", { description: "Én eller flere montører mangler tilkobling. Status per montør vises under." });
+      } else if (result === "conflict") {
+        // Konflikt-varsel håndteres av useCalendarSync
+      } else {
+        toast.info("Outlook ikke oppdatert for alle", { description: "Se status per montør under for detaljer." });
+      }
+    } finally {
+      setOutlookUpdating(false);
+    }
+  };
+
   // Save: create or update
   const handleSave = async () => {
     if (saving || submitted || readOnly) return;
@@ -1147,13 +1175,11 @@ export function EventDrawer({
 
        if (isEditing && editEvent) {
          const criticalChanges = detectedChanges.filter((change) => change.severity === "critical");
-         if (criticalChanges.length > 0) {
+          if (criticalChanges.length > 0) {
            setPendingSave({
              criticalChanges,
              allChanges: detectedChanges,
              impactedTechIds: techIds,
-             sendNotifications: true,
-             updateOutlook: true,
            });
            setSaving(false);
            return;
@@ -2400,6 +2426,16 @@ export function EventDrawer({
           {!readOnly && isEditing && editEvent && editEvent.technicians.length > 0 && (
             <>
               <RecipientDeliveryStatus eventId={editEvent.id} technicians={editEvent.technicians.map((t) => ({ id: t.id, name: t.name }))} />
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full min-h-11 text-xs gap-1.5"
+                disabled={outlookUpdating || saving}
+                onClick={handleOutlookUpdate}
+              >
+                {outlookUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarPlus className="h-3.5 w-3.5" />}
+                {outlookUpdating ? "Oppdaterer Outlook…" : "Oppdater Outlook (uten e-post/varsel)"}
+              </Button>
               <ResendJobInfoButton jobId={editEvent.id} />
             </>
           )}
@@ -2478,7 +2514,7 @@ export function EventDrawer({
             <AlertDialogHeader>
               <AlertDialogTitle>Bekreft endringer på oppdraget</AlertDialogTitle>
               <AlertDialogDescription>
-                Disse endringene påvirker montørene ute i felt. Velg hvordan oppdraget skal oppdateres.
+                Disse endringene påvirker montørene ute i felt. Lagring alene sender ingenting – varsling er et eget, eksplisitt valg.
               </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -2523,40 +2559,22 @@ export function EventDrawer({
                     </div>
                   )}
 
-                  <div className="space-y-3 rounded-lg border border-border/40 bg-card p-3">
-                    <label className="flex items-start gap-3 text-sm">
-                      <Checkbox
-                        checked={pendingSave?.sendNotifications ?? true}
-                        onCheckedChange={(checked) => setPendingSave((prev) => prev ? { ...prev, sendNotifications: checked === true } : prev)}
-                      />
-                      <div>
-                        <p className="font-medium">Varsle berørte montører</p>
-                        <p className="text-muted-foreground">
-                          {requiresApproval.length > 0 && infoOnly.length > 0
-                            ? "Sender én samlet e-post: ny godkjenningsforespørsel for tid/montør, og en tydelig seksjon med øvrige praktiske endringer."
-                            : requiresApproval.length > 0
-                              ? "Sender ny godkjenningsforespørsel for tid/montør."
-                              : "Sender info-e-post om endringene. Montørene trenger ikke å godkjenne på nytt."}
-                        </p>
-                      </div>
-                    </label>
-
-                    <label className="flex items-start gap-3 text-sm">
-                      <Checkbox
-                        checked={pendingSave?.updateOutlook ?? true}
-                        onCheckedChange={(checked) => setPendingSave((prev) => prev ? { ...prev, updateOutlook: checked === true } : prev)}
-                      />
-                      <div>
-                        <p className="font-medium">Oppdater Outlook-kalenderhendelser</p>
-                        <p className="text-muted-foreground">Forsøker å oppdatere eksisterende kalenderkobling.</p>
-                      </div>
-                    </label>
+                  <div className="rounded-lg border border-border/40 bg-card p-3 text-sm">
+                    <p className="font-medium">Velg hvordan du vil lagre</p>
+                    <p className="text-muted-foreground">
+                      {requiresApproval.length > 0 && infoOnly.length > 0
+                        ? "«Lagre og varsle» sender én samlet e-post: ny godkjenningsforespørsel for tid/montør, og en tydelig seksjon med øvrige praktiske endringer."
+                        : requiresApproval.length > 0
+                          ? "«Lagre og varsle» sender ny godkjenningsforespørsel for tid/montør."
+                          : "«Lagre og varsle» sender info-e-post om endringene. Montørene trenger ikke å godkjenne på nytt."}
+                      {" "}«Lagre» lagrer kun i Hub – ingenting sendes. Outlook-kalender oppdateres separat fra jobbkortet.
+                    </p>
                   </div>
                 </div>
               );
             })()}
 
-            <AlertDialogFooter>
+            <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
               <AlertDialogCancel disabled={saving}>Avbryt</AlertDialogCancel>
               <Button
                 variant="outline"
@@ -2583,7 +2601,7 @@ export function EventDrawer({
                 {saving ? (
                   <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Lagrer...</span>
                 ) : (
-                  "Lagre uten varsling"
+                  "Lagre (uten varsling)"
                 )}
               </Button>
               <AlertDialogAction
@@ -2594,8 +2612,8 @@ export function EventDrawer({
                   setSaving(true);
                   try {
                     await persistEventChanges({
-                      sendNotifications: pendingSave.sendNotifications,
-                      updateOutlook: pendingSave.updateOutlook,
+                      sendNotifications: true,
+                      updateOutlook: false,
                       changeSet: pendingSave.allChanges,
                     });
                   } catch (err: any) {
@@ -2609,9 +2627,9 @@ export function EventDrawer({
                 }}
               >
                 {saving ? (
-                  <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Oppdaterer...</span>
+                  <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Lagrer og varsler...</span>
                 ) : (
-                  "Fortsett og oppdater"
+                  "Lagre og varsle montører"
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

@@ -20,6 +20,7 @@ const REASON_LABEL: Record<string, string> = {
   send_failed: "Sending feilet",
   self_assigned: "Tildelt seg selv",
   in_progress: "Pågår",
+  no_calendar_link: "Ingen kalenderkobling – opprettes ikke automatisk",
   pilot_blocked: "Avventer godkjent pilot og Microsoft-rettigheter",
   unknown_graph_outcome: "Ukjent resultat – må avstemmes før nytt forsøk",
   uncertain_operation: "Ukjent tidligere forsøk – må avstemmes",

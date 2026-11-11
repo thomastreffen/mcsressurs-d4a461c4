@@ -31,6 +31,10 @@ export function calendarResultToDelivery(status: string): { status: DeliveryStat
       return { status: "pending", reason: "awaiting_verification" };
     case "in_progress":
       return { status: "pending", reason: "in_progress" };
+    case "no_link":
+      // Eksplisitt «Oppdater Outlook» uten eksisterende kalenderkobling:
+      // ingenting opprettes (ingen duplikat), status vises som ventende.
+      return { status: "pending", reason: "no_calendar_link" };
     case "no_token":
       return { status: "failed", reason: "no_ms_connection" };
     case "no_user_id":

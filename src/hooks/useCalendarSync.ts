@@ -49,18 +49,26 @@ export function useCalendarSync() {
     }
   }, []);
 
-  const syncUpdate = useCallback(async (eventId: string): Promise<"synced" | "conflict" | "error" | "no_token" | "unknown"> => {
+  const syncUpdate = useCallback(async (
+    eventId: string,
+    opts?: { silent?: boolean; updateOnly?: boolean },
+  ): Promise<"synced" | "conflict" | "error" | "no_token" | "no_link" | "unknown"> => {
     try {
       const { data, error } = await invokeWithSession("calendar-write-sync", {
-        body: { action: "update", event_id: eventId },
+        body: { action: "update", event_id: eventId, ...(opts?.updateOnly ? { update_only: true } : {}) },
       });
       if (error) {
         console.error("[CalendarSync] update invoke error:", error);
         return "error";
       }
       if (data?.deliveryStatus === "partial" || data?.deliveryStatus === "failed") {
-        toast.error("Outlook er ikke oppdatert for alle montører");
+        // Ved eksplisitt «Oppdater Outlook» (silent) vises status per mottaker
+        // i mottakerlisten – ingen gjentatt oransje samlevarsel.
+        if (!opts?.silent) toast.error("Outlook er ikke oppdatert for alle montører");
         return "error";
+      }
+      if (data?.status === "no_link") {
+        return "no_link";
       }
       if (data?.status === "updated" || data?.status === "created") {
         console.log("[CalendarSync] Outlook synced");

@@ -5,6 +5,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { resolveJobAddress } from "../_shared/job-address.ts";
 import { shouldQueueFallback } from "../_shared/job-outlook-app-core.ts";
 import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
+import { planCalendarUpdate } from "../_shared/job-save-flow.ts";
 import { jobInfoUrl } from "../_shared/job-access-policy.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -482,7 +483,8 @@ async function syncForTechnician(
   graphBody: any,
   action: string,
   callerUserId: string | null,
-  logAction: (actionType: string, summary: string) => Promise<void>
+  logAction: (actionType: string, summary: string) => Promise<void>,
+  updateOnly = false
 ): Promise<any> {
   const userId = tech.user_id;
   if (!userId) {
@@ -586,11 +588,20 @@ async function syncForTechnician(
   }
 
   if (action === "update" || action === "force_update") {
-    if (existingCalEventId?.startsWith("pending:")) {
+    // Én felles beslutningsregel (testet i job-save-flow.test.ts):
+    // pending-markør → in_progress, manglende kobling + update_only → no_link
+    // (aldri opprett duplikat), manglende kobling i legacy-flyt → create.
+    const updatePlan = planCalendarUpdate(existingCalEventId, updateOnly);
+    if (updatePlan === "in_progress") {
       return { techId: tech.id, techName: tech.name, status: "in_progress" };
     }
 
-    if (!existingCalEventId) {
+    if (updatePlan === "no_link") {
+      await logAction("outlook_update_skipped", `Outlook-oppdatering hoppet over for ${tech.name}: ingen kalenderkobling (opprettes ikke automatisk)`);
+      return { techId: tech.id, techName: tech.name, status: "no_link" };
+    }
+
+    if (updatePlan === "create") {
       // No existing calendar event → create instead
       const res = await fetch(
         `https://graph.microsoft.com/v1.0/users/${techEmail}/events`,
@@ -744,6 +755,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { action, event_id } = body;
+    // update_only: eksplisitt «Oppdater Outlook» fra jobbkortet – kun PATCH av
+    // eksisterende kalenderkoblinger, aldri opprettelse av nye hendelser.
+    const updateOnly = body.update_only === true;
 
     if (!["create", "update", "force_update", "delete", "reconcile"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
       return new Response(JSON.stringify({ error: "Missing action or event_id" }), {
@@ -864,7 +878,7 @@ Deno.serve(async (req) => {
       await recordDelivery(supabaseAdmin, { eventId: event_id, technicianId: tech.id, channel: "calendar", status: "pending", attemptedBy: callerUserId });
       const result = useOrganizer
         ? { techId: tech.id, techName: tech.name, ...await syncOrganizer({ action, email: tech.email ?? "", body: graphBody, store: organizerStore(supabaseAdmin, event_id, tech.id) }) }
-        : await syncForTechnician(supabaseAdmin, tech, eventTechRow, recipientEvent, customer, graphBody, action, callerUserId, logAction);
+        : await syncForTechnician(supabaseAdmin, tech, eventTechRow, recipientEvent, customer, graphBody, action, callerUserId, logAction, updateOnly);
       results.push(result);
     }
 
@@ -877,10 +891,12 @@ Deno.serve(async (req) => {
     const hasError = results.some(r => r.status === "error");
     const hasAlreadyExists = results.some(r => r.status === "already_exists");
     const hasInProgress = results.some(r => r.status === "in_progress");
+    const hasNoLink = results.some(r => r.status === "no_link");
 
     let overallStatus = "ok";
     if (action === "create" && (hasCreated || hasAlreadyExists || hasInProgress)) overallStatus = "created";
     else if (action === "update" && hasUpdated) overallStatus = "updated";
+    else if (action === "update" && hasNoLink && !hasError && !hasConflict) overallStatus = "no_link";
     else if (action === "force_update" && (hasUpdated || hasCreated)) overallStatus = "force_updated";
     else if (action === "delete" && hasDeleted) overallStatus = "deleted";
     else if (action === "delete" && hasNotFound) overallStatus = "not_found";
