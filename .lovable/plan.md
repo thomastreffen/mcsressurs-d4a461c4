@@ -185,3 +185,71 @@ Alle varsler opprettes på **serveren** (trigger eller RPC), aldri fra nettleser
 7. **P3 – Tilgang:** egen selskapsvis CRM-modul i modulmatrisen.
 
 Ingenting gjøres i produksjon før hvert punkt er godkjent.
+
+## 12. Strategisk presisering: fase 1 er eksisterende kunder
+
+### Verifisert kundegrunnlag (kun lest)
+| Kunde i Hub | Org.nr. | Tripletex | Kontakter |
+|---|---|---|---|
+| ASSEMBLIN AS | 965808752 | ikke koblet | 0 |
+| BRAVIDA NORGE AS | 987582561 | ikke koblet | 0 |
+| CAVERION NORGE AS | 959069743 | ikke koblet | 0 |
+| ONECO ELEKTRO AS | 996669173 | ikke koblet | 0 |
+| Eltel Networks AS | **10084** (ikke gyldig org.nr., trolig Tripletex-kundenummer) | koblet | 0 |
+
+- Hver kunde har ett hovedkort, uten avdelinger og uten kontaktpersoner.
+- Eltels org.nr. må rettes manuelt etter at det er verifisert i Brønnøysund.
+- Tabellen `customer_accounts` (navn, valgfritt org.nr., `customer_id`, `company_id`, myk sletting) finnes allerede og er tom. Den passer som «kundeenhet/avdeling» under hovedkortet.
+- `departments` gjelder MCS sine egne avdelinger, ikke kundens.
+
+### Målmodell for fase 1
+```text
+Kunde (juridisk, customers, ett org.nr., ett Tripletex-kort)
+  └─ Kundeenhet / lokal avdeling (customer_accounts)
+       f.eks. «Bravida – Gardermoen», «Caverion – Hamar»
+       org.nr. valgfritt (ikke anta eget), sted/kommune, region
+       intern ansvarlig selger, relasjonsstatus, temperatur, prioritet
+       ├─ Kontaktpersoner for avdelingen (customer_contacts + account_id)
+       ├─ Aktiviteter, notater og historikk (activity_log med account_id + customer_id)
+       └─ Muligheter (leads med customer_id + account_id), f.eks. serviceavtale
+```
+- **Ingen nye kunde- eller Tripletex-kort per avdeling.** Fakturering går fortsatt til hovedkunden. Avdelingen er bare oppfølgingsenhet og eventuelt referanse på jobb eller prosjekt.
+- **Tilgang:** avdelingen arver `company_id` fra hovedkortet (sjekkes med trigger). RLS følger kundens selskapsregler, og egne notater følger leads-omfanget.
+- **Kundekortet** viser avdelingene som rader med ansvarlig, temperatur, siste kontakt og neste aktivitet, samt en samlet tidslinje med filter per avdeling.
+- **Oversikten** i punkt 6 viser én rad per kundeenhet, gruppert under hovedkunde.
+
+### Minste nødvendige endringer (fase 1)
+1. Legg til på `customer_accounts`: ansvarlig, relasjonsstatus, temperatur, prioritet, kommune/region, notat og `updated_by`. Ingen ny tabell.
+2. Legg til `account_id` (valgfri) på `customer_contacts`, `leads` og aktivitetsoppføringer.
+3. Trigger som sikrer at kundeenheten og hovedkunden har samme selskap.
+4. Kundekortet får en fane for avdelinger og «Logg kontakt» per avdeling. Mine oppfølginger tar med avdelinger.
+5. Varslingsmatrisen (punkt 9) gjelder per kundeenhet: ansvarlig og deltakere for den avdelingen.
+
+### Trygg første prøve
+- Lesende kartlegging først:
+  - eksisterende jobber og prosjekter for de fem kundene, med adresser og bestillere, for å foreslå hvilke lokale avdelinger som faktisk finnes
+  - Tripletex-kundedata (bare lesing)
+  - Brønnøysund-oppslag på org.nr.
+- Forslaget legges frem som en liste. **Avdelingsnavn og kontaktpersoner verifiseres av Rune/Thomas før registrering.**
+- Pilot: 2 kunder × 1–2 lokalkontorer, registrert manuelt av selger.
+- Ingen e-post, invitasjoner eller testkontakter mot kundene. Hub-varsler bare internt.
+
+## 13. Oppdatert prioritering (erstatter punkt 11)
+
+**Fase 1 – utvikle eksisterende kunder**
+1. Lesende kartlegging: de fem kundene, deres jobber/adresser/bestillere, Tripletex-data og retting av Eltels org.nr. Leveres som forslag.
+2. Avdelingsmodell på `customer_accounts`, felt for relasjon/temperatur/prioritet/ansvarlig, og `account_id` på kontakter, leads og aktiviteter.
+3. Kundekort med avdelinger, Mine oppfølginger, endringslogg og oversikt (desktop og mobil).
+4. Server-side varsling etter matrisen. Nettleserinnsettingen i `LeadDetail` fjernes.
+5. Ledelsesoversikt og mulighetstypen serviceavtale.
+6. Pilot med 2 kunder og verifiserte lokalkontorer.
+
+**Fase 2 – cold-prospekter**
+7. Duplikatopprydding og unik regel på org.nr.
+8. Import 2.0 med Brønnøysund og forhåndsvisning (NACE 43.21, Østlandet–Hamar).
+
+**Fase 3**
+9. Teams-møte fra kundeenhet eller lead, etter tenant-verifisering med Simen.
+10. Egen selskapsvis CRM-modul i tilgangsmatrisen.
+
+Ingenting gjøres i produksjon før hvert punkt er godkjent.
