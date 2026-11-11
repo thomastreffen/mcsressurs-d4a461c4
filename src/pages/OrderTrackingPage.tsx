@@ -548,8 +548,8 @@ export default function OrderTrackingPage() {
   }, [submission?.id]);
 
   const conversationState = useMemo(
-    () => deriveOrderConversationState(submission?.status, messages as any[], legacyComments as any[]),
-    [submission?.status, messages, legacyComments],
+    () => deriveOrderConversationState(submission?.status, messages as any[], legacyComments as any[], (submission as any)?.external_status_updated_at),
+    [submission, messages, legacyComments],
   );
 
   const allMessages = useMemo(

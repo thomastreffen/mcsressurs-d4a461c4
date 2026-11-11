@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { allowedAddressees, validateOutgoingMessage, statusRequiresCustomerMessage, shouldEmailRequester } from "@/lib/order-message-rules";
 import {
   ArrowLeft, MessageSquare, Clock, Paperclip, AlertTriangle,
   ArrowRight, FileText, Download, Mail, MailCheck, MailX, ExternalLink, UserPlus,
@@ -89,7 +90,9 @@ export default function OrderFormDetailPage() {
   const [commentFileNames, setCommentFileNames] = useState<Record<number, string>>({});
   const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null);
   const [commentVisibility, setCommentVisibility] = useState<"internal" | "shared">("internal");
-  const [sendEmailNotification, setSendEmailNotification] = useState(false);
+  const [sendEmailNotification, setSendEmailNotification] = useState(true);
+  // Set when the planner chose "Venter kunde": status is applied only together with a shared message.
+  const [pendingWaitingCustomer, setPendingWaitingCustomer] = useState(false);
   const [requestInfoOpen, setRequestInfoOpen] = useState(false);
   const [convertOpen] = useState(false); // kept for compat, now navigates
   const [tripletexOpen, setTripletexOpen] = useState(false);
@@ -353,8 +356,8 @@ export default function OrderFormDetailPage() {
   }, [values]);
 
   const conversationState = useMemo(
-    () => deriveOrderConversationState(submission?.status, orderMessages as any[], comments as any[]),
-    [submission?.status, orderMessages, comments],
+    () => deriveOrderConversationState(submission?.status, orderMessages as any[], comments as any[], (submission as any)?.external_status_updated_at),
+    [submission, orderMessages, comments],
   );
 
   const autoStatusSyncRef = useRef<string | null>(null);
@@ -525,8 +528,17 @@ export default function OrderFormDetailPage() {
   const addComment = useMutation({
     mutationFn: async () => {
       if (!comment.trim() && commentFiles.length === 0) return;
+      const addressee = participants.find((p: any) => p.id === addressedTo) || null;
+      const validationError = validateOutgoingMessage({
+        visibility: commentVisibility as any,
+        addressee,
+        body: comment,
+        hasFiles: commentFiles.length > 0,
+        requireCustomerMessage: pendingWaitingCustomer,
+      });
+      if (validationError) throw new Error(validationError);
       const isShared = commentVisibility === "shared";
-      const shouldEmail = isShared && sendEmailNotification && !!bestillerEpost;
+      const shouldEmail = shouldEmailRequester(commentVisibility as any, bestillerEpost, !sendEmailNotification);
 
       // Get sender name
       const { data: ua } = await supabase
@@ -554,8 +566,9 @@ export default function OrderFormDetailPage() {
         source: "app",
         addressed_to_participant_id: addressedTo || null,
         sender_participant_id: senderParticipant?.id || null,
-        email_notification_sent: shouldEmail,
-        email_notification_sent_at: shouldEmail ? new Date().toISOString() : null,
+        // Set by the server only after Microsoft accepted the e-mail.
+        email_notification_sent: false,
+        email_notification_sent_at: null,
       } as any).select("id").single();
       if (error) throw error;
 
@@ -616,27 +629,60 @@ export default function OrderFormDetailPage() {
       }
 
       // Trigger email notification to bestiller if checked
+      let emailResult: { attempted: boolean; sent: boolean; error?: string } = { attempted: false, sent: false };
       if (shouldEmail && insertedMsg?.id) {
+        emailResult.attempted = true;
         try {
-          await supabase.functions.invoke("order-form-notify", {
+          const { data, error: invErr } = await supabase.functions.invoke("order-form-notify", {
             body: { submission_id: id, notification_type: "shared_message", message_id: insertedMsg.id },
           });
-        } catch (emailErr) {
+          if (invErr) throw invErr;
+          if (data && data.success === false) emailResult.error = data.error || data.reason || "Sending feilet";
+          else emailResult.sent = true;
+        } catch (emailErr: any) {
           console.error("Email notification failed:", emailErr);
-          // Don't fail the whole operation if email fails
+          emailResult.error = emailErr?.message || String(emailErr);
         }
       }
+
+      // "Venter kunde" is applied only together with the shared message above.
+      let statusApplied = false;
+      if (pendingWaitingCustomer && isShared) {
+        const now = new Date().toISOString();
+        const { error: stErr } = await supabase.from("order_form_submissions").update({
+          status: "waiting_customer",
+          external_status: mapToExternalStatus("waiting_customer" as OrderFormSubmissionStatus),
+          external_status_updated_at: now,
+        } as any).eq("id", id!);
+        if (!stErr) {
+          statusApplied = true;
+          await supabase.from("order_form_activity_log").insert({
+            submission_id: id!,
+            event_type: "status_changed",
+            payload: { from: submission?.status, to: "waiting_customer", notified_requester: emailResult.sent, via_message_id: insertedMsg?.id, email_error: emailResult.error || null },
+            created_by: user?.id,
+          } as any);
+        }
+      }
+      return { isShared, emailResult, statusApplied };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       setComment("");
       setCommentFiles([]);
       setCommentFileNames({});
       setAddressedTo(null);
-      setSendEmailNotification(false);
+      setSendEmailNotification(true);
+      setPendingWaitingCustomer(false);
+      qc.invalidateQueries({ queryKey: ["order-form-submission", id] });
+      qc.invalidateQueries({ queryKey: ["order-form-activity", id] });
       qc.invalidateQueries({ queryKey: ["order-form-comments", id] });
       qc.invalidateQueries({ queryKey: ["order-form-messages", id] });
       qc.invalidateQueries({ queryKey: ["order-form-attachments", id] });
-      toast.success(commentVisibility === "shared" ? "Melding delt med bestiller" : "Intern kommentar lagt til");
+      const r = result as any;
+      if (!r?.isShared) toast.success("Internt notat lagret – ikke synlig for kunden");
+      else if (r.emailResult?.attempted && r.emailResult.sent) toast.success(r.statusApplied ? "Status «Venter kunde» satt – e-post akseptert av Microsoft" : "Melding delt – e-post akseptert av Microsoft");
+      else if (r.emailResult?.attempted) toast.warning("Melding delt på sporingssiden, men e-post feilet", { description: r.emailResult.error });
+      else toast.success("Melding delt på sporingssiden (uten e-post)");
     },
     onError: (err: any) => {
       console.error("[addComment] Error:", err);
@@ -1054,7 +1100,18 @@ export default function OrderFormDetailPage() {
       <div className="flex flex-wrap items-center gap-2">
         {/* Primary: Status with notify toggle */}
           <div className="flex items-center gap-2">
-            <Select value={effectiveStatus} onValueChange={(v) => updateStatus.mutate(v)}>
+            <Select value={pendingWaitingCustomer ? "waiting_customer" : effectiveStatus} onValueChange={(v) => {
+              if (statusRequiresCustomerMessage(v)) {
+                setPendingWaitingCustomer(true);
+                setCommentVisibility("shared");
+                setSendEmailNotification(true);
+                setAddressedTo(null);
+                toast.info("Skriv beskjeden til kunden nederst. Status settes til «Venter kunde» og bestiller får e-post når du sender.");
+                return;
+              }
+              setPendingWaitingCustomer(false);
+              updateStatus.mutate(v);
+            }}>
             <SelectTrigger className="w-48 h-9">
               <SelectValue />
             </SelectTrigger>
@@ -2055,15 +2112,26 @@ export default function OrderFormDetailPage() {
 
 
 
+                {pendingWaitingCustomer && (
+                  <div className="flex items-start justify-between gap-2 rounded-md border border-warning/50 bg-warning/10 p-2 text-xs">
+                    <span>Status settes til <strong>Venter kunde</strong> først når du sender en beskjed til kunden om hva de må svare på. Bestiller får e-post.</span>
+                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setPendingWaitingCustomer(false)}>Avbryt</Button>
+                  </div>
+                )}
                 {/* Row 1: Synlighet */}
-                <div className="space-y-1.5">
+                <div className={`space-y-1.5 rounded-md border-2 p-2 ${commentVisibility === "internal" ? "border-muted-foreground/30 bg-muted/40" : "border-primary/60 bg-primary/5"}`}>
                   <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Synlighet</label>
                   <div className="flex items-center gap-1.5">
                     <Button
                       size="sm"
                       variant={commentVisibility === "internal" ? "default" : "outline"}
                       className="text-xs h-7 gap-1.5"
-                      onClick={() => setCommentVisibility("internal")}
+                      disabled={pendingWaitingCustomer}
+                      onClick={() => {
+                        setCommentVisibility("internal");
+                        const a = (participants as any[]).find((p: any) => p.id === addressedTo);
+                        if (a && (a.participant_type === "customer" || a.participant_type === "external")) setAddressedTo(null);
+                      }}
                     >
                       <LockKeyhole className="h-3 w-3" />
                       Intern
@@ -2072,7 +2140,7 @@ export default function OrderFormDetailPage() {
                       size="sm"
                       variant={commentVisibility === "shared" ? "default" : "outline"}
                       className="text-xs h-7 gap-1.5"
-                      onClick={() => setCommentVisibility("shared")}
+                      onClick={() => { setCommentVisibility("shared"); setSendEmailNotification(true); }}
                     >
                       <Eye className="h-3 w-3" />
                       Delt med kunde
@@ -2094,7 +2162,7 @@ export default function OrderFormDetailPage() {
                       <label htmlFor="send-email-now" className="flex-1 cursor-pointer select-none">
                         <span className="text-xs font-medium flex items-center gap-1">
                           <Mail className="h-3 w-3 text-blue-600" />
-                          Send e-postvarsel nå
+                          Send e-post til bestiller
                         </span>
                         <p className="text-[10px] text-muted-foreground">
                           {sendEmailNotification
@@ -2116,7 +2184,7 @@ export default function OrderFormDetailPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">Til alle</SelectItem>
-                        {participants.map((p: any) => (
+                        {allowedAddressees(participants as any[], commentVisibility as any).map((p: any) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.name} ({p.role_label || "Deltaker"})
                           </SelectItem>
@@ -2144,7 +2212,13 @@ export default function OrderFormDetailPage() {
                     ) : (
                       <Send className="h-3.5 w-3.5" />
                     )}
-                    {addComment.isPending ? "Sender…" : "Send melding"}
+                    {addComment.isPending
+                      ? "Lagrer…"
+                      : commentVisibility === "internal"
+                        ? "Lagre internt notat"
+                        : pendingWaitingCustomer
+                          ? "Send til kunde og sett «Venter kunde»"
+                          : "Send til kunde"}
                   </Button>
                 </div>
               </div>

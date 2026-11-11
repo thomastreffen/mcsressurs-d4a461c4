@@ -191,6 +191,13 @@ Deno.serve(async (req) => {
 
       const { event_key, custom_message } = body;
       recipients = [bestillerEpost];
+      // Idempotency: the same customer_update event is sent at most once per 10 minutes.
+      const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data: recent } = await supabase.from("order_form_activity_log")
+        .select("payload").eq("submission_id", submission_id).eq("event_type", "notification_sent").gte("created_at", since);
+      if ((recent || []).some((r: any) => r?.payload?.type === "customer_update" && r?.payload?.event_key === (event_key || "status_changed"))) {
+        return json({ success: true, skipped_duplicate: true });
+      }
 
       const trackingToken = submission.public_tracking_token;
       const trackingUrl = trackingToken ? `${appUrl}/bestilling/status/${trackingToken}` : null;
@@ -225,6 +232,12 @@ Deno.serve(async (req) => {
           heading: "Bestillingen er ferdig behandlet",
           body: "Din bestilling er nå ferdig behandlet. Ta gjerne kontakt om du har spørsmål.",
           color: "#DCFCE7", colorFg: "#166534",
+        },
+        waiting_customer: {
+          subject: `Oppdatering: ${submission.submission_no} - Vi venter på svar fra deg`,
+          heading: "Vi trenger svar fra deg",
+          body: "Bestillingen venter på svar fra deg. Se meldingen på sporingslenken og svar der eller på denne e-posten.",
+          color: "#FEF3C7", colorFg: "#92400E",
         },
         rejected: {
           subject: `Oppdatering: ${submission.submission_no} - Avvist`,
@@ -304,9 +317,13 @@ Deno.serve(async (req) => {
       if (message_id) {
         const { data: msg } = await supabase
           .from("order_form_messages")
-          .select("body, sender_name")
+          .select("body, sender_name, is_visible_to_customer, visibility, email_notification_sent, submission_id")
           .eq("id", message_id)
           .single();
+        // Never e-mail an internal note; never e-mail the same message twice.
+        if (!msg || msg.submission_id !== submission_id) return json({ success: false, reason: "message_not_found" });
+        if (!msg.is_visible_to_customer || msg.visibility !== "shared") return json({ success: false, reason: "message_not_shared" });
+        if (msg.email_notification_sent) return json({ success: true, skipped_duplicate: true });
         if (msg) {
           messageBody = msg.body || "";
           senderName = msg.sender_name || senderName;
@@ -382,7 +399,7 @@ Deno.serve(async (req) => {
       await supabase.from("order_form_activity_log").insert({
         submission_id,
         event_type: "notification_failed",
-        payload: { type: notification_type, error: sendResult.error, recipients },
+        payload: { type: notification_type, error: sendResult.error, recipients, event_key: body.event_key || null, message_id: body.message_id || null },
       });
 
       return json({ success: false, error: sendResult.error });
@@ -392,8 +409,14 @@ Deno.serve(async (req) => {
     await supabase.from("order_form_activity_log").insert({
       submission_id,
       event_type: "notification_sent",
-      payload: { type: notification_type, recipients, subject, reply_to: replyToAddress || null },
+      payload: { type: notification_type, recipients, subject, reply_to: replyToAddress || null, event_key: body.event_key || null, message_id: body.message_id || null, provider: "graph_accepted" },
     });
+    // Mark the message as e-mailed ONLY after Microsoft accepted the send.
+    if (notification_type === "shared_message" && body.message_id) {
+      await supabase.from("order_form_messages")
+        .update({ email_notification_sent: true, email_notification_sent_at: new Date().toISOString() })
+        .eq("id", body.message_id);
+    }
 
     console.log("EMAIL_SENT", { submission_id, notification_type, recipients, reply_to: replyToAddress || null });
     return json({ success: true, recipients });
