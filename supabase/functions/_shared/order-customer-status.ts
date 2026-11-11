@@ -55,26 +55,20 @@ export function customerTimelineLabel(to: string | null | undefined): string | n
 }
 
 /**
- * Hide status changes that never took effect: a status_changed that was
- * reverted by an auto_status_change within 60 s, and repeats of the same
- * status. History is kept server-side; only the customer display collapses it.
+ * Customer timeline: a run of status changes to the same status (e.g. earlier
+ * attempts that were reverted internally, then set again) is shown once, at
+ * its latest (actually current) time. History itself is never deleted.
  */
 export function effectiveCustomerStatusEvents<T extends { event_type: string; created_at: string; payload?: any }>(events: T[]): T[] {
   const sorted = [...events].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   const out: T[] = [];
-  let lastShownTo: string | null = null;
-  for (let i = 0; i < sorted.length; i++) {
-    const e = sorted[i];
-    if (e.event_type === "auto_status_change") { lastShownTo = e.payload?.to ?? lastShownTo; continue; }
+  let lastStatusIdx = -1;
+  for (const e of sorted) {
     if (e.event_type !== "status_changed") { out.push(e); continue; }
-    const t = new Date(e.created_at).getTime();
-    const reverted = sorted.slice(i + 1).some((n) =>
-      n.event_type === "auto_status_change" && n.payload?.from === e.payload?.to &&
-      new Date(n.created_at).getTime() - t <= 60_000);
-    if (reverted) continue;
-    if (e.payload?.to === lastShownTo) continue;
-    lastShownTo = e.payload?.to ?? null;
+    const prev = lastStatusIdx >= 0 ? out[lastStatusIdx] : null;
+    if (prev && prev.payload?.to === e.payload?.to) { out[lastStatusIdx] = e; continue; }
     out.push(e);
+    lastStatusIdx = out.length - 1;
   }
   return out;
 }

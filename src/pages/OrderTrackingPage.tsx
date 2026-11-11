@@ -21,6 +21,7 @@ import {
   type ExternalStatus,
 } from "@/types/order-forms";
 import { deriveOrderConversationState } from "@/lib/order-request-state";
+import { customerStatusView, customerTimelineLabel, effectiveCustomerStatusEvents, type CustomerStep } from "../../supabase/functions/_shared/order-customer-status";
 import { CustomerFieldRequests } from "@/components/orders/CustomerFieldRequests";
 import { getSubmissionDisplayTitle, getSubmissionAddressLine } from "@/lib/order-display";
 import { getMessageSenderLabel, resolveSenderKind } from "@/lib/order-message-sender";
@@ -84,11 +85,10 @@ const STATUS_HUMAN_COPY: Record<ExternalStatus, { headline: string; body: string
 };
 
 /* ── Journey stepper – numbered circles + connecting lines ── */
-function JourneyStepper({ status }: { status: ExternalStatus }) {
+function JourneyStepper({ status, subLabel }: { status: CustomerStep; subLabel?: string | null }) {
   const cfg = EXTERNAL_STATUS_CONFIG[status] || EXTERNAL_STATUS_CONFIG.received;
   const steps = EXTERNAL_STATUS_STEPS;
   const currentStep = cfg.step;
-  const isNeedsInfo = status === "needs_info";
 
   return (
     <div className="w-full">
@@ -96,7 +96,7 @@ function JourneyStepper({ status }: { status: ExternalStatus }) {
         {steps.map((s, idx) => {
           const sCfg = EXTERNAL_STATUS_CONFIG[s];
           const isDone = sCfg.step < currentStep;
-          const isCurrent = s === status || (isNeedsInfo && s === "processing");
+          const isCurrent = s === status;
           const nextDone = idx < steps.length - 1 && EXTERNAL_STATUS_CONFIG[steps[idx + 1]].step <= currentStep;
           return (
             <div key={s} className="flex-1 flex flex-col items-center min-w-0">
@@ -130,6 +130,11 @@ function JourneyStepper({ status }: { status: ExternalStatus }) {
               >
                 {sCfg.label}
               </span>
+              {isCurrent && subLabel && (
+                <span className="mt-1 text-[9px] sm:text-[10px] leading-tight text-center font-semibold text-warning px-0.5">
+                  {subLabel}
+                </span>
+              )}
             </div>
           );
         })}
@@ -173,21 +178,10 @@ function CustomerTimeline({ token }: { token: string }) {
     task_rescheduled: "Oppgaven er flyttet til ny tid",
   };
 
-  const statusChangeLabel = (payload: any): string | null => {
-    const statusLabels: Record<string, string> = {
-      under_review: "MCS har tatt tak i bestillingen",
-      waiting_customer: "Vi venter på svar fra deg",
-      task_created: "Oppgaven er planlagt",
-      in_progress: "Arbeidet er startet",
-      closed: "Saken er avsluttet",
-      rejected: "Bestillingen er avvist",
-      ready_for_planning: "Klar for planlegging",
-    };
-    return statusLabels[payload?.to] || null;
-  };
+  const statusChangeLabel = (payload: any): string | null => customerTimelineLabel(payload?.to);
 
   const allVisible = useMemo(() => {
-    return (events as any[])
+    return effectiveCustomerStatusEvents(events as any[])
       .filter((e: any) => {
         if (e.event_type === "status_changed") return !!statusChangeLabel(e.payload);
         if (e.event_type === "notification_sent" && e.payload?.type === "new_order") return false;
@@ -727,16 +721,14 @@ export default function OrderTrackingPage() {
   }, [values]);
 
   const sub = submission as any;
-  const rawExternalStatus: ExternalStatus = conversationState.effectiveExternalStatus;
-  const needsInfo = conversationState.hasOpenRequest;
-  // Keep main step as "Under behandling" when waiting for customer info — show sub-status separately
-  const externalStatus: ExternalStatus = needsInfo ? "processing" : rawExternalStatus;
-  const statusCfg = EXTERNAL_STATUS_CONFIG[externalStatus] || EXTERNAL_STATUS_CONFIG.received;
+  // One semantic source for badge, headline, stepper and timeline.
+  const view = customerStatusView(conversationState.effectiveInternalStatus, conversationState.hasOpenRequest);
+  const needsInfo = view.key === "needs_info";
+  const externalStatus: ExternalStatus = view.step;
+  const statusCfg = { ...(EXTERNAL_STATUS_CONFIG[externalStatus] || EXTERNAL_STATUS_CONFIG.received), label: view.label, color: view.customerActionNeeded ? "bg-amber-500" : (EXTERNAL_STATUS_CONFIG[externalStatus]?.color || "bg-blue-500") };
   const templateName = sub?.order_form_templates?.external_title || sub?.order_form_templates?.name || "Bestilling";
   const lastUpdated = sub?.last_activity_at || sub?.updated_at || sub?.submitted_at;
-  const human = needsInfo
-    ? STATUS_HUMAN_COPY.needs_info
-    : (STATUS_HUMAN_COPY[externalStatus] || STATUS_HUMAN_COPY.received);
+  const human = { headline: view.headline, body: view.body };
   const mascot = STATUS_MASCOT[externalStatus] || mascotReceived;
 
   const visibleAttachments = useMemo(
@@ -950,12 +942,6 @@ export default function OrderTrackingPage() {
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/90 mr-1.5 animate-pulse" />
                   {statusCfg.label}
                 </Badge>
-                {needsInfo && (
-                  <Badge className="bg-amber-500 text-white border-0 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm">
-                    <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
-                    Vi venter på svar fra deg
-                  </Badge>
-                )}
                 {plannedBlock && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.06] text-foreground/80 px-3 py-1.5 text-xs font-semibold">
                     <Calendar className="h-3.5 w-3.5 text-accent" />
