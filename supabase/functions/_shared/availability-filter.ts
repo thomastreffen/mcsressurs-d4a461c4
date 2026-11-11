@@ -2,7 +2,7 @@
 // filter out the job's OWN Outlook copies, and format slots in Europe/Oslo.
 // No Deno/DOM/network – imported by edge functions, frontend and tests.
 
-import { osloDayKey } from "./multi-day-calendar";
+import { osloDayKey } from "./multi-day-calendar.ts";
 
 export interface BusySlot {
   status?: string;
