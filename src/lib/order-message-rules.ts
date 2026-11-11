@@ -39,8 +39,17 @@ export function validateOutgoingMessage(input: {
   return null;
 }
 
-/** Statuses that require an explicit customer-facing message (and mandatory e-mail). */
-export function statusRequiresCustomerMessage(status: string): boolean {
+/**
+ * No status requires a manually written message. Mandatory e-mail ≠ mandatory free text:
+ * «Venter kunde» sends a standard status e-mail; a personal message is optional and,
+ * when added in the composer, is combined into one e-mail.
+ */
+export function statusRequiresCustomerMessage(_status: string): boolean {
+  return false;
+}
+
+/** Statuses that may optionally be set together with a shared composer message (one combined e-mail). */
+export function statusCanCombineWithMessage(status: string): boolean {
   return status === "waiting_customer";
 }
 
@@ -59,9 +68,8 @@ export function customerVisibleMessages<T extends { is_visible_to_customer?: boo
  * mandatory: bestiller always gets e-mail (cannot be opted out).
  * default_on: e-mail is the default; staff must actively choose «Ikke varsle bestiller».
  * internal: purely internal status, never e-mails the customer.
- * via_message: e-mail is sent through the required shared message (avoids double mail).
  */
-export type StatusNotifyPolicy = "mandatory" | "default_on" | "internal" | "via_message";
+export type StatusNotifyPolicy = "mandatory" | "default_on" | "internal";
 
 export function statusNotifyPolicy(status: string): StatusNotifyPolicy {
   switch (status) {
@@ -70,9 +78,8 @@ export function statusNotifyPolicy(status: string): StatusNotifyPolicy {
     case "ready_for_planning":
     case "closed":
     case "rejected":
-      return "mandatory";
     case "waiting_customer":
-      return "via_message";
+      return "mandatory";
     case "under_review":
     case "in_progress":
     case "missing_info":
@@ -88,6 +95,7 @@ export function statusEventKey(status: string): string {
     new: "received",
     under_review: "under_review",
     missing_info: "status_changed",
+    waiting_customer: "waiting_customer",
     ready_for_planning: "task_created",
     task_created: "task_created",
     in_progress: "in_progress",

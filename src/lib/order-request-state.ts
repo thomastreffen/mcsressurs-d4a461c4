@@ -220,6 +220,25 @@ export function buildUnifiedOrderConversation(
   return combined.map((message) => byId.get(message.id) || message);
 }
 
+/**
+ * The moment the current status was set: the latest of the submission's
+ * status timestamp and the newest manual/auto status log entry. Using the log
+ * too means a stale submission timestamp can never make older messages look
+ * "newer" than a fresh manual status change.
+ */
+export function effectiveStatusChangedAt(
+  submissionStatusAt: string | null | undefined,
+  activity: { event_type?: string | null; created_at?: string | null }[] = [],
+): string | null {
+  let best = submissionStatusAt ? new Date(submissionStatusAt).getTime() : NaN;
+  for (const a of activity) {
+    if (a?.event_type !== "status_changed" && a?.event_type !== "auto_status_change") continue;
+    const t = a.created_at ? new Date(a.created_at).getTime() : NaN;
+    if (!Number.isNaN(t) && (Number.isNaN(best) || t > best)) best = t;
+  }
+  return Number.isNaN(best) ? null : new Date(best).toISOString();
+}
+
 /** A real reply from the customer side – never Postkontoret/system forwards. */
 export function isGenuineCustomerReply(m: { sender_type?: string | null; sender_name?: string | null; message_type?: string | null }): boolean {
   if (m.sender_type !== "customer") return false;
@@ -239,6 +258,15 @@ export function deriveOrderConversationState(
   const requestMessages = conversation.filter((message) => message.message_type === "request_info" && message.requires_reply);
   const hasOpenRequest = requestMessages.some((message) => !message.replied_at);
   const hasUnreviewedReply = requestMessages.some((message) => !!message.replied_at && !message.reviewed_at);
+  const statusMs = statusChangedAt ? new Date(statusChangedAt).getTime() : NaN;
+  // Only unreviewed replies written after the current status was set may move it.
+  const hasUnreviewedReplyAfterStatus = requestMessages.some(
+    (message) =>
+      !!message.replied_at &&
+      !message.reviewed_at &&
+      !Number.isNaN(statusMs) &&
+      new Date(message.replied_at).getTime() > statusMs,
+  );
   const latestCustomerReplyAt =
     [...conversation].reverse().find((message) => message.sender_type === "customer")?.created_at || null;
 
@@ -257,7 +285,7 @@ export function deriveOrderConversationState(
   if (hasOpenRequest && rawStatus !== "closed" && rawStatus !== "rejected") {
     effectiveInternalStatus = "missing_info";
   } else if (
-    ((hasUnreviewedReply && REVIEWABLE_STATUSES.includes(rawStatus)) ||
+    ((hasUnreviewedReplyAfterStatus && REVIEWABLE_STATUSES.includes(rawStatus)) ||
       ((rawStatus === "missing_info" || rawStatus === "waiting_customer") && !hasOpenRequest && hasCustomerReplyAfterStatus)) &&
     rawStatus !== "closed" &&
     rawStatus !== "rejected"
