@@ -1105,6 +1105,7 @@ Deno.serve(async (req) => {
         if (!tech) continue;
         const mapped = calendarResultToDelivery(r.status);
         deliveryStatuses.push(mapped.status);
+        if (r.skipTechDelivery) continue; // per-day rows already recorded
         await recordDelivery(supabaseAdmin, {
           eventId: event_id, technicianId: tech.id, technicianUserId: tech.user_id,
           recipientEmail: tech.email, channel: "calendar", status: mapped.status,
