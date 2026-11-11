@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import { formatSlotOslo } from "../../supabase/functions/_shared/availability-filter";
 
 // ── Types ──
 
@@ -59,7 +60,8 @@ interface AvailabilityResult {
   user_id: string;
   name: string;
   busy: boolean;
-  busy_slots: { status: string; subject: string | null; start: string; end: string; is_private: boolean }[];
+  busy_slots: { status: string; subject: string | null; start: string; end: string; is_private: boolean; date?: string | null }[];
+  own_slots_filtered?: number;
 }
 
 interface AuditEntry {
@@ -220,7 +222,7 @@ export function JobCalendarSync({
     setAvailability(null);
     try {
       const { data, error } = await invokeWithSession("ms-calendar", {
-        body: { action: "availability", user_ids: userIds, start: jobStart.toISOString(), end: jobEnd.toISOString() },
+        body: { action: "availability", user_ids: userIds, start: jobStart.toISOString(), end: jobEnd.toISOString(), job_id: jobId },
       });
       if (error) throw error;
       setAvailability(data.results || []);
@@ -245,7 +247,7 @@ export function JobCalendarSync({
     try {
       // Pre-check availability
       const { data: availData, error: availErr } = await invokeWithSession("ms-calendar", {
-        body: { action: "availability", user_ids: userIds, start: jobStart.toISOString(), end: jobEnd.toISOString() },
+        body: { action: "availability", user_ids: userIds, start: jobStart.toISOString(), end: jobEnd.toISOString(), job_id: jobId },
       });
 
       if (!availErr && availData?.results?.some((r: AvailabilityResult) => r.busy)) {
