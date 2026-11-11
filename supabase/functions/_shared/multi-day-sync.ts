@@ -97,7 +97,7 @@ export async function syncTechnicianDays(args: {
       await store.markSynced(eventId, item, created.id);
       results.push({ technicianId, workDate: item.workDate, state: "synket", outlookEventId: created.id });
     } catch (e: any) {
-      await store.releaseClaim(eventId, item);
+      // Keep the row as failed: the UI shows "Feilet" and the next run reclaims it.
       await store.markFailed(eventId, item, String(e?.status ?? e?.message ?? e));
       results.push({ technicianId, workDate: item.workDate, state: "feilet", error: String(e?.status ?? e) });
     }
