@@ -482,7 +482,8 @@ async function syncForTechnician(
   graphBody: any,
   action: string,
   callerUserId: string | null,
-  logAction: (actionType: string, summary: string) => Promise<void>
+  logAction: (actionType: string, summary: string) => Promise<void>,
+  updateOnly = false
 ): Promise<any> {
   const userId = tech.user_id;
   if (!userId) {
@@ -591,6 +592,13 @@ async function syncForTechnician(
     }
 
     if (!existingCalEventId) {
+      // Eksplisitt «Oppdater Outlook» (update_only) skal ALDRI opprette en ny
+      // kalenderhendelse når koblingen mangler – det ville gitt duplikater.
+      // Rapporter som no_link (ventende) i stedet.
+      if (updateOnly) {
+        await logAction("outlook_update_skipped", `Outlook-oppdatering hoppet over for ${tech.name}: ingen kalenderkobling (opprettes ikke automatisk)`);
+        return { techId: tech.id, techName: tech.name, status: "no_link" };
+      }
       // No existing calendar event → create instead
       const res = await fetch(
         `https://graph.microsoft.com/v1.0/users/${techEmail}/events`,
