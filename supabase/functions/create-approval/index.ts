@@ -365,7 +365,10 @@ Deno.serve(async (req) => {
         }
         const times = techTimeMap.get(tech.id);
         const schedule = formatJobSchedule(job.start_time, job.end_time, times?.start_at, times?.end_at);
-        const html = `<h1>${escapeHtml(job.title)}</h1><p>Til informasjon – ingen oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${jobAttachmentLinks(job.id, job.attachments)}`;
+        const daysHtml = plannedDays.length > 1
+          ? `<p><strong>Planlagte dager (${plannedDays.length}):</strong></p><ul>${plannedDays.map((d) => `<li>${escapeHtml(d)}</li>`).join("")}</ul>`
+          : "";
+        const html = `<h1>${escapeHtml(job.title)}</h1><p>Til informasjon – ingen oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${daysHtml}${jobAttachmentLinks(job.id, job.attachments)}`;
         await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, channel: "email", status: "pending", attemptedBy: callerUserId });
         const sent = await sendMail({ to: tech.email ?? "", subject: `Møte / informasjon: ${displayNumber} – ${job.title}`, html, replyTo }, { personalToken: msToken, useSystem });
         results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, ...(!sent.ok ? { reasonCode: sent.reason } : {}) });
@@ -398,7 +401,7 @@ Deno.serve(async (req) => {
           continue;
         }
         const techTimes = techTimeMap.get(tech.id);
-        const { subject, body } = buildApprovalEmail(job, tech.name, token ?? "", displayNumber, false, techTimes?.start_at, techTimes?.end_at, []);
+        const { subject, body } = buildApprovalEmail(job, tech.name, token ?? "", displayNumber, false, techTimes?.start_at, techTimes?.end_at, [], plannedDays);
         const sent = await sendMail({ to: tech.email, subject: `Jobbinfo (sendt på nytt): ${displayNumber} – ${job.title}`, html: body, replyTo },
           { personalToken: msToken, useSystem });
         const ok = sent.ok;
@@ -501,7 +504,7 @@ Deno.serve(async (req) => {
       // Send email via Microsoft Graph
       if (canSend && tech.email) {
         const techTimes = techTimeMap.get(tech.id);
-        const { subject, body } = buildApprovalEmail(job, tech.name, approvalToken, displayNumber, isTimeChange, techTimes?.start_at, techTimes?.end_at, infoChanges);
+        const { subject, body } = buildApprovalEmail(job, tech.name, approvalToken, displayNumber, isTimeChange, techTimes?.start_at, techTimes?.end_at, infoChanges, plannedDays);
         const sent = await sendMail({ to: tech.email, subject, html: body, replyTo }, { personalToken: msToken, useSystem });
         if (sent.ok) results.push({ techId: tech.id, token: approvalToken, emailSent: true, graphStatus: sent.status });
         else {
