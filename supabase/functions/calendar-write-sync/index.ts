@@ -8,7 +8,7 @@ import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type Deli
 import { planCalendarUpdate } from "../_shared/job-save-flow.ts";
 import { jobInfoUrl } from "../_shared/job-access-policy.ts";
 import { syncTechnicianDays, type DayStore, type DayGraph } from "../_shared/multi-day-sync.ts";
-import { dayOperationKey, type DayPlanItem, type DayLinkRow } from "../_shared/multi-day-calendar.ts";
+import { dayOperationKey, aggregateTechDayDelivery, type DayPlanItem, type DayLinkRow } from "../_shared/multi-day-calendar.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 
@@ -1151,7 +1151,7 @@ Deno.serve(async (req) => {
 
     console.log(`[calendar-write-sync] ${action} for event ${event_id}: ${results.length} technicians, status: ${overallStatus}`);
 
-    return new Response(JSON.stringify({ status: overallStatus, results, deliveryStatus: syncEvidenceStatus(results) }), {
+    return new Response(JSON.stringify({ status: overallStatus, results, deliveryStatus: syncEvidenceStatus(results.filter((r) => !r.excludeFromEvidence)) }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
