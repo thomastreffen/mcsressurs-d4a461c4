@@ -2427,6 +2427,16 @@ export function EventDrawer({
           {!readOnly && isEditing && editEvent && editEvent.technicians.length > 0 && (
             <>
               <RecipientDeliveryStatus eventId={editEvent.id} technicians={editEvent.technicians.map((t) => ({ id: t.id, name: t.name }))} />
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full min-h-11 text-xs gap-1.5"
+                disabled={outlookUpdating || saving}
+                onClick={handleOutlookUpdate}
+              >
+                {outlookUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarPlus className="h-3.5 w-3.5" />}
+                {outlookUpdating ? "Oppdaterer Outlook…" : "Oppdater Outlook (uten e-post/varsel)"}
+              </Button>
               <ResendJobInfoButton jobId={editEvent.id} />
             </>
           )}
@@ -2505,7 +2515,7 @@ export function EventDrawer({
             <AlertDialogHeader>
               <AlertDialogTitle>Bekreft endringer på oppdraget</AlertDialogTitle>
               <AlertDialogDescription>
-                Disse endringene påvirker montørene ute i felt. Velg hvordan oppdraget skal oppdateres.
+                Disse endringene påvirker montørene ute i felt. Lagring alene sender ingenting – varsling er et eget, eksplisitt valg.
               </AlertDialogDescription>
             </AlertDialogHeader>
 
