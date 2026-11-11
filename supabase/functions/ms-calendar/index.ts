@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { filterOwnBusySlots, slotOsloDayKey, type OwnWindow } from "../_shared/availability-filter.ts";
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 
