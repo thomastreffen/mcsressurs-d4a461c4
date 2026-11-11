@@ -127,6 +127,18 @@ export async function recordDelivery(supabaseAdmin: any, r: DeliveryRecord): Pro
       const { data: event } = await supabaseAdmin.from("events").select("company_id,title").eq("id", r.eventId).maybeSingle();
       const { data: techRow } = await supabaseAdmin.from("technicians").select("name").eq("id", r.technicianId).maybeSingle();
       const person = techRow?.name ?? r.recipientEmail ?? "ukjent montør";
+      const line = failureLine(person, r.channel, r.reasonCode);
+      // Standing conditions (e.g. missing Microsoft login) would otherwise alert on every
+      // new job for the same person. One unread alert per person+reason per 24h across jobs;
+      // the per-job status remains visible in the job card.
+      if (isStandingDeliveryReason(r.reasonCode)) {
+        const since = new Date(Date.now() - STANDING_ALERT_WINDOW_MS).toISOString();
+        const { data: recentAlerts } = await supabaseAdmin.from("notifications")
+          .select("message,created_at")
+          .eq("user_id", r.attemptedBy).eq("type", "m365_delivery_failed").eq("read", false)
+          .gte("created_at", since);
+        if (hasRecentStandingAlert(recentAlerts ?? [], line, new Date())) return;
+      }
       const { data: existingAlert } = await supabaseAdmin.from("notifications").select("id,message").eq("user_id", r.attemptedBy).eq("entity_id", r.eventId).eq("type", "m365_delivery_failed").eq("read", false).limit(1).maybeSingle();
       if (existingAlert) {
         // One alert per job; append further affected people instead of hiding them.
