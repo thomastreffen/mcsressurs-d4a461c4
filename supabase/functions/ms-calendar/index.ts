@@ -377,7 +377,7 @@ Deno.serve(async (req) => {
 
       const results = (graphData.value || []).map((entry: any) => {
         const tech = emailToTech.get(entry.scheduleId?.toLowerCase());
-        const busySlots = (entry.scheduleItems || [])
+        const rawSlots = (entry.scheduleItems || [])
           .filter((s: any) => s.status !== "free")
           .map((s: any) => ({
             status: s.status,
@@ -387,6 +387,13 @@ Deno.serve(async (req) => {
             end: s.end?.dateTime,
             is_private: s.isPrivate || false,
           }));
+        // Exclude the job's OWN Outlook copies (legacy + per-day) from conflicts
+        const ownWindows = (tech?.id && ownWindowsByTech.get(tech.id)) || [];
+        const { kept, removedOwn } = filterOwnBusySlots(rawSlots, ownWindows);
+        if (removedOwn.length > 0) {
+          log(`${tech?.name || entry.scheduleId}: filtered ${removedOwn.length} own job event(s) from conflicts`);
+        }
+        const busySlots = kept.map((s: any) => ({ ...s, date: slotOsloDayKey(s) }));
         const isBusy = busySlots.length > 0;
         log(`${tech?.name || entry.scheduleId}: ${isBusy ? "BUSY" : "FREE"} (${busySlots.length} slots)`);
         return {
@@ -397,6 +404,7 @@ Deno.serve(async (req) => {
           email: canViewExternal ? entry.scheduleId : null,
           busy: isBusy,
           busy_slots: busySlots,
+          own_slots_filtered: removedOwn.length,
         };
       });
 
