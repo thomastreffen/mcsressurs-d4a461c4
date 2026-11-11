@@ -1022,9 +1022,33 @@ Deno.serve(async (req) => {
       });
     };
 
+    // ── Multi-day plan: schedule blocks per technician (one Outlook event per workday) ──
+    const { data: schedBlocks } = await supabaseAdmin
+      .from("schedule_blocks")
+      .select("technician_id,start_at,end_at")
+      .eq("project_id", event_id)
+      .is("deleted_at", null);
+    const blocksByTech = new Map<string, { technician_id: string; start_at: string; end_at: string }[]>();
+    for (const b of schedBlocks ?? []) {
+      if (!b.technician_id) continue;
+      const list = blocksByTech.get(b.technician_id) ?? [];
+      list.push(b as any);
+      blocksByTech.set(b.technician_id, list);
+    }
+
     // ── Sync for EACH technician independently ──
     const results: any[] = [];
     for (const { eventTechRow, tech } of techRows) {
+      const techBlocks = blocksByTech.get(tech.id) ?? [];
+      if (techBlocks.length > 0 && action !== "reconcile") {
+        // Flere arbeidsdager: én Outlook-hendelse per (jobb, montør, dag).
+        const multiResult = await syncMultiDayForTech(
+          supabaseAdmin, event, tech, eventTechRow, customer, techBlocks,
+          action, updateOnly, callerUserId, logAction,
+        );
+        results.push(multiResult);
+        continue;
+      }
       const recipientEvent = { ...event, start_time: eventTechRow.start_at || event.start_time, end_time: eventTechRow.end_at || event.end_time };
       const graphBody = buildGraphBody(recipientEvent, customer, {
         eventTechnicianId: eventTechRow.id,
