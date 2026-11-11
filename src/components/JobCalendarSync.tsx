@@ -453,8 +453,7 @@ export function JobCalendarSync({
                   r.busy_slots.map((s, i) => (
                     <p key={`${r.technician_id}-${i}`} className="text-xs text-muted-foreground pl-6">
                       {r.name}: {s.is_private ? "Privat avtale" : s.subject || "Opptatt"},{" "}
-                      {new Date(s.start).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })}–
-                      {new Date(s.end).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })}
+                      {formatSlotOslo(s.start, s.end)}
                     </p>
                   ))
                 )}
@@ -615,35 +614,35 @@ export function JobCalendarSync({
         </div>
       </div>
 
-      {/* Conflict confirmation modal */}
+      {/* Conflict confirmation modal – only real external conflicts reach this point
+          (the job's own Outlook copies are filtered server-side). */}
       <Dialog open={conflictModal.open} onOpenChange={(open) => { if (!open) setConflictModal({ open: false, conflicts: [] }); }}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
               Kalenderkonflikter oppdaget
             </DialogTitle>
             <DialogDescription>
-              Følgende teknikere har eksisterende avtaler i dette tidsrommet. Vil du synke likevel?
+              Følgende teknikere har andre avtaler i dette tidsrommet (jobbens egne Outlook-hendelser er utelatt). Vil du synke likevel?
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 max-h-60 overflow-y-auto">
+          <div className="space-y-2 min-h-0 flex-1 overflow-y-auto pr-1">
             {conflictModal.conflicts.map((r) => (
               <div key={r.technician_id} className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-1">
                 <p className="text-sm font-medium">{r.name}</p>
                 {r.busy_slots.map((s, i) => (
                   <p key={i} className="text-xs text-muted-foreground pl-2">
                     {s.is_private ? "Privat avtale" : s.subject || "Opptatt"},{" "}
-                    {new Date(s.start).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })}–
-                    {new Date(s.end).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })}
+                    {formatSlotOslo(s.start, s.end)}
                   </p>
                 ))}
               </div>
             ))}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0 border-t pt-4">
             <Button variant="outline" onClick={() => setConflictModal({ open: false, conflicts: [] })}>
               Avbryt
             </Button>
