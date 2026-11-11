@@ -261,6 +261,8 @@ export function EventDrawer({
   const [editCompanyId, setEditCompanyId] = useState<string | null>(null);
   const [originalSnapshot, setOriginalSnapshot] = useState<Record<string, any> | null>(null);
   const [pendingSave, setPendingSave] = useState<PendingSaveState | null>(null);
+  const [outlookUpdating, setOutlookUpdating] = useState(false);
+  const queryClient = useQueryClient();
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatusSummary>({
     notifiedAt: null,
     notifiedNames: [],
@@ -1090,6 +1092,34 @@ export function EventDrawer({
     // Refresh approval status + timeline so the drawer never shows the previous technician's answer
     refreshApprovalData();
     onSaved?.(editEvent.id);
+  };
+
+  // Eksplisitt «Oppdater Outlook»: kun kalender-PATCH på eksisterende koblinger.
+  // Sender aldri e-post eller Hub-varsel, og oppretter aldri nye hendelser
+  // (update_only). Status vises per montør i mottakerlisten under.
+  const handleOutlookUpdate = async () => {
+    if (!editEvent || outlookUpdating) return;
+    setOutlookUpdating(true);
+    try {
+      const result = await syncUpdate(editEvent.id, { silent: true, updateOnly: true });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["recipient-delivery", editEvent.id] }),
+        queryClient.invalidateQueries({ queryKey: ["m365-queue", editEvent.id] }),
+      ]);
+      if (result === "synced") {
+        toast.success("Outlook oppdatert", { description: "Kalenderhendelsene er oppdatert. Se status per montør under." });
+      } else if (result === "no_link") {
+        toast.info("Ingen kalenderkobling å oppdatere", { description: "Det finnes ingen Outlook-kobling å oppdatere. Ny hendelse opprettes ikke automatisk." });
+      } else if (result === "no_token") {
+        toast.info("Outlook venter på Microsoft-tilkobling", { description: "Én eller flere montører mangler tilkobling. Status per montør vises under." });
+      } else if (result === "conflict") {
+        // Konflikt-varsel håndteres av useCalendarSync
+      } else {
+        toast.info("Outlook ikke oppdatert for alle", { description: "Se status per montør under for detaljer." });
+      }
+    } finally {
+      setOutlookUpdating(false);
+    }
   };
 
   // Save: create or update
