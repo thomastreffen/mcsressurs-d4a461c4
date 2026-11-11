@@ -1109,6 +1109,8 @@ export function EventDrawer({
       ]);
       if (result === "synced") {
         toast.success("Outlook oppdatert", { description: "Kalenderhendelsene er oppdatert. Se status per montør under." });
+      } else if (result === "missing_days") {
+        toast.info("Eksisterende dager er kontrollert", { description: "«Oppdater Outlook» oppretter aldri nye dager. Bruk «Opprett manglende kalenderdager» under Kalenderdekning per dag." });
       } else if (result === "no_link") {
         toast.info("Ingen kalenderkobling å oppdatere", { description: "Det finnes ingen Outlook-kobling å oppdatere. Ny hendelse opprettes ikke automatisk." });
       } else if (result === "no_token") {
@@ -2428,7 +2430,7 @@ export function EventDrawer({
           {!readOnly && isEditing && editEvent && editEvent.technicians.length > 0 && (
             <>
               <RecipientDeliveryStatus eventId={editEvent.id} technicians={editEvent.technicians.map((t) => ({ id: t.id, name: t.name }))} />
-              <DayCoverageStatus eventId={editEvent.id} technicians={editEvent.technicians.map((t) => ({ id: t.id, name: t.name }))} />
+              <DayCoverageStatus eventId={editEvent.id} canCreateMissing={!saving && !outlookUpdating} technicians={editEvent.technicians.map((t) => ({ id: t.id, name: t.name }))} />
               <Button
                 variant="outline"
                 size="sm"
