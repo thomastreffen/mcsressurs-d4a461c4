@@ -733,6 +733,163 @@ async function syncForTechnician(
   return { techId: tech.id, techName: tech.name, status: "unknown_action" };
 }
 
+/* ── Multi-day: real store against job_calendar_day_links ── */
+function dayStore(supabaseAdmin: any): DayStore {
+  const TABLE = "job_calendar_day_links";
+  return {
+    async listLinks(eventId, technicianId) {
+      const { data } = await supabaseAdmin.from(TABLE)
+        .select("technician_id,work_date,start_at,end_at,outlook_event_id,status,last_error")
+        .eq("event_id", eventId).eq("technician_id", technicianId);
+      return (data ?? []) as DayLinkRow[];
+    },
+    async claimCreate(eventId, item) {
+      const row = {
+        event_id: eventId, technician_id: item.technicianId, work_date: item.workDate,
+        start_at: item.startAt, end_at: item.endAt,
+        idempotency_key: item.operationKey, status: "pending",
+      };
+      const { error } = await supabaseAdmin.from(TABLE).insert(row);
+      if (!error) return "claimed";
+      // Unique conflict → inspect existing row
+      const { data: existing } = await supabaseAdmin.from(TABLE)
+        .select("outlook_event_id,status").eq("idempotency_key", item.operationKey).maybeSingle();
+      if (existing?.outlook_event_id) return "exists";
+      // Reclaim a failed/stale slot; a live pending claim belongs to another in-flight run.
+      const { data: reclaimed } = await supabaseAdmin.from(TABLE)
+        .update({ status: "pending", start_at: item.startAt, end_at: item.endAt, updated_at: new Date().toISOString() })
+        .eq("idempotency_key", item.operationKey).neq("status", "pending").select("id").maybeSingle();
+      return reclaimed ? "claimed" : "in_progress";
+    },
+    async markSynced(eventId, item, outlookEventId) {
+      await supabaseAdmin.from(TABLE).update({
+        outlook_event_id: outlookEventId, status: "synced", last_error: null,
+        start_at: item.startAt, end_at: item.endAt,
+        last_synced_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      }).eq("idempotency_key", item.operationKey);
+    },
+    async markFailed(eventId, item, error) {
+      await supabaseAdmin.from(TABLE).update({
+        status: "failed", last_error: error, updated_at: new Date().toISOString(),
+      }).eq("idempotency_key", item.operationKey);
+    },
+    async releaseClaim(eventId, item) {
+      await supabaseAdmin.from(TABLE).delete()
+        .eq("idempotency_key", item.operationKey).is("outlook_event_id", null);
+    },
+    async removeLink(eventId, link) {
+      await supabaseAdmin.from(TABLE).delete()
+        .eq("event_id", eventId).eq("technician_id", link.technician_id).eq("work_date", link.work_date);
+    },
+  };
+}
+
+/* ── Multi-day: real Graph client on the technician's personal token ── */
+function dayGraph(msToken: string, email: string): DayGraph {
+  const base = `https://graph.microsoft.com/v1.0/users/${email}/events`;
+  const headers = { Authorization: `Bearer ${msToken}`, "Content-Type": "application/json" };
+  const fail = async (res: Response) => { await res.text(); throw { status: res.status }; };
+  return {
+    async createEvent(_email, body) {
+      const res = await fetch(base, { method: "POST", headers, body: JSON.stringify(body) });
+      if (!res.ok) await fail(res);
+      return { id: (await res.json()).id as string };
+    },
+    async updateEvent(_email, outlookEventId, body) {
+      const res = await fetch(`${base}/${outlookEventId}`, { method: "PATCH", headers, body: JSON.stringify(body) });
+      if (!res.ok) await fail(res);
+    },
+    async deleteEvent(_email, outlookEventId) {
+      const res = await fetch(`${base}/${outlookEventId}`, { method: "DELETE", headers: { Authorization: `Bearer ${msToken}` } });
+      if (!res.ok) await fail(res);
+    },
+  };
+}
+
+/**
+ * Multi-day path: one Outlook event per (job, technician, workday).
+ * Adopts a legacy single event covering the event's first day instead of duplicating it.
+ */
+async function syncMultiDayForTech(
+  supabaseAdmin: any, event: any, tech: any, eventTechRow: any, customer: any,
+  techBlocks: { technician_id: string; start_at: string; end_at: string }[],
+  action: string, updateOnly: boolean, callerUserId: string | null,
+  logAction: (t: string, s: string) => Promise<void>,
+): Promise<any> {
+  if (!tech.user_id) return { techId: tech.id, techName: tech.name, status: "no_user_id" };
+  const msToken = await ensureValidMsToken(supabaseAdmin, tech.user_id);
+  if (!msToken) return { techId: tech.id, techName: tech.name, status: "no_token" };
+  if (!tech.email) return { techId: tech.id, techName: tech.name, status: "no_email" };
+
+  const store = dayStore(supabaseAdmin);
+
+  // Adopt legacy single event (created before per-day sync) for the event's first Oslo day.
+  const legacyId = eventTechRow.calendar_event_id as string | null;
+  if (legacyId && !legacyId.startsWith("pending:") && action !== "delete") {
+    const firstDay = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(event.start_time));
+    const key = dayOperationKey(event.id, tech.id, firstDay);
+    const { data: existing } = await supabaseAdmin.from("job_calendar_day_links")
+      .select("id").eq("idempotency_key", key).maybeSingle();
+    if (!existing) {
+      const firstBlock = techBlocks.find((b) =>
+        new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(b.start_at)) === firstDay);
+      await supabaseAdmin.from("job_calendar_day_links").insert({
+        event_id: event.id, technician_id: tech.id, work_date: firstDay,
+        start_at: firstBlock?.start_at ?? event.start_time, end_at: firstBlock?.end_at ?? event.end_time,
+        outlook_event_id: legacyId, status: "synced", idempotency_key: key,
+        last_synced_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  const results = await syncTechnicianDays({
+    eventId: event.id,
+    technicianId: tech.id,
+    email: tech.email,
+    blocks: techBlocks,
+    action: action === "force_update" ? "update" : action as "create" | "update" | "delete",
+    updateOnly,
+    store,
+    graph: dayGraph(msToken, tech.email),
+    buildBody: (item: DayPlanItem) => {
+      const body = buildGraphBody(
+        { ...event, start_time: item.startAt, end_time: item.endAt },
+        customer,
+        { eventTechnicianId: eventTechRow.id, technicianId: tech.id, techName: tech.name },
+      );
+      body.body.content = body.body.content.replace("MCS_SOURCE:true", `MCS_SOURCE:true MCS_WORK_DATE:${item.workDate}`);
+      return body;
+    },
+  });
+
+  // Per-day delivery rows – the granular truth for the UI.
+  let anyFailed = false;
+  let anySynced = false;
+  for (const r of results) {
+    const status = r.state === "synket" ? "sent" : r.state === "feilet" ? "failed" : "pending";
+    if (r.state === "feilet") anyFailed = true;
+    if (r.state === "synket") anySynced = true;
+    await recordDelivery(supabaseAdmin, {
+      eventId: event.id, technicianId: tech.id, technicianUserId: tech.user_id,
+      recipientEmail: tech.email, channel: "calendar", status,
+      reasonCode: r.state === "feilet" ? "graph_error" : null,
+      attemptedBy: callerUserId, operationKey: dayOperationKey(event.id, tech.id, r.workDate),
+    });
+  }
+
+  await logAction(
+    action === "delete" ? "outlook_deleted" : anyFailed ? "outlook_partial" : "outlook_created",
+    `Outlook per dag for ${tech.name}: ${results.filter((r) => r.state === "synket").length}/${results.length} dager synket`,
+  );
+
+  return {
+    techId: tech.id, techName: tech.name,
+    status: action === "delete" ? "deleted" : anyFailed ? "error" : anySynced ? (action === "create" ? "created" : "updated") : "in_progress",
+    dayResults: results,
+    skipTechDelivery: true, // per-day rows already recorded
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
