@@ -2343,9 +2343,9 @@ export function EventDrawer({
                   <span className="text-right font-medium">{format(new Date(deliveryStatus.notifiedAt), "dd.MM.yyyy HH:mm", { locale: nb })}</span>
                 </div>
                 <div className="flex items-start justify-between gap-3">
-                  <span className="text-muted-foreground">Outlook-synk</span>
+                  <span className="text-muted-foreground">Outlook-forespørsel</span>
                   <span className="text-right font-medium">
-                    {deliveryStatus.syncedAt ? `OK · ${deliveryStatus.syncedCount} oppdatert` : "Ikke kjørt"}
+                    {deliveryStatus.syncedAt ? `Forespurt for ${deliveryStatus.syncedCount} · se mottakerstatus` : "Ikke kjørt"}
                   </span>
                 </div>
               </div>
