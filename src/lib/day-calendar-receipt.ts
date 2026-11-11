@@ -21,7 +21,7 @@ export function buildMissingDaysReceipt(results: ReceiptTechResult[]): ReceiptLi
       continue;
     }
     for (const d of r.dayResults) {
-      if (d.state === "synket") lines.push({ techName: r.techName, workDate: d.workDate, text: "Synket – Outlook bekreftet hendelse", tone: "ok" });
+      if (d.state === "synket") lines.push({ techName: r.techName, workDate: d.workDate, text: "Opprettet i Outlook (hendelses-ID mottatt)", tone: "ok" });
       else if (d.state === "feilet") lines.push({ techName: r.techName, workDate: d.workDate, text: `Feilet${d.error ? ` (${d.error})` : ""} – kan prøves igjen`, tone: "fail" });
       else lines.push({ techName: r.techName, workDate: d.workDate, text: "Venter – ikke bekreftet av Outlook", tone: "wait" });
     }
