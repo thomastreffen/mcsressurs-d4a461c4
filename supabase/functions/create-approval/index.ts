@@ -4,6 +4,7 @@ import { resolveJobAddress } from "../_shared/job-address.ts";
 import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
+import { formatPlannedDays } from "../_shared/multi-day-calendar.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
@@ -119,6 +120,7 @@ function buildApprovalEmail(
   techStartAt?: string | null,
   techEndAt?: string | null,
   infoChanges: InfoChange[] = [],
+  plannedDays: string[] = [],
 ): { subject: string; body: string } {
   // Use technician-specific time override if available, otherwise fall back to event times
   const { startDate, startTime, endTime } = formatJobSchedule(job.start_time, job.end_time, techStartAt, techEndAt);
@@ -166,6 +168,14 @@ function buildApprovalEmail(
     <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
       ${briefEmailRows(job.__brief ?? buildOperationalJobBrief({ event: { ...job, job_number: displayNumber } }), { date: startDate, time: `${startTime} – ${endTime}` })}
     </table>
+
+    ${plannedDays.length > 1 ? `
+    <div style="margin: 4px 0 16px; padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;">
+      <p style="margin: 0 0 6px; font-weight: 600; color: #166534; font-size: 13px;">📅 Oppdraget er planlagt over ${plannedDays.length} dager – godkjenningen gjelder alle dagene:</p>
+      <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #1a1a2e;">
+        ${plannedDays.map((d) => `<li>${d}</li>`).join("")}
+      </ul>
+    </div>` : ""}
     
     ${attachmentsHtml}
     ${buildInfoChangesHtml(infoChanges)}
@@ -273,6 +283,14 @@ Deno.serve(async (req) => {
     rRequired = requiresApproval(job, response_required);
     // Operative address: newest event address, else the order's oppdragssted
     job.address = (await resolveJobAddress(supabaseAdmin, job)) || null;
+    // Multi-day scope: all planned days must be visible in the technician e-mail,
+    // and the approval covers every listed day – not just day 1.
+    const { data: jobBlocks } = await supabaseAdmin
+      .from("schedule_blocks")
+      .select("start_at,end_at")
+      .eq("project_id", job_id)
+      .is("deleted_at", null);
+    const plannedDays = formatPlannedDays(jobBlocks ?? []);
     // Operational brief: edited event fields win, linked order fills the gaps (same helper as the app view).
     {
       let orderId: string | null = job.source_order_form_id ?? null;
@@ -347,7 +365,10 @@ Deno.serve(async (req) => {
         }
         const times = techTimeMap.get(tech.id);
         const schedule = formatJobSchedule(job.start_time, job.end_time, times?.start_at, times?.end_at);
-        const html = `<h1>${escapeHtml(job.title)}</h1><p>Til informasjon – ingen oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${jobAttachmentLinks(job.id, job.attachments)}`;
+        const daysHtml = plannedDays.length > 1
+          ? `<p><strong>Planlagte dager (${plannedDays.length}):</strong></p><ul>${plannedDays.map((d) => `<li>${escapeHtml(d)}</li>`).join("")}</ul>`
+          : "";
+        const html = `<h1>${escapeHtml(job.title)}</h1><p>Til informasjon – ingen oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${daysHtml}${jobAttachmentLinks(job.id, job.attachments)}`;
         await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, channel: "email", status: "pending", attemptedBy: callerUserId });
         const sent = await sendMail({ to: tech.email ?? "", subject: `Møte / informasjon: ${displayNumber} – ${job.title}`, html, replyTo }, { personalToken: msToken, useSystem });
         results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, ...(!sent.ok ? { reasonCode: sent.reason } : {}) });
@@ -380,7 +401,7 @@ Deno.serve(async (req) => {
           continue;
         }
         const techTimes = techTimeMap.get(tech.id);
-        const { subject, body } = buildApprovalEmail(job, tech.name, token ?? "", displayNumber, false, techTimes?.start_at, techTimes?.end_at, []);
+        const { subject, body } = buildApprovalEmail(job, tech.name, token ?? "", displayNumber, false, techTimes?.start_at, techTimes?.end_at, [], plannedDays);
         const sent = await sendMail({ to: tech.email, subject: `Jobbinfo (sendt på nytt): ${displayNumber} – ${job.title}`, html: body, replyTo },
           { personalToken: msToken, useSystem });
         const ok = sent.ok;
@@ -483,7 +504,7 @@ Deno.serve(async (req) => {
       // Send email via Microsoft Graph
       if (canSend && tech.email) {
         const techTimes = techTimeMap.get(tech.id);
-        const { subject, body } = buildApprovalEmail(job, tech.name, approvalToken, displayNumber, isTimeChange, techTimes?.start_at, techTimes?.end_at, infoChanges);
+        const { subject, body } = buildApprovalEmail(job, tech.name, approvalToken, displayNumber, isTimeChange, techTimes?.start_at, techTimes?.end_at, infoChanges, plannedDays);
         const sent = await sendMail({ to: tech.email, subject, html: body, replyTo }, { personalToken: msToken, useSystem });
         if (sent.ok) results.push({ techId: tech.id, token: approvalToken, emailSent: true, graphStatus: sent.status });
         else {

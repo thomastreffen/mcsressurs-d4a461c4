@@ -39,6 +39,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMyDay, type MyDayBlock } from "@/hooks/useMyDay";
 import { useMyJobUnreadMessages } from "@/hooks/useMyJobUnreadMessages";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { osloDayKey } from "../../supabase/functions/_shared/multi-day-calendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { MyDayChecklists } from "@/components/forms/MyDayChecklists";
@@ -109,7 +111,7 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 
 /* ─── Block Card ─── */
 
-function BlockCard({ block, onOpen }: { block: MyDayBlock; onOpen: (b: MyDayBlock) => void }) {
+function BlockCard({ block, onOpen, outlookGap }: { block: MyDayBlock; onOpen: (b: MyDayBlock) => void; outlookGap?: boolean }) {
   const startTime = format(new Date(block.start_at), "HH:mm");
   const endTime = format(new Date(block.end_at), "HH:mm");
   const st = block.project_status ? statusConfig[block.project_status] : null;
@@ -157,7 +159,12 @@ function BlockCard({ block, onOpen }: { block: MyDayBlock; onOpen: (b: MyDayBloc
             )}
             {st && (
               <Badge variant="outline" className={cn("text-[10px] px-2 py-0 border-0 rounded-md", st.color)}>
-                {st.label}
+                 {st.label}
+              </Badge>
+            )}
+            {outlookGap && (
+              <Badge variant="outline" className="text-[10px] px-2 py-0 border-0 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                Outlook mangler – Hub gjelder
               </Badge>
             )}
             {block.project_id && (
@@ -601,13 +608,13 @@ function ActionButton({ icon: Icon, label, onClick }: { icon: React.ElementType;
 
 /* ─── Day Group ─── */
 
-function DayGroup({ label, blocks, onOpen }: { label: string; blocks: MyDayBlock[]; onOpen: (b: MyDayBlock) => void }) {
+function DayGroup({ label, blocks, onOpen, gaps }: { label: string; blocks: MyDayBlock[]; onOpen: (b: MyDayBlock) => void; gaps?: Set<string> }) {
   return (
     <section>
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">{label}</h2>
       <div className="space-y-2">
         {blocks.map((b) => (
-          <BlockCard key={b.id} block={b} onOpen={onOpen} />
+          <BlockCard key={b.id} block={b} onOpen={onOpen} outlookGap={!!b.project_id && !!gaps?.has(`${b.project_id}|${osloDayKey(b.start_at)}`)} />
         ))}
       </div>
     </section>
@@ -625,6 +632,21 @@ export default function MyDayPage() {
   const importantChanges = notifications.filter(n => !n.read && n.event_id && n.priority !== "info");
   const jobIds = [...todayBlocks, ...upcomingBlocks].map((b) => b.project_id).filter(Boolean) as string[];
   const unreadMessages = useMyJobUnreadMessages(jobIds);
+
+  // Known Outlook gaps per (job, day): only failed/pending day links – never noise for legacy jobs.
+  const { data: outlookGaps } = useQuery({
+    queryKey: ["my-day-outlook-gaps", jobIds.join(",")],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("job_calendar_day_links")
+        .select("event_id,work_date,status")
+        .in("event_id", jobIds)
+        .neq("status", "synced");
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => `${r.event_id}|${r.work_date}`));
+    },
+    enabled: jobIds.length > 0,
+  });
   const titleFor = (id: string) => [...todayBlocks, ...upcomingBlocks].find((b) => b.project_id === id);
 
   const handleRefresh = async () => {
@@ -714,7 +736,7 @@ export default function MyDayPage() {
         ) : (
           <>
             {todayBlocks.length > 0 ? (
-              <DayGroup label="I dag" blocks={todayBlocks} onOpen={setSelectedBlock} />
+              <DayGroup label="I dag" blocks={todayBlocks} onOpen={setSelectedBlock} gaps={outlookGaps} />
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
@@ -761,7 +783,7 @@ export default function MyDayPage() {
                 {Object.entries(upcomingByDate).map(([dateStr, blocks]) => {
                   const d = new Date(dateStr);
                   const label = isTomorrow(d) ? "I morgen" : format(d, "EEEE d. MMM", { locale: nb });
-                  return <DayGroup key={dateStr} label={label} blocks={blocks} onOpen={setSelectedBlock} />;
+                  return <DayGroup key={dateStr} label={label} blocks={blocks} onOpen={setSelectedBlock} gaps={outlookGaps} />;
                 })}
               </div>
             )}

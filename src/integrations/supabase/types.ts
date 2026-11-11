@@ -10499,6 +10499,54 @@ export type Database = {
           },
         ]
       }
+      job_calendar_day_links: {
+        Row: {
+          created_at: string
+          end_at: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          last_synced_at: string | null
+          outlook_event_id: string | null
+          start_at: string
+          status: string
+          technician_id: string
+          updated_at: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_at: string
+          event_id: string
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          outlook_event_id?: string | null
+          start_at: string
+          status?: string
+          technician_id: string
+          updated_at?: string
+          work_date: string
+        }
+        Update: {
+          created_at?: string
+          end_at?: string
+          event_id?: string
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          outlook_event_id?: string | null
+          start_at?: string
+          status?: string
+          technician_id?: string
+          updated_at?: string
+          work_date?: string
+        }
+        Relationships: []
+      }
       job_calendar_links: {
         Row: {
           calendar_event_id: string | null

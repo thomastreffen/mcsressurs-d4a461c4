@@ -1,4 +1,5 @@
 import { RecipientDeliveryStatus } from "@/components/RecipientDeliveryStatus";
+import { DayCoverageStatus } from "@/components/DayCoverageStatus";
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { UnifiedProjectPicker } from "@/components/resource-plan/UnifiedProjectPicker";
 import { checkParentOpenForNewJob, ECONOMIC_PROJECT_HINT } from "@/lib/parent-open-gate";
@@ -2427,6 +2428,7 @@ export function EventDrawer({
           {!readOnly && isEditing && editEvent && editEvent.technicians.length > 0 && (
             <>
               <RecipientDeliveryStatus eventId={editEvent.id} technicians={editEvent.technicians.map((t) => ({ id: t.id, name: t.name }))} />
+              <DayCoverageStatus eventId={editEvent.id} technicians={editEvent.technicians.map((t) => ({ id: t.id, name: t.name }))} />
               <Button
                 variant="outline"
                 size="sm"
