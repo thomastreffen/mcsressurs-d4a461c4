@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMyDay, type MyDayBlock } from "@/hooks/useMyDay";
 import { useMyJobUnreadMessages } from "@/hooks/useMyJobUnreadMessages";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { osloDayKey } from "../../supabase/functions/_shared/multi-day-calendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
