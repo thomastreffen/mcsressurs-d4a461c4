@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { planOutbound, decideInbound, gate, hubFingerprint, dedupKey, buildEventPayload, type HubAppointment } from "../../supabase/functions/_shared/hub-outlook-sync-core";
+import { planOutbound, decideInbound, gate, hubFingerprint, dedupKey, buildEventPayload, classifyGraphEvent, parseGraphInstant, buildSnapshot, planResolution, type HubAppointment } from "../../supabase/functions/_shared/hub-outlook-sync-core";
 
 const a: HubAppointment = { id: "t1", company_id: "c1", title: "Befaring", description: null, start_at: "2026-11-12T07:00:00Z", end_at: "2026-11-12T08:00:00Z", status: "open", updated_at: "x" };
 
