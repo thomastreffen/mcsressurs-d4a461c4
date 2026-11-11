@@ -77,6 +77,33 @@ const REASON_TEXT: Record<string, string> = {
   sender_no_ms_connection: "avsender mangler Microsoft-pålogging",
 };
 
+/**
+ * Standing conditions: the cause is the person's missing setup, not the individual job.
+ * For these, one unread planner alert per person+reason per 24h is enough – the per-job
+ * status stays visible in the job card (event_recipient_delivery) either way.
+ */
+export const STANDING_DELIVERY_REASONS = ["no_ms_connection", "no_login_link", "no_email"] as const;
+export const STANDING_ALERT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export function isStandingDeliveryReason(reason?: string | null): boolean {
+  return !!reason && (STANDING_DELIVERY_REASONS as readonly string[]).includes(reason);
+}
+
+/** True when an unread alert within the window already names this person+reason line. */
+export function hasRecentStandingAlert(
+  alerts: { message?: string | null; created_at?: string | null }[],
+  line: string,
+  now: Date,
+): boolean {
+  const cutoff = now.getTime() - STANDING_ALERT_WINDOW_MS;
+  return alerts.some((a) => {
+    if (!a.message || !a.message.includes(line)) return false;
+    if (!a.created_at) return true; // no timestamp → treat as recent, stay quiet
+    const t = new Date(a.created_at).getTime();
+    return Number.isFinite(t) && t >= cutoff;
+  });
+}
+
 export function failureLine(person: string, channel: string, reason?: string | null): string {
   const what = channel === "calendar" ? "Outlook-kalender" : "e-post";
   return `• ${person}: ${what} ikke oppdatert – ${REASON_TEXT[reason ?? ""] ?? reason ?? "ukjent feil"}`;
