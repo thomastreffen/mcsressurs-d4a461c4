@@ -72,3 +72,51 @@ Tre akser holdes adskilt: hvem de er (relasjon), hvor varm de er (temperatur/pri
 - Indekser: `idx_customers_org_number` er ikke unik. `leads` har bare `lead_ref_code` som unik.
 - Policy `Leads access by scope`: `legacy_admin_in_company OR get_user_scope(all/company/own+deltaker)`.
 - Kundetabellen har restriktive `phase2_module_*`. Nye self-service-unntak må også utvide den restriktive regelen.
+
+## 6. UX-spesifikasjon: Leads-/kundeoversikt
+
+### Dagens leads-liste (verifisert i `LeadsPage.tsx`)
+- Kolonner: Kunde, Status, Sist aktivitet og Neste steg (begge skjult på smal skjerm), Est. verdi, Handlinger.
+- Filtre: bare status og søk. Mobil er samme tabell med skjulte kolonner, ikke egne kort.
+- Mangler: ansvarlig, relasjon, temperatur, prioritet, region og gruppering. «Sist aktivitet» er ikke en registrert siste kontakt.
+
+### Prinsipp
+Oversikten viser **virksomheter**, ikke løse leads. Hver rad er én virksomhet (unik på org.nr.) med sin åpne mulighet. Det gir én rad per bedrift og ingen duplikater.
+
+### Desktop-tabell
+| Kolonne | Innhold |
+|---|---|
+| Virksomhet | Navn, org.nr. (lite), kommune |
+| Relasjon | Merke: Prospekt / Kunde / Tidligere kunde / Partner |
+| Temp. | Cold / Warm / Hot (farge + tekst) |
+| Pri. | A / B / C |
+| Pipeline | Status på åpen mulighet, eller «Ingen åpen mulighet» |
+| Ansvarlig | Avatar + navn. Tomt vises som «Mangler ansvarlig» (varsel) |
+| Siste kontakt | Dato + type (samtale/møte/e-post) + kort notat, fra siste registrerte aktivitet |
+| Neste aktivitet | Type + dato. Rød hvis forfalt, gul i dag, grå hvis ingen |
+| Verdi | Est. verdi på åpen mulighet |
+| Handlinger | Logg kontakt, Planlegg neste, Åpne |
+
+- **Filtre** (lagres per bruker): Relasjon, Temperatur, Prioritet, Pipeline, Ansvarlig («Mine» som standard), Region (Oslo, Romerike, Nannestad/Gardermoen, Innlandet/Hamar), Neste aktivitet (forfalt / i dag / denne uken / ingen), og søk på navn/org.nr.
+- **Grupperinger** (valgfritt): Ansvarlig, Temperatur, Pipeline eller Region. Antall og sum verdi står i gruppeoverskriften.
+- **Standard sortering:** forfalt neste aktivitet først, deretter prioritet A→C og temperatur hot→cold.
+- **Hurtigvisninger (faner):** Mine oppfølginger, Cold-prospekter, Hot-kunder, Uten ansvarlig, Uten neste aktivitet.
+
+### Mobilkort
+```text
+[Hot] [A]  Bravida Norge AS            Kunde
+Pipeline: Tilbud sendt · 450 000
+Ansvarlig: Rune Ø.
+Sist: Samtale 05.11 – «ønsker serviceavtale»
+Neste: Møte 13.11  (gul hvis i dag, rød hvis forfalt)
+[ Ring ]  [ Logg kontakt ]  [ Neste aktivitet ]
+```
+- Øverst: Mine oppfølginger i dag/forfalt. Filtrene ligger i en nedtrekksskuff, og knappene er minst 44px.
+- «Logg kontakt» er en liten skuff med type, notat og neste aktivitet (valgfritt) i samme lagring, ikke et modalvindu.
+
+### Kundekort og historikk uten duplikater
+- Én tidslinje per virksomhet i `activity_log`, med `entity=customer`. Aktiviteter på mulighet, tilbud eller prosjekt får også `customer_id`, så kundekortet viser alt i én samlet liste uten å kopiere.
+- «Siste kontakt» og «Neste aktivitet» beregnes fra aktivitets-/oppgavetabellen og lagres ikke som egne kopier. Feltene `leads.next_action_*` fases ut eller speiles bare én vei.
+- Mulighet (lead) har pipeline-status. Virksomheten har relasjon, temperatur og prioritet. Når en mulighet vinnes, endres bare relasjonen til «Kunde»; virksomhetsraden er den samme.
+- Kontaktpersoner ligger kun under virksomheten. En lead peker på en kontakt i stedet for fritekst.
+- Ved import og ny registrering slås org.nr. opp først. Finnes virksomheten, åpnes den eksisterende i stedet for å lage en ny.
