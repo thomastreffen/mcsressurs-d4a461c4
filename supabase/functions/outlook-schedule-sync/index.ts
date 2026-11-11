@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { action = "sync", continuation_after } = body;
+    const { action = "sync", continuation_after, chain_depth = 0 } = body;
 
     if (action !== "sync") {
       return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: corsHeaders });
@@ -595,6 +595,28 @@ Deno.serve(async (req) => {
       errors: errors.length > 0 ? errors : null,
       continuation_token: continuationToken,
     }).eq("run_id", runId);
+
+    // Chained self-invocation: process the next batch of technicians so every
+    // resource is covered, not just the first BATCH_SIZE alphabetically.
+    // Bounded by MAX_CHAIN_DEPTH; each chained run is a normal sync run.
+    const MAX_CHAIN_DEPTH = 5;
+    if (continuationToken && chain_depth < MAX_CHAIN_DEPTH) {
+      try {
+        const chainRes = await fetch(`${supabaseUrl}/functions/v1/outlook-schedule-sync`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${serviceKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action: "sync", continuation_after: continuationToken, chain_depth: chain_depth + 1 }),
+        });
+        if (!chainRes.ok) {
+          console.error("[outlook-schedule-sync] Chained batch failed:", chainRes.status, await chainRes.text().catch(() => ""));
+        }
+      } catch (chainErr: any) {
+        console.error("[outlook-schedule-sync] Chained batch error:", chainErr.message);
+      }
+    }
 
     return new Response(
       JSON.stringify({
