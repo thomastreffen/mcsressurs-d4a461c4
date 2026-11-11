@@ -3,8 +3,9 @@ import { LocalExportMenu } from '@/components/LocalExportMenu';
 import type { ExportRow } from '@/lib/local-export';
 import { addDays, startOfWeek, format, isSameDay } from "date-fns";
 import { nb } from "date-fns/locale";
-import { Palmtree, Plus, CalendarDays, Lock, AlertTriangle, CalendarOff } from "lucide-react";
+import { Palmtree, Plus, CalendarDays, Lock, AlertTriangle, CalendarOff, CalendarSync } from "lucide-react";
 import { useOutlookSyncStatus, outlookStatusLabel } from "@/hooks/useOutlookSyncStatus";
+import { OutlookSyncStatusPanel } from "@/components/resource-plan/OutlookSyncStatusPanel";
 import { cellKind, matchesKindFilter, orderCellBlocks, overlappingIds, formatBlockTime, appointmentTypeLabel, CELL_VISIBLE_LIMIT, type CellKindFilter } from "@/lib/team-cell-layout";
 import { cn } from "@/lib/utils";
 import { getResourceCardTitle, getResourceCardSecondary, extractOrderRef } from "@/lib/resource-card-title";
@@ -185,8 +186,12 @@ export function TeamView({
 }: TeamViewProps) {
   const [colorPickerOpenFor, setColorPickerOpenFor] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState<CellKindFilter>("all");
-  const { data: outlookStatus } = useOutlookSyncStatus(
-    (technicians as Array<{ company_id?: string | null }>).map((t) => t.company_id ?? "").filter(Boolean),
+  const [syncStatusOpen, setSyncStatusOpen] = useState(false);
+  const companyIds = useMemo(
+    () => (technicians as Array<{ company_id?: string | null }>).map((t) => t.company_id ?? "").filter(Boolean),
+    [technicians],
+  );
+  const { data: outlookStatus } = useOutlookSyncStatus(companyIds,
   );
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
   const weekStart = useMemo(
