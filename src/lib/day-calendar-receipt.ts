@@ -2,7 +2,7 @@
 // Pure: built only from the server's per-technician/per-day results. Never claims
 // "Synket" unless the server reported the day as synced (Graph returned an event id).
 
-export interface ReceiptDayResult { workDate: string; state: string; error?: string }
+export interface ReceiptDayResult { workDate: string; state: string; error?: string; outcome?: string }
 export interface ReceiptTechResult { techId: string; techName: string; status: string; dayResults?: ReceiptDayResult[] }
 export interface ReceiptLine { techName: string; workDate: string | null; text: string; tone: "ok" | "wait" | "fail" }
 
@@ -21,7 +21,9 @@ export function buildMissingDaysReceipt(results: ReceiptTechResult[]): ReceiptLi
       continue;
     }
     for (const d of r.dayResults) {
-      if (d.state === "synket") lines.push({ techName: r.techName, workDate: d.workDate, text: "Opprettet i Outlook (hendelses-ID mottatt)", tone: "ok" });
+      // "Opprettet" ONLY when this run's Graph POST returned an event id.
+      if (d.state === "synket" && d.outcome === "created") lines.push({ techName: r.techName, workDate: d.workDate, text: "Opprettet i Outlook (hendelses-ID mottatt)", tone: "ok" });
+      else if (d.state === "synket") lines.push({ techName: r.techName, workDate: d.workDate, text: "Allerede synket – ingen endring", tone: "ok" });
       else if (d.state === "feilet") lines.push({ techName: r.techName, workDate: d.workDate, text: `Feilet${d.error ? ` (${d.error})` : ""} – kan prøves igjen`, tone: "fail" });
       else lines.push({ techName: r.techName, workDate: d.workDate, text: "Venter – ikke bekreftet av Outlook", tone: "wait" });
     }

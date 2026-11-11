@@ -27,6 +27,11 @@ export interface DayResult {
   state: DayDeliveryState;
   outlookEventId?: string | null;
   error?: string;
+  /**
+   * What THIS run actually did for the day. Only "created" means a Graph POST returned
+   * an event id in this run; "unchanged"/"already_exists" mean no Graph write happened.
+   */
+  outcome?: "created" | "updated" | "unchanged" | "already_exists" | "in_progress" | "skipped" | "failed" | "deleted";
 }
 
 /**
@@ -64,7 +69,7 @@ export async function syncTechnicianDays(args: {
         } catch (e: any) {
           // 404 = already gone; still remove the link. Other errors keep the link for retry.
           if (e?.status !== 404) {
-            results.push({ technicianId, workDate: link.work_date, state: "feilet", error: String(e?.status ?? e) });
+            results.push({ technicianId, workDate: link.work_date, state: "feilet", error: String(e?.status ?? e), outcome: "failed" });
             continue;
           }
         }
@@ -79,48 +84,48 @@ export async function syncTechnicianDays(args: {
   const results: DayResult[] = [];
 
   for (const { item, link } of diff.unchanged) {
-    results.push({ technicianId, workDate: item.workDate, state: dayDeliveryState(item, link), outlookEventId: link.outlook_event_id });
+    results.push({ technicianId, workDate: item.workDate, state: dayDeliveryState(item, link), outlookEventId: link.outlook_event_id, outcome: "unchanged" });
   }
 
   for (const item of diff.creates) {
     if (args.updateOnly) {
       // No link → never auto-create from an explicit update (no duplicates).
-      results.push({ technicianId, workDate: item.workDate, state: "venter" });
+      results.push({ technicianId, workDate: item.workDate, state: "venter", outcome: "skipped" });
       continue;
     }
     const claim = await store.claimCreate(eventId, item);
     if (claim === "exists") {
-      results.push({ technicianId, workDate: item.workDate, state: "synket" });
+      results.push({ technicianId, workDate: item.workDate, state: "synket", outcome: "already_exists" });
       continue;
     }
     if (claim === "in_progress") {
-      results.push({ technicianId, workDate: item.workDate, state: "venter" });
+      results.push({ technicianId, workDate: item.workDate, state: "venter", outcome: "in_progress" });
       continue;
     }
     try {
       const created = await graph.createEvent(email, buildBody(item));
       await store.markSynced(eventId, item, created.id);
-      results.push({ technicianId, workDate: item.workDate, state: "synket", outlookEventId: created.id });
+      results.push({ technicianId, workDate: item.workDate, state: "synket", outlookEventId: created.id, outcome: "created" });
     } catch (e: any) {
       // Keep the row as failed: the UI shows "Feilet" and the next run reclaims it.
       await store.markFailed(eventId, item, String(e?.status ?? e?.message ?? e));
-      results.push({ technicianId, workDate: item.workDate, state: "feilet", error: String(e?.status ?? e) });
+      results.push({ technicianId, workDate: item.workDate, state: "feilet", error: String(e?.status ?? e), outcome: "failed" });
     }
   }
 
   for (const { item, link } of diff.updates) {
     if (args.createMissingOnly) {
       // Existing Outlook event with changed time: not this action's job – report honestly.
-      results.push({ technicianId, workDate: item.workDate, state: "venter", outlookEventId: link.outlook_event_id });
+      results.push({ technicianId, workDate: item.workDate, state: "venter", outlookEventId: link.outlook_event_id, outcome: "skipped" });
       continue;
     }
     try {
       await graph.updateEvent(email, link.outlook_event_id!, buildBody(item));
       await store.markSynced(eventId, item, link.outlook_event_id!);
-      results.push({ technicianId, workDate: item.workDate, state: "synket", outlookEventId: link.outlook_event_id });
+      results.push({ technicianId, workDate: item.workDate, state: "synket", outlookEventId: link.outlook_event_id, outcome: "updated" });
     } catch (e: any) {
       await store.markFailed(eventId, item, String(e?.status ?? e?.message ?? e));
-      results.push({ technicianId, workDate: item.workDate, state: "feilet", error: String(e?.status ?? e) });
+      results.push({ technicianId, workDate: item.workDate, state: "feilet", error: String(e?.status ?? e), outcome: "failed" });
     }
   }
 
@@ -131,7 +136,7 @@ export async function syncTechnicianDays(args: {
         await graph.deleteEvent(email, link.outlook_event_id);
       } catch (e: any) {
         if (e?.status !== 404) {
-          results.push({ technicianId, workDate: link.work_date, state: "feilet", error: String(e?.status ?? e) });
+          results.push({ technicianId, workDate: link.work_date, state: "feilet", error: String(e?.status ?? e), outcome: "failed" });
           continue;
         }
       }
