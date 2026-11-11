@@ -8,7 +8,7 @@ import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type Deli
 import { planCalendarUpdate } from "../_shared/job-save-flow.ts";
 import { jobInfoUrl } from "../_shared/job-access-policy.ts";
 import { syncTechnicianDays, type DayStore, type DayGraph } from "../_shared/multi-day-sync.ts";
-import { dayOperationKey, type DayPlanItem, type DayLinkRow } from "../_shared/multi-day-calendar.ts";
+import { dayOperationKey, aggregateTechDayDelivery, type DayPlanItem, type DayLinkRow } from "../_shared/multi-day-calendar.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 
@@ -847,8 +847,9 @@ async function syncMultiDayForTech(
     technicianId: tech.id,
     email: tech.email,
     blocks: techBlocks,
-    action: action === "force_update" ? "update" : action as "create" | "update" | "delete",
-    updateOnly,
+    action: action === "force_update" ? "update" : action === "create_missing_days" ? "create" : action as "create" | "update" | "delete",
+    updateOnly: action === "create_missing_days" ? false : updateOnly,
+    createMissingOnly: action === "create_missing_days",
     store,
     graph: dayGraph(msToken, tech.email),
     buildBody: (item: DayPlanItem) => {
@@ -862,29 +863,32 @@ async function syncMultiDayForTech(
     },
   });
 
-  // Per-day delivery rows – the granular truth for the UI.
-  let anyFailed = false;
-  let anySynced = false;
-  for (const r of results) {
-    const status = r.state === "synket" ? "sent" : r.state === "feilet" ? "failed" : "pending";
-    if (r.state === "feilet") anyFailed = true;
-    if (r.state === "synket") anySynced = true;
+  // ONE technician-level summary row (event_recipient_delivery is unique per event+tech+channel;
+  // per-day writes overwrote each other so the last day "won"). Per-day truth: job_calendar_day_links.
+  const agg = aggregateTechDayDelivery(results.map((r) => r.state));
+  if (action !== "delete") {
     await recordDelivery(supabaseAdmin, {
       eventId: event.id, technicianId: tech.id, technicianUserId: tech.user_id,
-      recipientEmail: tech.email, channel: "calendar", status,
-      reasonCode: r.state === "feilet" ? "graph_error" : null,
-      attemptedBy: callerUserId, operationKey: dayOperationKey(event.id, tech.id, r.workDate),
+      recipientEmail: tech.email, channel: "calendar", status: agg.status,
+      reasonCode: agg.reason, attemptedBy: callerUserId,
+      operationKey: `calday-summary:${event.id}:${tech.id}`,
     });
   }
+  const anyFailed = agg.status === "failed";
 
+  const syncedCount = results.filter((r) => r.state === "synket").length;
   await logAction(
-    action === "delete" ? "outlook_deleted" : anyFailed ? "outlook_partial" : "outlook_created",
-    `Outlook per dag for ${tech.name}: ${results.filter((r) => r.state === "synket").length}/${results.length} dager synket`,
+    action === "delete" ? "outlook_deleted" : action === "create_missing_days" ? "outlook_days_created" : anyFailed ? "outlook_partial" : "outlook_created",
+    action === "create_missing_days"
+      ? `Opprett manglende kalenderdager for ${tech.name} (uten e-post/varsel): ${syncedCount}/${results.length} dager synket`
+      : `Outlook per dag for ${tech.name}: ${syncedCount}/${results.length} dager synket`,
   );
 
   return {
     techId: tech.id, techName: tech.name,
-    status: action === "delete" ? "deleted" : anyFailed ? "error" : anySynced ? (action === "create" ? "created" : "updated") : "in_progress",
+    status: action === "delete" ? "deleted"
+      : agg.resultStatus === "all_days_synced" ? (action === "create" || action === "create_missing_days" ? "created" : "updated")
+      : agg.resultStatus,
     dayResults: results,
     skipTechDelivery: true, // per-day rows already recorded
   };
@@ -918,7 +922,7 @@ Deno.serve(async (req) => {
     // eksisterende kalenderkoblinger, aldri opprettelse av nye hendelser.
     const updateOnly = body.update_only === true;
 
-    if (!["create", "update", "force_update", "delete", "reconcile"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
+    if (!["create", "update", "force_update", "delete", "reconcile", "create_missing_days"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
       return new Response(JSON.stringify({ error: "Missing action or event_id" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -1040,6 +1044,11 @@ Deno.serve(async (req) => {
     const results: any[] = [];
     for (const { eventTechRow, tech } of techRows) {
       const techBlocks = blocksByTech.get(tech.id) ?? [];
+      if (action === "create_missing_days" && techBlocks.length === 0) {
+        // Single-day assignment: this explicit action never touches the legacy path.
+        results.push({ techId: tech.id, techName: tech.name, status: "not_applicable", skipTechDelivery: true, excludeFromEvidence: true });
+        continue;
+      }
       if (techBlocks.length > 0 && action !== "reconcile") {
         // Flere arbeidsdager: én Outlook-hendelse per (jobb, montør, dag).
         const multiResult = await syncMultiDayForTech(
@@ -1077,7 +1086,8 @@ Deno.serve(async (req) => {
     const hasNoLink = results.some(r => r.status === "no_link");
 
     let overallStatus = "ok";
-    if (action === "create" && (hasCreated || hasAlreadyExists || hasInProgress)) overallStatus = "created";
+    if (action === "create_missing_days") overallStatus = hasError ? "error" : "days_processed";
+    else if (action === "create" && (hasCreated || hasAlreadyExists || hasInProgress)) overallStatus = "created";
     else if (action === "update" && hasUpdated) overallStatus = "updated";
     else if (action === "update" && hasNoLink && !hasError && !hasConflict) overallStatus = "no_link";
     else if (action === "force_update" && (hasUpdated || hasCreated)) overallStatus = "force_updated";
@@ -1121,7 +1131,7 @@ Deno.serve(async (req) => {
           if (qErr && qErr.code !== "23505") console.error("[calendar-write-sync] queue insert failed:", qErr.message);
         }
       }
-      const overall = syncEvidenceStatus(results);
+      const overall = syncEvidenceStatus(results.filter((r) => !r.excludeFromEvidence));
       if (overall) {
         await supabaseAdmin.from("events").update({
           outlook_sync_status: overall,
@@ -1141,7 +1151,7 @@ Deno.serve(async (req) => {
 
     console.log(`[calendar-write-sync] ${action} for event ${event_id}: ${results.length} technicians, status: ${overallStatus}`);
 
-    return new Response(JSON.stringify({ status: overallStatus, results, deliveryStatus: syncEvidenceStatus(results) }), {
+    return new Response(JSON.stringify({ status: overallStatus, results, deliveryStatus: syncEvidenceStatus(results.filter((r) => !r.excludeFromEvidence)) }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

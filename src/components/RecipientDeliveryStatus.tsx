@@ -21,6 +21,7 @@ const REASON_LABEL: Record<string, string> = {
   self_assigned: "Tildelt seg selv",
   in_progress: "Pågår",
   no_calendar_link: "Ingen kalenderkobling – opprettes ikke automatisk",
+  missing_calendar_days: "Mangler kalenderdager – se Kalenderdekning per dag",
   pilot_blocked: "Avventer godkjent pilot og Microsoft-rettigheter",
   unknown_graph_outcome: "Ukjent resultat – må avstemmes før nytt forsøk",
   uncertain_operation: "Ukjent tidligere forsøk – må avstemmes",
@@ -43,10 +44,29 @@ export function deliveryLabel(r: Pick<Row, "channel" | "status" | "reason_code" 
   if (state === "awaiting") return `${what}: avventer bekreftelse`;
   if (state === "not_required") return `${what}: ikke påkrevd`;
   if (r.status === "sent") return `${what} overlevert til Microsoft`;
+  if (r.status === "pending" && r.reason_code === "missing_calendar_days") return `${what}: ${REASON_LABEL.missing_calendar_days}`;
   if (r.status === "pending") return `${what} pågår`;
   const reason = r.reason_code ? REASON_LABEL[r.reason_code] ?? r.reason_code : null;
   if (r.status === "skipped") return `${what}: ${reason ?? "ikke sendt"}`;
   return `${what} feilet${reason ? ` – ${reason}` : ""}`;
+}
+
+/**
+ * Intent rows in m365_communication_queue belong to the central Microsoft calendar app,
+ * which is OFF until pilot approval. An untouched intent is dormant – never "pending work".
+ */
+export function queueLine(
+  item: { operation: string; status: string; reason_code: string | null; attempt_count: number },
+  techName?: string,
+): string {
+  const who = techName ?? "Ukjent montør";
+  const op = item.operation === "delete" ? "fjerning" : item.operation === "update" ? "endring" : "opprettelse";
+  if (item.status === "pending" && item.attempt_count === 0) {
+    return `${who} · Sentral Microsoft-kalender (${op}): ikke aktivert før pilot – ingenting sendes`;
+  }
+  const state = item.status === "uncertain" ? "Ukjent resultat – avstemming kreves" : item.status === "failed" ? "Feilet" : item.status === "processing" ? "Behandles" : "Venter";
+  const reason = item.reason_code ? ` · ${REASON_LABEL[item.reason_code] ?? "Kontroll kreves"}` : "";
+  return `${who} · Sentral Microsoft-kalender (${op}): ${state}${reason} · ${item.attempt_count} forsøk`;
 }
 
 export type DeliveryLight = "green" | "yellow" | "red";
@@ -85,7 +105,7 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
   const { data: queue } = useQuery({
     queryKey: ["m365-queue", eventId],
     queryFn: async () => {
-      const result = await supabase.from("m365_communication_queue").select("id,operation,status,reason_code,attempt_count").eq("event_id", eventId);
+      const result = await supabase.from("m365_communication_queue").select("id,technician_id,operation,status,reason_code,attempt_count").eq("event_id", eventId);
       if (result.error) throw result.error;
       return result.data;
     },
@@ -116,8 +136,7 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
       <Badge variant={light === "red" ? "destructive" : light === "yellow" ? "outline" : "secondary"}>{LIGHT_TEXT[light]}</Badge>
       {queue?.filter(item => item.status !== "accepted").map(item => (
         <p key={item.id} className="text-xs text-muted-foreground break-words">
-          {item.operation === "delete" ? "Fjerning" : item.operation === "update" ? "Endring" : "Opprettelse"}: {item.status === "uncertain" ? "Ukjent resultat – avstemming kreves" : item.status === "failed" ? "Feilet" : item.status === "processing" ? "Behandles" : "Venter"}
-          {item.reason_code ? ` · ${REASON_LABEL[item.reason_code] ?? "Kontroll kreves"}` : ""} · {item.attempt_count} forsøk
+          {queueLine(item, technicians.find((t) => t.id === item.technician_id)?.name)}
         </p>
       ))}
       {technicians.map((t) => {

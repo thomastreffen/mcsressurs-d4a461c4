@@ -35,6 +35,11 @@ export function calendarResultToDelivery(status: string): { status: DeliveryStat
       // Eksplisitt «Oppdater Outlook» uten eksisterende kalenderkobling:
       // ingenting opprettes (ingen duplikat), status vises som ventende.
       return { status: "pending", reason: "no_calendar_link" };
+    case "missing_days":
+      // Multi-day: some planned workdays have no Outlook event yet – never "sent".
+      return { status: "pending", reason: "missing_calendar_days" };
+    case "not_applicable":
+      return { status: "skipped", reason: "not_applicable" };
     case "no_token":
       return { status: "failed", reason: "no_ms_connection" };
     case "no_user_id":

@@ -54,7 +54,7 @@ export function useCalendarSync() {
   const syncUpdate = useCallback(async (
     eventId: string,
     opts?: { silent?: boolean; updateOnly?: boolean },
-  ): Promise<"synced" | "conflict" | "error" | "no_token" | "no_link" | "unknown"> => {
+  ): Promise<"synced" | "conflict" | "error" | "no_token" | "no_link" | "missing_days" | "unknown"> => {
     try {
       const { data, error } = await invokeWithSession("calendar-write-sync", {
         body: { action: "update", event_id: eventId, ...(opts?.updateOnly ? { update_only: true } : {}) },
@@ -63,6 +63,10 @@ export function useCalendarSync() {
         console.error("[CalendarSync] update invoke error:", error);
         return "error";
       }
+      // «Oppdater Outlook» oppretter aldri nye dager. Manglende dager må opprettes
+      // eksplisitt via «Opprett manglende kalenderdager».
+      const hasMissingDays = Array.isArray(data?.results) && data.results.some((r: any) => r?.status === "missing_days");
+      if (opts?.updateOnly && hasMissingDays) return "missing_days";
       if (data?.deliveryStatus === "partial" || data?.deliveryStatus === "failed") {
         // Ved eksplisitt «Oppdater Outlook» (silent) vises status per mottaker
         // i mottakerlisten – ingen gjentatt oransje samlevarsel.
@@ -134,6 +138,27 @@ export function useCalendarSync() {
     }
   }, []);
 
+  /**
+   * Eksplisitt «Opprett manglende kalenderdager»: oppretter KUN dager uten Outlook-hendelse
+   * (idempotent nøkkel per jobb/montør/dag). Ingen e-post, ingen Hub-varsel om oppdrag,
+   * ingen endring/sletting av eksisterende hendelser. Returnerer kvittering per dag.
+   */
+  const createMissingDays = useCallback(async (eventId: string): Promise<{
+    ok: boolean;
+    results: { techId: string; techName: string; status: string; dayResults?: { workDate: string; state: string; error?: string }[] }[];
+  }> => {
+    try {
+      const { data, error } = await invokeWithSession("calendar-write-sync", {
+        body: { action: "create_missing_days", event_id: eventId },
+      });
+      if (error) return { ok: false, results: [] };
+      return { ok: true, results: Array.isArray(data?.results) ? data.results : [] };
+    } catch (err) {
+      console.error("[CalendarSync] create_missing_days exception:", err);
+      return { ok: false, results: [] };
+    }
+  }, []);
+
   const forceUpdate = useCallback(async (eventId: string) => {
     try {
       const { data, error } = await invokeWithSession("calendar-write-sync", {
@@ -191,6 +216,7 @@ export function useCalendarSync() {
     syncCreate,
     syncUpdate,
     syncDelete,
+    createMissingDays,
     forceUpdate,
     acceptGraphVersion,
     conflict,
