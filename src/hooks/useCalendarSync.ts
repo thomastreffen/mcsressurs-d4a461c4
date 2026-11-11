@@ -145,7 +145,7 @@ export function useCalendarSync() {
    */
   const createMissingDays = useCallback(async (eventId: string): Promise<{
     ok: boolean;
-    results: { techId: string; techName: string; status: string; dayResults?: { workDate: string; state: string; error?: string }[] }[];
+    results: { techId: string; techName: string; status: string; dayResults?: { workDate: string; state: string; error?: string; outcome?: string }[] }[];
   }> => {
     try {
       const { data, error } = await invokeWithSession("calendar-write-sync", {
