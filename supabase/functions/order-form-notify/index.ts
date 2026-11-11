@@ -195,7 +195,8 @@ Deno.serve(async (req) => {
       const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
       const { data: recent } = await supabase.from("order_form_activity_log")
         .select("payload").eq("submission_id", submission_id).eq("event_type", "notification_sent").gte("created_at", since);
-      if ((recent || []).some((r: any) => r?.payload?.type === "customer_update" && r?.payload?.event_key === (event_key || "status_changed"))) {
+      // A combined «Venter kunde» + message e-mail counts as the status e-mail too.
+      if ((recent || []).some((r: any) => (r?.payload?.type === "customer_update" || r?.payload?.type === "shared_message") && r?.payload?.event_key === (event_key || "status_changed"))) {
         return json({ success: true, skipped_duplicate: true });
       }
 
@@ -253,8 +254,8 @@ Deno.serve(async (req) => {
         },
         waiting_customer: {
           subject: `Oppdatering: ${submission.submission_no} - Vi venter på svar fra deg`,
-          heading: "Vi trenger svar fra deg",
-          body: "Bestillingen venter på svar fra deg. Se meldingen på sporingslenken og svar der eller på denne e-posten.",
+          heading: "Status endret til Venter på kunde",
+          body: "Status endret til Venter på kunde. Vi avventer tilbakemelding fra deg. Følg saken via sporingslenken.",
           color: "#FEF3C7", colorFg: "#92400E",
         },
         rejected: {
@@ -351,15 +352,22 @@ Deno.serve(async (req) => {
       const trackingToken = submission.public_tracking_token;
       const trackingUrl = trackingToken ? `${appUrl}/bestilling/status/${trackingToken}` : null;
 
-      subject = `Melding: ${submission.submission_no} - ${oppdragstittel}`;
+      // Optional combined status: one e-mail for «Venter kunde» + the personal message.
+      const combinedWaiting = body.status_event_key === "waiting_customer";
+      subject = combinedWaiting
+        ? `Oppdatering: ${submission.submission_no} - Vi venter på svar fra deg`
+        : `Melding: ${submission.submission_no} - ${oppdragstittel}`;
       recipients = [bestillerEpost];
 
+      const baseText = messageBody || "Du har fått en ny melding angående din bestilling. Se sporingslenken for detaljer.";
       bodyHtml = buildCustomerUpdateEmail({
         submissionNo: submission.submission_no,
         kundenavn,
         oppdragstittel,
-        heading: "Ny melding fra " + senderName,
-        bodyText: messageBody || "Du har fått en ny melding angående din bestilling. Se sporingslenken for detaljer.",
+        heading: combinedWaiting ? "Status endret til Venter på kunde" : "Ny melding fra " + senderName,
+        bodyText: combinedWaiting
+          ? `${baseText}<br><br>— ${senderName}<br><br>Vi avventer tilbakemelding fra deg. Følg saken via sporingslenken.`
+          : baseText,
         headingBg: "#DBEAFE",
         headingFg: "#1E40AF",
         trackingUrl,
@@ -427,7 +435,7 @@ Deno.serve(async (req) => {
     await supabase.from("order_form_activity_log").insert({
       submission_id,
       event_type: "notification_sent",
-      payload: { type: notification_type, recipients, subject, reply_to: replyToAddress || null, event_key: body.event_key || null, message_id: body.message_id || null, provider: "graph_accepted" },
+      payload: { type: notification_type, recipients, subject, reply_to: replyToAddress || null, event_key: body.event_key || body.status_event_key || null, message_id: body.message_id || null, provider: "graph_accepted" },
     });
     // Mark the message as e-mailed ONLY after Microsoft accepted the send.
     if (notification_type === "shared_message" && body.message_id) {

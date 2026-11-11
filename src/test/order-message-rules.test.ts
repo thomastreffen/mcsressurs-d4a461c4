@@ -15,8 +15,8 @@ describe("order composer rules", () => {
     expect(allowedAddressees([customer, internal], "internal").map((p) => p.id)).toEqual(["i1"]);
     expect(allowedAddressees([customer, internal], "shared")).toHaveLength(2);
   });
-  it("Venter kunde requires a shared, non-empty customer message", () => {
-    expect(statusRequiresCustomerMessage("waiting_customer")).toBe(true);
+  it("Venter kunde krever ikke manuelt skrevet melding; valgt samlet melding må være delt og ikke tom", () => {
+    expect(statusRequiresCustomerMessage("waiting_customer")).toBe(false);
     expect(statusRequiresCustomerMessage("under_review")).toBe(false);
     expect(validateOutgoingMessage({ visibility: "internal", addressee: null, body: "x", hasFiles: false, requireCustomerMessage: true })).not.toBeNull();
     expect(validateOutgoingMessage({ visibility: "shared", addressee: null, body: "", hasFiles: true, requireCustomerMessage: true })).not.toBeNull();
@@ -70,13 +70,42 @@ describe("status-varsling til bestiller", () => {
   it("Venter internt sender aldri kundemail", () => {
     expect(shouldEmailOnStatusChange("waiting_internal", "k@x.no", false)).toBe(false);
   });
-  it("Venter kunde sendes via delt melding, ikke dobbelt", () => {
-    expect(shouldEmailOnStatusChange("waiting_customer", "k@x.no", false)).toBe(false);
+  it("Venter kunde gir alltid standard statusmail, også uten egen melding og ved fravalg", () => {
+    expect(statusNotifyPolicy("waiting_customer")).toBe("mandatory");
+    expect(shouldEmailOnStatusChange("waiting_customer", "k@x.no", false)).toBe(true);
+    expect(shouldEmailOnStatusChange("waiting_customer", "k@x.no", true)).toBe(true);
+    expect(statusEventKey("waiting_customer")).toBe("waiting_customer");
   });
   it("Lukket er ikke samme e-post som Utført", () => {
     expect(statusEventKey("closed")).toBe("closed");
   });
   it("uten bestiller-epost sendes ingenting", () => {
     expect(shouldEmailOnStatusChange("rejected", null, false)).toBe(false);
+  });
+});
+
+import { effectiveStatusChangedAt } from "@/lib/order-request-state";
+describe("automatikk overstyrer aldri ny manuell status (BST-000067 10:27)", () => {
+  const postkontor = { id: "m1", sender_type: "customer", sender_name: "MCS Service - Postkontor", message_type: "message", body: "Ny bestilling", created_at: "2026-10-28T08:07:26Z", is_visible_to_customer: true, visibility: "shared" };
+  const henningOld = { ...postkontor, id: "m2", sender_name: "Henning", created_at: "2026-11-05T10:00:00Z" };
+  it("bruker siste manuelle statusendring selv om bestillingens tidsstempel er eldre", () => {
+    const at = effectiveStatusChangedAt("2026-10-27T15:08:23Z", [
+      { event_type: "status_changed", created_at: "2026-11-11T09:27:54Z" },
+      { event_type: "notification_sent", created_at: "2026-11-11T09:30:00Z" },
+    ]);
+    expect(at).toBe("2026-11-11T09:27:54.000Z");
+    expect(deriveOrderConversationState("waiting_customer", [postkontor, henningOld], [], at).statusSyncTarget).toBeNull();
+  });
+  it("manuell Til vurdering → Venter kunde forblir Venter kunde med bare Postkontor-melding", () => {
+    const at = effectiveStatusChangedAt(null, [{ event_type: "status_changed", created_at: "2026-11-11T09:27:54Z" }]);
+    expect(deriveOrderConversationState("waiting_customer", [postkontor], [], at).effectiveInternalStatus).toBe("waiting_customer");
+  });
+  it("uten kjent statustidspunkt flyttes status aldri automatisk", () => {
+    expect(deriveOrderConversationState("waiting_customer", [henningOld], [], null).statusSyncTarget).toBeNull();
+  });
+  it("eldre ubehandlet svar på gammel forespørsel flytter ikke ny manuell status", () => {
+    const req = { id: "r1", sender_type: "admin", message_type: "request_info", requires_reply: true, body: "Hvilken dag?", created_at: "2026-11-01T08:00:00Z", is_visible_to_customer: true, visibility: "shared" };
+    const ans = { ...henningOld, id: "r2", created_at: "2026-11-02T08:00:00Z" };
+    expect(deriveOrderConversationState("waiting_customer", [req, ans], [], "2026-11-11T09:27:54Z").statusSyncTarget).toBeNull();
   });
 });
