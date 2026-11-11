@@ -32,6 +32,8 @@ import { format, setHours, setMinutes } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { invokeWithSession } from "@/lib/invoke-session";
+import { orderPlanningDates, buildOrderScheduleBlocks } from "@/lib/order-task-dates";
+import { X, Plus } from "lucide-react";
 
 interface AssignResourceTaskDialogProps {
   open: boolean;
@@ -137,6 +139,8 @@ export function AssignResourceTaskDialog({
   const [selectedTechIds, setSelectedTechIds] = useState<string[]>([]);
   const [includeAttachments, setIncludeAttachments] = useState(true);
   const [notifyRequester, setNotifyRequester] = useState(false);
+  const [extraDates, setExtraDates] = useState<Date[]>([]);
+  const [extraPickerOpen, setExtraPickerOpen] = useState(false);
 
   // Reset all fields when dialog opens with fresh data
   useEffect(() => {
@@ -159,6 +163,7 @@ export function AssignResourceTaskDialog({
     setStartTime("08:00");
     setEndTime("16:00");
     setSelectedTechIds([]);
+    setExtraDates([]);
     setIncludeAttachments(true);
     setNotifyRequester(!!bestillerEpost && !!autoNotifyDefault);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -171,6 +176,8 @@ export function AssignResourceTaskDialog({
 
   const computedStart = useMemo(() => applyTime(startDate, startTime), [startDate, startTime]);
   const computedEnd = useMemo(() => applyTime(endDate, endTime), [endDate, endTime]);
+  const isSingleDayWindow = !!startDate && !!endDate && format(startDate, "yyyy-MM-dd") === format(endDate, "yyyy-MM-dd");
+  const planningDates = useMemo(() => orderPlanningDates(startDate, isSingleDayWindow ? extraDates : []), [startDate, extraDates, isSingleDayWindow]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -216,6 +223,22 @@ export function AssignResourceTaskDialog({
         technician_id: techId,
       }));
       await supabase.from("event_technicians").insert(techRows as any);
+
+      // Flere arbeidsdager: samme jobb (én bestillingskobling), én plan-blokk per montør × dag.
+      if (planningDates.length > 1) {
+        const rows = buildOrderScheduleBlocks({
+          companyId: activeCompanyId, eventId: newEvent.id, title: title || "Oppgave",
+          techIds: selectedTechIds, dates: planningDates, startTime: format(startTime, "HH:mm"), endTime: format(endTime, "HH:mm"),
+        });
+        const { data: existing } = await supabase.from("schedule_blocks")
+          .select("technician_id,start_at,end_at").is("deleted_at", null).eq("project_id", newEvent.id);
+        const have = new Set((existing ?? []).map((b: any) => `${b.technician_id}|${new Date(b.start_at).toISOString()}|${new Date(b.end_at).toISOString()}`));
+        const toInsert = rows.filter((r) => !have.has(`${r.technician_id}|${r.start_at}|${r.end_at}`));
+        if (toInsert.length > 0) {
+          const { error: sbErr } = await (supabase as any).from("schedule_blocks").insert(toInsert);
+          if (sbErr) throw new Error(`Oppgaven ble opprettet, men ekstra dager feilet: ${sbErr.message}`);
+        }
+      }
 
       if (includeAttachments && attachments.length > 0) {
         const attMeta: any[] = [];
@@ -280,9 +303,10 @@ export function AssignResourceTaskDialog({
           technician_names: techNames,
           scheduled_start: startTime.toISOString(),
           scheduled_end: endTime.toISOString(),
-          summary: techNames.length > 0
+          planned_dates: planningDates,
+          summary: (techNames.length > 0
             ? `Tildelt ${techNames.join(", ")} ${startFormatted}`
-            : `Planlagt ${startFormatted}`,
+            : `Planlagt ${startFormatted}`) + (planningDates.length > 1 ? ` (${planningDates.length} dager)` : ""),
         },
         created_by: user?.id,
       });
@@ -380,7 +404,8 @@ export function AssignResourceTaskDialog({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent className="flex h-[100dvh] max-h-[100dvh] w-full flex-col gap-0 p-0 sm:max-w-lg">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
@@ -572,6 +597,59 @@ export function AssignResourceTaskDialog({
                   </span>
                 </p>
               )}
+
+              {/* Flere arbeidsdager – spesifikke datoer, ikke ukentlig gjentakelse */}
+              <div className="rounded-lg border border-border/60 p-3 space-y-2" data-testid="extra-dates">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-medium">Flere arbeidsdager</p>
+                    <p className="text-[10px] text-muted-foreground">Samme jobb, tid og montører på valgte datoer</p>
+                  </div>
+                  <Popover open={extraPickerOpen} onOpenChange={setExtraPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" size="sm" className="min-h-[36px]" disabled={!isSingleDayWindow}>
+                        <Plus className="mr-1 h-3.5 w-3.5" /> Legg til flere datoer
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar
+                        mode="multiple"
+                        selected={extraDates}
+                        onSelect={(d) => setExtraDates((d || []).filter((x) => !startDate || format(x, "yyyy-MM-dd") !== format(startDate, "yyyy-MM-dd")))}
+                        className={cn("p-3 pointer-events-auto")}
+                        locale={nb}
+                      />
+                      <div className="flex justify-end border-t p-2">
+                        <Button size="sm" onClick={() => setExtraPickerOpen(false)}>Ferdig</Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {!isSingleDayWindow && startDate && endDate && (
+                  <p className="text-[10px] text-muted-foreground">Velg samme Fra- og Til-dato for å legge til flere arbeidsdager.</p>
+                )}
+                {isSingleDayWindow && planningDates.length > 1 && (
+                  <ul className="flex flex-wrap gap-1.5">
+                    {planningDates.map((ds) => {
+                      const isPrimary = startDate && ds === format(startDate, "yyyy-MM-dd");
+                      const d = new Date(`${ds}T12:00:00`);
+                      return (
+                        <li key={ds}>
+                          <Badge variant={isPrimary ? "default" : "outline"} className="gap-1 text-[11px]">
+                            {format(d, "EEE d. MMM", { locale: nb })} {startTime}–{endTime}
+                            {!isPrimary && (
+                              <button type="button" aria-label={`Fjern ${format(d, "d. MMM", { locale: nb })}`} className="ml-0.5 rounded p-0.5 hover:bg-muted"
+                                onClick={() => setExtraDates((prev) => prev.filter((x) => format(x, "yyyy-MM-dd") !== ds))}>
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                          </Badge>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
 
@@ -646,6 +724,9 @@ export function AssignResourceTaskDialog({
             </label>
           </div>
 
+        </div>
+        </div>
+        <div className="shrink-0 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button
             className="w-full"
             onClick={() => mutation.mutate()}
@@ -654,7 +735,7 @@ export function AssignResourceTaskDialog({
             {mutation.isPending ? "Oppretter..." : (
               <>
                 <UserPlus className="h-4 w-4 mr-1.5" />
-                Opprett og tildel ({selectedTechIds.length} montør{selectedTechIds.length !== 1 ? "er" : ""})
+                Opprett og tildel ({selectedTechIds.length} montør{selectedTechIds.length !== 1 ? "er" : ""}{planningDates.length > 1 ? `, ${planningDates.length} dager` : ""})
                 {notifyRequester && bestillerEpost && <span className="ml-1.5 opacity-90">+ varsle</span>}
               </>
             )}
