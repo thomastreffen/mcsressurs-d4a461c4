@@ -180,3 +180,27 @@ export function formatPlannedDays(
       return `${DAY_DATE_FMT.format(s)} ${DAY_TIME_FMT.format(s)}–${DAY_TIME_FMT.format(e)}`;
     });
 }
+
+/**
+ * One technician-level calendar delivery row summarising all planned days.
+ * event_recipient_delivery is unique per (event, technician, channel), so per-day
+ * writes would overwrite each other (last day wins). Per-day truth lives in
+ * job_calendar_day_links; this summary never claims "sent" unless EVERY day is synced.
+ */
+export function aggregateTechDayDelivery(
+  states: DayDeliveryState[],
+): { status: "sent" | "pending" | "failed"; reason: string | null; resultStatus: string } {
+  if (states.length === 0) return { status: "pending", reason: "missing_calendar_days", resultStatus: "missing_days" };
+  if (states.every((s) => s === "synket")) return { status: "sent", reason: null, resultStatus: "all_days_synced" };
+  if (states.some((s) => s === "feilet")) return { status: "failed", reason: "graph_error", resultStatus: "error" };
+  return { status: "pending", reason: "missing_calendar_days", resultStatus: "missing_days" };
+}
+
+/** Days that "Opprett manglende kalenderdager" may create: planned in Hub, no Outlook event, or failed. */
+export function missingDayItems(plan: DayPlanItem[], links: DayLinkRow[]): DayPlanItem[] {
+  const byKey = new Map(links.map((l) => [`${l.technician_id}|${l.work_date}`, l]));
+  return plan.filter((item) => {
+    const link = byKey.get(`${item.technicianId}|${item.workDate}`);
+    return !link || !link.outlook_event_id;
+  });
+}
