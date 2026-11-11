@@ -146,3 +146,37 @@ export const DAY_COVERAGE_LABELS: Record<DayCoverage, string> = {
   mangler: "Outlook mangler for planlagte dager",
   ingen_dager: "Ingen planlagte dager",
 };
+
+const DAY_DATE_FMT = new Intl.DateTimeFormat("nb-NO", {
+  timeZone: "Europe/Oslo", weekday: "short", day: "numeric", month: "short",
+});
+const DAY_TIME_FMT = new Intl.DateTimeFormat("nb-NO", {
+  timeZone: "Europe/Oslo", hour: "2-digit", minute: "2-digit", hour12: false,
+});
+
+/**
+ * Human-readable planned days for e-mail/UI, e.g. "tor. 19. nov 08:00–16:00".
+ * One line per Oslo day across all blocks (technician-agnostic), sorted by date.
+ */
+export function formatPlannedDays(
+  blocks: { start_at: string; end_at: string }[],
+): string[] {
+  const byDay = new Map<string, { start: string; end: string }>();
+  for (const b of blocks) {
+    if (!b.start_at || !b.end_at) continue;
+    const day = osloDayKey(b.start_at);
+    const cur = byDay.get(day);
+    if (!cur) byDay.set(day, { start: b.start_at, end: b.end_at });
+    else {
+      if (new Date(b.start_at) < new Date(cur.start)) cur.start = b.start_at;
+      if (new Date(b.end_at) > new Date(cur.end)) cur.end = b.end_at;
+    }
+  }
+  return Array.from(byDay.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, v]) => {
+      const s = new Date(v.start);
+      const e = new Date(v.end);
+      return `${DAY_DATE_FMT.format(s)} ${DAY_TIME_FMT.format(s)}–${DAY_TIME_FMT.format(e)}`;
+    });
+}
