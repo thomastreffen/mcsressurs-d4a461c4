@@ -39,3 +39,20 @@ export function normaliseAllDay(d: Date): Date {
   if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   return d;
 }
+
+/**
+ * Which removal actions a schedule block offers.
+ * - hub_job: a Hub job (manual/system) or an Outlook copy with a trusted link → normal job removal
+ *   (removes the technician from the job, with clear consequence text).
+ * - unconfirmed_link: Outlook appointment carrying an untrusted/suggested job link → "Fjern feil kobling"
+ *   (keeps the appointment) or "Skjul avtale i Hub". Never removes anyone from a job.
+ * - outlook_only: plain Outlook appointment → only "Skjul avtale i Hub" (local, never deletes in Outlook).
+ */
+export type OutlookRemovalMode = "hub_job" | "unconfirmed_link" | "outlook_only";
+
+export function outlookRemovalMode(b: OutlookBlockLike & { untrusted_project_id?: string | null; suggested_project_id?: string | null }): OutlookRemovalMode {
+  if (b.source !== "outlook") return "hub_job";
+  if (isTrustedOutlookLink(b)) return "hub_job";
+  if (b.untrusted_project_id || b.project_id || b.suggested_project_id || b.match_state === "needs_confirmation") return "unconfirmed_link";
+  return "outlook_only";
+}
