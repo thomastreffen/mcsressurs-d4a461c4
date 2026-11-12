@@ -49,7 +49,7 @@ export default function ConfirmationsPage() {
       .select(`
         id, technician_id, company_id, project_id, start_at, end_at, title, location,
         match_confidence, match_reason, match_state, ai_match_reason, ai_confidence,
-        outlook_subject,
+        outlook_subject, suggested_project_id, is_private,
         technicians!inner(name, color),
         events(title)
       `)
@@ -62,8 +62,9 @@ export default function ConfirmationsPage() {
         ...row,
         technician_name: row.technicians?.name ?? "Ukjent",
         technician_color: row.technicians?.color ?? null,
-        suggested_project_title: row.events?.title ?? null,
-        suggested_project_id: row.project_id,
+        suggested_project_title: row.suggested_project_id ? null : (row.events?.title ?? null),
+        suggested_project_id: row.suggested_project_id ?? row.project_id,
+        title: row.is_private ? "Opptatt" : (row.outlook_subject || "Opptatt"),
       })));
     }
     setLoading(false);
