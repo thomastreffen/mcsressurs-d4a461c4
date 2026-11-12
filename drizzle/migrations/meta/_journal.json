@@ -659,6 +659,13 @@
       "when": 1794479031854,
       "tag": "0093_approval_response_notifications_single_source",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1794480828564,
+      "tag": "0094_schedule_blocks_suggested_project",
+      "breakpoints": true
     }
   ]
 }

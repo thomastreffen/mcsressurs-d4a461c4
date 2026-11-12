@@ -1,0 +1,2 @@
+ALTER TABLE public.schedule_blocks ADD COLUMN IF NOT EXISTS suggested_project_id uuid NULL;
+COMMENT ON COLUMN public.schedule_blocks.suggested_project_id IS 'Unconfirmed project suggestion from fuzzy/AI matching for Outlook blocks. Never a link; project_id is set only by deterministic Hub key or explicit human confirmation.';
