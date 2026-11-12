@@ -58,11 +58,17 @@ export default function ConfirmationsPage() {
       .order("start_at", { ascending: true });
 
     if (!error && data) {
+      const sugIds = [...new Set(data.map((r: any) => r.suggested_project_id).filter(Boolean))] as string[];
+      const sugTitles = new Map<string, string>();
+      if (sugIds.length) {
+        const { data: sp } = await supabase.from("events").select("id, title").in("id", sugIds);
+        for (const p of sp || []) sugTitles.set(p.id, p.title);
+      }
       setBlocks(data.map((row: any) => ({
         ...row,
         technician_name: row.technicians?.name ?? "Ukjent",
         technician_color: row.technicians?.color ?? null,
-        suggested_project_title: row.suggested_project_id ? null : (row.events?.title ?? null),
+        suggested_project_title: row.suggested_project_id ? (sugTitles.get(row.suggested_project_id) ?? null) : (row.events?.title ?? null),
         suggested_project_id: row.suggested_project_id ?? row.project_id,
         title: row.is_private ? "Opptatt" : (row.outlook_subject || "Opptatt"),
       })));
