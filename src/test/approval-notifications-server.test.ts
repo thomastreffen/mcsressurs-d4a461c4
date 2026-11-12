@@ -28,7 +28,7 @@ beforeAll(async () => {
     ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
     CREATE POLICY own ON notifications FOR SELECT TO authenticated USING(user_id=nullif(current_setting('request.jwt.claim.sub',true),'')::uuid);
   `);
-  await db.exec(readFileSync('.lovable/approval-notifications.sql','utf8'));
+  await db.exec(readFileSync('drizzle/migrations/0093_approval_response_notifications_single_source.sql','utf8').replace(/--> statement-breakpoint/g,''));
 },120000);
 afterAll(async () => { await db?.close(); });
 beforeEach(async () => {
@@ -119,4 +119,15 @@ it('rejection/time proposals have one source, target responsible people and excl
   expect(await rows()).toEqual([{user_id:id(1),type:'rejected'}]);
   await db.exec(`UPDATE job_approvals SET status='pending',token=gen_random_uuid(); UPDATE job_approvals SET status='reschedule_requested'`);
   expect(await rows()).toEqual([{user_id:id(1),type:'rejected'},{user_id:id(1),type:'time_change_proposed'}]);
+});
+it('approval and batched notifications roll back together',async () => {
+  await expect(db.transaction(async tx=>{
+    await tx.exec(`UPDATE job_approvals SET status='approved'`);
+    throw new Error('simulate transaction abort');
+  })).rejects.toThrow('simulate transaction abort');
+  expect(await rows()).toHaveLength(0);
+  expect((await db.query<{status:string}>('SELECT status FROM job_approvals')).rows[0]?.status).toBe('pending');
+});
+it('a client cannot forge the transition key to bypass source suppression',async () => {
+  await expect(db.exec(`INSERT INTO notifications(user_id,event_id,type,approval_transition_key) VALUES('${id(1)}','${job}','all_approved','forged')`)).rejects.toThrow('trigger-owned');
 });
