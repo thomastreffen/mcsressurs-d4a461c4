@@ -15945,6 +15945,7 @@ export type Database = {
           project_id: string | null
           source: string
           start_at: string
+          suggested_project_id: string | null
           technician_id: string
           title: string
           updated_at: string
@@ -15986,6 +15987,7 @@ export type Database = {
           project_id?: string | null
           source?: string
           start_at: string
+          suggested_project_id?: string | null
           technician_id: string
           title?: string
           updated_at?: string
@@ -16027,6 +16029,7 @@ export type Database = {
           project_id?: string | null
           source?: string
           start_at?: string
+          suggested_project_id?: string | null
           technician_id?: string
           title?: string
           updated_at?: string

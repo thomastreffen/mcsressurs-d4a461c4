@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek } from "date-fns";
 import { parseUtc } from "@/lib/parse-utc";
+import { safeOutlookBlockView, normaliseAllDay } from "@/lib/outlook-block-display";
 
 export interface ScheduleBlock {
   id: string;
@@ -50,10 +51,17 @@ export interface ScheduleBlock {
 }
 
 function mapRow(row: any): ScheduleBlock {
+  // Fail-closed: untrusted Outlook links (fuzzy/AI) never render as a job or project title.
+  const view = safeOutlookBlockView(row);
+  if (view.untrustedProjectId) row = { ...row, project_id: null, events: null, title: view.title };
+  else if (row.source === "outlook") row = { ...row, title: view.title };
+  let start = parseUtc(row.start_at);
+  let end = parseUtc(row.end_at);
+  if (row.is_all_day) { start = normaliseAllDay(start); end = normaliseAllDay(end); }
   return {
     ...row,
-    start_at: parseUtc(row.start_at),
-    end_at: parseUtc(row.end_at),
+    start_at: start,
+    end_at: end,
     technician_name: row.technicians?.name,
     technician_color: row.technicians?.color,
     project_title: row.events?.title ?? null,

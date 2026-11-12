@@ -49,7 +49,7 @@ export default function ConfirmationsPage() {
       .select(`
         id, technician_id, company_id, project_id, start_at, end_at, title, location,
         match_confidence, match_reason, match_state, ai_match_reason, ai_confidence,
-        outlook_subject,
+        outlook_subject, suggested_project_id, is_private,
         technicians!inner(name, color),
         events(title)
       `)
@@ -58,12 +58,19 @@ export default function ConfirmationsPage() {
       .order("start_at", { ascending: true });
 
     if (!error && data) {
+      const sugIds = [...new Set(data.map((r: any) => r.suggested_project_id).filter(Boolean))] as string[];
+      const sugTitles = new Map<string, string>();
+      if (sugIds.length) {
+        const { data: sp } = await supabase.from("events").select("id, title").in("id", sugIds);
+        for (const p of sp || []) sugTitles.set(p.id, p.title);
+      }
       setBlocks(data.map((row: any) => ({
         ...row,
         technician_name: row.technicians?.name ?? "Ukjent",
         technician_color: row.technicians?.color ?? null,
-        suggested_project_title: row.events?.title ?? null,
-        suggested_project_id: row.project_id,
+        suggested_project_title: row.suggested_project_id ? (sugTitles.get(row.suggested_project_id) ?? null) : (row.events?.title ?? null),
+        suggested_project_id: row.suggested_project_id ?? row.project_id,
+        title: row.is_private ? "Opptatt" : (row.outlook_subject || "Opptatt"),
       })));
     }
     setLoading(false);

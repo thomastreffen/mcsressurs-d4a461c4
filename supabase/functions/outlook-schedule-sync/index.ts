@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isSystemCaller } from "../_shared/system-caller.ts";
+import { allDayRangeUtc, decideLink, displayTitleFor, isTrustedState, maySuggestProject, scoreCandidate, tokens } from "../_shared/outlook-match-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -252,13 +253,18 @@ Deno.serve(async (req) => {
           }
 
           // Graph returns dateTime in UTC (via Prefer: outlook.timezone="UTC" header)
-          // Append Z only if not already present to ensure correct UTC parsing
+          // Timed events: Graph dateTime is UTC (designator-less). All-day events carry a
+          // calendar date, not an instant → map to Europe/Oslo midnight (DST-safe).
           const rawStart = ev.start.dateTime;
           const rawEnd = ev.end.dateTime;
-          const startAt = new Date(rawStart.endsWith("Z") ? rawStart : rawStart + "Z");
-          const endAt = new Date(rawEnd.endsWith("Z") ? rawEnd : rawEnd + "Z");
-
-          console.log(`[outlook-schedule-sync] ${tech.name}: ${ev.subject} | raw start=${rawStart} tz=${ev.start.timeZone} → parsed=${startAt.toISOString()} | raw end=${rawEnd} tz=${ev.end.timeZone} → parsed=${endAt.toISOString()}`);
+          let startAt: Date;
+          let endAt: Date;
+          if (ev.isAllDay) {
+            ({ start: startAt, end: endAt } = allDayRangeUtc(rawStart, rawEnd));
+          } else {
+            startAt = new Date(rawStart.endsWith("Z") ? rawStart : rawStart + "Z");
+            endAt = new Date(rawEnd.endsWith("Z") ? rawEnd : rawEnd + "Z");
+          }
 
           // Privacy: private/personal/confidential → only busy time, never content
           const isPrivate = isPrivateSensitivity(ev.sensitivity);
@@ -275,7 +281,6 @@ Deno.serve(async (req) => {
           const mcsMatch = bodyContent.match(/MCS_BLOCK_ID:([a-f0-9-]+)/);
           const existingBlockId = mcsMatch?.[1] || null;
 
-          // Check if block already exists (for title rule)
           const { data: existingBlock } = await supabase
             .from("schedule_blocks")
             .select("id, project_id, match_state")
@@ -284,138 +289,54 @@ Deno.serve(async (req) => {
             .is("deleted_at", null)
             .maybeSingle();
 
-          // Project matching
-          let projectId: string | null = existingBlock?.project_id || null;
-          let matchConfidence = 0;
-          let matchReason = "";
-          let matchState: "auto" | "needs_confirmation" | "external" = "external";
-
-          // If block already has a confirmed project, keep it
-          if (existingBlock?.project_id && existingBlock.match_state === "confirmed") {
-            projectId = existingBlock.project_id;
-            matchConfidence = 100;
-            matchReason = "Previously confirmed";
-            matchState = "auto";
-          } else {
-            // 1. MCS_BLOCK_ID link
-            if (existingBlockId) {
-              const { data: linkedBlock } = await supabase
-                .from("schedule_blocks")
-                .select("project_id")
-                .eq("id", existingBlockId)
-                .single();
-              if (linkedBlock?.project_id) {
-                projectId = linkedBlock.project_id;
-                matchConfidence = 100;
-                matchReason = "MCS_BLOCK_ID link";
-                matchState = "auto";
-              }
+          // FAIL-CLOSED LINKING (see _shared/outlook-match-policy.ts):
+          // project_id only from explicit human confirmation or the Hub-written MCS_BLOCK_ID.
+          // Fuzzy/affinity text matching only yields a suggestion, never a link or a title.
+          let deterministicProjectId: string | null = null;
+          if (existingBlockId && !isTrustedState(existingBlock?.match_state)) {
+            const { data: linkedBlock } = await supabase
+              .from("schedule_blocks")
+              .select("project_id, company_id")
+              .eq("id", existingBlockId)
+              .maybeSingle();
+            if (linkedBlock?.project_id && linkedBlock.company_id === companyId) {
+              deterministicProjectId = linkedBlock.project_id;
             }
+          }
 
-            // 2. Fuzzy match on subject + aliases
-            if (!projectId && ev.subject && !isPrivate) {
-              const words = ev.subject.split(/[\s–\-,]+/).filter((w: string) => w.length > 2);
-              // Only letters/digits reach the filter string (no PostgREST filter injection)
-              const firstWord = (words[0] || "").replace(/[^\p{L}\p{N}]/gu, "");
-              if (firstWord.length > 2) {
-                const { data: matchedProjects } = await supabase
-                  .from("events")
-                  .select("id, title, customer, address, project_aliases")
-                  .eq("company_id", companyId)
-                  .or(`title.ilike.%${firstWord}%,customer.ilike.%${firstWord}%,project_aliases.cs.{${firstWord}}`)
-                  .is("deleted_at", null)
-                  .limit(10);
-
-                if (matchedProjects?.length) {
-                  const subject = ev.subject.toLowerCase();
-                  let bestMatch = matchedProjects[0];
-                  let bestScore = 0;
-
-                  for (const p of matchedProjects) {
-                    let score = 0;
-                    const title = (p.title || "").toLowerCase();
-                    const customer = (p.customer || "").toLowerCase();
-                    const aliases: string[] = ((p as any).project_aliases || []).map((a: string) => a.toLowerCase());
-
-                    for (const alias of aliases) {
-                      if (subject.includes(alias) || alias.includes(subject.split(" ")[0])) {
-                        score += 60;
-                        break;
-                      }
-                      for (const w of words) {
-                        if (alias === w.toLowerCase()) { score += 45; break; }
-                      }
-                    }
-
-                    if (subject.includes(title) || title.includes(subject)) score += 50;
-                    else {
-                      for (const w of words) {
-                        if (title.includes(w.toLowerCase())) score += 15;
-                        if (customer.includes(w.toLowerCase())) score += 10;
-                      }
-                    }
-
-                    if (ev.location?.displayName && p.address) {
-                      const loc = ev.location.displayName.toLowerCase();
-                      const addr = p.address.toLowerCase();
-                      if (loc.includes(addr) || addr.includes(loc)) score += 25;
-                    }
-
-                    if (score > bestScore) {
-                      bestScore = score;
-                      bestMatch = p;
-                    }
-                  }
-
-                  // Text similarity is only a suggestion; a user must confirm the link.
-                  if (bestScore >= 80) {
-                    projectId = bestMatch.id;
-                    matchConfidence = Math.min(bestScore, 100);
-                    matchReason = `Subject/location match: ${bestMatch.title}`;
-                    matchState = "needs_confirmation";
-                  } else if (bestScore >= 50) {
-                    projectId = bestMatch.id;
-                    matchConfidence = bestScore;
-                    matchReason = `Partial match: ${bestMatch.title}`;
-                    matchState = "needs_confirmation";
-                  }
-                }
-              }
-            }
-
-            // 3. Recent affinity
-            if (!projectId && matchConfidence < 50 && !isPrivate) {
-              const { data: recentBlocks } = await supabase
-                .from("schedule_blocks")
-                .select("project_id, events!schedule_blocks_project_id_fkey(title)")
-                .eq("technician_id", tech.id)
+          let suggestion: { projectId: string; score: number; title: string } | null = null;
+          const eligible = maySuggestProject({ subject: ev.subject, isPrivate, isAllDay: !!ev.isAllDay, showAs: ev.showAs });
+          if (!deterministicProjectId && !isTrustedState(existingBlock?.match_state) && eligible) {
+            const words = tokens(ev.subject);
+            const firstWord = (words[0] || "").replace(/[^\p{L}\p{N}]/gu, "");
+            if (firstWord.length > 2) {
+              const { data: matchedProjects } = await supabase
+                .from("events")
+                .select("id, title, customer, job_number, project_aliases")
                 .eq("company_id", companyId)
-                .not("project_id", "is", null)
-                .order("start_at", { ascending: false })
-                .limit(5);
-
-              if (recentBlocks?.length) {
-                const subject = ev.subject?.toLowerCase() || "";
-                for (const rb of recentBlocks) {
-                  const projTitle = (rb as any).events?.title?.toLowerCase() || "";
-                  if (projTitle && subject.includes(projTitle.split(" ")[0])) {
-                    projectId = rb.project_id;
-                    matchConfidence = 60;
-                    matchReason = `Recent affinity: ${(rb as any).events?.title}`;
-                    matchState = "needs_confirmation";
-                    break;
-                  }
-                }
+                .or(`title.ilike.%${firstWord}%,customer.ilike.%${firstWord}%,job_number.ilike.%${firstWord}%,project_aliases.cs.{${firstWord}}`)
+                .is("deleted_at", null)
+                .limit(10);
+              for (const p of matchedProjects || []) {
+                const score = scoreCandidate(ev.subject, p as any);
+                if (!suggestion || score > suggestion.score) suggestion = { projectId: p.id, score, title: p.title || "" };
               }
             }
           }
 
+          const decision = decideLink({ existing: existingBlock as any, deterministicProjectId, suggestion });
+          let projectId = decision.projectId;
+          let matchState: string = decision.matchState;
+          if (matchState === "confirmed") matchState = existingBlock?.match_state || "confirmed";
+          const matchConfidence = decision.matchConfidence;
+          let matchReason = decision.matchReason;
+
           if (matchState === "needs_confirmation") totalNeedsConfirmation++;
 
           // ──── TITLE RULE ────
-          // If project_id set and project exists (not deleted) → use project title
-          // Otherwise → use outlook_subject
-          let displayTitle = ev.subject || "Opptatt";
+          // Project title only for a trusted/deterministic link; otherwise the Outlook original
+          // (or "Opptatt" for private). Never rewrite e.g. "FRI" to a project name.
+          let linkedProjectTitle: string | null = null;
           if (projectId) {
             const { data: proj } = await supabase
               .from("events")
@@ -424,14 +345,14 @@ Deno.serve(async (req) => {
               .is("deleted_at", null)
               .maybeSingle();
             if (proj?.title) {
-              displayTitle = proj.title;
+              linkedProjectTitle = proj.title;
             } else {
-              // Project deleted – unlink
               projectId = null;
               matchState = "external";
               matchReason = "Prosjekt slettet under sync";
             }
           }
+          const displayTitle = displayTitleFor({ isPrivate, subject: ev.subject, linkedProjectTitle });
 
           // Upsert schedule_block
           const { error: upsertError } = await supabase
@@ -443,6 +364,7 @@ Deno.serve(async (req) => {
                 company_id: companyId,
                 technician_id: tech.id,
                 project_id: projectId,
+                suggested_project_id: decision.suggestedProjectId,
                 source: "outlook",
                 start_at: startAt.toISOString(),
                 end_at: endAt.toISOString(),

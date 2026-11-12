@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { maySuggestProject } from "../_shared/outlook-match-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,8 +42,9 @@ Deno.serve(async (req) => {
     // Fetch blocks that need AI matching
     const { data: blocks, error: blocksErr } = await supabase
       .from("schedule_blocks")
-      .select("id, technician_id, company_id, title, location, outlook_subject, outlook_location, outlook_preview, outlook_organizer, start_at, end_at, match_confidence, match_state, project_id, match_reason, ai_confidence")
-      .or("match_state.eq.needs_confirmation,and(match_confidence.gte.40,match_confidence.lt.80)")
+      .select("id, technician_id, company_id, title, location, outlook_subject, outlook_location, outlook_preview, outlook_organizer, start_at, end_at, match_confidence, match_state, project_id, match_reason, ai_confidence, is_private, is_all_day, outlook_show_as, source")
+      .eq("source", "outlook")
+      .eq("match_state", "needs_confirmation")
       .is("ai_confidence", null)
       .order("start_at", { ascending: true })
       .limit(20);
@@ -55,7 +57,7 @@ Deno.serve(async (req) => {
     const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString();
     const { data: projects } = await supabase
       .from("events")
-      .select("id, job_number, title, customer, address, project_aliases, status")
+      .select("id, company_id, job_number, title, customer, address, project_aliases, status")
       .or(`status.in.(planned,requested,scheduled,in_progress),start_time.gte.${ninetyDaysAgo}`)
       .is("deleted_at", null)
       .order("start_time", { ascending: false })
@@ -67,6 +69,7 @@ Deno.serve(async (req) => {
 
     const projectList = projects.map(p => ({
       id: p.id,
+      company_id: (p as any).company_id,
       job_number: p.job_number,
       title: p.title,
       customer: p.customer,
@@ -83,6 +86,14 @@ Deno.serve(async (req) => {
 
     for (const block of blocks) {
       const startTime = Date.now();
+      // Fail-closed: never suggest for private / all-day / leisure ("FRI", ferie …) appointments.
+      if (!maySuggestProject({ subject: block.outlook_subject, isPrivate: (block as any).is_private, isAllDay: (block as any).is_all_day, showAs: (block as any).outlook_show_as })) {
+        await supabase.from("schedule_blocks").update({ ai_confidence: 0, ai_match_reason: "AI: ikke vurdert (privat/heldag/fri)" }).eq("id", block.id);
+        continue;
+      }
+      // Company isolation: only candidates from the block's own company.
+      const companyProjects = projectList.filter((p: any) => p.company_id === block.company_id);
+      if (companyProjects.length === 0) continue;
 
       try {
         const eventPayload = {
@@ -110,7 +121,7 @@ ${JSON.stringify(eventPayload, null, 2)}
 Montør ID: ${block.technician_id}
 
 Kandidatprosjekter:
-${JSON.stringify(projectList, null, 2)}`;
+${JSON.stringify(companyProjects.map(({ company_id: _c, ...rest }: any) => rest), null, 2)}`;
 
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -206,30 +217,13 @@ ${JSON.stringify(projectList, null, 2)}`;
           ai_match_reason: `AI: ${aiReason}`,
         };
 
-        if (aiProjectId && aiConfidence >= 85 && guardrail.passed) {
-          // Auto-match: high confidence + guardrail passed
-          updates.project_id = aiProjectId;
-          updates.match_state = "auto";
-          updates.match_confidence = aiConfidence;
-          updates.match_reason = `AI: ${aiReason}`;
-          outcome = "auto";
-          finalDecision = "auto";
-          totalAutoMatched++;
-        } else if (aiProjectId && aiConfidence >= 60) {
-          // Suggestion – keep needs_confirmation but update suggested project
-          updates.project_id = aiProjectId;
-          updates.match_confidence = aiConfidence;
-          updates.match_reason = `AI: ${aiReason}`;
+        // Fail-closed: AI never sets project_id or auto-links. It only stores a suggestion that a
+        // human must confirm (ConfirmationsPage). Unknown/cross-company IDs are dropped.
+        const validSuggestion = aiProjectId && projectMap.get(aiProjectId)?.company_id === block.company_id;
+        if (validSuggestion && aiConfidence >= 60) {
+          updates.suggested_project_id = aiProjectId;
           outcome = "suggestion";
-          finalDecision = "suggest";
-          totalSuggested++;
-        } else if (aiProjectId && aiConfidence >= 85 && !guardrail.passed) {
-          // High confidence but guardrail blocked → downgrade to suggestion
-          updates.project_id = aiProjectId;
-          updates.match_confidence = aiConfidence;
-          updates.match_reason = `AI: ${aiReason}`;
-          outcome = "suggestion";
-          finalDecision = "suggest";
+          finalDecision = guardrail.passed ? "suggest_strong" : "suggest";
           totalSuggested++;
         }
 
