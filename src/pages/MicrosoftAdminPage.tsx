@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { HubCalendarDiagnosticsCard } from "@/components/admin/HubCalendarDiagnosticsCard";
+import { HubCalendarWritePilotCard } from "@/components/admin/HubCalendarWritePilotCard";
 import {
   RefreshCw, ShieldOff, Plus, RotateCcw, CheckCircle2,
   AlertTriangle, XCircle, Clock, Mail, Info, Inbox, RotateCw, Ban, Send,
@@ -236,6 +237,7 @@ export default function MicrosoftAdminPage() {
       </div>
 
       <HubCalendarDiagnosticsCard />
+      <HubCalendarWritePilotCard />
 
       {/* Health summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
