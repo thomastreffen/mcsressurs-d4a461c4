@@ -18515,6 +18515,10 @@ export type Database = {
       }
       backfill_commercial_cases_for_active: { Args: never; Returns: Json }
       calculation_company_id: { Args: { _id: string }; Returns: string }
+      can_access_conversation_post: {
+        Args: { _post_id: string }
+        Returns: boolean
+      }
       can_access_dle_package_file: {
         Args: { _package: string }
         Returns: boolean
@@ -19284,6 +19288,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      is_active_hub_user: { Args: never; Returns: boolean }
       is_active_member_of: { Args: { _company_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_company_admin: {
@@ -19837,6 +19842,10 @@ export type Database = {
       start_requirement_form: {
         Args: { _requirement_id: string }
         Returns: string
+      }
+      storage_company_folder_access: {
+        Args: { _name: string }
+        Returns: boolean
       }
       storage_first_uuid: { Args: { _name: string }; Returns: string }
       submission_has_tracking_token: {
