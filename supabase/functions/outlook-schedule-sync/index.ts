@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isSystemCaller } from "../_shared/system-caller.ts";
+import { allDayRangeUtc, decideLink, displayTitleFor, isTrustedState, maySuggestProject, scoreCandidate, tokens } from "../_shared/outlook-match-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
