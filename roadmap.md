@@ -1,9 +1,9 @@
 # Godkjenningsvarsler 12. november
 
-- [ ] Read-only diagnose: tre kilder, faktiske mottakere, e-post/push
-- [ ] Én transaksjonell kilde, relevant mottakerutvalg og overgangsidempotens
-- [ ] Isolerte tester: én/flere montører, tilgang, replay/race og selvvarsling
-- [ ] Verifisering, sikker utrulling og presis oppfølging uten historikkendring
+- [x] Read-only diagnose: 8 approved + 8 all_approved fra global admintrigger, 5 approval_pending fra handle-approval; ingen dokumentert push-levering
+- [x] Én transaksjonell kilde, relevant mottakerutvalg og overgangsidempotens; migrasjon 0093 aktiv og handle-approval deployet
+- [x] Isolerte tester: én/flere montører, tilgang, køet samtidighet/replay, rollback og selvvarsling; 802 tester bestått
+- [x] Verifisering: produksjonstriggere aktive, eksisterende 21 rader urørt, sentral app OFF/dry-run ON; ingen produksjonsrespons testet
 
 # Flerdags kalender ende-til-ende (jobb 60570-funn)
 
@@ -14,5 +14,5 @@
 - [x] UI: per-dag/per-montør leveringsstatus + samleindikator; montørflate «Outlook mangler»-merke
 - [x] Mock-testharness: flerdag, endret dato, fjernet montør, dobbelklikk/idempotens, partial fail, replay, TZ/DST
 - [x] Full test (751 grønne) + deploy; job-outlook-app-sync forblir AV/dry-run
-- [ ] Publisering kreves for UI-endringer (jobbkort + Min dag)
-- [ ] 60570: dag 2 når Outlook først ved neste reelle brukerhandling (f.eks. «Oppdater Outlook») – ingen retroaktiv replay
+- [ ] Publisering av tidligere UI-endringer må bekreftes av eier; ikke del av godkjenningsrettelsen
+- [ ] Mats kalenderdekning blokkeres av manglende personlig kobling inntil sentral app har secrets + godkjent Graph-pilot; Emil 60570 begge dager bekreftet, ingen replay
