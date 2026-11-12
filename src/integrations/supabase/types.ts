@@ -12552,6 +12552,7 @@ export type Database = {
         Row: {
           actor_name: string | null
           actor_user_id: string | null
+          approval_transition_key: string | null
           company_id: string | null
           created_at: string
           entity_id: string | null
@@ -12572,6 +12573,7 @@ export type Database = {
         Insert: {
           actor_name?: string | null
           actor_user_id?: string | null
+          approval_transition_key?: string | null
           company_id?: string | null
           created_at?: string
           entity_id?: string | null
@@ -12592,6 +12594,7 @@ export type Database = {
         Update: {
           actor_name?: string | null
           actor_user_id?: string | null
+          approval_transition_key?: string | null
           company_id?: string | null
           created_at?: string
           entity_id?: string | null
