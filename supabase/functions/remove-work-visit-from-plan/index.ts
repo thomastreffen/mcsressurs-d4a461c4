@@ -193,6 +193,16 @@ Deno.serve(async (req) => {
     if (!eventId && !scheduleBlockId) return json({ error: "event_id eller schedule_block_id kreves" }, 400);
     if (action === "remove_assignment" && !technicianId && !scheduleBlockId) return json({ error: "technician_id kreves" }, 400);
 
+    // Fail-closed: an Outlook appointment with an unconfirmed (fuzzy/AI/stale) job link must never
+    // remove a technician from that job. The UI offers "Fjern feil kobling" / "Skjul avtale i Hub".
+    if (scheduleBlockId) {
+      const { data: sb } = await db.from("schedule_blocks")
+        .select("source, project_id, match_state, match_reason").eq("id", scheduleBlockId).maybeSingle();
+      if (sb && !isTrustedOutlookBlock(sb)) {
+        return json({ error: "unconfirmed_outlook_link", message: "Outlook-avtalen er ikke bekreftet koblet til jobben. Bruk «Fjern feil kobling» eller «Skjul avtale i Hub»." }, 409);
+      }
+    }
+
     const { data: local, error: localError } = await db.rpc("remove_work_visit_from_plan", {
       p_event_id: eventId,
       p_technician_id: technicianId,

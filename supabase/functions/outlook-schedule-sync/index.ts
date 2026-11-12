@@ -306,7 +306,7 @@ Deno.serve(async (req) => {
 
           let suggestion: { projectId: string; score: number; title: string } | null = null;
           const eligible = maySuggestProject({ subject: ev.subject, isPrivate, isAllDay: !!ev.isAllDay, showAs: ev.showAs });
-          if (!deterministicProjectId && !isTrustedState(existingBlock?.match_state) && eligible) {
+          if (!deterministicProjectId && !isTrustedState(existingBlock?.match_state) && existingBlock?.match_state !== "external_confirmed" && eligible) {
             const words = tokens(ev.subject);
             const firstWord = (words[0] || "").replace(/[^\p{L}\p{N}]/gu, "");
             if (firstWord.length > 2) {

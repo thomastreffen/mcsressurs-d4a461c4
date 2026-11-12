@@ -101,7 +101,7 @@ export function isTrustedState(state?: string | null): boolean {
 export interface LinkDecision {
   projectId: string | null;
   suggestedProjectId: string | null;
-  matchState: "auto" | "needs_confirmation" | "external" | "confirmed";
+  matchState: "auto" | "needs_confirmation" | "external" | "external_confirmed" | "confirmed";
   matchConfidence: number;
   matchReason: string;
 }
@@ -119,6 +119,11 @@ export function decideLink(args: {
   const { existing, deterministicProjectId, suggestion } = args;
   if (existing?.project_id && isTrustedState(existing.match_state)) {
     return { projectId: existing.project_id, suggestedProjectId: null, matchState: "confirmed", matchConfidence: 100, matchReason: "Previously confirmed" };
+  }
+  // A human said "this is not a job" (Fjern feil kobling / Marker privat): re-import never
+  // re-links or re-suggests, unless the Hub-written MCS_BLOCK_ID proves otherwise.
+  if (existing?.match_state === "external_confirmed" && !deterministicProjectId) {
+    return { projectId: null, suggestedProjectId: null, matchState: "external_confirmed", matchConfidence: 0, matchReason: "Feil kobling fjernet manuelt" };
   }
   if (deterministicProjectId) {
     return { projectId: deterministicProjectId, suggestedProjectId: null, matchState: "auto", matchConfidence: 100, matchReason: "MCS_BLOCK_ID link" };
@@ -169,4 +174,12 @@ export function osloMidnightUtc(dateKey: string): Date {
  */
 export function allDayRangeUtc(rawStart: string, rawEnd: string): { start: Date; end: Date } {
   return { start: osloMidnightUtc(rawStart), end: osloMidnightUtc(rawEnd) };
+}
+
+/** Server-side twin of src/lib/outlook-block-display isTrustedOutlookLink. */
+export function isTrustedOutlookBlock(b: { source?: string | null; project_id?: string | null; match_state?: string | null; match_reason?: string | null }): boolean {
+  if (b.source !== "outlook") return true;
+  if (!b.project_id) return false;
+  if (isTrustedState(b.match_state)) return true;
+  return b.match_state === "auto" && (b.match_reason || "").startsWith("MCS_BLOCK_ID");
 }
