@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 
 const CONFIRM = "KJØR TESTPILOT";
-interface Step { id: string; label: string; method: string; expectStatus: number[]; httpStatus?: number; result: "pass" | "fail"; graphCode?: string }
+interface Step { id: string; label: string; method: string; expectStatus: number[]; httpStatus?: number; result: "pass" | "fail"; graphCode?: string; phase?: string; category?: string; reason?: string }
 interface Run { started_at?: string; overall: string; cleanup_state: string; event_id_present: boolean; steps: Step[] }
 interface Status { mailbox: string; runs: Run[]; run?: Run; error?: string }
 
