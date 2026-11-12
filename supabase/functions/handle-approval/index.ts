@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { companyAdminRecipients } from "../_shared/security-boundary.ts";
 import { jobAttachmentLinks } from "../_shared/job-access-policy.ts";
 import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.ts";
 import { formatJobSchedule } from "../_shared/job-time.ts";
@@ -281,16 +280,25 @@ Deno.serve(async (req) => {
 
     updateData.status = approvalStatus;
 
-    const { error: updateErr } = await supabaseAdmin
+    const { data: claimedApproval, error: updateErr } = await supabaseAdmin
       .from("job_approvals")
       .update(updateData)
-      .eq("id", approval.id);
+      .eq("id", approval.id)
+      .eq("token", token)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
 
     if (updateErr) {
       console.error("[handle-approval] Update error:", updateErr);
       return new Response(JSON.stringify({ error: "Kunne ikke oppdatere svar" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!claimedApproval) {
+      return new Response(JSON.stringify({ error: "Denne forespørselen er allerede besvart eller erstattet" }), {
+        status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -472,38 +480,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // --- Create notifications for admins ---
-    // Fetch job title for notification message
-    const { data: jobForNotif } = await supabaseAdmin
-      .from("events")
-      .select("title, internal_number, job_number, company_id")
-      .eq("id", approval.job_id)
-      .single();
-
-    const notifTitle = jobForNotif?.job_number || jobForNotif?.internal_number || jobForNotif?.title || "Jobb";
-
-    // Get all admin user IDs to notify
-    const adminRoles = (await companyAdminRecipients(supabaseAdmin, (jobForNotif as any)?.company_id)).map((user_id) => ({ user_id }));
-
-    if (adminRoles && adminRoles.length > 0) {
-      const notificationType = action === "approve" ? "approval_pending" :
-                               action === "reject" ? "rejected" :
-                               "time_change_proposed";
-
-      const notifMessage = action === "approve" ? `${techName} godkjente ${notifTitle}` :
-                           action === "reject" ? `${techName} avslo ${notifTitle}: ${comment || ""}` :
-                           `${techName} foreslo nytt tidspunkt for ${notifTitle}`;
-
-      const notifInserts = adminRoles.map((r: any) => ({
-        user_id: r.user_id,
-        event_id: approval.job_id,
-        type: notificationType,
-        title: notifTitle,
-        message: notifMessage,
-      }));
-
-      await supabaseAdmin.from("notifications").insert(notifInserts);
-    }
+    // Response notifications are created atomically by notify_job_approval_change.
+    // No second producer, broad admin fan-out, e-mail or push dispatch here.
 
     const responseBody: any = {
       success: true,
