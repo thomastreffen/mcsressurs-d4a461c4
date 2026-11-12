@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { isTrustedOutlookBlock } from "../_shared/outlook-match-policy.ts";
 
 type DeleteJob = {
   id: string;
