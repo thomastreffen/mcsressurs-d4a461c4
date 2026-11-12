@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 
 const CONFIRM = "KJØR TESTPILOT";
-interface Step { id: string; label: string; method: string; expectStatus: number[]; httpStatus?: number; result: "pass" | "fail"; graphCode?: string }
+interface Step { id: string; label: string; method: string; expectStatus: number[]; httpStatus?: number; result: "pass" | "fail"; graphCode?: string; phase?: string; category?: string; reason?: string }
 interface Run { started_at?: string; overall: string; cleanup_state: string; event_id_present: boolean; steps: Step[] }
 interface Status { mailbox: string; runs: Run[]; run?: Run; error?: string }
 
@@ -78,7 +78,7 @@ export function HubCalendarWritePilotCard() {
               {last.steps.map((s, i) => (
                 <li key={i} className="flex gap-2 text-sm">
                   {s.result === "pass" ? <CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> : <XCircle className="h-4 w-4 text-destructive shrink-0" />}
-                  <span>{s.label} <span className="text-muted-foreground">· {s.method} · forventet {s.expectStatus.join("/")} · fikk {s.httpStatus ?? "–"}{s.graphCode ? ` ${s.graphCode}` : ""}</span></span>
+                  <span>{s.label} <span className="text-muted-foreground">{s.id === "error" ? `· under «${s.phase}» · ${s.category} · ${s.reason}` : `· ${s.method} · forventet ${s.expectStatus.join("/")} · fikk ${s.httpStatus ?? "–"}${s.graphCode ? ` ${s.graphCode}` : ""}${s.reason ? ` · ${s.reason}` : ""}`}</span></span>
                 </li>
               ))}
             </ul>

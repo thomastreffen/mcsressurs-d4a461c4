@@ -7,8 +7,8 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { missingSecrets, tokenRoles } from "../_shared/hub-calendar-diagnostics-core.ts";
 import {
-  PILOT_MAILBOX, PILOT_SUBJECT_UPDATED, CONFIRM_PHRASE, assertPilotMailbox, pilotPath, assertPilotRequest,
-  osloSlot, pilotEventBody, diagnosticGate, type PilotStep, type StepId,
+  PILOT_MAILBOX, CONFIRM_PHRASE, assertPilotMailbox,
+  diagnosticGate, runPilot, type PilotStep, type GraphTransport,
 } from "../_shared/hub-calendar-write-pilot-core.ts";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     .insert({ idempotency_key: body.idempotency_key, run_by: callerId, mailbox: PILOT_MAILBOX }).select("id").single();
   if (insErr) return json({ error: insErr.code === "23505" ? "duplicate_run" : "audit_failed", runs: await history() }, 409);
 
-  const steps: PilotStep[] = [];
+  let steps: PilotStep[] = [];
   let eventId: string | null = null;
   let overall: "pass" | "fail" | "blocked" = "pass";
   let cleanup: "none" | "deleted" | "pending" | "failed" = "none";
@@ -71,47 +71,17 @@ Deno.serve(async (req) => {
     return json({ error: "app_identity_failed", runs: await history() }, 409);
   }
 
-  const graph = async (id: StepId, label: string, method: string, path: string, expect: number[], payload?: unknown) => {
-    assertPilotRequest(method, path, method === "POST" ? null : eventId);
-    const res = await fetch(`https://graph.microsoft.com${path}`, { method, headers: { Authorization: `Bearer ${token}`, ...(payload ? { "Content-Type": "application/json" } : {}) }, body: payload ? JSON.stringify(payload) : undefined });
-    let data: any = null; let code: string | undefined;
-    try { data = res.status === 204 ? null : await res.json(); } catch { /* ignore */ }
-    if (!res.ok) code = typeof data?.error?.code === "string" ? data.error.code.slice(0, 80) : undefined;
-    const ok = expect.includes(res.status);
-    steps.push({ id, label, method, expectStatus: expect, httpStatus: res.status, result: ok ? "pass" : "fail", graphCode: code });
-    if (!ok) overall = "fail";
-    return { ok, status: res.status, data };
+  const transport: GraphTransport = async (method, path, payload) => {
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="Europe/Oslo"' };
+    if (payload) headers["Content-Type"] = "application/json";
+    const res = await fetch(`https://graph.microsoft.com${path}`, { method, headers, body: payload ? JSON.stringify(payload) : undefined });
+    let data: any = null;
+    try { data = res.status === 204 ? null : await res.json(); } catch { /* non-JSON body */ }
+    return { status: res.status, data };
   };
-
-  const key = body.idempotency_key;
-  const slot = osloSlot(new Date(), 7);
-  const slot2 = osloSlot(new Date(), 7, 45);
-  try {
-    const c = await graph("create", "Opprett testavtale", "POST", pilotPath(PILOT_MAILBOX, "events"), [201], pilotEventBody(slot, key));
-    eventId = typeof c.data?.id === "string" ? c.data.id : null; await save();
-    if (c.ok && eventId) {
-      const r1 = await graph("read_created", "Les opprettet avtale", "GET", pilotPath(PILOT_MAILBOX, "event", eventId) + "?$select=id,subject,start,end", [200]);
-      if (r1.ok && r1.data?.start?.dateTime?.slice(0, 16) !== slot.start.slice(0, 16)) { steps[steps.length - 1].result = "fail"; overall = "fail"; }
-      const u = await graph("update", "Endre tid og tittel", "PATCH", pilotPath(PILOT_MAILBOX, "event", eventId), [200], { subject: PILOT_SUBJECT_UPDATED, end: { dateTime: slot2.end, timeZone: "Europe/Oslo" } });
-      if (u.ok) {
-        const r2 = await graph("read_updated", "Les endret avtale", "GET", pilotPath(PILOT_MAILBOX, "event", eventId) + "?$select=id,subject,end", [200]);
-        if (r2.ok && r2.data?.subject !== PILOT_SUBJECT_UPDATED) { steps[steps.length - 1].result = "fail"; overall = "fail"; }
-      }
-      const d = await graph("delete", "Slett testavtale", "DELETE", pilotPath(PILOT_MAILBOX, "event", eventId), [204]);
-      if (d.ok) {
-        cleanup = "deleted";
-        await graph("verify_deleted", "Bekreft at avtalen er borte", "GET", pilotPath(PILOT_MAILBOX, "event", eventId) + "?$select=id", [404]);
-      } else cleanup = "pending";
-    } else if (c.ok) { overall = "fail"; }
-  } catch (_e) { overall = "fail"; cleanup = eventId ? "pending" : "none"; }
-
-  if (eventId && cleanup === "pending") {
-    try {
-      const d = await graph("cleanup", "Opprydding av egen testavtale", "DELETE", pilotPath(PILOT_MAILBOX, "event", eventId), [204, 404]);
-      cleanup = d.ok ? "deleted" : "failed";
-    } catch { cleanup = "failed"; }
-  }
+  const o = await runPilot(transport, body.idempotency_key, new Date(), async (p) => { eventId = p.eventId; steps = p.steps; await save(); });
+  eventId = o.eventId; steps = o.steps; overall = o.overall; cleanup = o.cleanup;
   await save({ finished_at: new Date().toISOString() });
-  console.log(`[hub-calendar-write-pilot] overall=${overall} cleanup=${cleanup} steps=${steps.map((s) => `${s.id}:${s.httpStatus}`).join(",")}`);
+  console.log(`[hub-calendar-write-pilot] overall=${overall} cleanup=${cleanup} steps=${steps.map((s) => s.id === "error" ? `error:${s.phase}/${s.category}/${s.reason}` : `${s.id}:${s.httpStatus}`).join(",")}`);
   return json({ mailbox: PILOT_MAILBOX, run: { overall, cleanup_state: cleanup, event_id_present: !!eventId, steps }, runs: await history() });
 });
