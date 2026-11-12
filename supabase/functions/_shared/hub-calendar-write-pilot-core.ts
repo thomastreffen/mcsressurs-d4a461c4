@@ -38,9 +38,9 @@ export function assertPilotRequest(method: string, path: string, ownEventId: str
 
 /** Full-hour slot in Europe/Oslo local wall time, next day, given hour. Graph handles DST via timeZone. */
 export function osloSlot(now: Date, hour: number, durationMin = 30): { start: string; end: string } {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(now.getTime() + 86_400_000));
-  const g = (t: string) => parts.find((p) => p.type === t)!.value;
-  const day = `${g("year")}-${g("month")}-${g("day")}`;
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const g = (t: string) => Number(parts.find((p) => p.type === t)!.value);
+  const day = new Date(Date.UTC(g("year"), g("month") - 1, g("day") + 1)).toISOString().slice(0, 10);
   const pad = (n: number) => String(n).padStart(2, "0");
   const endMin = hour * 60 + durationMin;
   return { start: `${day}T${pad(hour)}:00:00`, end: `${day}T${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}:00` };
