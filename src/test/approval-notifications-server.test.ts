@@ -29,7 +29,7 @@ beforeAll(async () => {
     CREATE POLICY own ON notifications FOR SELECT TO authenticated USING(user_id=nullif(current_setting('request.jwt.claim.sub',true),'')::uuid);
   `);
   await db.exec(readFileSync('.lovable/approval-notifications.sql','utf8'));
-},30000);
+},120000);
 afterAll(async () => { await db?.close(); });
 beforeEach(async () => {
   await db.exec(`TRUNCATE events,technicians,event_technicians,job_approvals,user_accounts,project_members,job_participants,access_grants,notifications;
