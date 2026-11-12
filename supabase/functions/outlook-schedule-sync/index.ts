@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isSystemCaller } from "../_shared/system-caller.ts";
-import { allDayRangeUtc, decideLink, displayTitleFor, isTrustedState, maySuggestProject, scoreCandidate, tokens } from "../_shared/outlook-match-policy.ts";
+import { allDayRangeUtc, decideLink, displayTitleFor, isTrustedState, resolveDeterministicLink, maySuggestProject, scoreCandidate, tokens } from "../_shared/outlook-match-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -299,14 +299,12 @@ Deno.serve(async (req) => {
               .select("project_id, company_id")
               .eq("id", existingBlockId)
               .maybeSingle();
-            if (linkedBlock?.project_id && linkedBlock.company_id === companyId) {
-              deterministicProjectId = linkedBlock.project_id;
-            }
+            deterministicProjectId = resolveDeterministicLink(linkedBlock, companyId);
           }
 
           let suggestion: { projectId: string; score: number; title: string } | null = null;
           const eligible = maySuggestProject({ subject: ev.subject, isPrivate, isAllDay: !!ev.isAllDay, showAs: ev.showAs });
-          if (!deterministicProjectId && !isTrustedState(existingBlock?.match_state) && eligible) {
+          if (!deterministicProjectId && !isTrustedState(existingBlock?.match_state) && existingBlock?.match_state !== "external_confirmed" && eligible) {
             const words = tokens(ev.subject);
             const firstWord = (words[0] || "").replace(/[^\p{L}\p{N}]/gu, "");
             if (firstWord.length > 2) {

@@ -21,6 +21,7 @@ import type { ScheduleBlock } from "@/hooks/useScheduleBlocks";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { outlookRemovalMode, outlookOriginalTitle } from "@/lib/outlook-block-display";
 
 interface Props {
   block: ScheduleBlock;
@@ -50,6 +51,8 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
   const isOutlook = block.source === "outlook";
   const isSystem = block.source === "system" || block.source === "manual" || (block.source as string) === "linked_outlook";
   const hasProject = !!block.project_id;
+  const removalMode = outlookRemovalMode(block);
+  const isOutlookOnlyRemoval = removalMode !== "hub_job";
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -176,6 +179,28 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
     }
   };
 
+  // Remove a wrong (unconfirmed) job link – the Outlook appointment stays in the plan as Outlook/Opptatt.
+  const handleRemoveWrongLink = async () => {
+    setActionLoading("wronglink");
+    try {
+      const { error } = await supabase.from("schedule_blocks").update({
+        project_id: null,
+        suggested_project_id: null,
+        match_state: "external_confirmed",
+        match_reason: "Feil kobling fjernet manuelt",
+        title: outlookOriginalTitle(block),
+      } as any).eq("id", block.id);
+      if (error) { toast.error("Kunne ikke fjerne koblingen"); return; }
+      toast.success("Feil kobling fjernet – avtalen vises fortsatt");
+      onConfirmed?.();
+      onClose();
+    } catch (err: any) {
+      toast.error("Feil", { description: err?.message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // Mark as external
   const handleMarkExternal = async () => {
     setActionLoading("external");
@@ -255,7 +280,9 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
     console.info("[ScheduleBlockDetailPanel] Delete request", requestTrace);
 
     try {
-      const isImportedOutlook = isOutlook && !(block.job_id || block.project_id);
+      // Outlook appointments without a TRUSTED link are only ever hidden locally – never routed
+      // to job removal (that is what removed Rune from nothing and logged it on JOB-000309).
+      const isImportedOutlook = isOutlook && (isOutlookOnlyRemoval || !(block.job_id || block.project_id));
       const { data, error } = await supabase.functions.invoke(
         isImportedOutlook ? "delete-schedule-block" : "remove-work-visit-from-plan",
         { body: isImportedOutlook
@@ -276,7 +303,7 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
       });
 
       if (isImportedOutlook && result?.status === "ok") {
-        toast.success(forceDeleteOutlook ? "Fjernet fra plan og Outlook ✓" : "Fjernet fra plan ✓");
+        toast.success(forceDeleteOutlook ? "Fjernet fra plan og Outlook ✓" : "Skjult i Hub – avtalen er urørt i Outlook");
       } else if (result?.status === "success" || result?.status === "already_removed") {
         const warning = result?.warnings?.[0];
         if (warning) {
@@ -503,51 +530,63 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
           </a>
         )}
 
-        {/* Remove from plan */}
-        <div className="border-t border-border/40 pt-2">
+        {/* Remove actions – depend on whether this is a confirmed Hub job or an Outlook appointment */}
+        <div className="border-t border-border/40 pt-2 space-y-1">
+          {removalMode === "unconfirmed_link" && (
+            <Button
+              variant="outline" size="sm"
+              className="h-9 sm:h-7 text-xs gap-1.5 rounded-lg w-full justify-start"
+              onClick={handleRemoveWrongLink}
+              disabled={isLoading}
+            >
+              {actionLoading === "wronglink" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlink className="h-3 w-3" />}
+              Fjern feil kobling
+            </Button>
+          )}
+          {removalMode === "unconfirmed_link" && (
+            <p className="text-[11px] text-muted-foreground px-1">
+              Avtalen er ikke bekreftet som jobb. «Fjern feil kobling» beholder avtalen i planen som Outlook-avtale.
+            </p>
+          )}
           <Button
             variant="ghost" size="sm"
-            className="h-7 text-xs gap-1.5 rounded-lg w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+            className="h-9 sm:h-7 text-xs gap-1.5 rounded-lg w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => setShowDeleteConfirm(true)}
             disabled={isLoading}
           >
             {actionLoading === "delete" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-            Fjern fra plan
+            {isOutlookOnlyRemoval ? "Skjul avtale i Hub" : (isSystem ? "Fjern montør fra jobben" : "Fjern fra plan")}
           </Button>
         </div>
 
-        {/* Delete confirmation — different dialog based on source */}
         <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-          <AlertDialogContent>
+          <AlertDialogContent className="max-h-[90dvh] overflow-y-auto">
             <AlertDialogHeader>
               <AlertDialogTitle>
-                {isSystem ? "Fjern oppdrag?" : "Fjern fra plan?"}
+                {isOutlookOnlyRemoval ? "Skjul avtalen i Hub?" : isSystem ? "Fjerne montøren fra jobben?" : "Fjern fra plan?"}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {isSystem
-                  ? "Dette fjerner oppdraget fra planen og sletter avtalen fra montørens Outlook-kalender. Kan ikke angres."
-                  : "Denne hendelsen ble importert fra Outlook. Velg om du bare vil fjerne den fra planoversikten, eller også slette den fra Outlook."}
+                {isOutlookOnlyRemoval
+                  ? "Avtalen skjules bare i Hub sin ressursplan. Den slettes ikke fra Outlook, og ingen jobb eller montør påvirkes. Kan gjenopprettes av administrator."
+                  : isSystem
+                    ? `${block.technician_name || "Montøren"} fjernes fra jobben, og avtalen slettes fra montørens Outlook-kalender. Kan ikke angres.`
+                    : "Denne hendelsen ble importert fra Outlook. Velg om du bare vil fjerne den fra planoversikten, eller også slette den fra Outlook."}
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
+            <AlertDialogFooter className="gap-2">
               <AlertDialogCancel disabled={actionLoading === "delete"}>Avbryt</AlertDialogCancel>
-              {isOutlook ? (
+              {isOutlookOnlyRemoval ? (
+                <Button variant="outline" onClick={() => handleDelete(false)} disabled={actionLoading === "delete"} className="gap-1.5">
+                  {actionLoading === "delete" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Skjul i Hub
+                </Button>
+              ) : isOutlook ? (
                 <>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleDelete(false)}
-                    disabled={actionLoading === "delete"}
-                    className="gap-1.5"
-                  >
+                  <Button variant="outline" onClick={() => handleDelete(false)} disabled={actionLoading === "delete"} className="gap-1.5">
                     {actionLoading === "delete" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     Bare fjern fra plan
                   </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() => handleDelete(true)}
-                    disabled={actionLoading === "delete"}
-                    className="gap-1.5"
-                  >
+                  <Button variant="destructive" onClick={() => handleDelete(true)} disabled={actionLoading === "delete"} className="gap-1.5">
                     {actionLoading === "delete" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     Fjern også fra Outlook
                   </Button>
@@ -559,7 +598,7 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   {actionLoading === "delete" && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                  Fjern
+                  Fjern montør fra jobben
                 </AlertDialogAction>
               )}
             </AlertDialogFooter>

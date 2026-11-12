@@ -141,7 +141,8 @@ Deno.serve(async (req) => {
         .limit(20);
 
       for (const candidate of sameSlotBlocks || []) {
-        if (candidate.id === block.id) continue;
+        // Only other Outlook copies are twins – never hide a Hub job block in the same slot.
+        if (candidate.id === block.id || candidate.source !== "outlook") continue;
         const sameProject = !!block.project_id && candidate.project_id === block.project_id;
         const sameTitle = normalizeTitle(candidate.outlook_subject || candidate.title) === selectedTitle;
         if (sameProject || sameTitle) {

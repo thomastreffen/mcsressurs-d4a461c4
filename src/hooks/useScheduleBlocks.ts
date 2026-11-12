@@ -48,12 +48,15 @@ export interface ScheduleBlock {
   job_number_resolved?: string | null;
   /** TPX-F4.1: resolved financial project number for display only. */
   financial_project_number?: string | null;
+  /** Fail-closed: raw project_id of an UNTRUSTED Outlook link (never rendered as a job). */
+  untrusted_project_id?: string | null;
+  suggested_project_id?: string | null;
 }
 
 function mapRow(row: any): ScheduleBlock {
   // Fail-closed: untrusted Outlook links (fuzzy/AI) never render as a job or project title.
   const view = safeOutlookBlockView(row);
-  if (view.untrustedProjectId) row = { ...row, project_id: null, events: null, title: view.title };
+  if (view.untrustedProjectId) row = { ...row, project_id: null, events: null, title: view.title, untrusted_project_id: view.untrustedProjectId };
   else if (row.source === "outlook") row = { ...row, title: view.title };
   let start = parseUtc(row.start_at);
   let end = parseUtc(row.end_at);
