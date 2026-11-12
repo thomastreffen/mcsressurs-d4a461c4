@@ -9913,6 +9913,45 @@ export type Database = {
         }
         Relationships: []
       }
+      hub_calendar_write_pilot_runs: {
+        Row: {
+          cleanup_state: string
+          finished_at: string | null
+          graph_event_id: string | null
+          id: string
+          idempotency_key: string
+          mailbox: string
+          overall: string
+          run_by: string
+          started_at: string
+          steps: Json
+        }
+        Insert: {
+          cleanup_state?: string
+          finished_at?: string | null
+          graph_event_id?: string | null
+          id?: string
+          idempotency_key: string
+          mailbox: string
+          overall?: string
+          run_by: string
+          started_at?: string
+          steps?: Json
+        }
+        Update: {
+          cleanup_state?: string
+          finished_at?: string | null
+          graph_event_id?: string | null
+          id?: string
+          idempotency_key?: string
+          mailbox?: string
+          overall?: string
+          run_by?: string
+          started_at?: string
+          steps?: Json
+        }
+        Relationships: []
+      }
       hub_outlook_event_links: {
         Row: {
           company_id: string
