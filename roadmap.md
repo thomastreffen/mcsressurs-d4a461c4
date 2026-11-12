@@ -1,3 +1,10 @@
+# Godkjenningsvarsler 12. november
+
+- [ ] Read-only diagnose: tre kilder, faktiske mottakere, e-post/push
+- [ ] Én transaksjonell kilde, relevant mottakerutvalg og overgangsidempotens
+- [ ] Isolerte tester: én/flere montører, tilgang, replay/race og selvvarsling
+- [ ] Verifisering, sikker utrulling og presis oppfølging uten historikkendring
+
 # Flerdags kalender ende-til-ende (jobb 60570-funn)
 
 - [x] Per-dag plankjerne: delt ren TS (bygg plan per jobb×montør×dag, idempotensnøkler, diff for endring/fjerning, Europe/Oslo)
