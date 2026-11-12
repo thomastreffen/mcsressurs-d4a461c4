@@ -183,3 +183,8 @@ export function isTrustedOutlookBlock(b: { source?: string | null; project_id?: 
   if (isTrustedState(b.match_state)) return true;
   return b.match_state === "auto" && (b.match_reason || "").startsWith("MCS_BLOCK_ID");
 }
+
+/** MCS_BLOCK_ID only links when the referenced Hub block has a project in the SAME company. */
+export function resolveDeterministicLink(linked: { project_id?: string | null; company_id?: string | null } | null | undefined, companyId: string): string | null {
+  return linked?.project_id && linked.company_id === companyId ? linked.project_id : null;
+}

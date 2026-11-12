@@ -299,9 +299,7 @@ Deno.serve(async (req) => {
               .select("project_id, company_id")
               .eq("id", existingBlockId)
               .maybeSingle();
-            if (linkedBlock?.project_id && linkedBlock.company_id === companyId) {
-              deterministicProjectId = linkedBlock.project_id;
-            }
+            deterministicProjectId = resolveDeterministicLink(linkedBlock, companyId);
           }
 
           let suggestion: { projectId: string; score: number; title: string } | null = null;
