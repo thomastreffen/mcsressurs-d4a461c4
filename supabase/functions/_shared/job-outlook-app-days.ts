@@ -12,6 +12,7 @@ export interface PilotTarget {
 export interface AppDayLink {
   id?: string; technician_id: string; work_date: string | null; mailbox: string; dedup_key: string;
   outlook_event_id: string | null; outlook_change_key: string | null; hub_version: string | null; state: string;
+  adopted_from_day_link_id?: string | null;
 }
 export interface LegacyDayLink {
   id: string; technician_id: string; work_date: string; start_at: string; end_at: string;
@@ -77,7 +78,8 @@ export function buildDayPayload(j: HubJob, d: DayPlanItem, key: string): Record<
 function decideOne(j: HubJob, d: DayPlanItem | null, link: AppDayLink | null, legacy: LegacyDayLink | null, mailbox: string): DayDecision {
   const ended = !!j.deleted_at || CANCELLED.has(j.status ?? "");
   if (!d || ended) {
-    // Only events this app owns (non-adopted origin is irrelevant: adopted events are Hub-made) are removed.
+    // Only events this app created are removed; adopted legacy events are never deleted by the app.
+    if (link?.adopted_from_day_link_id && link.outlook_event_id && link.state !== "deleted") return { kind: "skip", reason: "adopted_legacy_not_deleted" };
     if (link?.outlook_event_id && link.state !== "deleted") return { kind: "delete", outlookEventId: link.outlook_event_id };
     return { kind: "skip", reason: "nothing_to_delete" };
   }
