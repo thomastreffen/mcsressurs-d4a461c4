@@ -1,3 +1,4 @@
+import { JobOutlookPilotScopeCard } from "@/components/admin/JobOutlookPilotScopeCard";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -238,6 +239,7 @@ export default function MicrosoftAdminPage() {
 
       <HubCalendarDiagnosticsCard />
       <HubCalendarWritePilotCard />
+      <JobOutlookPilotScopeCard />
 
       {/* Health summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
