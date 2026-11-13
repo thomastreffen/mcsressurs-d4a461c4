@@ -10915,6 +10915,7 @@ export type Database = {
       }
       job_outlook_app_links: {
         Row: {
+          adopted_from_day_link_id: string | null
           attempt_count: number
           company_id: string
           created_at: string
@@ -10930,8 +10931,10 @@ export type Database = {
           state: string
           technician_id: string
           updated_at: string
+          work_date: string | null
         }
         Insert: {
+          adopted_from_day_link_id?: string | null
           attempt_count?: number
           company_id: string
           created_at?: string
@@ -10947,8 +10950,10 @@ export type Database = {
           state?: string
           technician_id: string
           updated_at?: string
+          work_date?: string | null
         }
         Update: {
+          adopted_from_day_link_id?: string | null
           attempt_count?: number
           company_id?: string
           created_at?: string
@@ -10964,6 +10969,7 @@ export type Database = {
           state?: string
           technician_id?: string
           updated_at?: string
+          work_date?: string | null
         }
         Relationships: []
       }
@@ -11009,6 +11015,84 @@ export type Database = {
         }
         Relationships: []
       }
+      job_outlook_app_pilot_actions: {
+        Row: {
+          action: string
+          actor: string
+          created_at: string
+          id: string
+          idempotency_key: string | null
+          queue_id: string | null
+          result: Json
+          target_id: string | null
+        }
+        Insert: {
+          action: string
+          actor: string
+          created_at?: string
+          id?: string
+          idempotency_key?: string | null
+          queue_id?: string | null
+          result?: Json
+          target_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string
+          created_at?: string
+          id?: string
+          idempotency_key?: string | null
+          queue_id?: string | null
+          result?: Json
+          target_id?: string | null
+        }
+        Relationships: []
+      }
+      job_outlook_app_pilot_targets: {
+        Row: {
+          approved_by: string
+          company_id: string
+          created_at: string
+          event_id: string
+          expires_at: string
+          id: string
+          mailbox: string
+          note: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          technician_id: string
+          work_date: string
+        }
+        Insert: {
+          approved_by: string
+          company_id: string
+          created_at?: string
+          event_id: string
+          expires_at: string
+          id?: string
+          mailbox: string
+          note?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          technician_id: string
+          work_date: string
+        }
+        Update: {
+          approved_by?: string
+          company_id?: string
+          created_at?: string
+          event_id?: string
+          expires_at?: string
+          id?: string
+          mailbox?: string
+          note?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          technician_id?: string
+          work_date?: string
+        }
+        Relationships: []
+      }
       job_outlook_app_queue: {
         Row: {
           attempts: number
@@ -11019,6 +11103,9 @@ export type Database = {
           max_attempts: number
           processed_at: string | null
           reason: string
+          release_key: string | null
+          released_at: string | null
+          released_by: string | null
           result: string | null
           status: string
           technician_id: string
@@ -11032,6 +11119,9 @@ export type Database = {
           max_attempts?: number
           processed_at?: string | null
           reason: string
+          release_key?: string | null
+          released_at?: string | null
+          released_by?: string | null
           result?: string | null
           status?: string
           technician_id: string
@@ -11045,6 +11135,9 @@ export type Database = {
           max_attempts?: number
           processed_at?: string | null
           reason?: string
+          release_key?: string | null
+          released_at?: string | null
+          released_by?: string | null
           result?: string | null
           status?: string
           technician_id?: string
