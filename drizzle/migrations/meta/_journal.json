@@ -673,6 +673,13 @@
       "when": 1794484103029,
       "tag": "0095_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1794557622300,
+      "tag": "0096_job_outlook_app_pilot_scope",
+      "breakpoints": true
     }
   ]
 }
