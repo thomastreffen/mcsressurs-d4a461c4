@@ -49,10 +49,20 @@ Deno.serve(async (req) => {
   if (action === "status") {
     const [{ data: s }, { data: t }, { data: q }, { data: acts }] = await Promise.all([
       admin.from("job_outlook_app_sync_settings").select("enabled,dry_run,pilot_mailboxes,scope_verified_at").eq("id", true).maybeSingle(),
-      admin.from("job_outlook_app_pilot_targets").select("id,event_id,technician_id,mailbox,work_date,expires_at,revoked_at,created_at, events(title,project_number), technicians(name)").order("created_at", { ascending: false }).limit(20),
-      admin.from("job_outlook_app_queue").select("id,event_id,technician_id,reason,status,released_at,created_at, events(title,project_number), technicians(name)").eq("status", "pending").order("created_at").limit(50),
+      admin.from("job_outlook_app_pilot_targets").select("id,event_id,technician_id,mailbox,work_date,expires_at,revoked_at,created_at").order("created_at", { ascending: false }).limit(20),
+      admin.from("job_outlook_app_queue").select("id,event_id,technician_id,reason,status,released_at,created_at").eq("status", "pending").order("created_at").limit(50),
       admin.from("job_outlook_app_pilot_actions").select("action,created_at,result").order("created_at", { ascending: false }).limit(10),
     ]);
+    const evIds = [...new Set([...(t ?? []), ...(q ?? [])].map((x: any) => x.event_id))];
+    const techIds = [...new Set([...(t ?? []), ...(q ?? [])].map((x: any) => x.technician_id))];
+    const [{ data: evs }, { data: techs }] = await Promise.all([
+      evIds.length ? admin.from("events").select("id,title,project_number").in("id", evIds) : Promise.resolve({ data: [] as any[] }),
+      techIds.length ? admin.from("technicians").select("id,name").in("id", techIds) : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const evMap = new Map((evs ?? []).map((e: any) => [e.id, { title: e.title, project_number: e.project_number }]));
+    const tMap = new Map((techs ?? []).map((x: any) => [x.id, x.name]));
+    const enrich = (x: any) => ({ ...x, job: evMap.get(x.event_id) ?? null, technician_name: tMap.get(x.technician_id) ?? null });
+    t?.splice(0, t.length, ...(t ?? []).map(enrich)); q?.splice(0, q.length, ...(q ?? []).map(enrich));
     return json({
       settings: { enabled: !!s?.enabled, dry_run: s?.dry_run !== false, pilot_mailboxes: s?.pilot_mailboxes ?? [], scope_verified: !!s?.scope_verified_at },
       secrets_configured: missingSecrets((n) => Deno.env.get(n)).length === 0,
