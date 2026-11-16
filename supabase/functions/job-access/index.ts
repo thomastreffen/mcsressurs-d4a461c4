@@ -8,7 +8,12 @@ import { assignmentInfo } from "../_shared/job-assignment-info.ts";
 // Read-only. An approval token locates a job only for its authenticated recipient.
 // Files always recheck caller event RLS and exact attachment membership, never arbitrary paths.
 Deno.serve(async req => {
+  let stage = "authentication";
   const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
+  const failed = (code: string) => {
+    console.error(JSON.stringify({ function: "job-access", stage, code }));
+    return json({ error: "Kunne ikke hente jobbinfo. Prøv igjen.", code: "job_read_failed", stage }, 500);
+  };
   if (req.method === "OPTIONS") return json({});
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
@@ -19,7 +24,9 @@ Deno.serve(async req => {
     if (!uid) return json({ error: "Logg inn for å åpne jobbinfo" }, 401);
     const body = await req.json();
     const admin = createClient(origin, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { data: account } = await caller.from("user_accounts").select("is_active").eq("auth_user_id", uid).maybeSingle();
+    stage = "account";
+    const { data: account, error: accountError } = await caller.from("user_accounts").select("is_active").eq("auth_user_id", uid).maybeSingle();
+    if (accountError) return failed(accountError.code ?? "account_read");
     if (account?.is_active === false) return json({ error: "Kontoen er deaktivert" }, 403);
     let id = body.event_id;
     if (body.action === "resolve") {
@@ -29,15 +36,25 @@ Deno.serve(async req => {
       id = approval.job_id;
     } else if (!["read", "file"].includes(body.action)) return json({ error: "Ugyldig handling" }, 400);
     if (typeof id !== "string" || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)) return json({ error: "Ugyldig jobb" }, 400);
-    const { data: ownJob } = await caller.rpc("read_my_assigned_job", { _event: id });
+    stage = "assigned_job";
+    const { data: ownJob, error: ownError } = await caller.rpc("read_my_assigned_job", { _event: id });
+    if (ownError) return failed(ownError.code ?? "assigned_read");
     let event = ownJob?.event;
     let assignment = ownJob?.assignment;
-    const { data: canPlan } = await caller.rpc("check_permission_v2", { _auth_user_id: uid, _perm: "resource_plan.plan_resources" });
-    if (!event && canPlan === true) {
-      const { data } = await caller.from("events").select("id,title,job_number,internal_number,status,start_time,end_time,address,postal_code,city,customer,site_contact_name,site_contact_phone,description,access_notes,location_details,source_order_form_id,attachments,deleted_at").eq("id", id).is("deleted_at", null).maybeSingle();
-      event = data;
+    if (!event) {
+      // Read rights, not the obsolete global mutation permission. The event query
+      // still uses the caller bearer and RLS; the selected UI company is irrelevant.
+      stage = "event_rls";
+      const { data, error: eventError } = await caller.from("events").select("id,company_id,title,job_number,internal_number,status,start_time,end_time,address,postal_code,city,customer,site_contact_name,site_contact_phone,description,access_notes,location_details,source_order_form_id,attachments,deleted_at").eq("id", id).is("deleted_at", null).maybeSingle();
+      if (eventError) return failed(eventError.code ?? "event_read");
+      if (data) {
+        stage = "company_view";
+        const { data: canView, error: accessError } = await caller.rpc("has_company_access", { _uid: uid, _company: data.company_id, _module: "resource_plan", _level: "view" });
+        if (accessError) return failed(accessError.code ?? "company_access");
+        if (canView === true) event = data;
+      }
     }
-    if (!event) return json({ error: "Jobben er fjernet eller du er ikke lenger tildelt oppdraget" }, 403);
+    if (!event) return json({ error: "Jobben er ikke tilgjengelig for denne kontoen. Kontakt planlegger hvis dette er feil.", code: "job_unavailable" }, 403);
     if (body.action === "resolve") return json({ path: jobInfoPath(id) });
     let orderId = event.source_order_form_id;
     if (!orderId) {
@@ -62,11 +79,15 @@ Deno.serve(async req => {
     }
     // Exact job already authorized by live assignment/employment or caller event RLS.
     // Return only assigned names/statuses, never approval tokens, comments or HR data.
-    const [{ data: assigned }, { data: approvals }, { data: blocks }] = await Promise.all([
+    stage = "assignment_details";
+    const [assignedResult, approvalResult, blockResult] = await Promise.all([
       admin.from("event_technicians").select("technician_id,technicians(name,user_id)").eq("event_id", id),
       admin.from("job_approvals").select("technician_user_id,status").eq("job_id", id),
       caller.from("schedule_blocks").select("technician_id,start_at,end_at").eq("project_id", id).eq("source", "manual").is("deleted_at", null),
     ]);
+    const detailsError = assignedResult.error ?? approvalResult.error ?? blockResult.error;
+    if (detailsError) return failed(detailsError.code ?? "assignment_details");
+    const assigned = assignedResult.data, approvals = approvalResult.data, blocks = blockResult.data;
     return json({ brief: buildOperationalJobBrief({ event, orderSummary: order?.summary as Record<string, unknown> | null, orderValues: values }), status: event.status, start: assignment?.start_at ?? event.start_time, end: assignment?.end_at ?? event.end_time, ...assignmentInfo(uid, (assigned ?? []) as any, approvals ?? [], blocks ?? []), files: files.map(f => ({ key: f.key, name: f.name, available: !!f.location })) });
-  } catch { return json({ error: "Kunne ikke hente jobbinfo" }, 500); }
+  } catch { return failed("unexpected"); }
 });

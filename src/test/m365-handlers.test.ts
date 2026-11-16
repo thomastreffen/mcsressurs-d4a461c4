@@ -5,7 +5,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { requiresApproval } from "../../supabase/functions/_shared/communication-policy";
 import { formatJobSchedule } from "../../supabase/functions/_shared/job-time";
-import { jobInfoUrl, jobAttachmentLinks } from "../../supabase/functions/_shared/job-access-policy";
+import { jobInfoUrl, jobInfoPath, jobAttachmentLinks } from "../../supabase/functions/_shared/job-access-policy";
 import { notifyFingerprint, shouldSendInfoUpdate, NOTIFY_DEDUP_WINDOW_MINUTES } from "../../supabase/functions/_shared/job-save-flow";
 import { formatPlannedDays } from "../../supabase/functions/_shared/multi-day-calendar";
 const eventId = "11111111-1111-4111-8111-111111111111";
@@ -41,7 +41,7 @@ function fixture(name: string, internal = false) {
   vm.runInNewContext(js, { Deno: { serve: (fn: typeof handler) => { handler = fn; }, env: { get: () => "mock" } }, createClient: () => db, corsHeaders: {}, formatJobSchedule, requiresApproval,
     getApprovalCallerId: async () => "creator", requireGlobalAccessManager: async () => false, resolveJobAddress: async () => "Mock address", buildOperationalJobBrief: () => ({}), briefEmailRows: () => "<tr>Mock</tr>",
     systemSenderEnabled: () => true, sendMail: async (input: any, opts: any) => { sends.push({ input, opts }); return input.to.startsWith("marcus") ? { ok: false, status: 403, reason: "graph_forbidden" } : { ok: true, status: 202 }; },
-    jobInfoUrl, jobAttachmentLinks, recordDelivery: async (_: any, record: any) => records.push(record), notifyFingerprint, shouldSendInfoUpdate, NOTIFY_DEDUP_WINDOW_MINUTES, formatPlannedDays, crypto, Request, Response, Date, Map, Set, console: { error() {}, log() {} } });
+    jobInfoUrl, jobInfoPath, jobAttachmentLinks, recordDelivery: async (_: any, record: any) => records.push(record), notifyFingerprint, shouldSendInfoUpdate, NOTIFY_DEDUP_WINDOW_MINUTES, formatPlannedDays, crypto, Request, Response, Date, Map, Set, console: { error() {}, log() {} } });
   return { sends, records, writes, call: async (payload: unknown) => {
     const response = await handler(new Request("https://example.test", { method: "POST", headers: { Authorization: "Bearer mock" }, body: JSON.stringify(payload) }));
     return { status: response.status, body: await response.json() };
@@ -64,11 +64,14 @@ describe("Actual handlers, mocked Cloud and Graph only", () => {
     expect(f.sends).toHaveLength(2);
     expect(f.writes.filter(w => w.table === "job_approvals")).toHaveLength(1);
     expect(f.records.some(r => r.reasonCode === "graph_forbidden")).toBe(true);
+    expect(f.sends.every(s => s.input.html.includes(jobInfoUrl(eventId)) && !s.input.html.includes(`/jobs/${eventId}`))).toBe(true);
   });
   it("change notification attempts both recipients without creator token", async () => {
     const f = fixture("notify-event-changes"); await f.call({ job_id: eventId, changes: [{ label: "Adresse", newValue: "Mock" }] });
     expect(f.sends).toHaveLength(2); expect(f.records.filter(r => r.status === "pending")).toHaveLength(2);
     expect(f.records.some(r => r.status === "failed")).toBe(true);
+    expect(f.sends.every(s => s.input.html.includes(jobInfoUrl(eventId)))).toBe(true);
+    expect(f.writes.filter(w => w.table === "notifications").map(w => w.values.link_url)).toEqual([jobInfoPath(eventId), jobInfoPath(eventId)]);
   });
   it("identical change notification within the dedup window is not sent twice", async () => {
     const f = fixture("notify-event-changes");

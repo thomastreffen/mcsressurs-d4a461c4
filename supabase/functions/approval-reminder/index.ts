@@ -4,6 +4,7 @@ import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
+import { jobInfoUrl } from "../_shared/job-access-policy.ts";
 
 
 
@@ -74,7 +75,7 @@ function buildReminderEmail(
   const approveUrl = `${APP_URL}/approval/${token}?action=approve`;
   const rescheduleUrl = `${APP_URL}/approval/${token}?action=reschedule`;
   const rejectUrl = `${APP_URL}/approval/${token}?action=reject`;
-  const jobUrl = `${APP_URL}/jobs/${job.id}`;
+  const jobUrl = jobInfoUrl(job.id);
 
   const subject = `Påminnelse: Du har ikke bekreftet oppdrag – ${displayNumber}`;
 

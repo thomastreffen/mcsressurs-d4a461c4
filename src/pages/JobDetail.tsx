@@ -30,6 +30,7 @@ import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { ProjectAccessDrawer } from "@/components/project/ProjectAccessDrawer";
 import { JobInformation } from "@/pages/JobInformationPage";
+import { jobInfoFailure } from "@/lib/job-info-error";
 import { ChangeOrderTab } from "@/components/change-orders/ChangeOrderTab";
 import { Loader2 } from "lucide-react";
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
@@ -54,6 +55,7 @@ export default function JobDetail() {
 
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
+  const [readError, setReadError] = useState("");
   const [financialProjectNumber, setFinancialProjectNumber] = useState<string | null>(null);
   const [technicianNames, setTechnicianNames] = useState<string[]>([]);
   const [isOwnAssignment, setIsOwnAssignment] = useState(false);
@@ -71,6 +73,7 @@ export default function JobDetail() {
   const fetchJob = useCallback(async () => {
     if (!id) return;
     setLoading(true);
+    setReadError("");
     const { data, error } = await supabase
       .from("events")
       .select(`
@@ -81,10 +84,12 @@ export default function JobDetail() {
         )
       `)
       .eq("id", id)
+      .is("deleted_at", null)
       .single();
 
     if (error || !data) {
       setJob(null);
+      if (error && error.code !== "PGRST116") setReadError((await jobInfoFailure(error)).message);
       setLoading(false);
       return;
     }
@@ -146,7 +151,9 @@ export default function JobDetail() {
     return (
       <div className="flex items-center justify-center p-20">
         <div className="text-center space-y-3">
-          <p className="text-lg font-semibold">Prosjekt ikke funnet</p>
+          <p role="alert" className="text-lg font-semibold">{readError || "Oppdraget er ikke tilgjengelig i denne visningen."}</p>
+          <Button variant="outline" onClick={() => navigate(`/job-info/${id}`)}>Åpne jobbinfo og vedlegg</Button>
+          {readError && <Button variant="outline" onClick={fetchJob}>Hent oppdrag på nytt</Button>}
           <Button variant="outline" onClick={() => navigate("/projects")}>Tilbake til prosjekter</Button>
         </div>
       </div>

@@ -59,18 +59,23 @@ export function useMyDay() {
 
       if (accountError) throw new Error("Kunne ikke hente brukerprofil");
 
-      const personId = account?.person_id;
-      if (!personId) {
+      if (!account?.person_id) {
         setLoading(false);
         setError("no_profile");
         return;
       }
 
+      // schedule_blocks references technicians, never assume people.id is identical.
+      const { data: technicians, error: technicianError } = await sb.from("technicians").select("id").eq("user_id", user.id);
+      if (technicianError) throw technicianError;
+      const technicianIds = (technicians ?? []).map((t: { id: string }) => t.id);
+      if (!technicianIds.length) { setTodayBlocks([]); setUpcomingBlocks([]); setLoading(false); return; }
+
       // Today's blocks
       const { data: today, error: todayError } = await sb
         .from("schedule_blocks")
         .select("id, title, start_at, end_at, project_id, job_id, location, description, outlook_subject, outlook_weblink, source")
-        .eq("technician_id", personId)
+        .in("technician_id", technicianIds)
         .is("deleted_at", null)
         .gte("start_at", todayStart)
         .lte("start_at", todayEnd)
@@ -83,7 +88,7 @@ export function useMyDay() {
       const { data: upcoming, error: upcomingError } = await sb
         .from("schedule_blocks")
         .select("id, title, start_at, end_at, project_id, job_id, location, description, outlook_subject, outlook_weblink, source")
-        .eq("technician_id", personId)
+        .in("technician_id", technicianIds)
         .is("deleted_at", null)
         .gte("start_at", tomorrowStart)
         .lte("start_at", weekEnd)

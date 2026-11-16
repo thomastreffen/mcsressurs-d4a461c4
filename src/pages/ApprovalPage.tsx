@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { invokeWithSession } from "@/lib/invoke-session";
+import { jobInfoFailure } from "@/lib/job-info-error";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,16 +18,26 @@ export default function ApprovalPage() {
   const actionParam = searchParams.get("action") as ApprovalAction | null;
   const { session, loading: authLoading } = useAuth();
   const [jobPath, setJobPath] = useState<string | null>(null);
+  const [jobError, setJobError] = useState("");
+  const [jobAttempt, setJobAttempt] = useState(0);
   useEffect(() => {
     let active = true;
     if (!token || !session || authLoading) return;
-    void invokeWithSession<{ path: string }>("job-access", { body: { action: "resolve", token } }).then(({ data }) => {
-      if (active && data?.path?.startsWith("/job-info/")) setJobPath(data.path);
-    });
+    setJobPath(null); setJobError("");
+    void (async () => {
+      try {
+        const { data, error } = await invokeWithSession<{ path: string }>("job-access", { body: { action: "resolve", token } });
+        if (error || !data?.path?.startsWith("/job-info/")) throw error ?? new Error("Missing job path");
+        if (active) setJobPath(data.path);
+      } catch (error) {
+        const failure = await jobInfoFailure(error);
+        if (active) setJobError(failure.message);
+      }
+    })();
     return () => { active = false; };
-  }, [token, session?.user.id, authLoading]);
+  }, [token, session?.user.id, authLoading, jobAttempt]);
   const returnPath = `/approval/${encodeURIComponent(token ?? "")}`;
-  const persistentLink = <Button variant="outline" asChild className="min-h-11 w-full"><Link to={jobPath ?? (session ? "/my-day" : `/login?next=${encodeURIComponent(returnPath)}`)}>Åpne jobbinfo og vedlegg</Link></Button>;
+  const persistentLink = <div className="space-y-2">{session && !jobPath ? <Button variant="outline" className="min-h-11 w-full" disabled={!jobError} onClick={() => setJobAttempt(n => n + 1)}>{jobError ? "Hent jobbinfo på nytt" : "Henter jobbinfo…"}</Button> : <Button variant="outline" asChild className="min-h-11 w-full"><Link to={jobPath ?? `/login?next=${encodeURIComponent(returnPath)}`}>Åpne jobbinfo og vedlegg</Link></Button>}{jobError && <p role="alert" className="text-destructive text-sm">{jobError}</p>}</div>;
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
