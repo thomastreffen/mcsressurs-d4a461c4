@@ -143,11 +143,15 @@ Deno.serve(async (req) => {
     if (!tok.ok) { await tok.body?.cancel(); result = { pass: false, step: "token", http: tok.status }; }
     else {
       let token: string | null = (await tok.json()).access_token ?? null;
-      const res = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(t.mailbox)}/calendar?$select=id`, { method: "GET", headers: { Authorization: `Bearer ${token}` } });
+      // Sanitized token facts only (never the token): tenant/app match and roles.
+      let claims: Record<string, unknown> = {};
+      try { const c = JSON.parse(atob((token ?? "").split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); claims = { tid_match: c.tid === env("HUB_CALENDAR_TENANT_ID").trim(), appid_match: (c.appid ?? c.azp) === env("HUB_CALENDAR_CLIENT_ID").trim(), roles: Array.isArray(c.roles) ? c.roles.filter((r: unknown) => typeof r === "string" && /^(Calendars|Mail)\./.test(r as string)) : [] }; } catch { claims = { decode: "failed" }; }
+      const clientRequestId = crypto.randomUUID();
+      const res = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(t.mailbox)}/calendar?$select=id`, { method: "GET", headers: { Authorization: `Bearer ${token}`, "client-request-id": clientRequestId, "return-client-request-id": "true" } });
       token = null;
-      let code: string | null = null;
-      if (res.ok) await res.body?.cancel(); else { try { const j = await res.json(); code = String(j?.error?.code ?? "").slice(0, 80) || null; } catch { /* ignore */ } }
-      result = { pass: res.status === 200, step: "calendar_get", http: res.status, graph_code: code };
+      let code: string | null = null; let message: string | null = null;
+      if (res.ok) await res.body?.cancel(); else { try { const j = await res.json(); code = String(j?.error?.code ?? "").slice(0, 80) || null; message = String(j?.error?.message ?? "").replace(/[\w.+-]+@[\w.-]+/g, "<mailbox>").slice(0, 200) || null; } catch { /* ignore */ } }
+      result = { pass: res.status === 200, step: "calendar_get", http: res.status, graph_code: code, graph_message: message, request_id: res.headers.get("request-id"), client_request_id: clientRequestId, graph_date: res.headers.get("date"), endpoint: "GET /v1.0/users/{mailbox}/calendar?$select=id", ...claims };
     }
     await audit("probe_mailbox", result, { target_id: t.id });
     return json({ ok: true, result });
