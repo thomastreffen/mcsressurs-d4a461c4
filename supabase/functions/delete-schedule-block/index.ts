@@ -163,13 +163,6 @@ Deno.serve(async (req) => {
     const deletedOutlookEvents: string[] = [];
     const graphAttempts: Array<{ path: string; mailbox: string; event_id: string; status: number; ok: boolean }> = [];
     const attemptedTargets = new Set<string>();
-    const eventTechnicianTargets: Array<{
-      event_technician_id: string;
-      technician_id: string | null;
-      technician_email: string | null;
-      calendar_event_id: string | null;
-    }> = [];
-
     console.log("[delete-schedule-block] Request", JSON.stringify({
       source: block.source,
       schedule_block_id,
@@ -201,7 +194,9 @@ Deno.serve(async (req) => {
       if (attemptedTargets.has(targetKey)) return;
       attemptedTargets.add(targetKey);
 
-      const result = await deleteOutlookEvent(appToken, mailbox, eventId);
+      let result: {ok:boolean;status:number};
+      try { result = await deleteOutlookEvent(appToken, mailbox, eventId); }
+      catch { outlookError = "graph_network_unknown_outcome_reconciliation_required"; return; }
       graphAttempts.push({ path, mailbox, event_id: eventId, status: result.status, ok: result.ok });
 
       console.log("[delete-schedule-block] Graph delete", JSON.stringify({
@@ -215,7 +210,7 @@ Deno.serve(async (req) => {
       if (result.ok) {
         deletedOutlookEvents.push(eventId);
       } else {
-        outlookError = `Graph DELETE failed (${path}) for ${mailbox}: ${result.status}`;
+        outlookError = `graph_delete_${result.status}`;
       }
     };
 
@@ -225,58 +220,6 @@ Deno.serve(async (req) => {
         outlookError = "delegated_token_unavailable_reconnect_required";
         console.error("[delete-schedule-block]", outlookError);
       } else {
-        // Strategy 1: Delete via event_technicians.calendar_event_id (new flow)
-        if (isSystemBlock && block.project_id) {
-          const { data: eventTechs } = await supabase
-            .from("event_technicians")
-            .select("id, calendar_event_id, technician_id, technicians(email, name)")
-            .eq("event_id", block.project_id);
-
-          if (eventTechs && eventTechs.length > 0) {
-            for (const et of eventTechs) {
-              const calEventId = et.calendar_event_id as string | null;
-              const techEmail = (et as any).technicians?.email as string | null;
-
-              eventTechnicianTargets.push({
-                event_technician_id: et.id,
-                technician_id: et.technician_id,
-                technician_email: techEmail,
-                calendar_event_id: calEventId,
-              });
-
-              await tryDeleteOutlook("event_technicians", techEmail, calEventId);
-
-              if (calEventId && deletedOutlookEvents.includes(calEventId)) {
-                await supabase.from("event_technicians")
-                  .update({ calendar_event_id: null } as any)
-                  .eq("id", et.id);
-              }
-            }
-          }
-
-          // Also check job_calendar_links
-          const { data: calLinks } = await supabase
-            .from("job_calendar_links")
-            .select("id, calendar_event_id, user_id, technician_id, technicians(email, name)")
-            .eq("job_id", block.project_id)
-            .eq("provider", "microsoft")
-            .eq("sync_status", "linked");
-
-          if (calLinks && calLinks.length > 0) {
-            for (const link of calLinks) {
-              const calEventId = link.calendar_event_id as string | null;
-              const techEmail = (link as any).technicians?.email as string | null;
-              await tryDeleteOutlook("job_calendar_links", techEmail, calEventId);
-
-              if (calEventId && deletedOutlookEvents.includes(calEventId)) {
-                await supabase.from("job_calendar_links")
-                  .update({ sync_status: "unlinked", calendar_event_id: null, calendar_event_url: null } as any)
-                  .eq("id", link.id);
-              }
-            }
-          }
-        }
-
         // Strategy 2: Fallback to schedule_blocks.outlook_event_id (legacy/direct)
         for (const relatedBlock of relatedOutlookBlocks) {
           const mailbox = blockTechEmail || null;
@@ -289,6 +232,14 @@ Deno.serve(async (req) => {
 
         deletedInOutlook = deletedOutlookEvents.length > 0;
       }
+    }
+
+    if (shouldDeleteOutlook && (!deletedInOutlook || outlookError)) {
+      return new Response(JSON.stringify({ status: "reconciliation_required", deleted_in_outlook: false,
+        outlook_error: outlookError ?? "no_exact_outlook_id_reconciliation_required", graph_attempts: graphAttempts,
+        retry_requires_confirmation: true, block_ids_soft_deleted: [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Soft delete all matched blocks (selected + same-slot twins)
@@ -316,45 +267,6 @@ Deno.serve(async (req) => {
       .select("id", { count: "exact", head: true })
       .in("id", blockIdsToDelete)
       .is("deleted_at", null);
-
-    // Also soft-delete the linked task event(s) if they exist.
-    // Tasks (project_type='task') have no existence outside the plan — when
-    // removed from plan they should also be soft-deleted so no ghost card
-    // survives via a stale schedule_block pointing to a "live" event.
-    // We check BOTH job_id (canonical activity reference) and project_id
-    // (legacy path where project_id pointed directly to the child task event).
-    if (isSystemBlock) {
-      const linkedEventIds = [block.job_id, block.project_id].filter(Boolean) as string[];
-      if (linkedEventIds.length > 0) {
-        const { data: linkedEvents } = await supabase
-          .from("events")
-          .select("id, project_type")
-          .in("id", linkedEventIds)
-          .is("deleted_at", null);
-
-        for (const linkedEvent of linkedEvents || []) {
-          if (linkedEvent.project_type === "task") {
-            // Before soft-deleting the task, check if any OTHER active
-            // schedule_blocks still reference this event. If yes, leave it.
-            const { data: refBlocks } = await supabase
-              .from("schedule_blocks")
-              .select("id")
-              .or(`job_id.eq.${linkedEvent.id},project_id.eq.${linkedEvent.id}`)
-              .is("deleted_at", null);
-            const otherRefs = (refBlocks || []).filter((r) => !blockIdsToDelete.includes(r.id)).length;
-
-            if (otherRefs === 0) {
-              await supabase.from("events")
-                .update({ deleted_at: new Date().toISOString(), status: "cancelled" })
-                .eq("id", linkedEvent.id);
-              console.log(`[delete-schedule-block] Soft-deleted linked task event ${linkedEvent.id}`);
-            } else {
-              console.log(`[delete-schedule-block] Kept linked task ${linkedEvent.id} — ${otherRefs} other active blocks still reference it`);
-            }
-          }
-        }
-      }
-    }
 
     // Log the action
     await supabase.from("activity_log").insert({
@@ -400,7 +312,6 @@ Deno.serve(async (req) => {
             title: block.outlook_subject || block.title,
           },
           related_blocks: relatedOutlookBlocks,
-          event_technician_targets: eventTechnicianTargets,
           graph_attempts: graphAttempts,
         },
       }),
