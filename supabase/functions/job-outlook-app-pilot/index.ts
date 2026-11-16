@@ -6,14 +6,14 @@
 //  revoke_target   – revoke a target
 //  probe_mailbox   – read-only GET calendar metadata for a target mailbox (expect 200); body never read
 //  simulate        – per-day dry-run plan for a target (no Graph, no link writes)
-//  release_queue   – explicit release of ONE held intent with idempotency key; requires matching active target
+//  release_queue   – blocked pending separate staff-calendar write approval
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { missingSecrets } from "../_shared/hub-calendar-diagnostics-core.ts";
 import type { HubJob } from "../_shared/job-outlook-app-core.ts";
 import { pilotChoices, freshMailboxProbe } from "../_shared/job-outlook-pilot-selector.ts";
-import { planJobDays, canReleaseQueueItem, clampTargetHours, type PilotTarget } from "../_shared/job-outlook-app-days.ts";
+import { planJobDays, clampTargetHours, type PilotTarget } from "../_shared/job-outlook-app-days.ts";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -157,10 +157,12 @@ Deno.serve(async (req) => {
     const t = await loadTarget(b.target_id);
     if (!t || t.revoked_at || Date.parse(t.expires_at) <= now.getTime()) return json({ error: "no_active_target" }, 409);
     if (!freshMailboxProbe(await latestProbe(t.id), now)) return json({ error: "mailbox_read_test_required" }, 409);
+    const current = await choicesFor(t.event_id);
+    if (current.job?.company_id !== t.company_id || !current.technicians.some(x => x.id === t.technician_id && x.days.some(d => d.work_date === t.work_date))) return json({ error: "target_no_longer_assigned" }, 409);
     const [{ data: ev }, { data: rows }, { data: blocks }, { data: appLinks }, { data: legacy }] = await Promise.all([
       admin.from("events").select("id,company_id,title,address,start_time,end_time,status,deleted_at").eq("id", t.event_id).maybeSingle(),
       admin.from("event_technicians").select("technician_id, technicians(email)").eq("event_id", t.event_id),
-      admin.from("schedule_blocks").select("technician_id,start_at,end_at").eq("project_id", t.event_id).is("deleted_at", null),
+      admin.from("schedule_blocks").select("technician_id,start_at,end_at").eq("project_id", t.event_id).eq("company_id", t.company_id).eq("source", "manual").is("deleted_at", null),
       admin.from("job_outlook_app_links").select("*").eq("event_id", t.event_id),
       admin.from("job_calendar_day_links").select("id,technician_id,work_date,start_at,end_at,outlook_event_id,status").eq("event_id", t.event_id),
     ]);
@@ -170,7 +172,7 @@ Deno.serve(async (req) => {
     const plan = planJobDays({ job, blocks: (blocks ?? []) as any, assignees: (rows ?? []).map((r: any) => ({ technician_id: r.technician_id, email: r.technicians?.email ?? null })),
       appLinks: ((appLinks ?? []) as any[]).filter((l) => l.work_date), legacyLinks: (legacy ?? []) as any, targets: [t],
       flags: { enabled: true, dryRun: true, scopeVerified: true, pilotMailboxes: [t.mailbox] }, now });
-    const days = plan.map((r) => ({ technician_id: r.technicianId, work_date: r.workDate, start_at: r.startAt, end_at: r.endAt, in_pilot: !r.gate, gate: r.gate, decision: r.decision.kind, reason: (r.decision as any).reason ?? null }));
+    const days = plan.map((r) => ({ technician_id: r.technicianId, technician_name: current.technicians.find(x => x.id === r.technicianId)?.name ?? "Montør", work_date: r.workDate, start_at: r.startAt, end_at: r.endAt, in_pilot: !r.gate, gate: r.gate, decision: r.decision.kind, reason: (r.decision as any).reason ?? null }));
     await audit("simulate", { days: days.length, writable: days.filter((d) => d.in_pilot && d.decision !== "skip").length }, { target_id: t.id });
     return json({ ok: true, simulation: true, days });
   }
@@ -178,20 +180,6 @@ Deno.serve(async (req) => {
   if (action === "release_queue") {
     // No staff write authorization has been granted. Holding even direct API calls is intentional.
     return json({ error: "separate_write_approval_required" }, 409);
-    const qid = b.queue_id, key = b.idempotency_key;
-    if (typeof qid !== "string" || !UUID.test(qid) || typeof key !== "string" || key.length < 8 || key.length > 100) return json({ error: "invalid_input" }, 400);
-    const { data: prior } = await admin.from("job_outlook_app_pilot_actions").select("result").eq("action", "release_queue").eq("idempotency_key", key).maybeSingle();
-    if (prior) return json({ ok: true, replay: true, result: prior.result });
-    const { data: it } = await admin.from("job_outlook_app_queue").select("*").eq("id", qid).maybeSingle();
-    if (!it) return json({ error: "not_found" }, 404);
-    const { data: tr } = await admin.from("job_outlook_app_pilot_targets").select("*").eq("event_id", it.event_id).eq("technician_id", it.technician_id).is("revoked_at", null);
-    const chk = canReleaseQueueItem(it as any, (tr ?? []) as PilotTarget[], now);
-    if (!chk.ok) return json({ error: chk.reason }, 409);
-    const { data: upd } = await admin.from("job_outlook_app_queue").update({ released_at: now.toISOString(), released_by: caller, release_key: key }).eq("id", qid).eq("status", "pending").is("released_at", null).select("id").maybeSingle();
-    if (!upd) return json({ error: "already_released" }, 409);
-    const result = { queue_id: qid, released: true };
-    await audit("release_queue", result, { queue_id: qid, idempotency_key: key });
-    return json({ ok: true, result });
   }
 
   return json({ error: "invalid_action" }, 400);

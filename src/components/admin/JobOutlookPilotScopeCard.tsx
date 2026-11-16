@@ -132,6 +132,7 @@ export function JobOutlookPilotScopeCard() {
             <p className="font-medium">Simulering (testmodus, ingen skriving)</p>
             {sim.map((d, i) => (
               <div key={i} className="flex flex-wrap gap-2">
+                <span>{d.technician_name ?? "Montør"}</span>
                 <span>{fmtDate(d.work_date)} {fmtTime(d.start_at)}–{fmtTime(d.end_at)}</span>
                 <Badge variant={d.in_pilot ? "default" : "outline"}>{d.in_pilot ? "I pilot" : "Stengt"}</Badge>
                 <span className="text-muted-foreground">{d.in_pilot ? DECISION_LABELS[d.decision] : "Ikke berørt"}</span>
