@@ -444,6 +444,7 @@ export default function ResourcePlan() {
   }, [handleNewEvent]);
 
   const handleScheduleBlockDrop = useCallback(async (blockId: string, newStart: Date, newEnd: Date, technicianId?: string) => {
+    const { data: originalBlock } = await supabase.from("schedule_blocks").select("project_id,technician_id,source").eq("id", blockId).maybeSingle();
     const { error } = await supabase
       .from("schedule_blocks")
       .update({ start_at: newStart.toISOString(), end_at: newEnd.toISOString() } as any)
@@ -455,6 +456,7 @@ export default function ResourcePlan() {
     }
 
     const techName = technicianId ? technicianMap.get(technicianId)?.name : null;
+    if (originalBlock?.source === "manual" && originalBlock.project_id) await notifyJobTimeChange(originalBlock.project_id, [originalBlock.technician_id], newStart, newEnd);
     toast.success(techName ? `${techName} flyttet` : "Planblokk flyttet", {
       description: `${format(newStart, "dd.MM HH:mm")}–${format(newEnd, "HH:mm")}`,
     });
@@ -524,6 +526,7 @@ export default function ResourcePlan() {
   }, [syncUpdate, calEvents, refetchCalendarEvents]);
 
   const handleScheduleBlockResize = useCallback(async (blockId: string, newStart: Date, newEnd: Date, technicianId?: string) => {
+    const { data: originalBlock } = await supabase.from("schedule_blocks").select("project_id,technician_id,source").eq("id", blockId).maybeSingle();
     const { error } = await supabase
       .from("schedule_blocks")
       .update({ start_at: newStart.toISOString(), end_at: newEnd.toISOString() } as any)
@@ -535,6 +538,7 @@ export default function ResourcePlan() {
     }
 
     const techName = technicianId ? technicianMap.get(technicianId)?.name : null;
+    if (originalBlock?.source === "manual" && originalBlock.project_id) await notifyJobTimeChange(originalBlock.project_id, [originalBlock.technician_id], newStart, newEnd);
     toast.success(techName ? `${techName} oppdatert` : "Planblokk oppdatert", {
       description: `${format(newStart, "dd.MM HH:mm")}–${format(newEnd, "HH:mm")}`,
     });
