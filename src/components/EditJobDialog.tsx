@@ -193,7 +193,7 @@ export function EditJobDialog({ open, onOpenChange, jobId, onSaved }: EditJobDia
           return;
         }
         if (unplanResult?.warnings?.length) {
-          toast.warning(`Montøren er fjernet, men Outlook-sletting er satt i kø for ${unplanResult.warnings[0].technician_name || "montør"}`);
+          toast.warning(`Montøren er fjernet, men Outlook-fjerning er ikke bekreftet for ${unplanResult.warnings[0].technician_name || "montør"}`, { description: "Nytt forsøk krever eksplisitt bekreftelse; ingen automatisk retry." });
         }
       }
       if (addedTechIds.length > 0) {

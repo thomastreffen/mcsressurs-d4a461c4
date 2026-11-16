@@ -22,7 +22,7 @@ function fixture(active: string[] = [], central = false) {
 }
 it("empty legacy candidates resolve exact removed day; active other day and Hub job remain untouched", async () => {
   const x = fixture(["2026-11-18"]); const token = vi.fn(async () => "mock-token");
-  const graph = vi.fn(async () => new Response(null, { status: 204 }));
+  const graph = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response(null, { status: 204 }));
   const result = await processUnplanDeletes(x.db,[job],token,graph);
   expect(graph).toHaveBeenCalledTimes(1);
   expect(String(graph.mock.calls[0]?.[0])).toContain("exact%2F17");

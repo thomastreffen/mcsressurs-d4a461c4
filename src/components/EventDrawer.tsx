@@ -749,7 +749,7 @@ export function EventDrawer({
           );
         }
         if (unplanResult?.warnings?.length) {
-          toast.warning(`Montøren er fjernet, men Outlook-sletting er satt i kø for ${unplanResult.warnings[0].technician_name || "montør"}`);
+          toast.warning(`Montøren er fjernet, men Outlook-fjerning er ikke bekreftet for ${unplanResult.warnings[0].technician_name || "montør"}`, { description: "Nytt forsøk krever eksplisitt bekreftelse; ingen automatisk retry." });
         }
       }
     }

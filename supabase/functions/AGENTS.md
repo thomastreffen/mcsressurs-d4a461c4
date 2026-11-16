@@ -27,3 +27,4 @@
 
 - Legacy admin (admin role / v1 admin.manage_users) counts only in the row's own company with active membership (RLS legacy_admin_in_company, edge legacyAdminInCompany); provisioning/access/system settings are superadmin-only. Why: only designated superadmins hold global control.
 - Self-assignment uses the atomic job-email claim for informational mail; approval state never counts as an email receipt in UI or dispatch. Why: autoapproval cannot hide missing or failed operational information.
+- Unplanning deletion resolves exact removed-day links and uses the recipient's delegated token; central links require their dedicated gate, and old retries require explicit event confirmation. Why: no mail-app fallback, wrong-day deletion or deployment-triggered writes.
