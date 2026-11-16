@@ -278,7 +278,7 @@ async function deleteGraphEventWithFallbacks(
   };
 
   addCandidate("event_technicians", eventTechRow.calendar_event_id);
-  addCandidate("events.microsoft_event_id", event.microsoft_event_id);
+
 
   const [{ data: calLinks }, { data: scheduleBlocks }] = await Promise.all([
     supabaseAdmin

@@ -6,27 +6,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-/* ── Get MS token for a user via refresh ── */
-async function getAppToken(): Promise<string | null> {
-  const tenantId = Deno.env.get("AZURE_TENANT_ID")!;
-  const clientId = Deno.env.get("AZURE_CLIENT_ID")!;
-  const clientSecret = Deno.env.get("AZURE_CLIENT_SECRET")!;
-
-  const tokenRes = await fetch(
-    `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: clientId,
-        client_secret: clientSecret,
-        scope: "https://graph.microsoft.com/.default",
-      }),
-    }
-  );
-  const tokenData = await tokenRes.json();
-  return tokenData.access_token || null;
+/* Use the recipient's existing delegated identity, never the mail application's grants. */
+async function getDelegatedToken(db: any, uid: string): Promise<string | null> {
+  const { data, error } = await db.auth.admin.getUserById(uid);
+  const meta = data?.user?.user_metadata;
+  if (error || typeof meta?.ms_access_token !== "string" || !meta.ms_expires_at ||
+    Date.parse(meta.ms_expires_at) <= Date.now() + 60000) return null;
+  return meta.ms_access_token;
 }
 
 /* ── Delete a single Outlook event by user email ── */
@@ -36,10 +22,10 @@ async function deleteOutlookEvent(
   calendarEventId: string
 ): Promise<{ ok: boolean; status: number }> {
   const res = await fetch(
-    `https://graph.microsoft.com/v1.0/users/${userEmail}/events/${calendarEventId}`,
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userEmail)}/events/${encodeURIComponent(calendarEventId)}`,
     { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
   );
-  return { ok: res.ok, status: res.status };
+  return { ok: res.ok || res.status === 404, status: res.status };
 }
 
 Deno.serve(async (req) => {
@@ -99,8 +85,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    const normalizeTitle = (v: string | null | undefined) => (v || "").trim().toLowerCase();
-    const selectedTitle = normalizeTitle(block.outlook_subject || block.title);
+    const isHubBlock = ["system", "manual", "linked_outlook"].includes(block.source);
+    if (isHubBlock) {
+      const routed = await anonClient.functions.invoke("remove-work-visit-from-plan", {
+        body: { action: "remove_assignment", schedule_block_id, technician_id: block.technician_id },
+        headers: { Authorization: authHeader },
+      });
+      if (routed.error) return new Response(JSON.stringify({ error: "Planfjerning kunne ikke bekreftes" }), { status: 502, headers: corsHeaders });
+      return new Response(JSON.stringify(routed.data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const relatedBlockIds = new Set<string>([block.id]);
     const relatedOutlookBlocks: Array<{
@@ -143,9 +136,8 @@ Deno.serve(async (req) => {
       for (const candidate of sameSlotBlocks || []) {
         // Only other Outlook copies are twins – never hide a Hub job block in the same slot.
         if (candidate.id === block.id || candidate.source !== "outlook") continue;
-        const sameProject = !!block.project_id && candidate.project_id === block.project_id;
-        const sameTitle = normalizeTitle(candidate.outlook_subject || candidate.title) === selectedTitle;
-        if (sameProject || sameTitle) {
+        const sameOutlookObject = !!block.outlook_event_id && candidate.outlook_event_id === block.outlook_event_id;
+        if (sameOutlookObject) {
           relatedBlockIds.add(candidate.id);
           relatedOutlookBlocks.push(candidate as any);
         }
@@ -223,13 +215,13 @@ Deno.serve(async (req) => {
     };
 
     if (shouldDeleteOutlook) {
-      appToken = await getAppToken();
+      appToken = block.technicians?.user_id ? await getDelegatedToken(supabase, block.technicians.user_id) : null;
       if (!appToken) {
         outlookError = "Failed to get Graph app token";
         console.error("[delete-schedule-block]", outlookError);
       } else {
         // Strategy 1: Delete via event_technicians.calendar_event_id (new flow)
-        if (block.project_id) {
+        if (isSystemBlock && block.project_id) {
           const { data: eventTechs } = await supabase
             .from("event_technicians")
             .select("id, calendar_event_id, technician_id, technicians(email, name)")
@@ -282,7 +274,7 @@ Deno.serve(async (req) => {
 
         // Strategy 2: Fallback to schedule_blocks.outlook_event_id (legacy/direct)
         for (const relatedBlock of relatedOutlookBlocks) {
-          const mailbox = relatedBlock.calendar_id || blockTechEmail || null;
+          const mailbox = blockTechEmail || null;
           await tryDeleteOutlook("schedule_blocks_fallback", mailbox, relatedBlock.outlook_event_id);
         }
 
