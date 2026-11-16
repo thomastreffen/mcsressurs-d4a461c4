@@ -5,6 +5,8 @@ import { invokeWithSession } from "@/lib/invoke-session";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { freshMailboxProbe } from "../../../supabase/functions/_shared/job-outlook-pilot-selector";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { DECISION_LABELS } from "../../../supabase/functions/_shared/job-outlook-app-days";
@@ -27,6 +29,12 @@ export function JobOutlookPilotScopeCard() {
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({ queryKey: ["job-outlook-pilot"], queryFn: () => call({ action: "status" }) });
   const [form, setForm] = useState({ event_id: "", technician_id: "", work_date: "" });
+  const [search, setSearch] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const { data: candidates } = useQuery({ queryKey: ["pilot-job-search", search], queryFn: () => call({ action: "candidates", search }), enabled: search.trim().length >= 2 });
+  const { data: choice, isFetching: loadingChoice } = useQuery({ queryKey: ["pilot-job-choice", form.event_id], queryFn: () => call({ action: "candidates", event_id: form.event_id }), enabled: !!form.event_id });
+  const technician = choice?.technicians?.find((t: Any) => t.id === form.technician_id);
+  const day = technician?.days?.find((d: Any) => d.work_date === form.work_date);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [sim, setSim] = useState<Any[] | null>(null);
@@ -59,15 +67,38 @@ export function JobOutlookPilotScopeCard() {
 
         <div className="space-y-2">
           <p className="font-medium">Legg til pilotdag</p>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <Input placeholder="Jobb-ID" value={form.event_id} onChange={(e) => setForm({ ...form, event_id: e.target.value.trim() })} />
-            <Input placeholder="Montør-ID" value={form.technician_id} onChange={(e) => setForm({ ...form, technician_id: e.target.value.trim() })} />
-            <Input type="date" value={form.work_date} onChange={(e) => setForm({ ...form, work_date: e.target.value })} />
+          <Input aria-label="Søk jobb" placeholder="Søk jobbnummer eller navn, f.eks. 60570" value={search} onChange={e => setSearch(e.target.value)} />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="min-w-0 space-y-1"><p>Jobb</p>
+              <Select value={form.event_id} onValueChange={id => { setForm({ event_id: id, technician_id: "", work_date: "" }); setConfirmed(false); setSim(null); }}>
+                <SelectTrigger aria-label="Jobb"><SelectValue placeholder="Velg jobb" /></SelectTrigger>
+                <SelectContent>{(candidates?.jobs ?? []).map((j: Any) => <SelectItem key={j.id} value={j.id}>{j.project_number ? `${j.project_number} · ` : ""}{j.title}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-0 space-y-1"><p>Montør</p>
+              <Select value={form.technician_id} disabled={!form.event_id || loadingChoice} onValueChange={id => { setForm({ ...form, technician_id: id, work_date: "" }); setConfirmed(false); setSim(null); }}>
+                <SelectTrigger aria-label="Montør"><SelectValue placeholder="Velg tildelt montør" /></SelectTrigger>
+                <SelectContent>{(choice?.technicians ?? []).map((t: Any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-0 space-y-1"><p>Arbeidsdag · Oslo</p>
+              <Select value={form.work_date} disabled={!technician} onValueChange={date => { setForm({ ...form, work_date: date }); setConfirmed(false); }}>
+                <SelectTrigger aria-label="Arbeidsdag"><SelectValue placeholder="Velg planlagt dag" /></SelectTrigger>
+                <SelectContent>{(technician?.days ?? []).map((d: Any) => <SelectItem key={d.work_date} value={d.work_date} disabled={d.synced}>{fmtDate(d.work_date)} · {fmtTime(d.start_at)}–{fmtTime(d.end_at)} · {d.synced ? "Synket – urørt" : "I Hub"}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
           </div>
-          <Button size="sm" disabled={!!busy || !form.event_id || !form.technician_id || !form.work_date}
-            onClick={() => run("add", { action: "add_target", ...form, expires_hours: 24 }, () => { setForm({ event_id: "", technician_id: "", work_date: "" }); setMsg("Pilotdag lagt til (utløper om 24 timer)."); })}>
-            Legg til
-          </Button>
+          {day && <div className="space-y-2 border-l-2 border-border pl-3">
+            <p className="break-words font-medium">{choice?.job?.title} · {technician.name}</p>
+            <p>{fmtDate(day.work_date)} {fmtTime(day.start_at)}–{fmtTime(day.end_at)} Europe/Oslo</p>
+            <p className="text-muted-foreground">Kun lesetest og simulering. Ingen kalenderskriving eller køfrigivelse er godkjent.</p>
+            <Button size="sm" variant="outline" disabled={!!busy || day.synced} onClick={() => setConfirmed(true)}>Bekreft denne pilotdagen</Button>
+          </div>}
+          {confirmed && day && <Button size="sm" disabled={!!busy || day.synced}
+            onClick={() => run("add", { action: "add_target", ...form, confirm_day: true, expires_hours: 24 }, () => { setConfirmed(false); setForm({ event_id: "", technician_id: "", work_date: "" }); setMsg("Pilotdag registrert for lesetest og simulering (24 timer). Outlook er urørt."); })}>
+            Registrer bekreftet dag – ingen skriving
+          </Button>}
+
         </div>
 
         <div className="space-y-2">
@@ -75,6 +106,7 @@ export function JobOutlookPilotScopeCard() {
           {(data?.targets ?? []).length === 0 && <p className="text-muted-foreground">Ingen. Alt er stengt.</p>}
           {(data?.targets ?? []).map((t: Any) => {
             const active = !t.revoked_at && Date.parse(t.expires_at) > Date.now();
+            const readPassed = freshMailboxProbe(t.probe ?? null, new Date());
             return (
               <div key={t.id} className="rounded-md border p-2 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
@@ -82,10 +114,11 @@ export function JobOutlookPilotScopeCard() {
                   <span>{jobLabel(t)}</span><span>· {fmtDate(t.work_date)}</span>
                   <Badge variant={active ? "default" : "outline"}>{t.revoked_at ? "Trukket tilbake" : active ? "Aktiv" : "Utløpt"}</Badge>
                 </div>
+                <p className="text-muted-foreground">{readPassed ? "Lesetest 200 bestått · Simulering tilgjengelig" : "Lesetest kreves før simulering"} · Skriving sperret</p>
                 {active && (
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`p${t.id}`, { action: "probe_mailbox", target_id: t.id }, (r) => setMsg(r.result.pass ? "Lesetest bestått (200): appen når kalenderen." : `Lesetest feilet: ${r.result.http}${r.result.graph_code ? ` ${r.result.graph_code}` : ""}`))}>Lesetest kalender</Button>
-                    <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`s${t.id}`, { action: "simulate", target_id: t.id }, (r) => setSim(r.days))}>Simuler</Button>
+                    <Button size="sm" variant="outline" disabled={!!busy || !readPassed} onClick={() => run(`s${t.id}`, { action: "simulate", target_id: t.id }, (r) => setSim(r.days))}>Simuler</Button>
                     <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => run(`r${t.id}`, { action: "revoke_target", target_id: t.id })}>Trekk tilbake</Button>
                   </div>
                 )}
@@ -109,11 +142,11 @@ export function JobOutlookPilotScopeCard() {
 
         <div className="space-y-2">
           <p className="font-medium">Ventende kø – holdt tilbake ({(data?.held_queue ?? []).length})</p>
-          <p className="text-muted-foreground">Gamle forsøk sendes aldri automatisk. Frigi kun enkeltrader med aktiv pilotdag.</p>
+          <p className="text-muted-foreground">Gamle forsøk er holdt tilbake. Ingen frigivelse i denne pilotfasen.</p>
           {(data?.held_queue ?? []).map((q: Any) => (
             <div key={q.id} className="flex flex-wrap items-center gap-2">
               <span>{q.technician_name ?? "Montør"} · {jobLabel(q)}</span>
-              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`q${q.id}`, { action: "release_queue", queue_id: q.id, idempotency_key: crypto.randomUUID() }, () => setMsg("Raden er frigitt. Den behandles først når synken er slått på."))}>Frigi</Button>
+              <Badge variant="outline">Holdt – separat skrivegodkjenning kreves</Badge>
             </div>
           ))}
         </div>
