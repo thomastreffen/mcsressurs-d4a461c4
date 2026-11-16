@@ -35,25 +35,33 @@ Deno.serve(async (req) => {
         .single();
 
       if (assignee?.calendar_event_id) {
+        let confirmed = false;
+        let graphStatus: number | null = null;
         const azureClientId = Deno.env.get("AZURE_CLIENT_ID");
         if (azureClientId) {
           const { data: userData } = await sb.auth.admin.getUserById(remove_user_id);
           const msTokens = userData?.user?.user_metadata?.ms_tokens;
           if (msTokens?.access_token) {
             try {
-              await fetch(
-                `https://graph.microsoft.com/v1.0/me/events/${assignee.calendar_event_id}`,
+              const deleted = await fetch(
+                `https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(assignee.calendar_event_id)}`,
                 {
                   method: "DELETE",
                   headers: { Authorization: `Bearer ${msTokens.access_token}` },
                 }
               );
+              graphStatus = deleted.status;
+              confirmed = deleted.ok || deleted.status === 404;
             } catch (e) {
               console.error("Failed to delete calendar event:", e);
             }
           }
         }
-        // Clear the calendar_event_id
+        if (!confirmed) return new Response(JSON.stringify({ status: "reconciliation_required", graph_status: graphStatus,
+          reason: graphStatus ? "graph_delete_rejected" : "delegated_delete_not_confirmed" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+        // Clear only after confirmed deletion or already absent.
         await sb.from("task_assignees")
           .update({ calendar_event_id: null })
           .eq("id", assignee.id);
