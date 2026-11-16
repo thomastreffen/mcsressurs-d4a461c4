@@ -1,3 +1,9 @@
+# Selv-tildeling JOB-000440 – 16. november
+
+- [ ] Skill auto-godkjenning fra informasjonsmail, behold atomisk duplikatvern og eksplisitt fravalg
+- [ ] Read-only kalenderproveniens/body hvis eksisterende lesetilgang tillater; ingen historisk resend eller writes
+- [ ] Tester og deploy; oppgaveretting 0098/navigasjon beholdes
+
 # Frittstående Ressursplan-oppgave – 16. november
 
 - [x] Flow-sweep lest: Opprett/Overview, bestilling→service, redigering/tildeling, kalenderlesing, job-access, varsling, prosjektvelgere, delegated/app-only, database parent/blokk/tidsendring/fakturering; Mine gjøremål + MyTasks rettet til egen jobbinfo for task
