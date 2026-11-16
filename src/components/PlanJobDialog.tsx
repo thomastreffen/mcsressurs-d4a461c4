@@ -10,6 +10,7 @@ import { Hammer, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTechnicians } from "@/hooks/useTechnicians";
+import { notifyJobAssignment } from "@/lib/notify-job-assignment";
 
 interface PlanJobDialogProps {
   open: boolean;
@@ -95,6 +96,13 @@ export function PlanJobDialog({
         } as any);
       }
 
+      if (!projectId) throw new Error("Mangler prosjekt for arbeidsoppdraget");
+      const { data: assigned } = await supabase.from("event_technicians").select("id").eq("event_id", projectId).eq("technician_id", techId).maybeSingle();
+      if (!assigned) {
+        const { error: assignmentError } = await supabase.from("event_technicians").insert({ event_id: projectId, technician_id: techId });
+        if (assignmentError) throw assignmentError;
+      }
+
       const { data: sj, error: sjErr } = await supabase
         .from("service_jobs")
         .insert({
@@ -114,6 +122,7 @@ export function PlanJobDialog({
         .single();
 
       if (sjErr) throw sjErr;
+      await notifyJobAssignment(projectId, [techId]);
 
       await supabase.from("cases").update({
         project_id: projectId,
@@ -131,9 +140,10 @@ export function PlanJobDialog({
         created_by: userId,
       } as any);
 
-      toast.success("Planlagt og sendt til montør!");
+      toast.success("Planlagt i Hub – se e-poststatus per montør");
       setSubmitted(true);
-      onPlanned(projectId!, sj.id);
+      if (!projectId) throw new Error("Mangler prosjekt for arbeidsoppdraget");
+      onPlanned(projectId, sj.id);
       onOpenChange(false);
 
       // Reset

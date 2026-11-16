@@ -206,19 +206,23 @@ export function EditJobDialog({ open, onOpenChange, jobId, onSaved }: EditJobDia
         event_id: jobId,
         action_type: "updated",
         performed_by: userId || null,
-        change_summary: `Jobb oppdatert${notifyParticipants ? " (deltakere varslet)" : " (uten varsling)"}`,
+        change_summary: `Jobb oppdatert${notifyParticipants ? " (varsling bestilt, se kanalstatus)" : " (uten varsling)"}`,
+        metadata: { notification_choice: notifyParticipants ? "send" : "without_notification", technician_ids: techIds },
       });
 
       if (notifyParticipants) {
-        const { error: approvalError } = await invokeWithSession("create-approval", {
+        const { data: approvalData, error: approvalError } = await invokeWithSession("create-approval", {
           body: { job_id: jobId },
         });
-        if (approvalError) console.error("[EditJob] Approval re-trigger failed:", approvalError);
+        if (approvalError || !approvalData?.results?.length || approvalData.results.some((r: any) => !r.emailSent && !r.autoApproved)) {
+          toast.warning("Jobb lagret, men varsling er ikke komplett – se status per montør");
+          onSaved?.(); onOpenChange(false); return;
+        }
       }
 
       toast.success("Jobb oppdatert", {
         description: notifyParticipants
-          ? "Deltakere er varslet om endringene."
+          ? "E-post akseptert av Microsoft, ikke bekreftet levert."
           : "Endringer lagret uten varsling.",
       });
 

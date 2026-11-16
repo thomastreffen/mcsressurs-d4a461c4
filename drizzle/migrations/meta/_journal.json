@@ -680,6 +680,13 @@
       "when": 1794557622300,
       "tag": "0096_job_outlook_app_pilot_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1794826360233,
+      "tag": "0097_job_email_attempt_claims",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,7 @@ import { format, addMinutes } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Clock, Loader2, Check, FolderKanban, ListTodo } from "lucide-react";
 import { TechnicianMultiSelect } from "@/components/TechnicianMultiSelect";
+import { notifyJobAssignment } from "@/lib/notify-job-assignment";
 
 export interface DropPayload {
   taskId?: string;
@@ -175,6 +176,7 @@ export function DropConfirmPopover({ payload, onClose, onCreated }: DropConfirmP
           performed_by: userId || null,
           change_summary: `${names} tildelt via drag-planlegging kl. ${format(payload.dropTime, "HH:mm")}–${format(endTime, "HH:mm")}`,
         });
+        await notifyJobAssignment(payload.taskId, selectedTechIds, false);
 
       } else {
         // ── Task drop: create schedule blocks for each technician ──

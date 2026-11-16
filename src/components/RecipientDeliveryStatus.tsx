@@ -39,6 +39,7 @@ interface Row {
 
 export function deliveryLabel(r: Pick<Row, "channel" | "status" | "reason_code" | "delivery_state" | "verification_signal">): string {
   const what = r.channel === "calendar" ? "Kalender" : "E-post";
+  if (r.reason_code === "unknown_graph_outcome") return `${what}: ukjent resultat – avstemming kreves`;
   const state = evidenceState({ ...r, technician_id: "" });
   if (state === "verified") return `${what}: ${r.verification_signal === "attendee_accepted" ? "deltaker har akseptert" : "kontrollert objekt"}`;
   if (state === "awaiting") return `${what}: avventer bekreftelse`;
@@ -149,6 +150,7 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
         return (
           <div key={t.id} className="flex flex-wrap items-center gap-1.5 text-sm">
             <span className="min-w-0 truncate">{t.name}</span>
+            {!rows.some(r => r.channel === "email") && <Badge variant="outline">E-post: ingen utsending registrert – ukjent historikk</Badge>}
             {rows.map((r) => (
               <span key={r.channel} className="min-w-0">
                 <Badge className="whitespace-normal" variant={historical(r) ? "outline" : r.status === "failed" ? "destructive" : r.status === "sent" ? "secondary" : "outline"}>

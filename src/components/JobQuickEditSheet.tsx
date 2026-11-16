@@ -157,6 +157,7 @@ export function JobQuickEditSheet({
         }
       }
 
+      const timeChanged = startISO !== new Date(job.start).toISOString() || endISO !== new Date(job.end).toISOString();
       if (toAdd.length > 0) {
         await supabase.from("event_technicians").insert(
           toAdd.map((tid) => ({
@@ -167,10 +168,11 @@ export function JobQuickEditSheet({
       }
 
       // Trigger re-approval if technicians changed
-      if (toAdd.length > 0) {
-        await invokeWithSession("create-approval", {
-          body: { job_id: job.id },
+      if (toAdd.length > 0 || timeChanged) {
+        const notified = await invokeWithSession("create-approval", {
+          body: { job_id: job.id, technician_ids: timeChanged ? techIds : toAdd, time_change: timeChanged },
         });
+        if (notified.error || notified.data?.results?.some((r: any) => !r.emailSent && !r.autoApproved)) toast.warning("Lagret, men varsling er ikke komplett – se status per montør");
       }
 
       toast.success("Oppdatering lagret", {

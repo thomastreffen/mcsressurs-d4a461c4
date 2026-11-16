@@ -1,4 +1,5 @@
 import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
+import { sendJobEmail } from "../_shared/job-email-attempt.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -386,9 +387,9 @@ Deno.serve(async (req) => {
       const useSystem = systemSenderEnabled();
       const msToken = useSystem ? null : job.created_by ? await getValidMsToken(supabase, job.created_by) : null;
       try {
-        await recordDelivery(supabase, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: "pending", attemptedBy: job.created_by });
-        const result = await sendMail({ to: tech.email, subject, html: body }, { personalToken: msToken, useSystem });
-        await recordDelivery(supabase, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: result.ok ? "sent" : "failed", reasonCode: result.ok ? null : result.reason, graphStatus: result.status, attemptedBy: job.created_by });
+        const result = await sendJobEmail(supabase, job.id, tech.id, { to: tech.email, subject, html: body }, { personalToken: msToken, useSystem });
+        if (!result.duplicate) await recordDelivery(supabase, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: result.ok ? "sent" : "failed", reasonCode: result.ok ? null : result.reason, graphStatus: result.status, attemptedBy: job.created_by });
+        if (result.duplicate) { skipped++; continue; }
         if (!result.ok) { log(`[ApprovalReminder][Error] approval=${aid} reason=${result.reason} status=${result.status}`); continue; }
 
         // Update reminder count
@@ -409,7 +410,7 @@ Deno.serve(async (req) => {
           event_id: approval.job_id,
           performed_by: null,
           action_type: "reminder_sent",
-          change_summary: `Påminnelse #${newCount} sendt til ${tech.name}`,
+          change_summary: `Påminnelse #${newCount} til ${tech.name}: akseptert av Microsoft, ikke bekreftet levert`,
         });
 
         // Check if we should escalate to manager

@@ -16,6 +16,7 @@ describe("Planner delivery view with no real requests", () => {
     render(<MemoryRouter><QueryClientProvider client={client}><RecipientDeliveryStatus eventId="isolated" technicians={[{ id: "a", name: "Isolert A" }, { id: "b", name: "Isolert B" }]} /></QueryClientProvider></MemoryRouter>);
     await screen.findByText("E-post overlevert til Microsoft");
     expect(screen.getByText("Tidligere personlig kalenderforsøk feilet – manglet Microsoft-kobling")).toBeInTheDocument();
+    expect(screen.getByText("E-post: ingen utsending registrert – ukjent historikk")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Prøv igjen" })).not.toBeInTheDocument();
     expect(invoke).not.toHaveBeenCalled();
     expect(screen.queryByText("Alle montører har fått avtalen")).not.toBeInTheDocument();

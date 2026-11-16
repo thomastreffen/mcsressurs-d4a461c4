@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { notifyJobTimeChange } from "@/lib/notify-job-assignment";
 import { addWeeks, addDays, startOfWeek, startOfMonth, addMonths, format, isSameWeek } from "date-fns";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { nb } from "date-fns/locale";
@@ -443,6 +444,7 @@ export default function ResourcePlan() {
   }, [handleNewEvent]);
 
   const handleScheduleBlockDrop = useCallback(async (blockId: string, newStart: Date, newEnd: Date, technicianId?: string) => {
+    const { data: originalBlock } = await supabase.from("schedule_blocks").select("project_id,technician_id,source").eq("id", blockId).maybeSingle();
     const { error } = await supabase
       .from("schedule_blocks")
       .update({ start_at: newStart.toISOString(), end_at: newEnd.toISOString() } as any)
@@ -454,6 +456,7 @@ export default function ResourcePlan() {
     }
 
     const techName = technicianId ? technicianMap.get(technicianId)?.name : null;
+    if (originalBlock?.source === "manual" && originalBlock.project_id) await notifyJobTimeChange(originalBlock.project_id, [originalBlock.technician_id], newStart, newEnd);
     toast.success(techName ? `${techName} flyttet` : "Planblokk flyttet", {
       description: `${format(newStart, "dd.MM HH:mm")}–${format(newEnd, "HH:mm")}`,
     });
@@ -485,6 +488,7 @@ export default function ResourcePlan() {
             performed_by: session?.session?.user?.id || null,
             change_summary: `${techName} flyttet til ${format(newStart, "dd.MM HH:mm")}–${format(newEnd, "HH:mm")}`,
           });
+          await notifyJobTimeChange(eventId, [technicianId], newStart, newEnd);
         }
       }
     } else {
@@ -508,6 +512,7 @@ export default function ResourcePlan() {
         await supabase.from("work_orders")
           .update({ starts_at: newStart.toISOString(), ends_at: newEnd.toISOString() } as any)
           .eq("project_id", eventId);
+        await notifyJobTimeChange(eventId, oldEvent?.technicians.map(t => t.id) ?? [], newStart, newEnd);
         const result = await syncUpdate(eventId);
         if (result === "synced") {
           toast.success("Tidspunkt oppdatert. Outlook synkronisert ✓");
@@ -521,6 +526,7 @@ export default function ResourcePlan() {
   }, [syncUpdate, calEvents, refetchCalendarEvents]);
 
   const handleScheduleBlockResize = useCallback(async (blockId: string, newStart: Date, newEnd: Date, technicianId?: string) => {
+    const { data: originalBlock } = await supabase.from("schedule_blocks").select("project_id,technician_id,source").eq("id", blockId).maybeSingle();
     const { error } = await supabase
       .from("schedule_blocks")
       .update({ start_at: newStart.toISOString(), end_at: newEnd.toISOString() } as any)
@@ -532,6 +538,7 @@ export default function ResourcePlan() {
     }
 
     const techName = technicianId ? technicianMap.get(technicianId)?.name : null;
+    if (originalBlock?.source === "manual" && originalBlock.project_id) await notifyJobTimeChange(originalBlock.project_id, [originalBlock.technician_id], newStart, newEnd);
     toast.success(techName ? `${techName} oppdatert` : "Planblokk oppdatert", {
       description: `${format(newStart, "dd.MM HH:mm")}–${format(newEnd, "HH:mm")}`,
     });
@@ -552,6 +559,7 @@ export default function ResourcePlan() {
         if (error) { toast.error("Kunne ikke endre varighet"); }
         else {
           toast.success(`${tech?.name || "Montør"} varighet oppdatert`);
+          await notifyJobTimeChange(eventId, [technicianId], newStart, newEnd);
         }
       }
     } else {
@@ -568,6 +576,7 @@ export default function ResourcePlan() {
           performed_by: userId || null,
           change_summary: `Varighet endret fra ${oldEvent ? format(oldEvent.start, "HH:mm") + "–" + format(oldEvent.end, "HH:mm") : "ukjent"} til ${format(newStart, "HH:mm")}–${format(newEnd, "HH:mm")}`,
         });
+        await notifyJobTimeChange(eventId, oldEvent?.technicians.map(t => t.id) ?? [], newStart, newEnd);
         await supabase.from("service_jobs")
           .update({ starts_at: newStart.toISOString(), ends_at: newEnd.toISOString() } as any)
           .eq("project_id", eventId);

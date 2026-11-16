@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
     // 3. Assign technician
     await db.from("event_technicians").insert({
       event_id: created.id,
-      technician_id,
+      technician_id: blockCheck.technician_id,
     });
 
     // 4. Link schedule_block and update title to project title + set job_id
@@ -194,8 +194,10 @@ Deno.serve(async (req) => {
       } as any)
       .eq("id", schedule_block_id);
 
+    // Use caller's existing company permission through the canonical notification endpoint.
+    const notification = await authClient.functions.invoke("create-approval", { body: { job_id: created.id, technician_ids: [blockCheck.technician_id] } });
     return new Response(
-      JSON.stringify({ status: "ok", event_id: created.id, idempotent: false }),
+      JSON.stringify({ status: "ok", event_id: created.id, idempotent: false, notification: notification.error ? { error: "Varsling kunne ikke startes" } : notification.data }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {

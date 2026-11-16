@@ -13,6 +13,8 @@ const eventId = "11111111-1111-4111-8111-111111111111";
 function fixture(name: string, internal = false) {
   let handler: (req: Request) => Promise<Response>;
   const writes: { table: string; values: any }[] = [], sends: any[] = [], records: any[] = [];
+  const claims = new Set<string>();
+  const mockSend = async (input: any, opts: any) => { sends.push({ input, opts }); return input.to.startsWith("marcus") ? { ok: false, status: 403, reason: "graph_forbidden" } : { ok: true, status: 202 }; };
   const techs = [{ id: "a", name: "Rune", user_id: "rune", email: "rune@example.test" }, { id: "b", name: "Marcus", user_id: "marcus", email: "marcus@example.test" }];
   const event = { id: eventId, company_id: "company", title: "Meeting", entity_type: internal ? "internal" : "job", start_time: "2030-11-03T13:30:00Z", end_time: "2030-11-03T14:30:00Z", created_by: "creator", job_number: "63210", status: "requested" };
   const db: any = {
@@ -42,7 +44,13 @@ function fixture(name: string, internal = false) {
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   vm.runInNewContext(js, { Deno: { serve: (fn: typeof handler) => { handler = fn; }, env: { get: () => "mock" } }, createClient: () => db, corsHeaders: {}, formatJobSchedule, requiresApproval,
     getApprovalCallerId: async () => "creator", requireGlobalAccessManager: async () => false, resolveJobAddress: async () => "Mock address", buildOperationalJobBrief: () => ({}), briefEmailRows: () => "<tr>Mock</tr>",
-    systemSenderEnabled: () => true, sendMail: async (input: any, opts: any) => { sends.push({ input, opts }); return input.to.startsWith("marcus") ? { ok: false, status: 403, reason: "graph_forbidden" } : { ok: true, status: 202 }; },
+    systemSenderEnabled: () => true, sendMail: mockSend,
+    sendJobEmail: async (_: any, event: string, tech: string, input: any, opts: any) => {
+      const key = JSON.stringify([event, tech, input.subject, input.html]);
+      if (claims.has(key)) return { ok: true, status: 202, duplicate: true };
+      claims.add(key); records.push({ eventId: event, technicianId: tech, status: "pending" });
+      return { ...await mockSend(input, opts), duplicate: false };
+    },
     jobInfoUrl, jobInfoPath, jobAttachmentLinks, jobInfoAction, recipientPlannedDays, plannedDaysHtml, recordDelivery: async (_: any, record: any) => records.push(record), notifyFingerprint, shouldSendInfoUpdate, NOTIFY_DEDUP_WINDOW_MINUTES, formatPlannedDays, crypto, Request, Response, Date, Map, Set, console: { error() {}, log() {} } });
   return { sends, records, writes, call: async (payload: unknown) => {
     const response = await handler(new Request("https://example.test", { method: "POST", headers: { Authorization: "Bearer mock" }, body: JSON.stringify(payload) }));

@@ -10913,6 +10913,54 @@ export type Database = {
           },
         ]
       }
+      job_email_attempts: {
+        Row: {
+          created_at: string
+          event_id: string
+          finished_at: string | null
+          graph_status: number | null
+          operation_key: string
+          outcome: string
+          reason_code: string | null
+          technician_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          finished_at?: string | null
+          graph_status?: number | null
+          operation_key: string
+          outcome?: string
+          reason_code?: string | null
+          technician_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          finished_at?: string | null
+          graph_status?: number | null
+          operation_key?: string
+          outcome?: string
+          reason_code?: string | null
+          technician_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_email_attempts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_email_attempts_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "technicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_outlook_app_links: {
         Row: {
           adopted_from_day_link_id: string | null
@@ -18713,6 +18761,15 @@ export type Database = {
           _user_id: string
         }
         Returns: Json
+      }
+      claim_job_email_attempt: {
+        Args: {
+          _event: string
+          _key: string
+          _retry?: boolean
+          _technician: string
+        }
+        Returns: boolean
       }
       cleanup_empty_calculations: { Args: never; Returns: Json }
       company_role_permission: {

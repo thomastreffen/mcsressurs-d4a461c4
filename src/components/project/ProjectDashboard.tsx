@@ -64,9 +64,9 @@ export function ProjectDashboard({
       const results: any[] = (data as any)?.results || [];
       const sent = results.filter((r) => r.emailSent).length;
       const failed = results.filter((r) => !r.emailSent);
-      if (sent > 0 && failed.length === 0) toast.success(`Jobbinfo med vedlegg sendt til ${sent} montør(er)`);
-      else if (sent > 0) toast.warning(`Sendt til ${sent}, men ${failed.length} feilet`);
-      else toast.error("E-post ble ikke sendt", { description: "Logg inn på nytt med Microsoft og prøv igjen." });
+      if (sent > 0 && failed.length === 0) toast.success(`Microsoft har akseptert jobbinfo for ${sent} montør(er); ingen leveringsbekreftelse`);
+      else if (sent > 0) toast.warning(`Akseptert for ${sent}; ${failed.length} mangler aksept – se kanalstatus`);
+      else toast.error("Ingen ny e-post bekreftet", { description: "Se kanalstatus. Ukjent tidligere resultat må avstemmes før nytt forsøk." });
     } catch (e: any) {
       toast.error("Kunne ikke sende jobbinfo", { description: e?.message });
     } finally {

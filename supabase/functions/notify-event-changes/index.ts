@@ -1,4 +1,5 @@
 import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
+import { sendJobEmail } from "../_shared/job-email-attempt.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
 import { notifyFingerprint, shouldSendInfoUpdate, NOTIFY_DEDUP_WINDOW_MINUTES } from "../_shared/job-save-flow.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
@@ -215,7 +216,9 @@ Deno.serve(async (req) => {
       .select("metadata")
       .eq("event_id", job.id)
       .eq("action_type", "info_update_sent")
-      .gte("created_at", windowStart);
+      .gte("timestamp", windowStart);
+    // A failed audit read must never be interpreted as permission to resend.
+    if (!recentSends) throw new Error("Kunne ikke kontrollere tidligere varsling; ingenting sendt");
     const recentFingerprints = (recentSends || [])
       .map((row: any) => row?.metadata?.fingerprint)
       .filter((fp: unknown): fp is string => typeof fp === "string");
@@ -233,8 +236,12 @@ Deno.serve(async (req) => {
     const { data: jobBlocks } = await supabaseAdmin.from("schedule_blocks")
       .select("technician_id,start_at,end_at").eq("project_id", job.id).is("deleted_at", null);
     for (const tech of technicians || []) {
+      const assignment = assignments?.find((a: any) => a.technician_id === tech.id);
+      const recipientJob = { ...job, start_time: assignment?.start_at || job.start_time, end_time: assignment?.end_at || job.end_time };
+      const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes, recipientPlannedDays(jobBlocks ?? [], tech.id));
+      const sent = await sendJobEmail(supabaseAdmin, job.id, tech.id, { to: tech.email ?? "", subject, html }, { personalToken: msToken, useSystem });
       // In-app notification
-      if (tech.user_id) {
+      if (tech.user_id && !sent.duplicate) {
         try {
           await supabaseAdmin.from("notifications").insert({
             user_id: tech.user_id,
@@ -253,12 +260,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      const assignment = assignments?.find((a: any) => a.technician_id === tech.id);
-      const recipientJob = { ...job, start_time: assignment?.start_at || job.start_time, end_time: assignment?.end_at || job.end_time };
-      const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes, recipientPlannedDays(jobBlocks ?? [], tech.id));
-      await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, channel: "email", status: "pending", attemptedBy: callerUserId });
-      const sent = await sendMail({ to: tech.email ?? "", subject, html }, { personalToken: msToken, useSystem });
-      await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: sent.ok ? "sent" : "failed", graphStatus: sent.status, reasonCode: sent.ok ? null : sent.reason, attemptedBy: callerUserId });
+      if (!sent.duplicate) await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: sent.ok ? "sent" : "failed", graphStatus: sent.status, reasonCode: sent.ok ? null : sent.reason, attemptedBy: callerUserId });
       results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, ...(!sent.ok ? { reason: sent.reason } : {}) });
     }
 
@@ -267,7 +269,7 @@ Deno.serve(async (req) => {
       event_id: job.id,
       performed_by: callerUserId,
       action_type: "info_update_sent",
-      change_summary: `Info-varsel sendt til ${technicians?.length || 0} montør(er) om ${body.changes.length} endring(er) (uten ny godkjenning)`,
+      change_summary: `Info-varsel: ${results.filter(r => r.emailSent).length} akseptert av Microsoft, ${results.filter(r => !r.emailSent).length} ikke akseptert (uten ny godkjenning)`,
       metadata: { changes: body.changes, technician_ids: techIds, fingerprint },
     } as any);
 

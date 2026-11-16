@@ -228,10 +228,10 @@ export default function JobsPage() {
       const res = await invokeWithSession("create-approval", {
         body: { job_id: jobId },
       });
-      if (res.error || res.data?.error) {
+      if (res.error || res.data?.error || !res.data?.results?.length || res.data.results.some((r: any) => !r.emailSent && !r.autoApproved)) {
         toast.error("Kunne ikke sende godkjenning", { description: res.data?.error || String(res.error) });
       } else {
-        toast.success("Godkjenning sendt");
+        toast.success("Forespørsel behandlet – se Microsoft-kvittering per montør");
         fetchJobs();
       }
     } catch {

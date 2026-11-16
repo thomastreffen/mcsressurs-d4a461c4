@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { TechnicianMultiSelect } from "@/components/TechnicianMultiSelect";
+import { notifyJobAssignment } from "@/lib/notify-job-assignment";
 
 interface CustomerOption {
   id: string;
@@ -139,13 +140,9 @@ export default function ProjectNewPage() {
       await supabase.from("event_technicians").insert(
         techIds.map((tid) => ({ event_id: data.id, technician_id: tid }))
       );
-    } else {
-      await supabase.from("event_technicians").insert({
-        event_id: data.id,
-        technician_id: insertData.technician_id,
-      });
     }
 
+    if (techIds.length > 0) await notifyJobAssignment(data.id, techIds);
     toast.success("Prosjekt opprettet", { description: title });
     navigate(`/projects/${data.id}`);
   };
