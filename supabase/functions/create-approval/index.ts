@@ -428,19 +428,11 @@ Deno.serve(async (req) => {
         // Approval and information are independent. Reuse settled responses on replay.
         const { data: previous } = await supabaseAdmin.from("job_approvals").select("token,status")
           .eq("job_id", job_id).eq("technician_user_id", tech.user_id).order("created_at", { ascending: false }).limit(1).maybeSingle();
-        const { data: approval, error: approvalErr } = await supabaseAdmin
+        const { error: approvalErr } = previous ? { error: null } : await supabaseAdmin
           .from("job_approvals")
-          .insert({
-            job_id: job_id,
-            technician_user_id: tech.user_id,
-            status: "approved",
-            responded_at: new Date().toISOString(),
-            response_required: rRequired,
-            reminder_profile: rProfile,
-            reminder_config: rConfig,
-          })
-          .select("token")
-          .single();
+          .insert({ job_id, technician_user_id: tech.user_id, status: "approved",
+            responded_at: new Date().toISOString(), response_required: rRequired,
+            reminder_profile: rProfile, reminder_config: rConfig });
 
         if (approvalErr) {
           console.error("[create-approval] Self-approve insert error:", tech.id, approvalErr);
@@ -448,13 +440,21 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        results.push({ techId: tech.id, token: approval?.token, emailSent: false, autoApproved: true });
+        const times = techTimeMap.get(tech.id);
+        const schedule = formatJobSchedule(job.start_time, job.end_time, times?.start_at, times?.end_at);
+        const html = `<h1>${escapeHtml(job.title)}</h1><p>Jobbinfo for din tildeling – ingen ny oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${plannedDaysHtml(plannedDays)}${jobInfoAction(job.id)}${jobAttachmentLinks(job.id, job.attachments)}`;
+        const sent = await sendJobEmail(supabaseAdmin, job_id, tech.id,
+          { to: tech.email ?? "", subject: `Jobbinfo: ${displayNumber} – ${job.title}`, html, replyTo },
+          { personalToken: msToken, useSystem });
+        results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status,
+          autoApproved: !previous || previous.status === "approved", alreadyRecorded: sent.duplicate,
+          ...(!sent.ok ? { reasonCode: sent.reason, error: sent.detail } : {}) });
 
         await supabaseAdmin.from("event_logs").insert({
           event_id: job_id,
           performed_by: callerUserId,
           action_type: "created",
-          change_summary: `${tech.name} automatisk godkjent (tildelt seg selv)`,
+          change_summary: `${tech.name}: selv-tildeling, ${sent.ok ? "informasjonsmail akseptert av Microsoft, ikke bekreftet levert" : "informasjonsmail ikke akseptert – se kanalstatus"}`,
         });
 
         continue;
@@ -545,11 +545,6 @@ Deno.serve(async (req) => {
     for (const r of results) {
       const tech = technicians.find((t: any) => t.id === r.techId);
       if (!tech || r.alreadyRecorded) continue;
-      if (r.autoApproved) {
-        await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, technicianUserId: tech.user_id,
-          recipientEmail: tech.email, channel: "email", status: "skipped", reasonCode: "self_assigned", attemptedBy: callerUserId });
-        continue;
-      }
       const reason = r.emailSent ? null
         : r.reasonCode ? r.reasonCode
         : !canSend ? "sender_no_ms_connection"
