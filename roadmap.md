@@ -1,8 +1,9 @@
 # Selv-tildeling JOB-000440 – 16. november
 
-- [ ] Skill auto-godkjenning fra informasjonsmail, behold atomisk duplikatvern og eksplisitt fravalg
-- [ ] Read-only kalenderproveniens/body hvis eksisterende lesetilgang tillater; ingen historisk resend eller writes
-- [ ] Tester og deploy; oppgaveretting 0098/navigasjon beholdes
+- [x] Auto-godkjenning beholdt, informasjonsmail med stabil lenke og atomisk duplikatvern; eksplisitt fravalg logges
+- [x] Kalenderproveniens: delegated per dag, 17.11 synced med id; ingen organizer-link. Graph-body ikke live inspisert: ingen tilgjengelig trygg eksisterende content-read-inngang, ingen impersonation/ny tilgang
+- [x] 33 isolerte tester bestått, build OK; create-approval + calendar-write-sync deployet. Kalenderemne inkluderer jobbnummer/tittel. Oppgaveretting 0098/navigasjon urørt
+- [ ] Thomas kontrollerer mottatt mail/jobbinfo og faktisk body i Outlook ved neste ordinære jobb; JOB-000440 ikke omskrevet eller sendt på nytt
 
 # Frittstående Ressursplan-oppgave – 16. november
 
