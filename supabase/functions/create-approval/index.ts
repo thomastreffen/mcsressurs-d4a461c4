@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
     // resource_plan edit on the job's own company (checked after job fetch).
     const isGlobalAdmin = await requireGlobalAccessManager(supabaseAdmin, callerUserId);
 
-    const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes, resend, technician_ids, queue_dispatch } = await req.json();
+    const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes, resend, technician_ids, queue_dispatch, send_notification } = await req.json();
     const isResend = resend === true || queue_dispatch === true;
     if (typeof job_id !== "string" || !/^[0-9a-f-]{36}$/i.test(job_id)) {
       return new Response(JSON.stringify({ error: "Missing job_id" }), {
@@ -281,6 +281,14 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    }
+    if (send_notification === false) {
+      await supabaseAdmin.from("event_logs").insert({ event_id: job_id, performed_by: callerUserId,
+        action_type: "notifications_skipped", change_summary: "Eksplisitt lagret uten e-postvarsling",
+        metadata: { notification_choice: "without_notification" } });
+      return new Response(JSON.stringify({ skipped: true, reason: "explicit_opt_out", results: [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
     rRequired = requiresApproval(job, response_required);
     // Operative address: newest event address, else the order's oppdragssted
@@ -417,7 +425,9 @@ Deno.serve(async (req) => {
       }
 
       if (isSelf && !isTimeChange) {
-        // Auto-approve when assigning to yourself – no email needed
+        // Approval and information are independent. Reuse settled responses on replay.
+        const { data: previous } = await supabaseAdmin.from("job_approvals").select("token,status")
+          .eq("job_id", job_id).eq("technician_user_id", tech.user_id).order("created_at", { ascending: false }).limit(1).maybeSingle();
         const { data: approval, error: approvalErr } = await supabaseAdmin
           .from("job_approvals")
           .insert({
