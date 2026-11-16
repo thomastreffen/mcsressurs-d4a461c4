@@ -259,9 +259,8 @@ Deno.serve(async (req) => {
       const assignment = assignments?.find((a: any) => a.technician_id === tech.id);
       const recipientJob = { ...job, start_time: assignment?.start_at || job.start_time, end_time: assignment?.end_at || job.end_time };
       const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes, recipientPlannedDays(jobBlocks ?? [], tech.id));
-      await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, channel: "email", status: "pending", attemptedBy: callerUserId });
       const sent = await sendJobEmail(supabaseAdmin, job.id, tech.id, { to: tech.email ?? "", subject, html }, { personalToken: msToken, useSystem });
-      await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: sent.ok ? "sent" : "failed", graphStatus: sent.status, reasonCode: sent.ok ? null : sent.reason, attemptedBy: callerUserId });
+      if (!sent.duplicate) await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: sent.ok ? "sent" : "failed", graphStatus: sent.status, reasonCode: sent.ok ? null : sent.reason, attemptedBy: callerUserId });
       results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, ...(!sent.ok ? { reason: sent.reason } : {}) });
     }
 

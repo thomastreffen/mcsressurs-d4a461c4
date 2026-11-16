@@ -372,7 +372,6 @@ Deno.serve(async (req) => {
           ? `<p><strong>Planlagte dager (${plannedDays.length}):</strong></p><ul>${plannedDays.map((d) => `<li>${escapeHtml(d)}</li>`).join("")}</ul>`
           : "";
         const html = `<h1>${escapeHtml(job.title)}</h1><p>Til informasjon – ingen oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${daysHtml}${jobAttachmentLinks(job.id, job.attachments)}`;
-        await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, channel: "email", status: "pending", attemptedBy: callerUserId });
         const sent = await sendJobEmail(supabaseAdmin, job_id, tech.id, { to: tech.email ?? "", subject: `Møte / informasjon: ${displayNumber} – ${job.title}`, html, replyTo }, { personalToken: msToken, useSystem }, isResend);
         results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, alreadyRecorded: sent.duplicate, ...(!sent.ok ? { reasonCode: sent.reason } : {}) });
         continue;
@@ -382,7 +381,6 @@ Deno.serve(async (req) => {
         const { data: delivery } = await supabaseAdmin.from("event_recipient_delivery").select("status,delivery_state").eq("event_id", job_id).eq("technician_id", tech.id).eq("channel", "email").maybeSingle();
         if (delivery && (delivery.status === "sent" || delivery.status === "pending")) { results.push({ techId: tech.id, emailSent: delivery.status === "sent", alreadyRecorded: true }); continue; }
       }
-      await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, channel: "email", status: "pending", attemptedBy: callerUserId });
       const isSelf = tech.user_id === callerUserId;
 
       if (isResend) {
