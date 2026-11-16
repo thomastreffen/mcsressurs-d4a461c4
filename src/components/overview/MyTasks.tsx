@@ -8,6 +8,7 @@ import { format, isPast, isToday, isTomorrow, startOfDay, addDays } from "date-f
 import { nb } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { overviewEventPath } from "@/lib/job-info-navigation";
 
 export interface OverviewEvent {
   id: string;
@@ -113,7 +114,7 @@ export function MyTasks({ events, onNewTask }: MyTasksProps) {
           size="sm" className="h-7 text-[11px] rounded-lg px-3 gap-1"
           onClick={() => setFilter("tasks")}
         >
-          <ListChecks className="h-3 w-3" /> Arbeidspakker ({taskCount})
+          <ListChecks className="h-3 w-3" /> Oppgaver ({taskCount})
         </Button>
         <Button
           variant={filter === "projects" ? "default" : "ghost"}
@@ -140,7 +141,7 @@ export function MyTasks({ events, onNewTask }: MyTasksProps) {
               return (
                 <button
                   key={ev.id}
-                  onClick={() => navigate(`/projects/${ev.id}`)}
+                  onClick={() => navigate(overviewEventPath(ev.id, ev.project_type))}
                   className="flex items-center gap-3.5 w-full rounded-xl px-4 py-3.5 text-left
                     hover:bg-primary/5 transition-all group"
                 >

@@ -16,6 +16,7 @@ import { useCompanyContext } from "@/hooks/useCompanyContext";
 import type { JobStatus } from "@/lib/job-status";
 import { Button } from "@/components/ui/button";
 import { EventDrawer } from "@/components/EventDrawer";
+import { overviewEventPath } from "@/lib/job-info-navigation";
 import { fetchActiveLeads } from "@/lib/lead-queries";
 import { useUnreadOrderMessages } from "@/hooks/useUnreadOrderMessages";
 import { cn } from "@/lib/utils";
@@ -537,7 +538,7 @@ export default function OverviewPage() {
                   return (
                     <button
                       key={ev.id}
-                      onClick={() => navigate(`/projects/${ev.id}`)}
+                      onClick={() => navigate(overviewEventPath(ev.id, ev.project_type))}
                       className="flex items-center gap-3.5 w-full px-5 py-3.5 text-left hover:bg-primary/[0.03] transition-all group cursor-pointer"
                     >
                       {isTask ? (
