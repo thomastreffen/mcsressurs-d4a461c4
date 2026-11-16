@@ -146,7 +146,8 @@ export async function syncTechnicianDays(args: {
         }
       }
     }
-    await store.removeLink(eventId, link);
+    try { await store.removeLink(eventId, link); }
+    catch { results.push({ technicianId, workDate: link.work_date, state: "feilet", error: "mapping_cleanup_requires_reconciliation", outcome: "failed" }); }
   }
 
   return results.sort((a, b) => a.workDate.localeCompare(b.workDate));

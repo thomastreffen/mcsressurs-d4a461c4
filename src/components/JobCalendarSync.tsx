@@ -301,10 +301,14 @@ export function JobCalendarSync({
   const unlinkTechnician = async (userId: string) => {
     setUnlinking(userId);
     try {
-      const { error } = await supabase.functions.invoke("ms-calendar", {
+      const { data, error } = await supabase.functions.invoke("ms-calendar", {
         body: { action: "unlink_job_events", job_id: jobId, user_ids: [userId] },
       });
       if (error) throw error;
+      if (!data?.results?.length || data.results.some((r: { status: string }) => r.status !== "unlinked")) {
+        toast.warning("Outlook-fjerning er ikke bekreftet – avstemming kreves");
+        fetchLinks(); fetchAudit(); return;
+      }
       toast.success("Outlook-hendelse fjernet");
       fetchLinks();
       fetchAudit();

@@ -42,6 +42,12 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = typeof body.action === "string" ? body.action : "remove_assignment";
     if (!canDelete) return json({ error: "Mangler rettighet: calendar.delete_events" }, 403);
+    if (isInternalCall) return json({ blocked: true, reason: "interactive_delete_required", processed: 0 }, 403);
+    if (!["scan_ghosts", "repair_ghosts", "retry_outlook", "remove_assignment", "remove_event"].includes(action)) return json({ error: "invalid_action" }, 400);
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    for (const field of ["event_id", "technician_id", "schedule_block_id"]) {
+      if (body[field] != null && (typeof body[field] !== "string" || !uuid.test(body[field]))) return json({ error: `invalid_${field}` }, 400);
+    }
 
     if (action === "scan_ghosts") {
       const { data, error } = await db.rpc("scan_resource_plan_ghosts");
@@ -56,7 +62,8 @@ Deno.serve(async (req) => {
       if (isInternalCall || body.confirm_calendar_delete !== true || typeof body.event_id !== "string") {
         return json({ blocked: true, reason: "explicit_event_delete_confirmation_required", processed: 0 });
       }
-      const { data: event } = await db.from("events").select("company_id").eq("id", body.event_id).maybeSingle();
+      const { data: event } = await authClient.from("events").select("company_id").eq("id", body.event_id).maybeSingle();
+      if (!event) return json({ error: "Ingen tilgang" }, 403);
       const { data: scoped } = await db.rpc("has_company_access", { _uid: authData.user?.id,
         _company: event?.company_id, _module: "resource_plan", _level: "edit" });
       if (!scoped) return json({ error: "Ingen tilgang" }, 403);
@@ -64,7 +71,7 @@ Deno.serve(async (req) => {
         .eq("event_id", body.event_id).in("status", ["pending", "failed"]).lte("next_attempt_at", new Date().toISOString()).order("next_attempt_at").limit(50);
       if (error) return json({ error: error.message }, 500);
       const outlook = await processJobs(db, (jobs ?? []) as DeleteJob[]);
-      return json({ status: "success", processed: outlook.length, outlook });
+      return json({ status: outlook.some(r => r.status !== "deleted") ? "reconciliation_required" : "success", processed: outlook.length, outlook });
     }
 
     const eventId = typeof body.event_id === "string" ? body.event_id : null;
@@ -76,8 +83,9 @@ Deno.serve(async (req) => {
     // Fail-closed: an Outlook appointment with an unconfirmed (fuzzy/AI/stale) job link must never
     // remove a technician from that job. The UI offers "Fjern feil kobling" / "Skjul avtale i Hub".
     if (scheduleBlockId) {
-      const { data: sb } = await db.from("schedule_blocks")
+      const { data: sb } = await authClient.from("schedule_blocks")
         .select("source, project_id, match_state, match_reason").eq("id", scheduleBlockId).maybeSingle();
+      if (!sb) return json({ error: "Ingen tilgang" }, 403);
       if (sb && !isTrustedOutlookBlock(sb)) {
         return json({ error: "unconfirmed_outlook_link", message: "Outlook-avtalen er ikke bekreftet koblet til jobben. Bruk «Fjern feil kobling» eller «Skjul avtale i Hub»." }, 409);
       }
@@ -97,6 +105,7 @@ Deno.serve(async (req) => {
         retry_requires_confirmation: true }] });
 
     const resolvedEventId = local?.event_id;
+    if (!resolvedEventId) return json({ error: "local_removal_receipt_missing", local }, 500);
     const query = db.from("calendar_delete_retry_queue").select("*").eq("event_id", resolvedEventId);
     const { data: jobs, error: queueError } = technicianId && action !== "remove_event"
       ? await query.eq("technician_id", technicianId)
@@ -104,6 +113,7 @@ Deno.serve(async (req) => {
     if (queueError) return json({ error: queueError.message, local }, 500);
     const outlook = await processJobs(db, (jobs ?? []).filter((job: DeleteJob & { status?: string }) => job.status !== "resolved"));
     const warnings = outlook.filter((result) => result.status !== "deleted");
+    if (!outlook.length) warnings.push({ status: "queued", error: "no_calendar_delete_receipt_reconciliation_required" });
     return json({
       status: local?.status ?? "success",
       local,

@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch the block with technician info
-    const { data: block, error: fetchErr } = await supabase
+    const { data: block, error: fetchErr } = await anonClient
       .from("schedule_blocks")
       .select("*, technicians(user_id, name, email)")
       .eq("id", schedule_block_id)
@@ -84,6 +84,11 @@ Deno.serve(async (req) => {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const { data: scope } = await supabase.rpc("has_company_access", { _uid: user.id,
+      _company: block.company_id, _module: "resource_plan", _level: "edit" });
+    if (!block.company_id || !scope) return new Response(JSON.stringify({ error: "Ingen tilgang" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
     const isHubBlock = ["system", "manual", "linked_outlook"].includes(block.source);
     if (isHubBlock) {
@@ -217,7 +222,7 @@ Deno.serve(async (req) => {
     if (shouldDeleteOutlook) {
       appToken = block.technicians?.user_id ? await getDelegatedToken(supabase, block.technicians.user_id) : null;
       if (!appToken) {
-        outlookError = "Failed to get Graph app token";
+        outlookError = "delegated_token_unavailable_reconnect_required";
         console.error("[delete-schedule-block]", outlookError);
       } else {
         // Strategy 1: Delete via event_technicians.calendar_event_id (new flow)
