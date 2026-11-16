@@ -1,8 +1,9 @@
 # Falsk tilgangsnekt på jobbinfo – 16. november
 
-- [ ] Rett gammel planleggerrettighet som sperrer superadmin; behold caller-RLS og selskapsavgrenset visning
-- [ ] Skill autentisering, reell tilgangsnekt og teknisk feil; isolerte autentiserte jobb-/PC-/mobiltester
-- [ ] Deploy lesefunksjon; UI krever publisering og faktisk Thomas/Mats-kontroll uten kontoovertakelse
+- [x] Rett gammel planleggerrettighet som sperrer superadmin; behold caller-RLS og selskapsavgrenset visning, ingen endring av rettigheter
+- [x] Skill autentisering, reell tilgangsnekt og teknisk feil; isolerte autentiserte jobbkall og PC/mobil/eget-vindu kontrollert
+- [x] Deploy job-access lesefunksjon; eksisterende jobb er MCS Service AS og ikke slettet
+- [ ] UI krever publisering; faktisk Thomas/Mats-bearer og standalone-innlogging må kontrolleres av brukerne (ingen autorisert kontoovertakelse)
 
 # Kalenderstatus fra jobbskuff – 16. november
 
