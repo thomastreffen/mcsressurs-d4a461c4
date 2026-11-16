@@ -1,8 +1,9 @@
 # Frittstående Ressursplan-oppgave – 16. november
 
-- [ ] Rett parent-/blokkvalidering uten å endre eksisterende oppgaver eller tilgang
-- [ ] Atomisk task-oppretting med tildeling/dager/idempotens; vedlegg før informasjonsvarsling
-- [ ] Isolerte integritets-/flyttester, PC/mobilkontroll og aktiv migrasjon verifiseres read-only
+- [x] Migrasjon 0098 aktiv: standalone task tillatt, child/root/company-/blokkvalidering beholdt; phantom-forsøk har 0 events/assignments/blocks
+- [x] Invoker-RLS atomisk task-oppretting med tildeling/dager/idempotens; vedlegg før informasjonsvarsling, eksplisitt logget fravalg, task uavhengig av Tripletex master
+- [x] 923 tester bestått; isolert PC/mobil Oppgave→PDF→info uten approval verifisert; build OK; app-only OFF/dry_run ON
+- [ ] Ny opprettingsflyt må publiseres; Thomas tester neste ordinære oppgave med egen konto, kvittering og jobbinfo – ingen live tester/utsending utført
 
 # Varslingshull JOB-000420 – 16. november
 

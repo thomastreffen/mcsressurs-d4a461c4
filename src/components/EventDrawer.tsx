@@ -231,10 +231,10 @@ export function EventDrawer({
     fetchTripletexPlanningContext(planningCompanyId).then((context) => {
       if (!alive) return;
       setTripletexContext(context); setTripletexContextCompany(planningCompanyId);
-      if (context.economic_project_master) setMode("existing");
+      if (context.economic_project_master && eventType !== "task") setMode("existing");
     }).catch((e) => { if (alive) setTripletexContextError(e.message); });
     return () => { alive = false; };
-  }, [open, planningCompanyId, projectId]);
+  }, [open, planningCompanyId, projectId, eventType]);
   const [reminderConfig, setReminderConfig] = useState<ReminderConfig>({
     responseRequired: true,
     profile: "company_default",
