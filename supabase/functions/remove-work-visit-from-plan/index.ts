@@ -67,11 +67,16 @@ Deno.serve(async (req) => {
       const { data: scoped } = await db.rpc("has_company_access", { _uid: authData.user?.id,
         _company: event?.company_id, _module: "resource_plan", _level: "edit" });
       if (!scoped) return json({ error: "Ingen tilgang" }, 403);
-      const { data: jobs, error } = await db.from("calendar_delete_retry_queue").select("*")
-        .eq("event_id", body.event_id).in("status", ["pending", "failed"]).lte("next_attempt_at", new Date().toISOString()).order("next_attempt_at").limit(50);
+      let query = db.from("calendar_delete_retry_queue").select("*").eq("event_id", body.event_id)
+        .in("status", ["pending", "failed"]).lte("next_attempt_at", new Date().toISOString()).order("next_attempt_at").limit(50);
+      if (body.technician_ids != null) {
+        if (!Array.isArray(body.technician_ids) || !body.technician_ids.length || body.technician_ids.some((id: unknown) => typeof id !== "string" || !uuid.test(id))) return json({ error: "invalid_technician_ids" }, 400);
+        query = query.in("technician_id", body.technician_ids);
+      }
+      const { data: jobs, error } = await query;
       if (error) return json({ error: error.message }, 500);
       const outlook = await processJobs(db, (jobs ?? []) as DeleteJob[]);
-      return json({ status: outlook.some(r => r.status !== "deleted") ? "reconciliation_required" : "success", processed: outlook.length, outlook });
+      return json({ status: !outlook.length || outlook.some(r => r.status !== "deleted") ? "reconciliation_required" : "success", processed: outlook.length, outlook });
     }
 
     const eventId = typeof body.event_id === "string" ? body.event_id : null;

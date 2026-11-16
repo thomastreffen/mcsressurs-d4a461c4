@@ -680,6 +680,12 @@ Deno.serve(async (req) => {
       }
       const { job_id, user_ids } = body;
       if (!job_id) return respond({ error: "Missing job_id", logs }, 400);
+      const { data: visible } = await supabaseAnon.from("events").select("company_id").eq("id", job_id).maybeSingle();
+      if (!visible) return respond({ error: "Ingen tilgang" }, 403);
+      const { data: companyEdit } = await supabaseAdmin.rpc("has_company_access", {
+        _uid: authUser.id, _company: visible.company_id, _module: "resource_plan", _level: "edit",
+      });
+      if (!companyEdit) return respond({ error: "Ingen tilgang" }, 403);
 
       const operationId = crypto.randomUUID();
       const startedAt = new Date().toISOString();
@@ -699,13 +705,28 @@ Deno.serve(async (req) => {
       for (const link of links || []) {
         const tech = link.technicians;
         const techLog = (msg: string) => log(`[${tech?.name || link.user_id}] ${msg}`);
+        const { data: active, error: planError } = await supabaseAdmin.from("schedule_blocks").select("id")
+          .or(`job_id.eq.${job_id},project_id.eq.${job_id}`).eq("technician_id", link.technician_id).is("deleted_at", null).limit(1);
+        const { data: days, error: dayError } = await supabaseAdmin.from("job_calendar_day_links").select("id")
+          .eq("event_id", job_id).eq("technician_id", link.technician_id).limit(1);
+        const { data: central, error: centralError } = await supabaseAdmin.from("job_outlook_app_links").select("id")
+          .eq("event_id", job_id).eq("technician_id", link.technician_id).limit(1);
+        const { data: organizer, error: organizerError } = await supabaseAdmin.from("m365_organizer_links").select("id")
+          .eq("event_id", job_id).eq("technician_id", link.technician_id).limit(1);
+        if (planError || dayError || centralError || organizerError || active?.length || days?.length || central?.length || organizer?.length) {
+          results.push({ technician_id: link.technician_id, status: "failed", reason: "exact_day_or_provenance_reconciliation_required" });
+          continue;
+        }
+        if (!link.calendar_event_id || !tech?.email || link.user_id !== tech?.user_id) {
+          results.push({ technician_id: link.technician_id, status: "failed", reason: "recipient_identity_unresolved" }); continue;
+        }
 
         if (link.calendar_event_id && tech?.user_id) {
           const msToken = await ensureValidMsToken(supabaseAdmin, tech.user_id, techLog);
           if (msToken) {
             techLog(`Deleting event ${link.calendar_event_id.slice(0, 20)}...`);
             const delRes = await fetch(
-              `${GRAPH_BASE}/me/events/${link.calendar_event_id}`,
+              `${GRAPH_BASE}/users/${encodeURIComponent(tech.email)}/events/${encodeURIComponent(link.calendar_event_id)}`,
               {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${msToken}` },
@@ -727,13 +748,14 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        await supabaseAdmin.from("job_calendar_links").update({
+        const { error: cleanupError } = await supabaseAdmin.from("job_calendar_links").update({
           sync_status: "unlinked",
           calendar_event_id: null,
           calendar_event_url: null,
           last_error: null,
           last_sync_hash: null,
         }).eq("id", link.id);
+        if (cleanupError) { results.push({ technician_id: link.technician_id, status: "failed", reason: "mapping_cleanup_requires_reconciliation" }); continue; }
 
         results.push({ technician_id: link.technician_id, name: tech?.name, status: "unlinked" });
       }

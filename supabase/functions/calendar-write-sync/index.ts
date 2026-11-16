@@ -784,6 +784,22 @@ Deno.serve(async (req) => {
     // update_only: eksplisitt «Oppdater Outlook» fra jobbkortet – kun PATCH av
     // eksisterende kalenderkoblinger, aldri opprettelse av nye hendelser.
     const updateOnly = body.update_only === true;
+    if (action === "delete") {
+      // Destructive legacy entry point must not bypass exact-day/queue authorization.
+      if (internalCaller || body.confirm_calendar_delete !== true) return new Response(JSON.stringify({
+        status: "reconciliation_required", reason: "explicit_event_delete_confirmation_required",
+      }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const scoped = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+      });
+      const routed = await scoped.functions.invoke("remove-work-visit-from-plan", {
+        body: { action: "retry_outlook", event_id, confirm_calendar_delete: true, technician_ids: body.technician_ids },
+      });
+      if (routed.error) return new Response(JSON.stringify({ status: "reconciliation_required" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+      return new Response(JSON.stringify(routed.data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     if (!["create", "update", "force_update", "delete", "reconcile", "create_missing_days", "read_capability"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
       return new Response(JSON.stringify({ error: "Missing action or event_id" }), {
