@@ -133,9 +133,10 @@ export function PlanJobDialog({
         created_by: userId,
       } as any);
 
-      toast.success("Planlagt og sendt til montør!");
+      toast.success("Planlagt i Hub – se e-poststatus per montør");
       setSubmitted(true);
-      onPlanned(projectId!, sj.id);
+      if (!projectId) throw new Error("Mangler prosjekt for arbeidsoppdraget");
+      onPlanned(projectId, sj.id);
       onOpenChange(false);
 
       // Reset

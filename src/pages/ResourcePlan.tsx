@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { notifyJobTimeChange } from "@/lib/notify-job-assignment";
 import { addWeeks, addDays, startOfWeek, startOfMonth, addMonths, format, isSameWeek } from "date-fns";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { nb } from "date-fns/locale";
@@ -485,6 +486,7 @@ export default function ResourcePlan() {
             performed_by: session?.session?.user?.id || null,
             change_summary: `${techName} flyttet til ${format(newStart, "dd.MM HH:mm")}–${format(newEnd, "HH:mm")}`,
           });
+          await notifyJobTimeChange(eventId, [technicianId], newStart, newEnd);
         }
       }
     } else {
@@ -508,6 +510,7 @@ export default function ResourcePlan() {
         await supabase.from("work_orders")
           .update({ starts_at: newStart.toISOString(), ends_at: newEnd.toISOString() } as any)
           .eq("project_id", eventId);
+        await notifyJobTimeChange(eventId, oldEvent?.technicians.map(t => t.id) ?? [], newStart, newEnd);
         const result = await syncUpdate(eventId);
         if (result === "synced") {
           toast.success("Tidspunkt oppdatert. Outlook synkronisert ✓");
@@ -552,6 +555,7 @@ export default function ResourcePlan() {
         if (error) { toast.error("Kunne ikke endre varighet"); }
         else {
           toast.success(`${tech?.name || "Montør"} varighet oppdatert`);
+          await notifyJobTimeChange(eventId, [technicianId], newStart, newEnd);
         }
       }
     } else {
@@ -568,6 +572,7 @@ export default function ResourcePlan() {
           performed_by: userId || null,
           change_summary: `Varighet endret fra ${oldEvent ? format(oldEvent.start, "HH:mm") + "–" + format(oldEvent.end, "HH:mm") : "ukjent"} til ${format(newStart, "HH:mm")}–${format(newEnd, "HH:mm")}`,
         });
+        await notifyJobTimeChange(eventId, oldEvent?.technicians.map(t => t.id) ?? [], newStart, newEnd);
         await supabase.from("service_jobs")
           .update({ starts_at: newStart.toISOString(), ends_at: newEnd.toISOString() } as any)
           .eq("project_id", eventId);
