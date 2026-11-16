@@ -5,6 +5,7 @@ import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
+import { jobInfoUrl, jobInfoPath } from "../_shared/job-access-policy.ts";
 
 
 
@@ -74,7 +75,7 @@ function escapeHtml(value: string): string {
 
 function buildEmail(job: any, techName: string, displayNumber: string, changes: ChangeItem[]): { subject: string; body: string } {
   const { startDate, startTime, endTime } = formatJobSchedule(job.start_time, job.end_time);
-  const jobUrl = `${APP_URL}/jobs/${job.id}`;
+  const jobUrl = jobInfoUrl(job.id);
 
   const subject = `Oppdatering på oppdrag: ${displayNumber} – ${job.title || ""}`.trim();
 
@@ -239,7 +240,7 @@ Deno.serve(async (req) => {
             priority: "important",
             title: `Oppdatering på ${displayNumber}: ${job.title || ""}`.trim(),
             message: body.changes.map((c) => `${c.label}: ${c.newValue || "tomt"}`).join(" · ").slice(0, 240),
-            link_url: `/jobs/${job.id}`,
+            link_url: jobInfoPath(job.id),
             entity_type: "event",
             entity_id: job.id,
             actor_user_id: callerUserId,

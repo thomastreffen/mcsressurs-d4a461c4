@@ -1,7 +1,7 @@
 import { renderHook, waitFor, cleanup } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ filters: [] as unknown[][] }));
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "login-id" } }) }));
+const mocks = vi.hoisted(() => ({ filters: [] as unknown[][], user: { id: "login-id" } }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: mocks.user }) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: (table: string) => {
   const q: any = { select: () => q, eq: () => q, in: (key: string, ids: string[]) => { mocks.filters.push([table,key,ids]); return q; }, is: () => q, gte: () => q, lte: () => q, order: () => q,
     maybeSingle: async () => ({ data: { person_id: "person-id" }, error: null }),
