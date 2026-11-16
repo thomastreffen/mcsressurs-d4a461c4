@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { invokeWithSession } from "@/lib/invoke-session";
+import { jobInfoFailure } from "@/lib/job-info-error";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Paperclip, Loader2 } from "lucide-react";
 import type { OperationalJobBrief } from "../../supabase/functions/_shared/job-brief";
@@ -15,18 +16,25 @@ export function JobInformation({ eventId: id, embedded = false }: { eventId?: st
   const { session, loading } = useAuth();
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState("");
+  const [needsLogin, setNeedsLogin] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [opening, setOpening] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
     if (loading || !session || !id) return;
-    setInfo(null); setError("");
-    void invokeWithSession<Info>("job-access", { body: { action: "read", event_id: id } }).then(({ data, error }) => {
-      if (!active) return;
-      if (error || !data) setError("Jobben er fjernet eller du har ikke tilgang. Kontakt planlegger hvis dette er feil.");
-      else setInfo(data);
-    });
+    setInfo(null); setError(""); setNeedsLogin(false);
+    void (async () => {
+      try {
+        const { data, error } = await invokeWithSession<Info>("job-access", { body: { action: "read", event_id: id } });
+        if (error || !data) throw error ?? new Error("Empty job response");
+        if (active) setInfo(data);
+      } catch (error) {
+        const failure = await jobInfoFailure(error);
+        if (active) { setError(failure.message); setNeedsLogin(failure.login); }
+      }
+    })();
     return () => { active = false; };
-  }, [id, loading, session?.user.id]);
+  }, [id, loading, session?.user.id, attempt]);
   const openFile = async (key: string) => {
     // Open synchronously so Safari does not block a new tab after the network call.
     const tab = window.open("about:blank", "_blank");
@@ -49,7 +57,7 @@ export function JobInformation({ eventId: id, embedded = false }: { eventId?: st
   const labels: Record<string, string> = { pending: "Venter på svar", approved: "Godkjent", rejected: "Avviste oppdraget", reschedule_requested: "Ønsker annen tid" };
   return <main className={embedded ? "space-y-5" : "mx-auto max-w-3xl px-5 py-6 pb-16 space-y-6"}>
     {!embedded && <Button variant="ghost" asChild><Link to="/my-day"><ArrowLeft className="mr-2 h-4 w-4" />Min dag</Link></Button>}
-    {error && <p role="alert" className="text-destructive">{error}</p>}
+    {error && <div className="space-y-3"><p role="alert" className="text-destructive">{error}</p>{needsLogin ? <Button asChild><Link to={login}>Logg inn på nytt</Link></Button> : !info && <Button variant="outline" onClick={() => setAttempt(n => n + 1)}>Hent jobbinfo på nytt</Button>}</div>}
     {!info && !error && <Loader2 className="animate-spin" />}
     {b && <><header className="space-y-2"><p className="text-sm text-muted-foreground">MCS Hub · {b.jobNumber}</p>{!embedded && <h1 className="text-2xl font-semibold break-words">{b.title}</h1>}{info.status === "cancelled" && <p className="text-destructive font-semibold">Oppdraget er avlyst</p>}{days.map(day => { const schedule = formatJobSchedule(day.start, day.end); return <p key={`${day.start}|${day.end}`}>{schedule.startDate} · {schedule.startTime}–{schedule.endTime}</p>; })}</header>
     {!!info.approvals?.length && <section aria-label="Montørsvar" className="space-y-2"><h2 className="font-semibold">Svar på oppdraget</h2>{info.approvals.map((a, i) => <p key={i}>{a.own ? "Du" : a.name}: {labels[a.status] ?? "Uavklart"}</p>)}{ownApproval?.status === "pending" && <p className="text-sm text-muted-foreground">Du har ikke svart på oppdraget ennå. Kontakt planlegger for å bekrefte oppdraget eller avklare bemanningen. Jobbinformasjonen er fortsatt tilgjengelig selv om en annen montør har avvist.</p>}</section>}
