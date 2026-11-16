@@ -1,5 +1,7 @@
 # Selv-tildeling JOB-000440 – 16. november
 
+- [ ] Flow-sweep: alle kvitteringsflader og gated dispatcher må kreve emailSent, aldri autoApproved; selv-resend må være informativ uten approval-lenke; tester/deploy/publisering
+
 - [x] Auto-godkjenning beholdt, informasjonsmail med stabil lenke og atomisk duplikatvern; eksplisitt fravalg logges
 - [x] Kalenderproveniens: delegated per dag, 17.11 synced med id; ingen organizer-link. Graph-body ikke live inspisert: ingen tilgjengelig trygg eksisterende content-read-inngang, ingen impersonation/ny tilgang
 - [x] 33 isolerte tester bestått, build OK; create-approval + calendar-write-sync deployet. Kalenderemne inkluderer jobbnummer/tittel. Oppgaveretting 0098/navigasjon urørt

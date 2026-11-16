@@ -122,6 +122,7 @@ function buildApprovalEmail(
   techEndAt?: string | null,
   infoChanges: InfoChange[] = [],
   plannedDays: string[] = [],
+  includeApprovalActions: boolean = true,
 ): { subject: string; body: string } {
   // Use technician-specific time override if available, otherwise fall back to event times
   const { startDate, startTime, endTime } = formatJobSchedule(job.start_time, job.end_time, techStartAt, techEndAt);
@@ -158,7 +159,7 @@ function buildApprovalEmail(
   </div>
   <div style="border: 1px solid #e2e8f0; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
     <p>Hei ${techName},</p>
-    <p>${isTimeChange
+    <p>${!includeApprovalActions ? "Jobbinfo for din tildeling. Ingen ny oppdragsbekreftelse kreves." : isTimeChange
       ? (infoChanges.length > 0
           ? "Tidspunktet for et oppdrag du er tildelt har blitt endret, og det er gjort flere praktiske oppdateringer på oppdraget. Vennligst bekreft det nye tidspunktet. Øvrige endringer er kun til informasjon."
           : "Tidspunktet for et oppdrag du er tildelt har blitt endret. Vennligst bekreft om du kan ta oppdraget på nytt tid.")
@@ -182,15 +183,15 @@ function buildApprovalEmail(
     ${attachmentsHtml}
     ${buildInfoChangesHtml(infoChanges)}
     
-    <div style="margin: 24px 0; text-align: center;">
+    ${includeApprovalActions ? `<div style="margin: 24px 0; text-align: center;">
       <a href="${approveUrl}" style="display: inline-block; background: #22c55e; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 4px;">✓ Godkjenn</a>
       <a href="${rescheduleUrl}" style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 4px;">⏰ Foreslå nytt tidspunkt</a>
       <a href="${rejectUrl}" style="display: inline-block; background: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 4px;">✕ Avslå</a>
-    </div>
+    </div>` : ""}
     
 
     
-    <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">Svarlenkene er gyldige i 48 timer og kan brukes én gang. Jobbinfo og vedlegg i MCS Hub er tilgjengelig også etter godkjenning, med innlogging og gjeldende jobbtilgang.</p>
+    <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">${includeApprovalActions ? "Svarlenkene er gyldige i 48 timer og kan brukes én gang. " : ""}Jobbinfo og vedlegg i MCS Hub er tilgjengelig også etter godkjenning, med innlogging og gjeldende jobbtilgang.</p>
   </div>
 </body>
 </html>`;
@@ -410,7 +411,7 @@ Deno.serve(async (req) => {
           continue;
         }
         const techTimes = techTimeMap.get(tech.id);
-        const { subject, body } = buildApprovalEmail(job, tech.name, token ?? "", displayNumber, false, techTimes?.start_at, techTimes?.end_at, [], plannedDays);
+        const { subject, body } = buildApprovalEmail(job, tech.name, token ?? "", displayNumber, false, techTimes?.start_at, techTimes?.end_at, [], plannedDays, !isSelf);
         const sent = await sendJobEmail(supabaseAdmin, job_id, tech.id, { to: tech.email, subject: `Jobbinfo (sendt på nytt): ${displayNumber} – ${job.title}`, html: body, replyTo },
           { personalToken: msToken, useSystem }, true);
         const ok = sent.ok;
@@ -446,7 +447,7 @@ Deno.serve(async (req) => {
 
         const times = techTimeMap.get(tech.id);
         const schedule = formatJobSchedule(job.start_time, job.end_time, times?.start_at, times?.end_at);
-        const html = `<h1>${escapeHtml(job.title)}</h1><p>Jobbinfo for din tildeling – ingen ny oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${plannedDaysHtml(plannedDays)}${jobInfoAction(job.id)}${jobAttachmentLinks(job.id, job.attachments)}`;
+        const html = `<h1>${escapeHtml(job.title)}</h1><p>Jobbinfo for din tildeling – ingen ny oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${plannedDaysHtml(plannedDays)}${jobAttachmentLinks(job.id, job.attachments)}`;
         const sent = await sendJobEmail(supabaseAdmin, job_id, tech.id,
           { to: tech.email ?? "", subject: `Jobbinfo: ${displayNumber} – ${job.title}`, html, replyTo },
           { personalToken: msToken, useSystem });

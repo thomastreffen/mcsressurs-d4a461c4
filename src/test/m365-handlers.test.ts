@@ -79,6 +79,19 @@ describe("Actual handlers, mocked Cloud and Graph only", () => {
     expect(f.records).toHaveLength(0);
     expect(f.writes.some(w => w.table === "event_logs" && w.values.metadata?.notification_choice === "without_notification")).toBe(true);
   });
+  it("explicit resend to self is information only, never an approval request", async () => {
+    const f = fixture("create-approval", false, true);
+    await f.call({ job_id: eventId, resend: true });
+    const own = f.sends.find(s => s.input.to === "rune@example.test");
+    expect(own.input.html).toContain(jobInfoUrl(eventId));
+    expect(own.input.html).not.toContain("/approval/");
+  });
+  it("normal assignment keeps approval actions separate from stable information", async () => {
+    const f = fixture("create-approval");
+    await f.call({ job_id: eventId });
+    expect(f.sends[0].input.html).toContain(jobInfoUrl(eventId));
+    expect(f.sends[0].input.html).toContain("/approval/mock-approval?action=approve");
+  });
   it("approval can send without creator token and records one recipient failure", async () => {
     const f = fixture("create-approval"); const result = await f.call({ job_id: eventId });
     expect(result.status).toBe(200); expect(f.sends).toHaveLength(2);
