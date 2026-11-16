@@ -5,9 +5,11 @@ import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
-import { jobInfoUrl, jobInfoPath } from "../_shared/job-access-policy.ts";
+import { jobInfoPath } from "../_shared/job-access-policy.ts";
 
 
+
+import { jobInfoAction, recipientPlannedDays, plannedDaysHtml } from "../_shared/job-communication.ts";
 
 const APP_URL = "https://mcsressurs.lovable.app";
 
@@ -73,9 +75,9 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function buildEmail(job: any, techName: string, displayNumber: string, changes: ChangeItem[]): { subject: string; body: string } {
+function buildEmail(job: any, techName: string, displayNumber: string, changes: ChangeItem[], plannedDays: string[] = []): { subject: string; body: string } {
   const { startDate, startTime, endTime } = formatJobSchedule(job.start_time, job.end_time);
-  const jobUrl = jobInfoUrl(job.id);
+
 
   const subject = `Oppdatering på oppdrag: ${displayNumber} – ${job.title || ""}`.trim();
 
@@ -132,9 +134,8 @@ function buildEmail(job: any, techName: string, displayNumber: string, changes: 
       ${changesRows}
     </table>
 
-    <div style="margin:22px 0 4px;">
-      <a href="${jobUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-weight:600;">Åpne oppdraget</a>
-    </div>
+    ${plannedDaysHtml(plannedDays)}
+    ${jobInfoAction(job.id)}
     <p style="font-size:12px;color:#94a3b8;margin-top:18px;">Du mottar denne e-posten fordi du er tildelt oppdraget. Hvis tid eller dato endres, vil du bli bedt om å bekrefte på nytt i en egen e-post.</p>
   </div>
 </body></html>`;
@@ -229,6 +230,8 @@ Deno.serve(async (req) => {
     const msToken = useSystem ? null : await getValidMsToken(supabaseAdmin, callerUserId);
     const results: any[] = [];
 
+    const { data: jobBlocks } = await supabaseAdmin.from("schedule_blocks")
+      .select("technician_id,start_at,end_at").eq("project_id", job.id).is("deleted_at", null);
     for (const tech of technicians || []) {
       // In-app notification
       if (tech.user_id) {
@@ -252,7 +255,7 @@ Deno.serve(async (req) => {
 
       const assignment = assignments?.find((a: any) => a.technician_id === tech.id);
       const recipientJob = { ...job, start_time: assignment?.start_at || job.start_time, end_time: assignment?.end_at || job.end_time };
-      const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes);
+      const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes, recipientPlannedDays(jobBlocks ?? [], tech.id));
       await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, channel: "email", status: "pending", attemptedBy: callerUserId });
       const sent = await sendMail({ to: tech.email ?? "", subject, html }, { personalToken: msToken, useSystem });
       await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: sent.ok ? "sent" : "failed", graphStatus: sent.status, reasonCode: sent.ok ? null : sent.reason, attemptedBy: callerUserId });

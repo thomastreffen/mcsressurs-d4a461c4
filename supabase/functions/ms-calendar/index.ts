@@ -2,6 +2,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { filterOwnBusySlots, slotOsloDayKey, type OwnWindow } from "../_shared/availability-filter.ts";
 
+import { jobCalendarHtml } from "../_shared/job-communication.ts";
+
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 
 /* ── Strip UTC offset so Graph uses the explicit timeZone property ── */
@@ -112,16 +114,7 @@ function buildSubject(job: any): string {
 }
 
 function buildHtmlBody(job: any, jobId: string): string {
-  const displayNumber = job.internal_number || job.job_number || job.id.slice(0, 8);
-  const jobLink = `https://mcsressurs.lovable.app/projects/${jobId}`;
-  return [
-    `<b>Jobb:</b> ${displayNumber}`,
-    `<b>Kunde:</b> ${normalizeText(job.customer) || "Ikke angitt"}`,
-    `<b>Adresse:</b> ${normalizeText(job.address) || "Ikke angitt"}`,
-    job.description ? `<b>Beskrivelse:</b> ${normalizeText(job.description)}` : null,
-    job.meeting_join_url ? `<br/><b>Teams-møte:</b> <a href="${job.meeting_join_url}">Bli med i møtet</a>` : null,
-    `<br/><a href="${jobLink}">Åpne jobb i systemet</a>`,
-  ].filter(Boolean).join("<br/>");
+  return jobCalendarHtml({ ...job, id: jobId }, job.start_time, job.end_time);
 }
 
 // ── Token management ──

@@ -50,10 +50,10 @@ Deno.serve(async (req) => {
 
   // One Outlook event per (job, technician, Oslo work date). Every day passes flags + exact pilot target gate.
   const syncOne = async (eventId: string, onlyTech?: string) => {
-    const { data: ev } = await sb.from("events").select("id,company_id,title,address,start_time,end_time,status,deleted_at,project_type").eq("id", eventId).maybeSingle();
+    const { data: ev } = await sb.from("events").select("id,company_id,title,address,start_time,end_time,status,deleted_at,project_type,job_number,internal_number,description,site_contact_name,site_contact_phone").eq("id", eventId).maybeSingle();
     if (!ev) return [{ status: "not_found" }];
     if (ev.project_type === "task") return [{ status: "not_a_project_job" }];
-    const job: HubJob = { id: ev.id, company_id: ev.company_id, title: ev.title, address: ev.address, start_at: ev.start_time, end_at: ev.end_time, status: ev.status, deleted_at: ev.deleted_at };
+    const job: HubJob = { ...ev, id: ev.id, company_id: ev.company_id, title: ev.title, address: ev.address, start_at: ev.start_time, end_at: ev.end_time, status: ev.status, deleted_at: ev.deleted_at };
     const [{ data: rows }, { data: blocks }, { data: appLinks }, { data: legacy }] = await Promise.all([
       sb.from("event_technicians").select("technician_id, technicians(email)").eq("event_id", eventId),
       sb.from("schedule_blocks").select("technician_id,start_at,end_at").eq("project_id", eventId).is("deleted_at", null),
