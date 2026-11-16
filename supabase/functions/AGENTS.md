@@ -26,3 +26,4 @@
 - Persistent technician info uses read-only `job-access`: `read_my_assigned_job` requires live assignment, active account and employment in the job company independent of global planner view; planner fallback uses caller event RLS, files require exact attachment membership and 5-minute URLs. Approval tokens only locate recipient jobs. Why: own-job information survives approval without global access.
 
 - Legacy admin (admin role / v1 admin.manage_users) counts only in the row's own company with active membership (RLS legacy_admin_in_company, edge legacyAdminInCompany); provisioning/access/system settings are superadmin-only. Why: only designated superadmins hold global control.
+- Self-assignment uses the atomic job-email claim for informational mail; approval state never counts as an email receipt in UI or dispatch. Why: autoapproval cannot hide missing or failed operational information.
