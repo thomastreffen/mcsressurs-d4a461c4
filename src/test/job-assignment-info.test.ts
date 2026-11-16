@@ -16,8 +16,8 @@ it("another rejection preserves Mats pending and both own workdays, not Emil's b
 it("a replay does not duplicate planned days", () => {
   expect(assignmentInfo("mats", assigned, [], [...blocks, ...blocks]).planned_days).toHaveLength(2);
 });
-it("unassigned caller has no own schedule or own approval", () => {
-  const result = assignmentInfo("other", assigned, [], blocks);
-  expect(result.planned_days).toEqual([]);
+it("authorized planner sees both team days but no own approval; stale blocks are excluded", () => {
+  const result = assignmentInfo("other", assigned, [], [...blocks, { technician_id: "removed", start_at: "2026-11-21T07:00:00Z", end_at: "2026-11-21T15:00:00Z" }]);
+  expect(result.planned_days).toEqual([{ start: "2026-11-19T07:00:00Z", end: "2026-11-19T15:00:00Z" }, { start: "2026-11-20T07:00:00Z", end: "2026-11-20T15:00:00Z" }]);
   expect(result.approvals.some(a => a.own)).toBe(false);
 });
