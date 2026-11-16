@@ -1,3 +1,9 @@
+# Montørens jobbinfo – 16. november
+
+- [ ] Read-only diagnose av Mats sin tildeling, RLS, Min dag, Mine og jobbinfo
+- [ ] Minimal lesefiks og separate montørsvar uten status-/dataendringer
+- [ ] Isolerte tilgangs-/visningstester og verifisering; ingen innlogging som Mats eller utsending
+
 # Kalenderpilot – trygg velger 16. november
 
 - [ ] Erstatt UUID-felt med jobbsøk, tildelt montør og faktiske arbeidsdager; eksplisitt dagbekreftelse
