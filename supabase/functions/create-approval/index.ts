@@ -9,6 +9,7 @@ import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
 import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
+import { sendJobEmail } from "../_shared/job-email-attempt.ts";
 import { jobInfoUrl, jobAttachmentLinks } from "../_shared/job-access-policy.ts";
 
 
@@ -264,7 +265,7 @@ Deno.serve(async (req) => {
       .eq("id", job_id)
       .single();
 
-    if (jobErr || !job) {
+    if (jobErr || !job || job.deleted_at) {
       return new Response(JSON.stringify({ error: "Job not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -372,8 +373,8 @@ Deno.serve(async (req) => {
           : "";
         const html = `<h1>${escapeHtml(job.title)}</h1><p>Til informasjon – ingen oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${daysHtml}${jobAttachmentLinks(job.id, job.attachments)}`;
         await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, channel: "email", status: "pending", attemptedBy: callerUserId });
-        const sent = await sendMail({ to: tech.email ?? "", subject: `Møte / informasjon: ${displayNumber} – ${job.title}`, html, replyTo }, { personalToken: msToken, useSystem });
-        results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, ...(!sent.ok ? { reasonCode: sent.reason } : {}) });
+        const sent = await sendJobEmail(supabaseAdmin, job_id, tech.id, { to: tech.email ?? "", subject: `Møte / informasjon: ${displayNumber} – ${job.title}`, html, replyTo }, { personalToken: msToken, useSystem }, isResend);
+        results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, alreadyRecorded: sent.duplicate, ...(!sent.ok ? { reasonCode: sent.reason } : {}) });
         continue;
       }
       if (!tech.user_id) { results.push({ techId: tech.id, emailSent: false, reasonCode: "no_login_link" }); continue; }
@@ -404,11 +405,11 @@ Deno.serve(async (req) => {
         }
         const techTimes = techTimeMap.get(tech.id);
         const { subject, body } = buildApprovalEmail(job, tech.name, token ?? "", displayNumber, false, techTimes?.start_at, techTimes?.end_at, [], plannedDays);
-        const sent = await sendMail({ to: tech.email, subject: `Jobbinfo (sendt på nytt): ${displayNumber} – ${job.title}`, html: body, replyTo },
-          { personalToken: msToken, useSystem });
+        const sent = await sendJobEmail(supabaseAdmin, job_id, tech.id, { to: tech.email, subject: `Jobbinfo (sendt på nytt): ${displayNumber} – ${job.title}`, html: body, replyTo },
+          { personalToken: msToken, useSystem }, true);
         const ok = sent.ok;
         if (!sent.ok) console.error("[create-approval] Resend failed:", sent.reason, sent.status);
-        results.push({ techId: tech.id, techName: tech.name, emailSent: ok, graphStatus: sent.status, ...(sent.ok ? {} : { reasonCode: sent.reason, error: sent.detail }) });
+        results.push({ techId: tech.id, techName: tech.name, emailSent: ok, graphStatus: sent.status, alreadyRecorded: sent.duplicate, ...(sent.ok ? {} : { reasonCode: sent.reason, error: sent.detail }) });
         await supabaseAdmin.from("event_logs").insert({
           event_id: job_id, performed_by: callerUserId, action_type: "info_resent",
           change_summary: ok ? `Jobbinfo med vedlegg sendt på nytt til ${tech.name} (${tech.email})` : `Kunne ikke sende jobbinfo på nytt til ${tech.name}`,
@@ -507,20 +508,19 @@ Deno.serve(async (req) => {
       if (canSend && tech.email) {
         const techTimes = techTimeMap.get(tech.id);
         const { subject, body } = buildApprovalEmail(job, tech.name, approvalToken, displayNumber, isTimeChange, techTimes?.start_at, techTimes?.end_at, infoChanges, plannedDays);
-        const sent = await sendMail({ to: tech.email, subject, html: body, replyTo }, { personalToken: msToken, useSystem });
-        if (sent.ok) results.push({ techId: tech.id, token: approvalToken, emailSent: true, graphStatus: sent.status });
+        const sent = await sendJobEmail(supabaseAdmin, job_id, tech.id, { to: tech.email, subject, html: body, replyTo }, { personalToken: msToken, useSystem }, isResend);
+        if (sent.ok) results.push({ techId: tech.id, token: approvalToken, emailSent: true, graphStatus: sent.status, alreadyRecorded: sent.duplicate });
         else {
           console.error("[create-approval] Email send failed:", sent.reason, sent.status);
-          results.push({ techId: tech.id, token: approvalToken, emailSent: false, reasonCode: sent.reason, graphStatus: sent.status, error: sent.detail });
+          results.push({ techId: tech.id, token: approvalToken, emailSent: false, reasonCode: sent.reason, graphStatus: sent.status, error: sent.detail, alreadyRecorded: sent.duplicate });
         }
       } else {
         results.push({ techId: tech.id, token: approvalToken, emailSent: false, reasonCode: !canSend ? "sender_no_ms_connection" : "no_email" });
       }
 
       // Log to event_logs
-      const logMessage = isTimeChange
-        ? `Tidsendring – ny forespørsel sendt til ${tech.name}`
-        : `Godkjenningsforespørsel sendt til ${tech.name}`;
+      const outcome = results.find((r: any) => r.techId === tech.id);
+      const logMessage = `${isTimeChange ? "Tidsendring" : "Godkjenningsforespørsel"} · ${tech.name}: ${outcome?.emailSent ? "akseptert av Microsoft, ikke bekreftet levert" : "ikke akseptert – se kanalstatus"}`;
       await supabaseAdmin.from("event_logs").insert({
         event_id: job_id,
         performed_by: callerUserId,

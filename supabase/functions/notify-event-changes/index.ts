@@ -215,7 +215,9 @@ Deno.serve(async (req) => {
       .select("metadata")
       .eq("event_id", job.id)
       .eq("action_type", "info_update_sent")
-      .gte("created_at", windowStart);
+      .gte("timestamp", windowStart);
+    // A failed audit read must never be interpreted as permission to resend.
+    if (!recentSends) throw new Error("Kunne ikke kontrollere tidligere varsling; ingenting sendt");
     const recentFingerprints = (recentSends || [])
       .map((row: any) => row?.metadata?.fingerprint)
       .filter((fp: unknown): fp is string => typeof fp === "string");
@@ -257,7 +259,7 @@ Deno.serve(async (req) => {
       const recipientJob = { ...job, start_time: assignment?.start_at || job.start_time, end_time: assignment?.end_at || job.end_time };
       const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes, recipientPlannedDays(jobBlocks ?? [], tech.id));
       await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, channel: "email", status: "pending", attemptedBy: callerUserId });
-      const sent = await sendMail({ to: tech.email ?? "", subject, html }, { personalToken: msToken, useSystem });
+      const sent = await sendJobEmail(supabaseAdmin, job.id, tech.id, { to: tech.email ?? "", subject, html }, { personalToken: msToken, useSystem });
       await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: sent.ok ? "sent" : "failed", graphStatus: sent.status, reasonCode: sent.ok ? null : sent.reason, attemptedBy: callerUserId });
       results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, ...(!sent.ok ? { reason: sent.reason } : {}) });
     }
@@ -267,7 +269,7 @@ Deno.serve(async (req) => {
       event_id: job.id,
       performed_by: callerUserId,
       action_type: "info_update_sent",
-      change_summary: `Info-varsel sendt til ${technicians?.length || 0} montør(er) om ${body.changes.length} endring(er) (uten ny godkjenning)`,
+      change_summary: `Info-varsel: ${results.filter(r => r.emailSent).length} akseptert av Microsoft, ${results.filter(r => !r.emailSent).length} ikke akseptert (uten ny godkjenning)`,
       metadata: { changes: body.changes, technician_ids: techIds, fingerprint },
     } as any);
 
