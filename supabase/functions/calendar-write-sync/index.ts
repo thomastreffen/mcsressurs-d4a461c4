@@ -1,4 +1,5 @@
 import { syncOrganizer, organizerStore } from "../_shared/organizer-calendar.ts";
+import { storedDelegatedAvailable, selectedCalendarRecipients } from "../_shared/calendar-capability.ts";
 import { organizerEnabled } from "../_shared/m365-sender.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -985,7 +986,7 @@ Deno.serve(async (req) => {
         if (accountError) throw accountError;
         const user = account ? await supabaseAdmin.auth.admin.getUserById(uid) : null;
         const meta = user?.data?.user?.user_metadata ?? {};
-        const delegated_available = !!meta.ms_access_token && (!!meta.ms_refresh_token || Date.parse(meta.ms_expires_at ?? "") > Date.now() + 300_000);
+        const delegated_available = !user?.error && storedDelegatedAvailable(meta);
         return { technician_id: et.technician_id, delegated_available,
           existing_link: !!et.calendar_event_id || (links ?? []).some((l: any) => l.technician_id === et.technician_id && !!l.outlook_event_id) };
       }));
@@ -1007,12 +1008,12 @@ Deno.serve(async (req) => {
     const customer = event.customers || null;
 
     // Get technicians with their event_technicians row info
-    const techRows = (event.event_technicians ?? [])
+    const techRows = selectedCalendarRecipients((event.event_technicians ?? [])
       .filter((et: any) => et.technicians)
       .map((et: any) => ({
         eventTechRow: { id: et.id, calendar_event_id: et.calendar_event_id, start_at: et.start_at, end_at: et.end_at },
         tech: et.technicians,
-      }));
+      })), body.technician_ids, action === "create_missing_days" || (action === "update" && updateOnly));
 
     if (techRows.length === 0 && action === "delete" && event.technician_id) {
       const { data: fallbackTech } = await supabaseAdmin

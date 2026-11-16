@@ -96,7 +96,7 @@ export function DayCoverageStatus({ eventId, technicians, canCreateMissing = tru
     setRunning(true);
     setRequestFailed(false);
     try {
-      const res = await createMissingDays(eventId);
+      const res = await createMissingDays(eventId, [...new Set(eligible.map(d => d.technicianId))]);
       if (!res.ok) setRequestFailed(true);
       setReceipt(buildMissingDaysReceipt(res.results));
       await Promise.all([

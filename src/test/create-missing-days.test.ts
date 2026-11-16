@@ -149,7 +149,7 @@ describe("receipt and dormant central-app intents", () => {
   });
   it("untouched queue intent is named and labelled as not activated", () => {
     expect(queueLine({ operation: "create", status: "pending", reason_code: null, attempt_count: 0 }, "Emil Strid"))
-      .toBe("Emil Strid · Sentral Microsoft-kalender (opprettelse): ikke aktivert før pilot – ingenting sendes");
+      .toBe("Emil Strid · Sentral synk venter på aktivering, ingen utsending forsøkt");
   });
 });
 

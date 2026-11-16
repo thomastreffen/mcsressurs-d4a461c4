@@ -1106,7 +1106,7 @@ export function EventDrawer({
     if (!editEvent || outlookUpdating || !canUpdateOutlook) return;
     setOutlookUpdating(true);
     try {
-      const result = await syncUpdate(editEvent.id, { silent: true, updateOnly: true });
+      const result = await syncUpdate(editEvent.id, { silent: true, updateOnly: true, technicianIds: calendarCapability.data?.filter(c => c.delegated_available && c.existing_link).map(c => c.technician_id) });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["recipient-delivery", editEvent.id] }),
         queryClient.invalidateQueries({ queryKey: ["m365-queue", editEvent.id] }),
