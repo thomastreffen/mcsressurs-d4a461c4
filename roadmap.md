@@ -1,5 +1,6 @@
 # Falsk tilgangsnekt på jobbinfo – 16. november
 
+- [ ] Flytkontroll: akseptlenke, full oppdragsside, Min dag-identitet, Mine, innlogging og fremtidige påminnelseslenker; ingen historikk/tilgang/sendingsendringer
 - [x] Rett gammel planleggerrettighet som sperrer superadmin; behold caller-RLS og selskapsavgrenset visning, ingen endring av rettigheter
 - [x] Skill autentisering, reell tilgangsnekt og teknisk feil; isolerte autentiserte jobbkall og PC/mobil/eget-vindu kontrollert
 - [x] Deploy job-access lesefunksjon; eksisterende jobb er MCS Service AS og ikke slettet
