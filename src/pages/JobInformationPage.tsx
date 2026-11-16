@@ -45,6 +45,10 @@ export function JobInformation({ eventId: id, embedded = false }: { eventId?: st
       if (error || !data?.url) { tab?.close(); setError("Vedlegget kunne ikke åpnes. Prøv igjen eller kontakt planlegger."); }
       else if (tab) tab.location.href = data.url;
       else window.location.assign(data.url);
+    } catch (error) {
+      tab?.close();
+      const failure = await jobInfoFailure(error);
+      setError(failure.message); setNeedsLogin(failure.login);
     } finally { setOpening(null); }
   };
   const login = `/login?next=${encodeURIComponent(`/job-info/${id}`)}`;

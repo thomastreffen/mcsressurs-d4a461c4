@@ -64,6 +64,7 @@ describe("Actual handlers, mocked Cloud and Graph only", () => {
     expect(f.sends).toHaveLength(2);
     expect(f.writes.filter(w => w.table === "job_approvals")).toHaveLength(1);
     expect(f.records.some(r => r.reasonCode === "graph_forbidden")).toBe(true);
+    expect(f.sends.every(s => s.input.html.includes(jobInfoUrl(eventId)) && !s.input.html.includes(`/jobs/${eventId}`))).toBe(true);
   });
   it("change notification attempts both recipients without creator token", async () => {
     const f = fixture("notify-event-changes"); await f.call({ job_id: eventId, changes: [{ label: "Adresse", newValue: "Mock" }] });
