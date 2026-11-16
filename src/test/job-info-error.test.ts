@@ -8,12 +8,12 @@ describe("Job read errors preserve their category", () => {
   });
   it("server unavailability is not an authorization denial", async () => {
     expect((await jobInfoFailure({ context: new Response("{}", { status: 500 }) })).login).toBe(false);
-    expect((await jobInfoFailure({ context: new Response("{}", { status: 500 }) })).message).toContain("Dette betyr ikke");
+    expect((await jobInfoFailure({ context: new Response("{}", { status: 500 }) })).kind).toBe("technical");
   });
   it("network failure is not an authorization denial", async () => {
-    expect((await jobInfoFailure(new Error("Failed to fetch"))).message).toContain("Dette betyr ikke");
+    expect((await jobInfoFailure(new Error("Failed to fetch"))).kind).toBe("technical");
   });
   it("only explicit denied response is classified unavailable", async () => {
-    expect((await jobInfoFailure({ context: new Response(JSON.stringify({ code: "job_unavailable" }), { status: 403 }) })).message).toContain("denne kontoen");
+    expect((await jobInfoFailure({ context: new Response(JSON.stringify({ code: "job_unavailable" }), { status: 403 }) })).kind).toBe("unavailable");
   });
 });
