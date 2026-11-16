@@ -1,3 +1,9 @@
+# Frittstående Ressursplan-oppgave – 16. november
+
+- [ ] Rett parent-/blokkvalidering uten å endre eksisterende oppgaver eller tilgang
+- [ ] Atomisk task-oppretting med tildeling/dager/idempotens; vedlegg før informasjonsvarsling
+- [ ] Isolerte integritets-/flyttester, PC/mobilkontroll og aktiv migrasjon verifiseres read-only
+
 # Varslingshull JOB-000420 – 16. november
 
 - [x] Flytsjekk: nye prosjekter/konvertering/henvendelse, drag/drop/resize, prosjektinnstillinger, resends, påminnelser og databasekø; resterende jobbvarslingshull rettet uten live utsending
