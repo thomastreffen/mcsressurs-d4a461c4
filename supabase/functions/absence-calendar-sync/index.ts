@@ -238,13 +238,8 @@ Deno.serve(async (req) => {
         }
       );
 
-      // Clear outlook_event_id regardless
-      await sb
-        .from("absence_requests")
-        .update({ outlook_event_id: null })
-        .eq("id", absence_id);
-
       if (msRes.ok || msRes.status === 404) {
+        await sb.from("absence_requests").update({ outlook_event_id: null }).eq("id", absence_id);
         await msRes.text(); // consume
         return new Response(JSON.stringify({ status: "deleted" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
