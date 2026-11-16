@@ -640,8 +640,9 @@ function dayStore(supabaseAdmin: any): DayStore {
         .eq("idempotency_key", item.operationKey).is("outlook_event_id", null);
     },
     async removeLink(eventId, link) {
-      await supabaseAdmin.from(TABLE).delete()
+      const { error } = await supabaseAdmin.from(TABLE).delete()
         .eq("event_id", eventId).eq("technician_id", link.technician_id).eq("work_date", link.work_date);
+      if (error) throw new Error("mapping_cleanup_requires_reconciliation");
     },
   };
 }
@@ -885,7 +886,7 @@ Deno.serve(async (req) => {
 
       if (fallbackTech?.user_id) {
         techRows.push({
-          eventTechRow: { id: null, calendar_event_id: event.microsoft_event_id || null, start_at: null, end_at: null },
+          eventTechRow: { id: null, calendar_event_id: null, start_at: null, end_at: null },
           tech: fallbackTech,
         });
       }
@@ -931,7 +932,9 @@ Deno.serve(async (req) => {
         results.push({ techId: tech.id, techName: tech.name, status: "not_applicable", skipTechDelivery: true, excludeFromEvidence: true });
         continue;
       }
-      if (techBlocks.length > 0 && action !== "reconcile") {
+      const { data: knownDays } = action === "delete" ? await supabaseAdmin.from("job_calendar_day_links")
+        .select("work_date").eq("event_id", event_id).eq("technician_id", tech.id) : { data: [] };
+      if ((techBlocks.length > 0 || knownDays?.length) && action !== "reconcile") {
         // Flere arbeidsdager: én Outlook-hendelse per (jobb, montør, dag).
         const multiResult = await syncMultiDayForTech(
           supabaseAdmin, event, tech, eventTechRow, customer, techBlocks,

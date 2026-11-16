@@ -74,8 +74,12 @@ export async function syncTechnicianDays(args: {
           }
         }
       }
-      await store.removeLink(eventId, link);
-      results.push({ technicianId, workDate: link.work_date, state: "i_hub" });
+      try {
+        await store.removeLink(eventId, link);
+        results.push({ technicianId, workDate: link.work_date, state: "i_hub", outcome: "deleted" });
+      } catch {
+        results.push({ technicianId, workDate: link.work_date, state: "feilet", error: "mapping_cleanup_requires_reconciliation", outcome: "failed" });
+      }
     }
     return results;
   }
