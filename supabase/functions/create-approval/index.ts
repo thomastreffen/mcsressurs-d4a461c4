@@ -426,8 +426,12 @@ Deno.serve(async (req) => {
 
       if (isSelf && !isTimeChange) {
         // Approval and information are independent. Reuse settled responses on replay.
-        const { data: previous } = await supabaseAdmin.from("job_approvals").select("token,status")
+        const { data: previous, error: previousError } = await supabaseAdmin.from("job_approvals").select("token,status")
           .eq("job_id", job_id).eq("technician_user_id", tech.user_id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (previousError) {
+          results.push({ techId: tech.id, error: "Tidligere godkjenning kunne ikke kontrolleres; ingen e-post sendt" });
+          continue;
+        }
         const { error: approvalErr } = previous ? { error: null } : await supabaseAdmin
           .from("job_approvals")
           .insert({ job_id, technician_user_id: tech.user_id, status: "approved",
