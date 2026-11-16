@@ -41,6 +41,7 @@ import { useCompanyModuleAccess } from "@/hooks/useCompanyModuleAccess";
 import { useMobileProjectRelevance } from "@/hooks/useMobileProjectRelevance";
 import { MobileProjectList } from "@/components/project/MobileProjectList";
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
+import { jobEntryPath } from "@/lib/job-info-navigation";
 
 interface JobRow {
   companyId: string | null;
@@ -323,7 +324,7 @@ export default function JobsPage() {
               onCancel={() => setSelectedIds([])}
             />
           )}
-          {isMobile ? <MobileProjectList projects={paged} roles={myRoles} onOpen={id => navigate(`/projects/${id}`)} /> : <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-x-auto">
+          {isMobile ? <MobileProjectList projects={paged} roles={myRoles} onOpen={id => navigate(jobEntryPath(id, canBrowseAll))} /> : <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/30">
@@ -368,7 +369,7 @@ export default function JobsPage() {
                     <TableRow
                       key={job.id}
                       className="cursor-pointer hover:bg-secondary/40 transition-colors group"
-                      onClick={() => navigate(`/projects/${job.id}`)}
+                      onClick={() => navigate(jobEntryPath(job.id, canBrowseAll))}
                     >
                       {isAdmin && (
                         <TableCell onClick={(e) => e.stopPropagation()}>
