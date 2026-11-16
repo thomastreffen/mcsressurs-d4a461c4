@@ -168,9 +168,10 @@ export function JobQuickEditSheet({
 
       // Trigger re-approval if technicians changed
       if (toAdd.length > 0) {
-        await invokeWithSession("create-approval", {
-          body: { job_id: job.id },
+        const notified = await invokeWithSession("create-approval", {
+          body: { job_id: job.id, technician_ids: toAdd },
         });
+        if (notified.error || notified.data?.results?.some((r: any) => !r.emailSent && !r.autoApproved)) toast.warning("Lagret, men varsling er ikke komplett – se status per montør");
       }
 
       toast.success("Oppdatering lagret", {

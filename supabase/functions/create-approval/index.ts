@@ -451,8 +451,11 @@ Deno.serve(async (req) => {
       }
 
       let approvalToken: string;
+      const { data: previousApproval } = await supabaseAdmin.from("job_approvals").select("token,status").eq("job_id", job_id).eq("technician_user_id", tech.user_id).order("created_at", { ascending: false }).limit(1).maybeSingle();
 
-      if (isTimeChange) {
+      if (!isTimeChange && previousApproval?.token) {
+        approvalToken = previousApproval.token;
+      } else if (isTimeChange && previousApproval) {
         // Time change: update existing approval record with a new token
         const newToken = crypto.randomUUID();
         const { error: updateErr } = await supabaseAdmin

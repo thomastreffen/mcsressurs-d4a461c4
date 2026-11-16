@@ -183,10 +183,10 @@ function CreateJobDialogInner({
         { body: { job_id: createdEvent.id } }
       );
 
-      if (approvalError || approvalData?.error) {
-        toast.error("Prosjekt opprettet, men godkjenning feilet");
+      if (approvalError || approvalData?.error || !approvalData?.results?.length || approvalData.results.some((r: any) => !r.emailSent && !r.autoApproved)) {
+        toast.warning("Prosjekt opprettet, men varsling er ikke komplett – se status per montør");
       } else {
-        toast.success("Prosjekt opprettet og sendt til montør", {
+        toast.success("Prosjekt opprettet – e-post akseptert av Microsoft", {
           description: `${title} – ${safeTechIds.length} montør(er)`,
         });
         syncCreate(createdEvent.id);
