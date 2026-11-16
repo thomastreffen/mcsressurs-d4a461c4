@@ -1,5 +1,7 @@
 import { RecipientDeliveryStatus } from "@/components/RecipientDeliveryStatus";
 import { DayCoverageStatus } from "@/components/DayCoverageStatus";
+import { useJobCalendarCapability } from "@/hooks/useJobCalendarCapability";
+import { canUpdateDelegated } from "@/lib/job-calendar-presentation";
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
 import { UnifiedProjectPicker } from "@/components/resource-plan/UnifiedProjectPicker";
 import { checkParentOpenForNewJob, ECONOMIC_PROJECT_HINT } from "@/lib/parent-open-gate";
@@ -179,6 +181,8 @@ export function EventDrawer({
   const { isSuperAdmin } = useAuth();
   const { settings: reminderSettings } = useReminderSettings();
   const isEditing = !!editEvent;
+  const calendarCapability = useJobCalendarCapability(open && !readOnly ? editEvent?.id : undefined);
+  const canUpdateOutlook = !calendarCapability.isFetching && canUpdateDelegated(calendarCapability.data);
 
   // Form state
   const [mode, setMode] = useState<"new" | "existing">("new");
@@ -1099,7 +1103,7 @@ export function EventDrawer({
   // Sender aldri e-post eller Hub-varsel, og oppretter aldri nye hendelser
   // (update_only). Status vises per montør i mottakerlisten under.
   const handleOutlookUpdate = async () => {
-    if (!editEvent || outlookUpdating) return;
+    if (!editEvent || outlookUpdating || !canUpdateOutlook) return;
     setOutlookUpdating(true);
     try {
       const result = await syncUpdate(editEvent.id, { silent: true, updateOnly: true });
@@ -2431,7 +2435,7 @@ export function EventDrawer({
             <>
               <RecipientDeliveryStatus eventId={editEvent.id} technicians={editEvent.technicians.map((t) => ({ id: t.id, name: t.name }))} />
               <DayCoverageStatus eventId={editEvent.id} canCreateMissing={!saving && !outlookUpdating} technicians={editEvent.technicians.map((t) => ({ id: t.id, name: t.name }))} />
-              <Button
+              {canUpdateOutlook && <Button
                 variant="outline"
                 size="sm"
                 className="w-full min-h-11 text-xs gap-1.5"
@@ -2440,7 +2444,7 @@ export function EventDrawer({
               >
                 {outlookUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarPlus className="h-3.5 w-3.5" />}
                 {outlookUpdating ? "Oppdaterer Outlook…" : "Oppdater Outlook (uten e-post/varsel)"}
-              </Button>
+              </Button>}
               <ResendJobInfoButton jobId={editEvent.id} />
             </>
           )}

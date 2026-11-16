@@ -5,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, CalendarPlus } from "lucide-react";
 import { useCalendarSync } from "@/hooks/useCalendarSync";
+import { useJobCalendarCapability } from "@/hooks/useJobCalendarCapability";
+import { eligibleMissingDays } from "@/lib/job-calendar-presentation";
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "react-router-dom";
 import { buildMissingDaysReceipt, type ReceiptLine } from "@/lib/day-calendar-receipt";
 import {
   buildPerDayPlan, dayDeliveryState, aggregateDayCoverage,
@@ -38,6 +42,8 @@ export function DayCoverageStatus({ eventId, technicians, canCreateMissing = tru
   canCreateMissing?: boolean;
 }) {
   const queryClient = useQueryClient();
+  const { isSuperAdmin } = useAuth();
+  const capability = useJobCalendarCapability(eventId);
   const { createMissingDays } = useCalendarSync();
   const [confirming, setConfirming] = useState(false);
   const [running, setRunning] = useState(false);
@@ -51,6 +57,7 @@ export function DayCoverageStatus({ eventId, technicians, canCreateMissing = tru
         .from("schedule_blocks")
         .select("technician_id,start_at,end_at")
         .eq("project_id", eventId)
+        .eq("source", "manual")
         .is("deleted_at", null);
       if (error) throw error;
       return data ?? [];
@@ -72,17 +79,20 @@ export function DayCoverageStatus({ eventId, technicians, canCreateMissing = tru
 
   if (!blocks || blocks.length === 0) return null;
 
-  const plan = buildPerDayPlan(eventId, blocks);
+  const plan = buildPerDayPlan(eventId, blocks.filter(b => technicians.some(t => t.id === b.technician_id)));
   if (plan.length === 0) return null;
 
   const linkByKey = new Map((links ?? []).map((l) => [`${l.technician_id}|${l.work_date}`, l]));
   const states = plan.map((item) => dayDeliveryState(item, linkByKey.get(`${item.technicianId}|${item.workDate}`)));
   const coverage = aggregateDayCoverage(states);
   const techName = (id: string) => technicians.find((t) => t.id === id)?.name ?? "Montør";
-  const missingCount = states.filter((s) => s === "i_hub" || s === "feilet").length;
+  const missing = plan.filter((_, i) => states[i] === "i_hub" || states[i] === "feilet");
+  const eligible = eligibleMissingDays(missing, capability.data);
+  const missingCount = eligible.length;
+  const blocked = missing.filter(d => !eligible.includes(d));
 
   const run = async () => {
-    if (running) return; // double-click guard (server is idempotent too)
+    if (running || !canCreateMissing || capability.isFetching || missingCount === 0) return;
     setRunning(true);
     setRequestFailed(false);
     try {
@@ -103,7 +113,7 @@ export function DayCoverageStatus({ eventId, technicians, canCreateMissing = tru
     <div className="space-y-1.5" data-testid="day-coverage" data-coverage={coverage}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">Kalenderdekning per dag</p>
-        <Badge variant={coverage === "full" ? "secondary" : coverage === "delvis" ? "outline" : "destructive"}>
+        <Badge className="whitespace-normal" variant={coverage === "full" ? "secondary" : states.includes("feilet") ? "destructive" : "outline"}>
           {DAY_COVERAGE_LABELS[coverage]}
         </Badge>
       </div>
@@ -122,14 +132,19 @@ export function DayCoverageStatus({ eventId, technicians, canCreateMissing = tru
       })}
       {coverage !== "full" && (
         <p className="text-xs text-muted-foreground">
-          Hub og Min dag er alltid riktig kilde. «Oppdater Outlook» endrer bare eksisterende dager – manglende dager må opprettes eksplisitt.
+          Arbeidsdagene og jobbinfo er tilgjengelige i Hub. Kalenderlevering og montørens svar er separate statuser.
         </p>
       )}
 
+      {blocked.length > 0 && <div className="text-xs text-muted-foreground space-y-1">
+        <p>{capability.isPending ? "Kontrollerer personlig kalenderkobling…" : capability.isError ? "Personlig kalenderkobling kunne ikke bekreftes. Ingen kalenderhandling er tilgjengelig." : "Mangler tilgjengelig personlig Microsoft-kobling. Sentral synk krever separat godkjent pilot; ingen nytt kalenderforsøk er gjort."}</p>
+        {blocked.map(d => <p key={d.operationKey}>{techName(d.technicianId)} · {WORK_DATE_FMT.format(new Date(`${d.workDate}T12:00:00Z`))} · I Hub, mangler Outlook</p>)}
+        {isSuperAdmin ? <Button asChild size="sm" variant="link" className="h-auto min-h-11 p-0 text-xs"><Link to="/admin/microsoft">Se Microsoft-pilotstatus</Link></Button> : <p>Kontakt systemadministrator for pilotstatus.</p>}
+      </div>}
       {missingCount > 0 && !confirming && (
         <Button
           variant="outline" size="sm" className="w-full min-h-11 text-xs gap-1.5"
-          disabled={!canCreateMissing || running}
+          disabled={!canCreateMissing || running || capability.isFetching}
           onClick={() => { setReceipt(null); setConfirming(true); }}
         >
           <CalendarPlus className="h-3.5 w-3.5" />
@@ -139,11 +154,11 @@ export function DayCoverageStatus({ eventId, technicians, canCreateMissing = tru
       {confirming && (
         <div className="rounded-md border border-border bg-muted/40 p-2.5 space-y-2" role="group" aria-label="Bekreft oppretting av manglende kalenderdager">
           <p className="text-xs">
-            Oppretter kun {missingCount} manglende dag(er) i montørenes egen Outlook-kalender. Ingen e-post, ingen nytt oppdragsvarsel,
+            Oppretter kun {missingCount} manglende dag(er) med tilgjengelig personlig Microsoft-kobling: {eligible.map(d => `${techName(d.technicianId)} ${WORK_DATE_FMT.format(new Date(`${d.workDate}T12:00:00Z`))}`).join(", ")}. Ingen e-post, ingen nytt oppdragsvarsel,
             og eksisterende hendelser endres ikke. Montører uten Microsoft-kobling får ingen kalenderdag.
           </p>
           <div className="flex gap-2">
-            <Button size="sm" className="min-h-11 flex-1 text-xs gap-1.5" disabled={running} onClick={run}>
+            <Button size="sm" className="min-h-11 flex-1 text-xs gap-1.5" disabled={running || capability.isFetching || missingCount === 0} onClick={run}>
               {running && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {running ? "Oppretter…" : "Bekreft"}
             </Button>
