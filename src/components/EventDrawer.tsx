@@ -1,4 +1,5 @@
 import { RecipientDeliveryStatus } from "@/components/RecipientDeliveryStatus";
+import { finishStandaloneTask } from "@/lib/create-standalone-task";
 import { assertNotificationResult } from "@/lib/job-notification-result";
 import { DayCoverageStatus } from "@/components/DayCoverageStatus";
 import { useJobCalendarCapability } from "@/hooks/useJobCalendarCapability";
@@ -188,6 +189,7 @@ export function EventDrawer({
   // Form state
   const [mode, setMode] = useState<"new" | "existing">("new");
   const [eventType, setEventType] = useState<"project" | "task">("project");
+  const [taskNotify, setTaskNotify] = useState(true);
   const [title, setTitle] = useState("");
   const [customer, setCustomer] = useState("");
   const [address, setAddress] = useState("");
@@ -372,6 +374,7 @@ export function EventDrawer({
     setSubmitted(false);
     setCreationError(null);
     setClientRequestId(crypto.randomUUID());
+    setTaskNotify(true);
     setFiles([]);
     setExistingAttachments([]);
     setEditCompanyName(null);
@@ -1397,6 +1400,41 @@ export function EventDrawer({
 
         const { startISO, endISO } = normalizeOvernightDates(date, startTime, endDate, endTime);
 
+        if (isTask) {
+          const result = await finishStandaloneTask({
+            create: async () => {
+              const { data, error } = await (supabase as any).rpc("create_standalone_resource_task", {
+                p_company_id: resolvedCompanyId, p_client_request_id: clientRequestId,
+                p_title: title, p_description: description || null, p_customer: customer || null,
+                p_address: address || null, p_technician_ids: techIds, p_notify: taskNotify,
+                p_dates: creation.dates.map(d => {
+                  const { startISO, endISO } = normalizeOvernightDates(d, startTime, d === date ? endDate : d, endTime);
+                  return { start: startISO, end: endISO };
+                }),
+              });
+              if (error || !data?.event_id) throw new Error(error?.message || "Kunne ikke opprette oppgave");
+              return data;
+            },
+            upload: id => uploadFiles(id, files),
+            saveAttachments: async (id, attachments) => {
+              const { error } = await supabase.from("events").update({ attachments: attachments as any }).eq("id", id);
+              if (error) throw new Error(`Oppgaven er lagret, men vedlegg kunne ikke registreres: ${error.message}`);
+            },
+            notify: async id => {
+              const notified = await invokeWithSession("create-approval", { body: { job_id: id, technician_ids: techIds, response_required: false } });
+              try { assertNotificationResult(notified); }
+              catch (error) { toast.warning("Oppgaven er lagret, men varsling er ikke komplett", { description: error instanceof Error ? error.message : "Se kanalstatus" }); }
+            },
+            calendar: id => { syncCreate(id); },
+          }, taskNotify, techIds.length > 0);
+          toast.success(result.status === "existing" ? "Oppgaven finnes allerede" : "Oppgave opprettet", {
+            description: taskNotify ? "Se utsendingsstatus per montør." : "Lagret uten e-postvarsling.",
+          });
+          setSubmitted(true);
+          onSaved?.(result.event_id);
+          return;
+        }
+
         const { data: existing } = await supabase
           .from("events")
           .select("id")
@@ -2317,6 +2355,12 @@ export function EventDrawer({
           </section>
 
           {/* ═══ SECTION: PÅMINNELSE ═══ */}
+          {!isEditing && eventType === "task" && techIds.length > 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="task-email-notification">Send jobbinfo på e-post</Label>
+              <Switch id="task-email-notification" checked={taskNotify} onCheckedChange={setTaskNotify} disabled={readOnly} />
+            </div>
+          )}
           {(isEditing || eventType === "project") && techIds.length > 0 && (
             <ReminderProfileSelect
               value={reminderConfig}
