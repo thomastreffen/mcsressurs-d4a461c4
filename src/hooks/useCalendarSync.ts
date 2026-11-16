@@ -113,7 +113,7 @@ export function useCalendarSync() {
         console.error("[CalendarSync] delete invoke error:", error);
         return "error";
       }
-      if (data?.status === "deleted") {
+      if (data?.status === "deleted" || (data?.status === "success" && data?.outlook?.length && data.outlook.every((r: { status: string }) => r.status === "deleted"))) {
         return "deleted";
       }
       if (data?.status === "not_found") {
@@ -129,6 +129,10 @@ export function useCalendarSync() {
         toast.error("Outlook-event ble ikke slettet", {
           description: `Feilkode ${data.code}`,
         });
+        return "error";
+      }
+      if (data?.status === "reconciliation_required") {
+        toast.warning("Outlook-fjerning er ikke bekreftet – eksplisitt avstemming kreves");
         return "error";
       }
       return "unknown";

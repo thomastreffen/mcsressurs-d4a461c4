@@ -52,12 +52,12 @@ Deno.serve(async (req) => {
     const method = action.kind === "create" ? "POST" : action.kind === "update" ? "PATCH" : "DELETE";
     const res = await fetch(target, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: action.payload ? JSON.stringify(action.payload) : undefined });
     const text = await res.text();
-    if (!res.ok) {
+    if (!res.ok && !(action.kind === "delete" && res.status === 404)) {
       await sb.from("hub_outlook_event_links").upsert({ company_id: task.company_id, task_id: task.id, mailbox, dedup_key: key, state: "failed", last_error: `${res.status}: ${text.slice(0, 500)}`, last_attempt_at: new Date().toISOString() }, { onConflict: "dedup_key" });
       await log(`${action.kind}_failed`, { status: res.status });
       results.push({ mailbox, status: "graph_error", code: res.status }); continue;
     }
-    const ev = text ? JSON.parse(text) : {};
+    const ev = action.kind === "delete" ? {} : text ? JSON.parse(text) : {};
     await sb.from("hub_outlook_event_links").upsert({ company_id: task.company_id, task_id: task.id, mailbox, dedup_key: key, outlook_event_id: action.kind === "delete" ? link?.outlook_event_id : ev.id ?? link?.outlook_event_id, outlook_change_key: ev.changeKey ?? null, hub_version: action.fingerprint, state: action.kind === "delete" ? "deleted" : "synced", last_error: null, last_attempt_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: "dedup_key" });
     await log(action.kind, { status: res.status });
     results.push({ mailbox, status: action.kind });

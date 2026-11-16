@@ -26,7 +26,11 @@ Deno.serve(async (req) => {
 
     // Handle removal: delete calendar event for specific user
     if (remove_user_id) {
-      const { data: assignee } = await sb.from("task_assignees")
+      const { data: task } = await userClient.from("tasks").select("company_id").eq("id", task_id).maybeSingle();
+      const { data: scope } = task ? await sb.rpc("has_company_access", { _uid: user.id,
+        _company: task.company_id, _module: "resource_plan", _level: "edit" }) : { data: false };
+      if (!scope) return new Response(JSON.stringify({ error: "Ingen tilgang" }), { status: 403, headers: corsHeaders });
+      const { data: assignee } = await userClient.from("task_assignees")
         .select("*")
         .eq("task_id", task_id)
         .eq("user_id", remove_user_id)
@@ -35,28 +39,28 @@ Deno.serve(async (req) => {
         .single();
 
       if (assignee?.calendar_event_id) {
-        const azureClientId = Deno.env.get("AZURE_CLIENT_ID");
-        if (azureClientId) {
-          const { data: userData } = await sb.auth.admin.getUserById(remove_user_id);
-          const msTokens = userData?.user?.user_metadata?.ms_tokens;
-          if (msTokens?.access_token) {
-            try {
-              await fetch(
-                `https://graph.microsoft.com/v1.0/me/events/${assignee.calendar_event_id}`,
-                {
-                  method: "DELETE",
-                  headers: { Authorization: `Bearer ${msTokens.access_token}` },
-                }
-              );
-            } catch (e) {
-              console.error("Failed to delete calendar event:", e);
-            }
-          }
+        let confirmed = false;
+        let graphStatus: number | null = null;
+        const { data: account } = await sb.from("user_accounts").select("auth_user_id")
+          .eq("auth_user_id", remove_user_id).eq("is_active", true).maybeSingle();
+        const { data: userData } = account ? await sb.auth.admin.getUserById(remove_user_id) : { data: null };
+        const meta = userData?.user?.user_metadata;
+        if (meta?.ms_access_token && Date.parse(meta.ms_expires_at ?? "") > Date.now() + 60000) {
+          try {
+            const deleted = await fetch(`https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(assignee.calendar_event_id)}`, {
+              method: "DELETE", headers: { Authorization: `Bearer ${meta.ms_access_token}` },
+            });
+            graphStatus = deleted.status;
+            confirmed = deleted.status === 204 || deleted.status === 404;
+          } catch { /* Unknown outcome: retain mapping for reconciliation. */ }
         }
-        // Clear the calendar_event_id
-        await sb.from("task_assignees")
-          .update({ calendar_event_id: null })
-          .eq("id", assignee.id);
+        if (!confirmed) return new Response(JSON.stringify({ status: "reconciliation_required", graph_status: graphStatus,
+          reason: graphStatus ? "graph_delete_rejected" : "delegated_delete_not_confirmed" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+        // Clear only after confirmed deletion or already absent.
+        const cleanup = await sb.from("task_assignees").update({ calendar_event_id: null }).eq("id", assignee.id);
+        if (cleanup.error) return new Response(JSON.stringify({ status: "reconciliation_required", reason: "mapping_cleanup_requires_reconciliation" }), { headers: corsHeaders });
       }
 
       return new Response(JSON.stringify({ status: "removed" }), {

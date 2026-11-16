@@ -74,8 +74,12 @@ export async function syncTechnicianDays(args: {
           }
         }
       }
-      await store.removeLink(eventId, link);
-      results.push({ technicianId, workDate: link.work_date, state: "i_hub" });
+      try {
+        await store.removeLink(eventId, link);
+        results.push({ technicianId, workDate: link.work_date, state: "i_hub", outcome: "deleted" });
+      } catch {
+        results.push({ technicianId, workDate: link.work_date, state: "feilet", error: "mapping_cleanup_requires_reconciliation", outcome: "failed" });
+      }
     }
     return results;
   }
@@ -120,8 +124,9 @@ export async function syncTechnicianDays(args: {
       continue;
     }
     try {
-      await graph.updateEvent(email, link.outlook_event_id!, buildBody(item));
-      await store.markSynced(eventId, item, link.outlook_event_id!);
+      if (!link.outlook_event_id) continue;
+      await graph.updateEvent(email, link.outlook_event_id, buildBody(item));
+      await store.markSynced(eventId, item, link.outlook_event_id);
       results.push({ technicianId, workDate: item.workDate, state: "synket", outlookEventId: link.outlook_event_id, outcome: "updated" });
     } catch (e: any) {
       await store.markFailed(eventId, item, String(e?.status ?? e?.message ?? e));
@@ -141,7 +146,8 @@ export async function syncTechnicianDays(args: {
         }
       }
     }
-    await store.removeLink(eventId, link);
+    try { await store.removeLink(eventId, link); }
+    catch { results.push({ technicianId, workDate: link.work_date, state: "feilet", error: "mapping_cleanup_requires_reconciliation", outcome: "failed" }); }
   }
 
   return results.sort((a, b) => a.workDate.localeCompare(b.workDate));

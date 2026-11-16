@@ -254,6 +254,9 @@ Deno.serve(async (req) => {
 
       if (!delRes.ok && delRes.status !== 404) {
         console.error("[lead-calendar-event] Delete failed:", delRes.status);
+        return new Response(JSON.stringify({ status: "reconciliation_required", error: "Outlook-fjerning er ikke bekreftet", code: delRes.status }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Remove from DB

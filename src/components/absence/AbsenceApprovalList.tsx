@@ -91,10 +91,15 @@ export function AbsenceApprovalList() {
   const handleDelete = useCallback(async () => {
     if (!deleteDialog) return;
     setActing(deleteDialog.id);
-    // Delete from Outlook first (fire-and-forget)
-    supabase.functions.invoke("absence-calendar-sync", {
+    // Preserve the reference if Outlook removal cannot be confirmed.
+    const calendar = await supabase.functions.invoke("absence-calendar-sync", {
       body: { action: "delete", absence_id: deleteDialog.id },
-    }).catch((e) => console.error("[AbsenceSync] delete error:", e));
+    });
+    if (calendar.error || !["deleted", "no_event"].includes(calendar.data?.status)) {
+      toast.warning("Fraværet er ikke slettet – Outlook-fjerning må avklares");
+      setActing(null);
+      return;
+    }
 
     const { error, count } = await supabase
       .from("absence_requests")

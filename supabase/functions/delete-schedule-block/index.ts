@@ -6,27 +6,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-/* ── Get MS token for a user via refresh ── */
-async function getAppToken(): Promise<string | null> {
-  const tenantId = Deno.env.get("AZURE_TENANT_ID")!;
-  const clientId = Deno.env.get("AZURE_CLIENT_ID")!;
-  const clientSecret = Deno.env.get("AZURE_CLIENT_SECRET")!;
-
-  const tokenRes = await fetch(
-    `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: clientId,
-        client_secret: clientSecret,
-        scope: "https://graph.microsoft.com/.default",
-      }),
-    }
-  );
-  const tokenData = await tokenRes.json();
-  return tokenData.access_token || null;
+/* Use the recipient's existing delegated identity, never the mail application's grants. */
+async function getDelegatedToken(db: any, uid: string): Promise<string | null> {
+  const { data, error } = await db.auth.admin.getUserById(uid);
+  const meta = data?.user?.user_metadata;
+  if (error || typeof meta?.ms_access_token !== "string" || !meta.ms_expires_at ||
+    Date.parse(meta.ms_expires_at) <= Date.now() + 60000) return null;
+  return meta.ms_access_token;
 }
 
 /* ── Delete a single Outlook event by user email ── */
@@ -36,10 +22,10 @@ async function deleteOutlookEvent(
   calendarEventId: string
 ): Promise<{ ok: boolean; status: number }> {
   const res = await fetch(
-    `https://graph.microsoft.com/v1.0/users/${userEmail}/events/${calendarEventId}`,
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userEmail)}/events/${encodeURIComponent(calendarEventId)}`,
     { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
   );
-  return { ok: res.ok, status: res.status };
+  return { ok: res.ok || res.status === 404, status: res.status };
 }
 
 Deno.serve(async (req) => {
@@ -86,7 +72,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch the block with technician info
-    const { data: block, error: fetchErr } = await supabase
+    const { data: block, error: fetchErr } = await anonClient
       .from("schedule_blocks")
       .select("*, technicians(user_id, name, email)")
       .eq("id", schedule_block_id)
@@ -98,9 +84,21 @@ Deno.serve(async (req) => {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const { data: scope } = await supabase.rpc("has_company_access", { _uid: user.id,
+      _company: block.company_id, _module: "resource_plan", _level: "edit" });
+    if (!block.company_id || !scope) return new Response(JSON.stringify({ error: "Ingen tilgang" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
-    const normalizeTitle = (v: string | null | undefined) => (v || "").trim().toLowerCase();
-    const selectedTitle = normalizeTitle(block.outlook_subject || block.title);
+    const isHubBlock = ["system", "manual", "linked_outlook"].includes(block.source);
+    if (isHubBlock) {
+      const routed = await anonClient.functions.invoke("remove-work-visit-from-plan", {
+        body: { action: "remove_assignment", schedule_block_id, technician_id: block.technician_id },
+        headers: { Authorization: authHeader },
+      });
+      if (routed.error) return new Response(JSON.stringify({ error: "Planfjerning kunne ikke bekreftes" }), { status: 502, headers: corsHeaders });
+      return new Response(JSON.stringify(routed.data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const relatedBlockIds = new Set<string>([block.id]);
     const relatedOutlookBlocks: Array<{
@@ -143,9 +141,8 @@ Deno.serve(async (req) => {
       for (const candidate of sameSlotBlocks || []) {
         // Only other Outlook copies are twins – never hide a Hub job block in the same slot.
         if (candidate.id === block.id || candidate.source !== "outlook") continue;
-        const sameProject = !!block.project_id && candidate.project_id === block.project_id;
-        const sameTitle = normalizeTitle(candidate.outlook_subject || candidate.title) === selectedTitle;
-        if (sameProject || sameTitle) {
+        const sameOutlookObject = !!block.outlook_event_id && candidate.outlook_event_id === block.outlook_event_id;
+        if (sameOutlookObject) {
           relatedBlockIds.add(candidate.id);
           relatedOutlookBlocks.push(candidate as any);
         }
@@ -166,13 +163,6 @@ Deno.serve(async (req) => {
     const deletedOutlookEvents: string[] = [];
     const graphAttempts: Array<{ path: string; mailbox: string; event_id: string; status: number; ok: boolean }> = [];
     const attemptedTargets = new Set<string>();
-    const eventTechnicianTargets: Array<{
-      event_technician_id: string;
-      technician_id: string | null;
-      technician_email: string | null;
-      calendar_event_id: string | null;
-    }> = [];
-
     console.log("[delete-schedule-block] Request", JSON.stringify({
       source: block.source,
       schedule_block_id,
@@ -204,7 +194,9 @@ Deno.serve(async (req) => {
       if (attemptedTargets.has(targetKey)) return;
       attemptedTargets.add(targetKey);
 
-      const result = await deleteOutlookEvent(appToken, mailbox, eventId);
+      let result: {ok:boolean;status:number};
+      try { result = await deleteOutlookEvent(appToken, mailbox, eventId); }
+      catch { outlookError = "graph_network_unknown_outcome_reconciliation_required"; return; }
       graphAttempts.push({ path, mailbox, event_id: eventId, status: result.status, ok: result.ok });
 
       console.log("[delete-schedule-block] Graph delete", JSON.stringify({
@@ -218,71 +210,19 @@ Deno.serve(async (req) => {
       if (result.ok) {
         deletedOutlookEvents.push(eventId);
       } else {
-        outlookError = `Graph DELETE failed (${path}) for ${mailbox}: ${result.status}`;
+        outlookError = `graph_delete_${result.status}`;
       }
     };
 
     if (shouldDeleteOutlook) {
-      appToken = await getAppToken();
+      appToken = block.technicians?.user_id ? await getDelegatedToken(supabase, block.technicians.user_id) : null;
       if (!appToken) {
-        outlookError = "Failed to get Graph app token";
+        outlookError = "delegated_token_unavailable_reconnect_required";
         console.error("[delete-schedule-block]", outlookError);
       } else {
-        // Strategy 1: Delete via event_technicians.calendar_event_id (new flow)
-        if (block.project_id) {
-          const { data: eventTechs } = await supabase
-            .from("event_technicians")
-            .select("id, calendar_event_id, technician_id, technicians(email, name)")
-            .eq("event_id", block.project_id);
-
-          if (eventTechs && eventTechs.length > 0) {
-            for (const et of eventTechs) {
-              const calEventId = et.calendar_event_id as string | null;
-              const techEmail = (et as any).technicians?.email as string | null;
-
-              eventTechnicianTargets.push({
-                event_technician_id: et.id,
-                technician_id: et.technician_id,
-                technician_email: techEmail,
-                calendar_event_id: calEventId,
-              });
-
-              await tryDeleteOutlook("event_technicians", techEmail, calEventId);
-
-              if (calEventId && deletedOutlookEvents.includes(calEventId)) {
-                await supabase.from("event_technicians")
-                  .update({ calendar_event_id: null } as any)
-                  .eq("id", et.id);
-              }
-            }
-          }
-
-          // Also check job_calendar_links
-          const { data: calLinks } = await supabase
-            .from("job_calendar_links")
-            .select("id, calendar_event_id, user_id, technician_id, technicians(email, name)")
-            .eq("job_id", block.project_id)
-            .eq("provider", "microsoft")
-            .eq("sync_status", "linked");
-
-          if (calLinks && calLinks.length > 0) {
-            for (const link of calLinks) {
-              const calEventId = link.calendar_event_id as string | null;
-              const techEmail = (link as any).technicians?.email as string | null;
-              await tryDeleteOutlook("job_calendar_links", techEmail, calEventId);
-
-              if (calEventId && deletedOutlookEvents.includes(calEventId)) {
-                await supabase.from("job_calendar_links")
-                  .update({ sync_status: "unlinked", calendar_event_id: null, calendar_event_url: null } as any)
-                  .eq("id", link.id);
-              }
-            }
-          }
-        }
-
         // Strategy 2: Fallback to schedule_blocks.outlook_event_id (legacy/direct)
         for (const relatedBlock of relatedOutlookBlocks) {
-          const mailbox = relatedBlock.calendar_id || blockTechEmail || null;
+          const mailbox = blockTechEmail || null;
           await tryDeleteOutlook("schedule_blocks_fallback", mailbox, relatedBlock.outlook_event_id);
         }
 
@@ -292,6 +232,14 @@ Deno.serve(async (req) => {
 
         deletedInOutlook = deletedOutlookEvents.length > 0;
       }
+    }
+
+    if (shouldDeleteOutlook && (!deletedInOutlook || outlookError)) {
+      return new Response(JSON.stringify({ status: "reconciliation_required", deleted_in_outlook: false,
+        outlook_error: outlookError ?? "no_exact_outlook_id_reconciliation_required", graph_attempts: graphAttempts,
+        retry_requires_confirmation: true, block_ids_soft_deleted: [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Soft delete all matched blocks (selected + same-slot twins)
@@ -319,45 +267,6 @@ Deno.serve(async (req) => {
       .select("id", { count: "exact", head: true })
       .in("id", blockIdsToDelete)
       .is("deleted_at", null);
-
-    // Also soft-delete the linked task event(s) if they exist.
-    // Tasks (project_type='task') have no existence outside the plan — when
-    // removed from plan they should also be soft-deleted so no ghost card
-    // survives via a stale schedule_block pointing to a "live" event.
-    // We check BOTH job_id (canonical activity reference) and project_id
-    // (legacy path where project_id pointed directly to the child task event).
-    if (isSystemBlock) {
-      const linkedEventIds = [block.job_id, block.project_id].filter(Boolean) as string[];
-      if (linkedEventIds.length > 0) {
-        const { data: linkedEvents } = await supabase
-          .from("events")
-          .select("id, project_type")
-          .in("id", linkedEventIds)
-          .is("deleted_at", null);
-
-        for (const linkedEvent of linkedEvents || []) {
-          if (linkedEvent.project_type === "task") {
-            // Before soft-deleting the task, check if any OTHER active
-            // schedule_blocks still reference this event. If yes, leave it.
-            const { data: refBlocks } = await supabase
-              .from("schedule_blocks")
-              .select("id")
-              .or(`job_id.eq.${linkedEvent.id},project_id.eq.${linkedEvent.id}`)
-              .is("deleted_at", null);
-            const otherRefs = (refBlocks || []).filter((r) => !blockIdsToDelete.includes(r.id)).length;
-
-            if (otherRefs === 0) {
-              await supabase.from("events")
-                .update({ deleted_at: new Date().toISOString(), status: "cancelled" })
-                .eq("id", linkedEvent.id);
-              console.log(`[delete-schedule-block] Soft-deleted linked task event ${linkedEvent.id}`);
-            } else {
-              console.log(`[delete-schedule-block] Kept linked task ${linkedEvent.id} — ${otherRefs} other active blocks still reference it`);
-            }
-          }
-        }
-      }
-    }
 
     // Log the action
     await supabase.from("activity_log").insert({
@@ -403,7 +312,6 @@ Deno.serve(async (req) => {
             title: block.outlook_subject || block.title,
           },
           related_blocks: relatedOutlookBlocks,
-          event_technician_targets: eventTechnicianTargets,
           graph_attempts: graphAttempts,
         },
       }),

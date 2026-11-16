@@ -1,3 +1,11 @@
+# Kalenderfjerning JOB-000440 – 16. november
+
+- [ ] Flow-sweep: importert/direct/legacy/unlink/day/organizer/app-only/queue/UI; rett søstergap, mock-tester og deploy, ingen live writes
+
+- [x] Rett eksakt dagskobling og aktive Oslo-dager, personlig token (ingen AZURE app fallback), 404/idempotens, sanert Graph-kode/backoff og sperr gamle automatiske retries; ingen live Graph eller DB-mutasjoner/migrasjon
+- [x] 45 isolerte tester bestått, build OK; remove-work-visit-from-plan + schedule-sweep-orphans deployet. Skjermers advarsel krever publisering. Andre aktive oppgave/mail-fikser urørt
+- [ ] JOB-000440 beholdt i Hub og Outlook urørt; eksplisitt videre slettegodkjenning eller manuell Outlook-sletting kreves. Reell gammel Graph-feil kan ikke bevises fra historisk «ukjent» og boot/shutdown-logs
+
 # Selv-tildeling JOB-000440 – 16. november
 
 - [x] Flow-sweep lest: EventDrawer opprett/arbeidsbesøk/task/endre/resend; CreateJobDialog/EditJobDialog/JobQuickEditSheet/ResourceAssignDialog/bestilling→oppgave; Jobs/ProjectSettings; ProjectNew/ConvertToJob/PlanJob/DropConfirm/ResourcePlan flytt+resize; notifyJobAssignment; ProjectDashboard resend; create-approval/info/self/resend/time-change; notify-event-changes/reminder; create-job-from-schedule-block; dispatcher; delegated/ms-calendar/app-only/organizer; jobbinfo/Min dag/Mine/login; DB 0065/0093/0097/0098. Kvitteringer krever emailSent, ikke autoApproved; selv-resend informativ; ukjent køresultat holdes uncertain

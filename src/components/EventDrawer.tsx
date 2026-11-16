@@ -749,7 +749,7 @@ export function EventDrawer({
           );
         }
         if (unplanResult?.warnings?.length) {
-          toast.warning(`Montøren er fjernet, men Outlook-sletting er satt i kø for ${unplanResult.warnings[0].technician_name || "montør"}`);
+          toast.warning(`Montøren er fjernet, men Outlook-fjerning er ikke bekreftet for ${unplanResult.warnings[0].technician_name || "montør"}`, { description: "Nytt forsøk krever eksplisitt bekreftelse; ingen automatisk retry." });
         }
       }
     }
@@ -2549,7 +2549,7 @@ export function EventDrawer({
                     const warning = data?.warnings?.[0];
                     if (warning) {
                       toast.warning(`Fjernet i ressursplan, men Outlook-sletting feilet for ${warning.technician_name || "montør"}`, {
-                        description: "Nytt forsøk er satt i kø.",
+                        description: "Outlook-fjerning er ikke bekreftet. Nytt forsøk krever eksplisitt bekreftelse; ingen automatisk retry.",
                       });
                     } else {
                       toast.success(data?.status === "already_removed" ? "Allerede fjernet ✓" : "Fjernet fra plan og Outlook ✓");

@@ -278,7 +278,7 @@ async function deleteGraphEventWithFallbacks(
   };
 
   addCandidate("event_technicians", eventTechRow.calendar_event_id);
-  addCandidate("events.microsoft_event_id", event.microsoft_event_id);
+
 
   const [{ data: calLinks }, { data: scheduleBlocks }] = await Promise.all([
     supabaseAdmin
@@ -302,7 +302,7 @@ async function deleteGraphEventWithFallbacks(
 
   const deleteCandidate = async (source: string, eventId: string) => {
     const res = await fetch(
-      `https://graph.microsoft.com/v1.0/users/${tech.email}/events/${eventId}`,
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(tech.email)}/events/${encodeURIComponent(eventId)}`,
       { method: "DELETE", headers: { Authorization: `Bearer ${msToken}` } }
     );
 
@@ -311,101 +311,15 @@ async function deleteGraphEventWithFallbacks(
     return res;
   };
 
+  let allGone = candidateIds.size > 0;
   for (const [eventId, source] of candidateIds.entries()) {
     const res = await deleteCandidate(source, eventId);
-
-    if (res.ok) {
-      return {
-        deleted: true,
-        deletedEventId: eventId,
-        attempts,
-        all404: false,
-      };
-    }
+    if (!res.ok && res.status !== 404) allGone = false;
   }
+  // Missing exact IDs require reconciliation; never delete by title/time/category similarity.
+  return { deleted: allGone, deletedEventId: allGone ? [...candidateIds.keys()][0] ?? null : null,
+    attempts, all404: attempts.length > 0 && attempts.every(a => a.status === 404) };
 
-  const { startTime, endTime } = normalizeEventTimes(event);
-  const searchStart = new Date(new Date(startTime).getTime() - 48 * 60 * 60 * 1000).toISOString();
-  const searchEnd = new Date(new Date(endTime).getTime() + 48 * 60 * 60 * 1000).toISOString();
-
-  const calendarViewParams = new URLSearchParams({
-    startDateTime: searchStart,
-    endDateTime: searchEnd,
-    "$top": "100",
-    "$select": "id,subject,start,end,body,location,categories",
-  });
-
-  const viewRes = await fetch(
-    `https://graph.microsoft.com/v1.0/users/${tech.email}/calendarView?${calendarViewParams.toString()}`,
-    {
-      headers: {
-        Authorization: `Bearer ${msToken}`,
-        Prefer: 'outlook.timezone="UTC", outlook.body-content-type="html"',
-      },
-    }
-  );
-
-  if (viewRes.ok) {
-    const viewData = await viewRes.json();
-    const expectedMarker = `MCS_EVENT_ID:${event.id}`;
-    const expectedTitle = normalizeText(event.title);
-    const expectedAddress = normalizeText(event.address);
-    const expectedSubject = normalizeText(
-      buildGraphBody(event, customer, {
-        eventTechnicianId: eventTechRow?.id || null,
-        technicianId: tech.id,
-        techName: tech.name,
-      }).subject
-    );
-
-    const matchedGraphEvents = (viewData?.value || []).filter((graphEvent: any) => {
-      const graphBody = graphEvent?.body?.content || "";
-      const graphStart = toGraphComparableIso(graphEvent?.start?.dateTime, graphEvent?.start?.timeZone);
-      const graphEnd = toGraphComparableIso(graphEvent?.end?.dateTime, graphEvent?.end?.timeZone);
-      const graphSubject = normalizeText(graphEvent?.subject);
-      const graphLocation = normalizeText(
-        graphEvent?.location?.displayName || graphEvent?.location?.address?.street
-      );
-      const graphCategories = Array.isArray(graphEvent?.categories)
-        ? graphEvent.categories.map((category: string) => normalizeText(category))
-        : [];
-      const graphHasMcsCategory = graphCategories.includes("mcs");
-      const markerMatch = graphBody.includes(expectedMarker);
-      const timeMatch = isSameInstant(graphStart, startTime, 65 * 60 * 1000) &&
-        isSameInstant(graphEnd, endTime, 65 * 60 * 1000);
-      const subjectMatch = !!expectedTitle && (
-        graphSubject.includes(expectedTitle) ||
-        (!!expectedSubject && graphSubject === expectedSubject) ||
-        (!!event.internal_number && graphSubject.includes(normalizeText(event.internal_number)))
-      );
-      const addressMatch = !!expectedAddress && graphLocation.includes(expectedAddress);
-      const legacyMcsMatch = graphHasMcsCategory && subjectMatch && isSameOsloDay(graphStart, startTime);
-
-      return markerMatch || (timeMatch && (subjectMatch || addressMatch)) || legacyMcsMatch;
-    });
-
-    for (const graphEvent of matchedGraphEvents) {
-      if (!graphEvent?.id || candidateIds.has(graphEvent.id)) continue;
-      const res = await deleteCandidate("calendar_view_match", graphEvent.id);
-      if (res.ok) {
-        return {
-          deleted: true,
-          deletedEventId: graphEvent.id,
-          attempts,
-          all404: false,
-        };
-      }
-    }
-  } else {
-    attempts.push({ source: "calendar_view_lookup", eventId: "lookup_failed", status: viewRes.status });
-  }
-
-  return {
-    deleted: false,
-    deletedEventId: null,
-    attempts,
-    all404: attempts.length > 0 && attempts.every((attempt) => attempt.status === 404),
-  };
 }
 
 /* ── Resolve caller user_id from token ── */
@@ -726,8 +640,9 @@ function dayStore(supabaseAdmin: any): DayStore {
         .eq("idempotency_key", item.operationKey).is("outlook_event_id", null);
     },
     async removeLink(eventId, link) {
-      await supabaseAdmin.from(TABLE).delete()
+      const { error } = await supabaseAdmin.from(TABLE).delete()
         .eq("event_id", eventId).eq("technician_id", link.technician_id).eq("work_date", link.work_date);
+      if (error) throw new Error("mapping_cleanup_requires_reconciliation");
     },
   };
 }
@@ -869,6 +784,22 @@ Deno.serve(async (req) => {
     // update_only: eksplisitt «Oppdater Outlook» fra jobbkortet – kun PATCH av
     // eksisterende kalenderkoblinger, aldri opprettelse av nye hendelser.
     const updateOnly = body.update_only === true;
+    if (action === "delete") {
+      // Destructive legacy entry point must not bypass exact-day/queue authorization.
+      if (internalCaller || body.confirm_calendar_delete !== true) return new Response(JSON.stringify({
+        status: "reconciliation_required", reason: "explicit_event_delete_confirmation_required",
+      }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const scoped = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+      });
+      const routed = await scoped.functions.invoke("remove-work-visit-from-plan", {
+        body: { action: "retry_outlook", event_id, confirm_calendar_delete: true, technician_ids: body.technician_ids },
+      });
+      if (routed.error) return new Response(JSON.stringify({ status: "reconciliation_required" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+      return new Response(JSON.stringify(routed.data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     if (!["create", "update", "force_update", "delete", "reconcile", "create_missing_days", "read_capability"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
       return new Response(JSON.stringify({ error: "Missing action or event_id" }), {
@@ -971,7 +902,7 @@ Deno.serve(async (req) => {
 
       if (fallbackTech?.user_id) {
         techRows.push({
-          eventTechRow: { id: null, calendar_event_id: event.microsoft_event_id || null, start_at: null, end_at: null },
+          eventTechRow: { id: null, calendar_event_id: null, start_at: null, end_at: null },
           tech: fallbackTech,
         });
       }
@@ -1017,7 +948,9 @@ Deno.serve(async (req) => {
         results.push({ techId: tech.id, techName: tech.name, status: "not_applicable", skipTechDelivery: true, excludeFromEvidence: true });
         continue;
       }
-      if (techBlocks.length > 0 && action !== "reconcile") {
+      const { data: knownDays } = action === "delete" ? await supabaseAdmin.from("job_calendar_day_links")
+        .select("work_date").eq("event_id", event_id).eq("technician_id", tech.id) : { data: [] };
+      if ((techBlocks.length > 0 || knownDays?.length) && action !== "reconcile") {
         // Flere arbeidsdager: én Outlook-hendelse per (jobb, montør, dag).
         const multiResult = await syncMultiDayForTech(
           supabaseAdmin, event, tech, eventTechRow, customer, techBlocks,
