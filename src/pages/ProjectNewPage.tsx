@@ -140,11 +140,6 @@ export default function ProjectNewPage() {
       await supabase.from("event_technicians").insert(
         techIds.map((tid) => ({ event_id: data.id, technician_id: tid }))
       );
-    } else {
-      await supabase.from("event_technicians").insert({
-        event_id: data.id,
-        technician_id: insertData.technician_id,
-      });
     }
 
     if (techIds.length > 0) await notifyJobAssignment(data.id, techIds);

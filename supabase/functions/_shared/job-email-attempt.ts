@@ -13,7 +13,7 @@ export async function sendJobEmail(db: any, eventId: string, technicianId: strin
   if (!claim.data) {
     const previous = await db.from("job_email_attempts").select("outcome,graph_status").eq("operation_key", key).maybeSingle();
     if (previous.error) throw new Error("Tidligere e-postresultat kunne ikke kontrolleres");
-    return { ok: previous.data?.outcome === "accepted", status: previous.data?.graph_status ?? null, reason: "unknown_graph_outcome", detail: null, duplicate: true };
+    return { ok: previous.data?.outcome === "accepted", status: previous.data?.graph_status ?? null, reason: previous.data?.outcome === "accepted" ? null : "unknown_graph_outcome", detail: null, duplicate: true };
   }
   await recordDelivery(db, { eventId, technicianId, channel: "email", recipientEmail: message.to, status: "pending", operationKey: key });
   let result;
@@ -23,5 +23,5 @@ export async function sendJobEmail(db: any, eventId: string, technicianId: strin
   const uncertain = !result.ok && (result.reason === "network_error" || result.reason === "unknown_graph_outcome");
   const saved = await db.from("job_email_attempts").update({ outcome: result.ok ? "accepted" : uncertain ? "pending" : "failed", graph_status: result.status, reason_code: result.ok ? null : result.reason, finished_at: new Date().toISOString() }).eq("operation_key", key);
   if (saved.error) throw new Error("E-postresultatet er ukjent; avstemming kreves før nytt forsøk");
-  return { ...result, reason: result.ok ? null : result.reason, detail: result.ok ? null : result.detail, duplicate: false };
+  return { ...result, reason: result.ok ? null : uncertain ? "unknown_graph_outcome" : result.reason, detail: result.ok ? null : result.detail, duplicate: false };
 }

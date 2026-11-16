@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getResourceCardTitle, extractOrderRef } from "@/lib/resource-card-title";
-import { notifyJobAssignment } from "@/lib/notify-job-assignment";
+import { assertNotificationResult } from "@/lib/job-notification-result";
 
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -113,7 +113,10 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
 
       setSubmitted(true);
       setCreatedEventId(data.event_id);
-      if (!data.idempotent) await notifyJobAssignment(data.event_id, [block.technician_id]);
+      if (!data.idempotent) {
+        try { assertNotificationResult({ data: data.notification }); }
+        catch { toast.warning("Prosjekt opprettet, men varsling er ikke komplett – se status per montør"); }
+      }
       toast.success(data.idempotent ? "Allerede opprettet ✓" : "Prosjekt opprettet ✓");
       onConfirmed?.();
     } catch (err: any) {

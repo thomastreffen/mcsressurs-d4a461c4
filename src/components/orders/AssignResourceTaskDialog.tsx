@@ -376,10 +376,10 @@ export function AssignResourceTaskDialog({
       };
 
       if (techMail.sent > 0 && techMail.failed === 0) {
-        toast.success(`Jobbinfo med vedlegg sendt til ${techMail.sent} montør(er)`);
+        toast.success(`Varsling behandlet for ${techMail.sent} montør(er) – se e-postkvittering per mottaker`);
       } else {
         toast.error("Montør fikk ikke e-post med jobbinfo", {
-          description: techMail.error || "Åpne jobben og trykk «Send jobbinfo til montør på nytt».",
+          description: techMail.error || "Se status per montør. Ukjent resultat må avstemmes før nytt forsøk.",
           action: openAction,
           duration: 15000,
         });

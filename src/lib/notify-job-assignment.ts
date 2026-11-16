@@ -15,6 +15,7 @@ export async function notifyJobAssignment(id: string, technicianIds?: string[], 
 }
 
 export async function notifyJobTimeChange(id: string, technicianIds: string[], start: Date, end: Date) {
+  if (!technicianIds.length) return;
   try {
     const result = await invokeWithSession("notify-event-changes", { body: { job_id: id, technician_ids: technicianIds, changes: [{ label: "Arbeidstid", newValue: `${start.toISOString()} – ${end.toISOString()}` }] } });
     assertNotificationResult(result);
