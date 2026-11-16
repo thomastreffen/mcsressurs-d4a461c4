@@ -94,7 +94,13 @@ export function PlanJobDialog({
           event_id: projectId,
           technician_id: techId,
         } as any);
-        await notifyJobAssignment(projectId, [techId]);
+      }
+
+      if (!projectId) throw new Error("Mangler prosjekt for arbeidsoppdraget");
+      const { data: assigned } = await supabase.from("event_technicians").select("id").eq("event_id", projectId).eq("technician_id", techId).maybeSingle();
+      if (!assigned) {
+        const { error: assignmentError } = await supabase.from("event_technicians").insert({ event_id: projectId, technician_id: techId });
+        if (assignmentError) throw assignmentError;
       }
 
       const { data: sj, error: sjErr } = await supabase
@@ -116,6 +122,7 @@ export function PlanJobDialog({
         .single();
 
       if (sjErr) throw sjErr;
+      await notifyJobAssignment(projectId, [techId]);
 
       await supabase.from("cases").update({
         project_id: projectId,
