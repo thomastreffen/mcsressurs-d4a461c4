@@ -1,11 +1,11 @@
 import { communicationLight, evidenceState } from "../../supabase/functions/_shared/communication-policy";
-import { invokeWithSession } from "@/lib/invoke-session";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { CENTRAL_WAITING, projectQueue } from "@/lib/job-calendar-presentation";
 
 const REASON_LABEL: Record<string, string> = {
   no_ms_connection: "Mangler Microsoft-kobling",
@@ -59,10 +59,11 @@ export function queueLine(
   item: { operation: string; status: string; reason_code: string | null; attempt_count: number },
   techName?: string,
 ): string {
-  const who = techName ?? "Ukjent montør";
+  if (!techName) return `Køhistorikk uten aktiv mottaker · ${item.attempt_count} forsøk · krever avstemming`;
+  const who = techName;
   const op = item.operation === "delete" ? "fjerning" : item.operation === "update" ? "endring" : "opprettelse";
   if (item.status === "pending" && item.attempt_count === 0) {
-    return `${who} · Sentral Microsoft-kalender (${op}): ikke aktivert før pilot – ingenting sendes`;
+    return `${who} · ${CENTRAL_WAITING}`;
   }
   const state = item.status === "uncertain" ? "Ukjent resultat – avstemming kreves" : item.status === "failed" ? "Feilet" : item.status === "processing" ? "Behandles" : "Venter";
   const reason = item.reason_code ? ` · ${REASON_LABEL[item.reason_code] ?? "Kontroll kreves"}` : "";
@@ -82,15 +83,15 @@ export function deliveryLight(
 const LIGHT_TEXT: Record<DeliveryLight, string> = {
   green: "Alle påkrevde kanaler har kontrollsignal",
   yellow: "Venter på eller mangler status for noen montører",
-  red: "Utsending feilet for én eller flere montører",
+  red: "Registrert kanalfeil – se historikk per montør",
 };
 
 export function RecipientDeliveryStatus({ eventId, technicians }: {
   eventId: string;
   technicians: { id: string; name: string }[];
 }) {
-  const [retrying, setRetrying] = useState(false);
-  const { data, refetch } = useQuery({
+  const { isSuperAdmin } = useAuth();
+  const { data } = useQuery({
     queryKey: ["recipient-delivery", eventId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -105,36 +106,34 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
   const { data: queue } = useQuery({
     queryKey: ["m365-queue", eventId],
     queryFn: async () => {
-      const result = await supabase.from("m365_communication_queue").select("id,technician_id,operation,status,reason_code,attempt_count").eq("event_id", eventId);
+      const result = await supabase.from("m365_communication_queue").select("id,technician_id,operation,status,reason_code,attempt_count,updated_at").eq("event_id", eventId);
       if (result.error) throw result.error;
       return result.data;
     },
     enabled: !!eventId,
   });
   if (!data || technicians.length === 0) return null;
-  const light = deliveryLight(technicians.map((t) => t.id), data);
-  const retry = async () => {
-    setRetrying(true);
-    try {
-      const { data: result, error } = await invokeWithSession("m365-dispatch", { body: { event_id: eventId } });
-      if (error || result?.blocked) toast.error("Nytt forsøk er blokkert", { description: "Pilot og Microsoft-rettigheter må være godkjent." });
-      else toast.info("Forsøket er behandlet – kontroller kanalstatus");
-      await refetch();
-    } finally { setRetrying(false); }
-  };
+  const projection = projectQueue(queue ?? [], technicians.map(t => t.id));
+  const historical = (r: Row) => r.channel === "calendar" && r.status === "failed" && r.reason_code === "no_ms_connection";
+  const light = deliveryLight(technicians.map((t) => t.id), data.filter(r => !historical(r)));
+  const dormantIds = new Set(projection.dormant.map(i => i.technician_id));
+  const attempted = projection.current.filter(i => !projection.dormant.includes(i));
+  const actualQueueFailure = attempted.some(i => i.status === "failed" || i.status === "uncertain");
+  const displayLight = actualQueueFailure ? "red" : light;
+  const fmtAttempt = (date: string) => Number.isNaN(Date.parse(date)) ? "Tidspunkt ikke registrert" : new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(date));
 
   return (
-    <div className="space-y-1.5" data-light={light}>
+    <div className="space-y-1.5 min-w-0" data-light={displayLight}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">Utsending per montør</p>
-        {light !== "green" && (
-          <Button size="sm" variant="outline" className="min-h-11 text-xs" disabled={retrying} onClick={retry}>
-            {retrying ? "Prøver…" : "Prøv igjen"}
-          </Button>
-        )}
       </div>
-      <Badge variant={light === "red" ? "destructive" : light === "yellow" ? "outline" : "secondary"}>{LIGHT_TEXT[light]}</Badge>
-      {queue?.filter(item => item.status !== "accepted").map(item => (
+      <Badge className="whitespace-normal" variant={displayLight === "red" ? "destructive" : displayLight === "yellow" ? "outline" : "secondary"}>{LIGHT_TEXT[displayLight]}</Badge>
+      {projection.dormant.length > 0 && <div className="space-y-1 text-xs text-muted-foreground">
+        <p>{CENTRAL_WAITING}</p>
+        <p>{technicians.filter(t => dormantIds.has(t.id)).map(t => t.name).join(", ")}</p>
+        {isSuperAdmin ? <Button asChild size="sm" variant="link" className="min-h-11 h-auto p-0 text-xs"><Link to="/admin/microsoft">Se Microsoft-pilotstatus</Link></Button> : <p>Systemadministrator må avklare pilot og Microsoft-rettigheter.</p>}
+      </div>}
+      {attempted.map(item => (
         <p key={item.id} className="text-xs text-muted-foreground break-words">
           {queueLine(item, technicians.find((t) => t.id === item.technician_id)?.name)}
         </p>
@@ -151,13 +150,22 @@ export function RecipientDeliveryStatus({ eventId, technicians }: {
           <div key={t.id} className="flex flex-wrap items-center gap-1.5 text-sm">
             <span className="min-w-0 truncate">{t.name}</span>
             {rows.map((r) => (
-              <Badge key={r.channel} variant={r.status === "failed" ? "destructive" : r.status === "sent" ? "secondary" : "outline"}>
-                {deliveryLabel(r)}
-              </Badge>
+              <span key={r.channel} className="min-w-0">
+                <Badge className="whitespace-normal" variant={historical(r) ? "outline" : r.status === "failed" ? "destructive" : r.status === "sent" ? "secondary" : "outline"}>
+                  {historical(r) ? "Tidligere personlig kalenderforsøk feilet – manglet Microsoft-kobling" : deliveryLabel(r)}
+                </Badge>
+                <span className="block text-xs text-muted-foreground">{fmtAttempt(r.last_attempt_at)}{r.channel === "email" && r.status === "sent" ? " · Akseptert, ikke bekreftet levert" : ""}</span>
+              </span>
             ))}
           </div>
         );
       })}
+      {projection.audit.length > 0 && <details className="text-xs text-muted-foreground">
+        <summary className="min-h-11 cursor-pointer py-3">Køhistorikk som krever avstemming ({projection.audit.length})</summary>
+        {projection.audit.map((item, i) => <p key={item.id ?? i} className="break-words py-1">
+          {item.operation === "delete" ? "Fjerningsintensjon" : "Endringsintensjon"} uten aktiv mottaker i denne jobben · {item.attempt_count} forsøk · {item.status === "pending" && item.attempt_count === 0 ? "Ingen utsending forsøkt" : "Tidligere resultat må avstemmes"} · {item.updated_at ? fmtAttempt(item.updated_at) : ""}. Beholdt i historikk; ingen automatisk handling.
+        </p>)}
+      </details>}
     </div>
   );
 }

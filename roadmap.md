@@ -1,3 +1,10 @@
+# Kalenderstatus fra jobbskuff – 16. november
+
+- [x] Skill historisk personlig feil, aldri forsøkt kø, faktisk Graph-feil og akseptert e-post
+- [x] Trygge kalenderknapper fra lesebekreftet personlig kobling; ingen dispatcher/full resend; lesepunkt deployet
+- [x] Auditvisning for utgått/ukjent mottaker uten å endre kø; 875 tester bestått, siste bygg OK, isolert PC/mobil kontrollert
+- [ ] Publisering av jobbskuffens UI kreves; faktisk innlogget produksjonsvisning ikke testet, ingen produksjonswrites/utsending
+
 # Montørens jobbinfo – 16. november
 
 - [x] Flow-sjekk: Min dag, Mine, kalender, PC/mobil jobbhjem, jobbinfo, akseptlenke, infomail/påminnelse, RLS/RPC og varseltrigger lest; rette visning av rejected/reschedule_requested i tre svarvisninger
@@ -10,9 +17,9 @@
 
 # Kalenderpilot – trygg velger 16. november
 
-- [ ] Erstatt UUID-felt med jobbsøk, tildelt montør og faktiske arbeidsdager; eksplisitt dagbekreftelse
-- [ ] Lesetest før simulering; ingen frigivelse/skriving uten separat godkjenning
-- [ ] Isolerte tester og PC/mobil; produksjonsdata kun lest
+- [x] Erstatt UUID-felt med jobbsøk, tildelt montør og faktiske arbeidsdager; eksplisitt dagbekreftelse (tidligere fullført)
+- [x] Lesetest før simulering; ingen frigivelse/skriving uten separat godkjenning (tidligere fullført)
+- [x] Isolerte tester; produksjonsdata kun lest (tidligere fullført); pilotkortets egen visuelle verifisering ikke del av denne jobbskuffrettelsen
 
 # Godkjenningsvarsler 12. november
 

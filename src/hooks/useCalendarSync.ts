@@ -53,11 +53,11 @@ export function useCalendarSync() {
 
   const syncUpdate = useCallback(async (
     eventId: string,
-    opts?: { silent?: boolean; updateOnly?: boolean },
+    opts?: { silent?: boolean; updateOnly?: boolean; technicianIds?: string[] },
   ): Promise<"synced" | "conflict" | "error" | "no_token" | "no_link" | "missing_days" | "unknown"> => {
     try {
       const { data, error } = await invokeWithSession("calendar-write-sync", {
-        body: { action: "update", event_id: eventId, ...(opts?.updateOnly ? { update_only: true } : {}) },
+        body: { action: "update", event_id: eventId, ...(opts?.updateOnly ? { update_only: true, technician_ids: opts.technicianIds } : {}) },
       });
       if (error) {
         console.error("[CalendarSync] update invoke error:", error);
@@ -143,13 +143,13 @@ export function useCalendarSync() {
    * (idempotent nøkkel per jobb/montør/dag). Ingen e-post, ingen Hub-varsel om oppdrag,
    * ingen endring/sletting av eksisterende hendelser. Returnerer kvittering per dag.
    */
-  const createMissingDays = useCallback(async (eventId: string): Promise<{
+  const createMissingDays = useCallback(async (eventId: string, technicianIds?: string[]): Promise<{
     ok: boolean;
     results: { techId: string; techName: string; status: string; dayResults?: { workDate: string; state: string; error?: string; outcome?: string }[] }[];
   }> => {
     try {
       const { data, error } = await invokeWithSession("calendar-write-sync", {
-        body: { action: "create_missing_days", event_id: eventId },
+        body: { action: "create_missing_days", event_id: eventId, technician_ids: technicianIds },
       });
       if (error) return { ok: false, results: [] };
       return { ok: true, results: Array.isArray(data?.results) ? data.results : [] };

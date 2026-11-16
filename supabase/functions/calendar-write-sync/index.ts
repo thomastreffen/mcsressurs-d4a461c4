@@ -1,4 +1,5 @@
 import { syncOrganizer, organizerStore } from "../_shared/organizer-calendar.ts";
+import { storedDelegatedAvailable, selectedCalendarRecipients } from "../_shared/calendar-capability.ts";
 import { organizerEnabled } from "../_shared/m365-sender.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -922,7 +923,7 @@ Deno.serve(async (req) => {
     // eksisterende kalenderkoblinger, aldri opprettelse av nye hendelser.
     const updateOnly = body.update_only === true;
 
-    if (!["create", "update", "force_update", "delete", "reconcile", "create_missing_days"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
+    if (!["create", "update", "force_update", "delete", "reconcile", "create_missing_days", "read_capability"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
       return new Response(JSON.stringify({ error: "Missing action or event_id" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -972,6 +973,26 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Read-only UI capability: return BEFORE normalization, token refresh, logging or writes.
+    // Same company edit check as mutations; no secrets/token values leave the server.
+    if (action === "read_capability") {
+      const { data: links, error: linkError } = await supabaseAdmin.from("job_calendar_day_links")
+        .select("technician_id,outlook_event_id").eq("event_id", event_id);
+      if (linkError) throw linkError;
+      const technicians = await Promise.all((event.event_technicians ?? []).map(async (et: any) => {
+        const uid = et.technicians?.user_id;
+        const { data: account, error: accountError } = uid ? await supabaseAdmin.from("user_accounts")
+          .select("auth_user_id").eq("auth_user_id", uid).eq("is_active", true).maybeSingle() : { data: null, error: null };
+        if (accountError) throw accountError;
+        const user = account ? await supabaseAdmin.auth.admin.getUserById(uid) : null;
+        const meta = user?.data?.user?.user_metadata ?? {};
+        const delegated_available = !user?.error && storedDelegatedAvailable(meta);
+        return { technician_id: et.technician_id, delegated_available,
+          existing_link: !!et.calendar_event_id || (links ?? []).some((l: any) => l.technician_id === et.technician_id && !!l.outlook_event_id) };
+      }));
+      return new Response(JSON.stringify({ technicians }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Server-side overnight normalization: ensure end > start in DB
     const evStart = new Date(event.start_time);
     const evEnd = new Date(event.end_time);
@@ -987,12 +1008,12 @@ Deno.serve(async (req) => {
     const customer = event.customers || null;
 
     // Get technicians with their event_technicians row info
-    const techRows = (event.event_technicians ?? [])
+    const techRows = selectedCalendarRecipients((event.event_technicians ?? [])
       .filter((et: any) => et.technicians)
       .map((et: any) => ({
         eventTechRow: { id: et.id, calendar_event_id: et.calendar_event_id, start_at: et.start_at, end_at: et.end_at },
         tech: et.technicians,
-      }));
+      })), body.technician_ids, action === "create_missing_days" || (action === "update" && updateOnly));
 
     if (techRows.length === 0 && action === "delete" && event.technician_id) {
       const { data: fallbackTech } = await supabaseAdmin
