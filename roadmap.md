@@ -1,8 +1,9 @@
 # Montørens jobbinfo – 16. november
 
-- [ ] Read-only diagnose av Mats sin tildeling, RLS, Min dag, Mine og jobbinfo
-- [ ] Minimal lesefiks og separate montørsvar uten status-/dataendringer
-- [ ] Isolerte tilgangs-/visningstester og verifisering; ingen innlogging som Mats eller utsending
+- [x] Read-only diagnose: Mats aktiv tildeling/ansettelse/modultilgang; rejected filtreres ikke i Min dag/Mine; full description finnes, PC-forside manglet direkte jobbinfo
+- [x] Delt jobbinfo på Min dag og montørens prosjekthjem: egne arbeidsdager, separate montørsvar; job-access deployet, ingen status-/dataendringer
+- [x] 865 tester + build OK; jobbinfo visuelt mocktestet PC/mobil; ingen innlogging som Mats eller utsending
+- [ ] Mats faktiske appsession/valgt visning ikke verifisert uten godkjent innlogging; publisering av UI må utføres av eier
 
 # Kalenderpilot – trygg velger 16. november
 
