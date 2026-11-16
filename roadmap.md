@@ -1,8 +1,9 @@
 # Varslingshull JOB-000420 – 16. november
 
-- [ ] Les faktisk historikk og omfang; skill fravalg fra manglende audit
-- [ ] Rett stille oppgaveopprettelse, mottakerutvalg og feilkvitteringer uten utsending
-- [ ] Isolerte regresjoner, PC/mobil status, deploy og rapporter kontroll ved neste ordinære jobb
+- [x] 420: kun opprettet/tildelt i event_logs; ingen kanal/approval/notification/activity, intet fravalg bevist. 6/19 nyere planlagte ikke-testtitler uten mailaudit; fem har approval, historisk levering ukjent
+- [x] Stille task-gren sender nå info uten godkjenning; mottakerutvalg for ny tildeling, feilkvittering/fravalgsaudit og timestamp-deduplikering rettet
+- [x] Migrasjon 0097: service-only atomisk e-postclaim, akseptert/ukjent aldri replay; 906 tester og isolert PC/mobil, ingen utsending/produksjonsrader endret
+- [ ] UI må publiseres; kontroller neste ordinære jobb med egne kontoer og kvittering per mottaker, ikke resend historikk. Eksakt historisk 420-feil ikke bevist
 
 # Ett trykk til jobbinfo – 16. november
 

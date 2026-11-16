@@ -236,8 +236,12 @@ Deno.serve(async (req) => {
     const { data: jobBlocks } = await supabaseAdmin.from("schedule_blocks")
       .select("technician_id,start_at,end_at").eq("project_id", job.id).is("deleted_at", null);
     for (const tech of technicians || []) {
+      const assignment = assignments?.find((a: any) => a.technician_id === tech.id);
+      const recipientJob = { ...job, start_time: assignment?.start_at || job.start_time, end_time: assignment?.end_at || job.end_time };
+      const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes, recipientPlannedDays(jobBlocks ?? [], tech.id));
+      const sent = await sendJobEmail(supabaseAdmin, job.id, tech.id, { to: tech.email ?? "", subject, html }, { personalToken: msToken, useSystem });
       // In-app notification
-      if (tech.user_id) {
+      if (tech.user_id && !sent.duplicate) {
         try {
           await supabaseAdmin.from("notifications").insert({
             user_id: tech.user_id,
@@ -256,10 +260,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      const assignment = assignments?.find((a: any) => a.technician_id === tech.id);
-      const recipientJob = { ...job, start_time: assignment?.start_at || job.start_time, end_time: assignment?.end_at || job.end_time };
-      const { subject, body: html } = buildEmail(recipientJob, tech.name, displayNumber, body.changes, recipientPlannedDays(jobBlocks ?? [], tech.id));
-      const sent = await sendJobEmail(supabaseAdmin, job.id, tech.id, { to: tech.email ?? "", subject, html }, { personalToken: msToken, useSystem });
       if (!sent.duplicate) await recordDelivery(supabaseAdmin, { eventId: job.id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email, channel: "email", status: sent.ok ? "sent" : "failed", graphStatus: sent.status, reasonCode: sent.ok ? null : sent.reason, attemptedBy: callerUserId });
       results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status, ...(!sent.ok ? { reason: sent.reason } : {}) });
     }

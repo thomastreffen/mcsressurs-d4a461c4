@@ -457,7 +457,8 @@ Deno.serve(async (req) => {
         approvalToken = previousApproval.token;
       } else if (isTimeChange && previousApproval) {
         // Time change: update existing approval record with a new token
-        const newToken = crypto.randomUUID();
+        // Preserve the stable response locator; replays must not invalidate an accepted mail.
+        const newToken = previousApproval.token;
         const { error: updateErr } = await supabaseAdmin
           .from("job_approvals")
           .update({
