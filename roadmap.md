@@ -1,3 +1,12 @@
+# Frittstående Ressursplan-oppgave – 16. november
+
+- [x] Flow-sweep lest: Opprett/Overview, bestilling→service, redigering/tildeling, kalenderlesing, job-access, varsling, prosjektvelgere, delegated/app-only, database parent/blokk/tidsendring/fakturering; Mine gjøremål + MyTasks rettet til egen jobbinfo for task
+
+- [x] Migrasjon 0098 aktiv: standalone task tillatt, child/root/company-/blokkvalidering beholdt; phantom-forsøk har 0 events/assignments/blocks
+- [x] Invoker-RLS atomisk task-oppretting med tildeling/dager/idempotens; vedlegg før informasjonsvarsling, eksplisitt logget fravalg, task uavhengig av Tripletex master
+- [x] 923 tester bestått; isolert PC/mobil Oppgave→PDF→info uten approval verifisert; build OK; app-only OFF/dry_run ON
+- [ ] Ny opprettingsflyt må publiseres; Thomas tester neste ordinære oppgave med egen konto, kvittering og jobbinfo – ingen live tester/utsending utført
+
 # Varslingshull JOB-000420 – 16. november
 
 - [x] Flytsjekk: nye prosjekter/konvertering/henvendelse, drag/drop/resize, prosjektinnstillinger, resends, påminnelser og databasekø; resterende jobbvarslingshull rettet uten live utsending
