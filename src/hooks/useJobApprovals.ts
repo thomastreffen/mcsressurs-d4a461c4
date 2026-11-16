@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { approvalResponseStatus } from "@/lib/approval-response-status";
 
 export interface TechApproval {
   technicianUserId: string;
@@ -50,7 +51,7 @@ export function useJobApprovals(jobId: string | null | undefined) {
         data.map((d: any) => ({
           technicianUserId: d.technician_user_id,
           technicianName: nameMap.get(d.technician_user_id) || "Ukjent",
-          status: d.status,
+          status: approvalResponseStatus(d.status),
           respondedAt: d.responded_at,
           comment: d.comment,
           proposedStart: d.proposed_start,

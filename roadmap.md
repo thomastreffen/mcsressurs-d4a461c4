@@ -1,3 +1,13 @@
+# Montørens jobbinfo – 16. november
+
+- [x] Flow-sjekk: Min dag, Mine, kalender, PC/mobil jobbhjem, jobbinfo, akseptlenke, infomail/påminnelse, RLS/RPC og varseltrigger lest; rette visning av rejected/reschedule_requested i tre svarvisninger
+- [x] Egen tildeling viser jobbinfo også med planleggerrettighet; planlegger ser direkte events.description uten bestillingstilgang
+
+- [x] Read-only diagnose: Mats aktiv tildeling/ansettelse/modultilgang; rejected filtreres ikke i Min dag/Mine; full description finnes, PC-forside manglet direkte jobbinfo
+- [x] Delt jobbinfo på Min dag og montørens prosjekthjem: egne arbeidsdager, separate montørsvar; job-access deployet, ingen status-/dataendringer
+- [x] 868 tester + siste build OK; jobbinfo visuelt mocktestet PC/mobil; RLS testet isolert; ingen innlogging som Mats eller utsending
+- [ ] Mats faktiske appsession/valgt visning ikke verifisert uten godkjent innlogging; publisering av UI må utføres av eier
+
 # Kalenderpilot – trygg velger 16. november
 
 - [ ] Erstatt UUID-felt med jobbsøk, tildelt montør og faktiske arbeidsdager; eksplisitt dagbekreftelse

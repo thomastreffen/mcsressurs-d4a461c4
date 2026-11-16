@@ -54,6 +54,7 @@ export function useMyDay() {
         .from("user_accounts")
         .select("person_id")
         .eq("auth_user_id", user.id)
+        .eq("is_active", true)
         .maybeSingle();
 
       if (accountError) throw new Error("Kunne ikke hente brukerprofil");
@@ -96,10 +97,11 @@ export function useMyDay() {
 
       let projectMap: Record<string, any> = {};
       if (projectIds.length > 0) {
-        const { data: projects } = await sb
+        const { data: projects, error: projectError } = await sb
           .from("events")
           .select("id, title, customer, address, status, description, project_type, work_package_type")
           .in("id", projectIds);
+        if (projectError) throw projectError;
         for (const p of projects || []) {
           projectMap[p.id] = p;
         }

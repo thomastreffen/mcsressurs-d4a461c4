@@ -1,4 +1,5 @@
 import { MyPlanningTasks } from "@/components/planning/MyPlanningTasks";
+import { JobInformation } from "@/pages/JobInformationPage";
 import { HomeScreenHelp } from "@/components/pwa/HomeScreenHelp";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useState, useRef, useCallback } from "react";
@@ -483,14 +484,7 @@ function JobDetailView({
           </Card>
 
           {/* Description */}
-          {block.project_description && (
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Hva skal gjøres</p>
-                <p className="text-sm text-foreground whitespace-pre-line">{block.project_description}</p>
-              </CardContent>
-            </Card>
-          )}
+          {block.project_id ? <section className="py-4"><JobInformation eventId={block.project_id} embedded /></section> : block.project_description && <p className="text-sm whitespace-pre-wrap break-words">{block.project_description}</p>}
 
           {/* Checklists */}
           {block.project_id && (
@@ -742,7 +736,8 @@ export default function MyDayPage() {
                 <CardContent className="p-8 text-center">
                   <CalendarDays className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">Ingen planlagte oppdrag i dag.</p>
-                  <p className="text-xs text-muted-foreground mt-1">Sjekk Outlook-kalenderen for eventuelle endringer.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Se kommende oppdrag nedenfor eller åpne Mine oppdrag.</p>
+                  <Button variant="outline" asChild className="mt-3"><a href="/projects">Mine oppdrag</a></Button>
                   <Button variant="ghost" size="sm" className="mt-3 gap-1.5 text-xs" onClick={handleRefresh} disabled={refreshing}>
                     <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} /> Oppdater
                   </Button>

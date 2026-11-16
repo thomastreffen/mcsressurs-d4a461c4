@@ -5,6 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { attachmentLocation, jobInfoPath, jobInfoUrl, jobAttachmentLinks } from "../../supabase/functions/_shared/job-access-policy";
 import { buildOperationalJobBrief } from "../../supabase/functions/_shared/job-brief";
+import { assignmentInfo } from "../../supabase/functions/_shared/job-assignment-info";
 const id = "11111111-1111-4111-8111-111111111111";
 function fixture(opts: { loggedIn?: boolean; assigned?: boolean; visible?: boolean; tokenOwner?: boolean; cancelled?: boolean } = {}) {
   let handler: ((req: Request) => Promise<Response>) | undefined;
@@ -16,7 +17,7 @@ function fixture(opts: { loggedIn?: boolean; assigned?: boolean; visible?: boole
     return q;
   } };
   const source = readFileSync("supabase/functions/job-access/index.ts", "utf8").replace(/^import .*;\s*$/gm, "");
-  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, { Deno: { env: { get: (key: string) => key === "SUPABASE_URL" ? origin : "mock" }, serve: (fn: typeof handler) => handler = fn }, createClient: () => db, corsHeaders: {}, getApprovalCallerId: async () => opts.loggedIn === false ? null : "recipient", attachmentLocation, jobInfoPath, buildOperationalJobBrief, Response });
+  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, { Deno: { env: { get: (key: string) => key === "SUPABASE_URL" ? origin : "mock" }, serve: (fn: typeof handler) => handler = fn }, createClient: () => db, corsHeaders: {}, getApprovalCallerId: async () => opts.loggedIn === false ? null : "recipient", attachmentLocation, jobInfoPath, buildOperationalJobBrief, assignmentInfo, Response });
   return { signs: () => signs, call: async (body: unknown) => {
     if (!handler) throw new Error("Handler missing");
     const r = await handler(new Request("https://app.example.test", { method: "POST", body: JSON.stringify(body) }));

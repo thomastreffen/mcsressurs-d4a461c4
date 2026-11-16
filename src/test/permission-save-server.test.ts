@@ -35,5 +35,15 @@ it("own active same-company assignment can read without planner permission befor
  await db.exec(`INSERT INTO events(id,title,status,company_id,attachments) VALUES('${event}','Own job','requested','${company}','[]');INSERT INTO technicians VALUES('${user}','${user}');INSERT INTO event_technicians(event_id,technician_id) VALUES('${event}','${user}');`);
  expect((await db.query<any>(`SELECT read_my_assigned_job('${event}') result`)).rows[0].result.event.title).toBe("Own job");
  await db.exec("UPDATE events SET status='scheduled'");expect((await db.query<any>(`SELECT read_my_assigned_job('${event}') result`)).rows[0].result.event.status).toBe("scheduled");
+ await db.exec("UPDATE events SET status='rejected', description='MAJ1/MAJ2\n80A → 160A\nKontakt Joachim'");
+ await db.exec("ALTER TABLE events ENABLE ROW LEVEL SECURITY; GRANT SELECT ON events TO authenticated; GRANT USAGE ON SCHEMA auth TO authenticated; CREATE POLICY deny_direct ON events FOR SELECT TO authenticated USING(false); SET ROLE authenticated");
+ expect((await db.query("SELECT id FROM events")).rows).toEqual([]);
+ expect((await db.query<any>(`SELECT read_my_assigned_job('${event}') result`)).rows[0].result.event.description).toBe("MAJ1/MAJ2\n80A → 160A\nKontakt Joachim");
+ await db.exec("RESET ROLE");
+ await db.exec("UPDATE user_accounts SET is_active=false");
+ expect((await db.query<any>(`SELECT read_my_assigned_job('${event}') result`)).rows[0].result).toBeNull();
+ await db.exec("UPDATE user_accounts SET is_active=true");
  await db.exec(`UPDATE events SET company_id='00000000-0000-0000-0000-000000000099'`);expect((await db.query<any>(`SELECT read_my_assigned_job('${event}') result`)).rows[0].result).toBeNull();
+ await db.exec(`UPDATE events SET company_id='${company}'; DELETE FROM event_technicians`);
+ expect((await db.query<any>(`SELECT read_my_assigned_job('${event}') result`)).rows[0].result).toBeNull();
 });
