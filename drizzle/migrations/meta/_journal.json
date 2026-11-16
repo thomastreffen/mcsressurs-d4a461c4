@@ -687,6 +687,13 @@
       "when": 1794826360233,
       "tag": "0097_job_email_attempt_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1794828042537,
+      "tag": "0098_standalone_resource_tasks",
+      "breakpoints": true
     }
   ]
 }

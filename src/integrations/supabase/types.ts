@@ -18895,6 +18895,20 @@ export type Database = {
         }
         Returns: string
       }
+      create_standalone_resource_task: {
+        Args: {
+          p_address?: string
+          p_client_request_id: string
+          p_company_id: string
+          p_customer?: string
+          p_dates: Json
+          p_description?: string
+          p_notify?: boolean
+          p_technician_ids: string[]
+          p_title: string
+        }
+        Returns: Json
+      }
       create_work_visit_on_project: {
         Args: {
           p_client_request_id: string
