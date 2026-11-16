@@ -29,6 +29,7 @@ import { useActivityLog } from "@/hooks/useActivityLog";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { ProjectAccessDrawer } from "@/components/project/ProjectAccessDrawer";
+import { JobInformation } from "@/pages/JobInformationPage";
 import { ChangeOrderTab } from "@/components/change-orders/ChangeOrderTab";
 import { Loader2 } from "lucide-react";
 import { fetchFinancialProjectNumbers } from "@/lib/project-reference";
@@ -185,6 +186,7 @@ export default function JobDetail() {
 
         {/* Tab content */}
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 pb-28 md:pb-8">
+          {activeTab === "home" && !hasPermission("resource_plan.plan_resources") && <section className="mb-6"><JobInformation eventId={id} embedded /></section>}
           {activeTab === "home" && isMobile && (
             <div className="mb-4"><OrderBriefingSection eventId={job.id} compact /></div>
           )}

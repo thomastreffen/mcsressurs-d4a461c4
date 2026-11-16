@@ -3,6 +3,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { attachmentLocation, jobInfoPath } from "../_shared/job-access-policy.ts";
 import { buildOperationalJobBrief } from "../_shared/job-brief.ts";
+import { assignmentInfo } from "../_shared/job-assignment-info.ts";
 
 // Read-only. An approval token locates a job only for its authenticated recipient.
 // Files always recheck caller event RLS and exact attachment membership, never arbitrary paths.
@@ -59,6 +60,13 @@ Deno.serve(async req => {
       if (signError || !data?.signedUrl) return json({ error: "Kunne ikke åpne vedlegget. Prøv igjen eller kontakt planlegger." }, 404);
       return json({ url: data.signedUrl, expires_in: 300 });
     }
-    return json({ brief: buildOperationalJobBrief({ event, orderSummary: order?.summary as Record<string, unknown> | null, orderValues: values }), status: event.status, start: assignment?.start_at ?? event.start_time, end: assignment?.end_at ?? event.end_time, files: files.map(f => ({ key: f.key, name: f.name, available: !!f.location })) });
+    // Exact job already authorized by live assignment/employment or caller event RLS.
+    // Return only assigned names/statuses, never approval tokens, comments or HR data.
+    const [{ data: assigned }, { data: approvals }, { data: blocks }] = await Promise.all([
+      admin.from("event_technicians").select("technician_id,technicians(name,user_id)").eq("event_id", id),
+      admin.from("job_approvals").select("technician_user_id,status").eq("job_id", id),
+      caller.from("schedule_blocks").select("technician_id,start_at,end_at").eq("project_id", id).eq("source", "manual").is("deleted_at", null),
+    ]);
+    return json({ brief: buildOperationalJobBrief({ event, orderSummary: order?.summary as Record<string, unknown> | null, orderValues: values }), status: event.status, start: assignment?.start_at ?? event.start_time, end: assignment?.end_at ?? event.end_time, ...assignmentInfo(uid, (assigned ?? []) as any, approvals ?? [], blocks ?? []), files: files.map(f => ({ key: f.key, name: f.name, available: !!f.location })) });
   } catch { return json({ error: "Kunne ikke hente jobbinfo" }, 500); }
 });
