@@ -2,149 +2,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { isTrustedOutlookBlock } from "../_shared/outlook-match-policy.ts";
 
-type DeleteJob = {
-  id: string;
-  event_id: string;
-  technician_id: string;
-  technician_name: string | null;
-  mailbox: string | null;
-  candidate_event_ids: unknown;
-  start_at: string | null;
-  end_at: string | null;
-  attempts: number;
-};
+import { processUnplanDeletes, type DeleteJob } from "../_shared/unplan-calendar-delete.ts";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
-  status,
-  headers: { ...corsHeaders, "Content-Type": "application/json" },
+  status, headers: { ...corsHeaders, "Content-Type": "application/json" },
 });
 
-async function getAppToken(): Promise<string | null> {
-  const tenantId = Deno.env.get("AZURE_TENANT_ID");
-  const clientId = Deno.env.get("AZURE_CLIENT_ID");
-  const clientSecret = Deno.env.get("AZURE_CLIENT_SECRET");
-  if (!tenantId || !clientId || !clientSecret) return null;
-
-  const response = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope: "https://graph.microsoft.com/.default",
-    }),
-  });
-  if (!response.ok) return null;
-  const payload = await response.json();
-  return typeof payload.access_token === "string" ? payload.access_token : null;
-}
-
-function candidateIds(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value.filter((item): item is string => typeof item === "string" && item.length > 0 && !item.startsWith("pending:")))];
-}
-
-async function deleteGraphEvent(token: string, mailbox: string, eventId: string) {
-  const response = await fetch(
-    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox)}/events/${encodeURIComponent(eventId)}`,
-    { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
-  );
-  return { ok: response.ok, missing: response.status === 404, status: response.status };
-}
-
-async function searchAndDelete(
-  token: string,
-  mailbox: string,
-  job: DeleteJob,
-): Promise<{ ok: boolean; attempts: Array<{ source: string; event_id: string; status: number }> }> {
-  const attempts: Array<{ source: string; event_id: string; status: number }> = [];
-  for (const eventId of candidateIds(job.candidate_event_ids)) {
-    const result = await deleteGraphEvent(token, mailbox, eventId);
-    attempts.push({ source: "stored_id", event_id: eventId, status: result.status });
-    if (result.ok) return { ok: true, attempts };
-  }
-
-  if (!job.start_at || !job.end_at) return { ok: false, attempts };
-  const start = new Date(new Date(job.start_at).getTime() - 48 * 60 * 60 * 1000).toISOString();
-  const end = new Date(new Date(job.end_at).getTime() + 48 * 60 * 60 * 1000).toISOString();
-  const params = new URLSearchParams({
-    startDateTime: start,
-    endDateTime: end,
-    "$top": "100",
-    "$select": "id,body,categories",
-  });
-  const lookup = await fetch(
-    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox)}/calendarView?${params.toString()}`,
-    { headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="html"' } },
-  );
-  if (!lookup.ok) {
-    attempts.push({ source: "calendar_view", event_id: "lookup", status: lookup.status });
-    return { ok: false, attempts };
-  }
-
-  const payload = await lookup.json();
-  const matches = (payload.value ?? []).filter((entry: { id?: string; body?: { content?: string }; categories?: string[] }) => {
-    const body = entry.body?.content ?? "";
-    return body.includes(`MCS_EVENT_ID:${job.event_id}`) ||
-      (entry.categories ?? []).includes("MCS") && body.includes(`MCS_TECHNICIAN_ID:${job.technician_id}`);
-  });
-  for (const match of matches) {
-    if (!match.id) continue;
-    const result = await deleteGraphEvent(token, mailbox, match.id);
-    attempts.push({ source: "calendar_view", event_id: match.id, status: result.status });
-    if (result.ok) return { ok: true, attempts };
-  }
-  return { ok: false, attempts };
-}
-
 async function processJobs(db: any, jobs: DeleteJob[]) {
-  const token = await getAppToken();
-  const results: Array<Record<string, unknown>> = [];
-  for (const job of jobs) {
-    if (!job.mailbox) {
-      const error = "Montøren mangler e-postadresse";
-      await db.from("calendar_delete_retry_queue").update({
-        status: "failed", attempts: job.attempts + 1, last_attempt_at: new Date().toISOString(),
-        next_attempt_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), last_error: error,
-      }).eq("id", job.id);
-      results.push({ technician_id: job.technician_id, technician_name: job.technician_name, status: "queued", error });
-      continue;
-    }
-    if (!token) {
-      const error = "Kunne ikke hente Microsoft-token";
-      await db.from("calendar_delete_retry_queue").update({
-        status: "failed", attempts: job.attempts + 1, last_attempt_at: new Date().toISOString(),
-        next_attempt_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), last_error: error,
-      }).eq("id", job.id);
-      results.push({ technician_id: job.technician_id, technician_name: job.technician_name, status: "queued", error });
-      continue;
-    }
-
-    await db.from("calendar_delete_retry_queue").update({ status: "processing" }).eq("id", job.id);
-    const deletion = await searchAndDelete(token, job.mailbox, job);
-    if (deletion.ok) {
-      await Promise.all([
-        db.from("calendar_delete_retry_queue").update({
-          status: "resolved", attempts: job.attempts + 1, last_attempt_at: new Date().toISOString(),
-          resolved_at: new Date().toISOString(), last_error: null,
-        }).eq("id", job.id),
-        db.from("job_calendar_links").update({
-          sync_status: "unlinked", calendar_event_id: null, calendar_event_url: null, last_error: null,
-        }).eq("job_id", job.event_id).eq("technician_id", job.technician_id),
-      ]);
-      results.push({ technician_id: job.technician_id, technician_name: job.technician_name, status: "deleted", attempts: deletion.attempts });
-    } else {
-      const error = `Outlook-sletting feilet (${deletion.attempts.at(-1)?.status ?? "ukjent"})`;
-      const delayMinutes = Math.min(360, 5 * 2 ** Math.min(job.attempts, 6));
-      await db.from("calendar_delete_retry_queue").update({
-        status: "failed", attempts: job.attempts + 1, last_attempt_at: new Date().toISOString(),
-        next_attempt_at: new Date(Date.now() + delayMinutes * 60 * 1000).toISOString(), last_error: error,
-      }).eq("id", job.id);
-      results.push({ technician_id: job.technician_id, technician_name: job.technician_name, status: "queued", error, attempts: deletion.attempts });
-    }
-  }
-  return results;
+  return processUnplanDeletes(db, jobs, async uid => {
+    const { data, error } = await db.auth.admin.getUserById(uid);
+    const meta = data?.user?.user_metadata;
+    if (error || typeof meta?.ms_access_token !== "string" || !meta.ms_expires_at ||
+      new Date(meta.ms_expires_at).getTime() <= Date.now() + 60000) return null;
+    return meta.ms_access_token;
+  });
 }
 
 Deno.serve(async (req) => {
@@ -181,8 +52,16 @@ Deno.serve(async (req) => {
       return error ? json({ error: error.message }, 500) : json(data);
     }
     if (action === "retry_outlook") {
+      // Old queued operations must never start writing merely because this fix is deployed.
+      if (isInternalCall || body.confirm_calendar_delete !== true || typeof body.event_id !== "string") {
+        return json({ blocked: true, reason: "explicit_event_delete_confirmation_required", processed: 0 });
+      }
+      const { data: event } = await db.from("events").select("company_id").eq("id", body.event_id).maybeSingle();
+      const { data: scoped } = await db.rpc("has_company_access", { _uid: authData.user?.id,
+        _company: event?.company_id, _module: "resource_plan", _level: "edit" });
+      if (!scoped) return json({ error: "Ingen tilgang" }, 403);
       const { data: jobs, error } = await db.from("calendar_delete_retry_queue").select("*")
-        .in("status", ["pending", "failed"]).lte("next_attempt_at", new Date().toISOString()).order("next_attempt_at").limit(50);
+        .eq("event_id", body.event_id).in("status", ["pending", "failed"]).lte("next_attempt_at", new Date().toISOString()).order("next_attempt_at").limit(50);
       if (error) return json({ error: error.message }, 500);
       const outlook = await processJobs(db, (jobs ?? []) as DeleteJob[]);
       return json({ status: "success", processed: outlook.length, outlook });
