@@ -1,4 +1,5 @@
 import { RecipientDeliveryStatus } from "@/components/RecipientDeliveryStatus";
+import { assertNotificationResult } from "@/lib/job-notification-result";
 import { DayCoverageStatus } from "@/components/DayCoverageStatus";
 import { useJobCalendarCapability } from "@/hooks/useJobCalendarCapability";
 import { canUpdateDelegated } from "@/lib/job-calendar-presentation";
@@ -930,6 +931,7 @@ export function EventDrawer({
           reminder_config: reminderConfig.profile === "custom" ? reminderConfig.custom : null,
           response_required: reminderConfig.responseRequired,
           time_change: timeChanged,
+          technician_ids: timeChanged ? techIds : toAdd,
           // Inkluder info-endringer i samme e-post når kombinert flyt
           info_changes: combinedFlow
             ? infoOnlyChanges.map((c) => ({ label: c.label, oldValue: c.oldValue, newValue: c.newValue }))
@@ -939,13 +941,14 @@ export function EventDrawer({
       if (approvalError || approvalResult?.error) {
         throw new Error(approvalResult?.error || `Montørbyttet ble lagret, men godkjenningsforespørselen feilet: ${approvalError?.message}`);
       }
+      assertNotificationResult({ data: approvalResult, error: approvalError });
     }
 
     // Send info-varsel KUN når det ikke er noen approval-flyt (ellers håndteres alt
     // av create-approval over for å unngå dobbeltvarsling).
     if (shouldSendInfoOnly) {
       try {
-        await supabase.functions.invoke("notify-event-changes", {
+        const notified = await invokeWithSession("notify-event-changes", {
           body: {
             job_id: editEvent.id,
             technician_ids: remainingTechIds,
@@ -957,8 +960,10 @@ export function EventDrawer({
             })),
           },
         });
+        assertNotificationResult(notified);
       } catch (err) {
         console.error("[EventDrawer] notify-event-changes failed", err);
+        throw err;
       }
     }
 
@@ -1034,14 +1039,14 @@ export function EventDrawer({
       if (attachmentUpdateError) throw new Error(`Kunne ikke lagre vedleggslisten: ${attachmentUpdateError.message}`);
     }
 
-    if (sendNotifications) {
+    {
       logEntries.push({
         event_id: editEvent.id,
-        action_type: "notifications_sent",
+        action_type: sendNotifications ? "notifications_requested" : "notifications_skipped",
         performed_by: userId,
         performer_name: userName,
-        change_summary: `varslet ${techIds.length} montør${techIds.length === 1 ? "" : "er"} om endringene`,
-        metadata: { technician_ids: techIds },
+        change_summary: sendNotifications ? "Varsling behandlet – se Microsoft-kvittering per montør" : "Lagret uten varsling – ingen e-post bestilt",
+        metadata: { technician_ids: techIds, notification_choice: sendNotifications ? "send" : "without_notification" },
       });
     }
 
@@ -1063,8 +1068,8 @@ export function EventDrawer({
     }
 
     setDeliveryStatus({
-      notifiedAt: sendNotifications ? new Date().toISOString() : null,
-      notifiedNames: sendNotifications ? techIds.map((id) => techNameMap.get(id) || "Ukjent") : [],
+      notifiedAt: null,
+      notifiedNames: [],
       syncedAt: updateOutlook ? new Date().toISOString() : null,
       syncedCount: updateOutlook ? techIds.length : 0,
       failedCount: 0,
@@ -1309,7 +1314,7 @@ export function EventDrawer({
               metadata: { added_names: addedNames, date: r.date },
             } as any);
 
-            const { error: approvalErr } = await invokeWithSession("create-approval", {
+            const { data: approvalData, error: approvalErr } = await invokeWithSession("create-approval", {
               body: {
                 job_id: r.event_id,
                 technician_ids: techIds,
@@ -1324,6 +1329,8 @@ export function EventDrawer({
                 description: approvalErr.message,
               });
             }
+            try { assertNotificationResult({ data: approvalData, error: approvalErr }); }
+            catch (error) { toast.warning("Arbeidsbesøk lagret, men varsling er ikke komplett", { description: error instanceof Error ? error.message : "Se kanalstatus" }); }
           }
         }
 
@@ -1557,16 +1564,18 @@ export function EventDrawer({
 
             if (isTask) {
               await supabase.from("events").update({ status: "scheduled" } as any).eq("id", createdId);
-              syncCreate(createdId);
-            } else {
-              await invokeWithSession("create-approval", {
+            }
+            {
+              const notified = await invokeWithSession("create-approval", {
                 body: {
                   job_id: createdId,
                   reminder_profile: reminderConfig.profile,
                   reminder_config: reminderConfig.profile === "custom" ? reminderConfig.custom : null,
-                  response_required: reminderConfig.responseRequired,
+                  response_required: isTask ? false : reminderConfig.responseRequired,
                 },
               });
+              try { assertNotificationResult(notified); }
+              catch (error) { toast.warning("Oppdrag lagret, men varsling er ikke komplett", { description: error instanceof Error ? error.message : "Se kanalstatus" }); }
               syncCreate(createdId);
             }
           }

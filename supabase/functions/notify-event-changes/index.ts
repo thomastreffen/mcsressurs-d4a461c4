@@ -1,4 +1,5 @@
 import { sendMail, systemSenderEnabled } from "../_shared/m365-sender.ts";
+import { sendJobEmail } from "../_shared/job-email-attempt.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
 import { notifyFingerprint, shouldSendInfoUpdate, NOTIFY_DEDUP_WINDOW_MINUTES } from "../_shared/job-save-flow.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
