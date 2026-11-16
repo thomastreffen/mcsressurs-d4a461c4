@@ -713,9 +713,18 @@ Deno.serve(async (req) => {
             );
             techLog(`Delete: ${delRes.status} ${delRes.ok || delRes.status === 404 ? "OK" : "FAILED"}`);
             await delRes.text();
+            if (!delRes.ok && delRes.status !== 404) {
+              results.push({ technician_id: link.technician_id, name: tech?.name, status: "failed", code: delRes.status });
+              continue;
+            }
           } else {
             techLog("No token, cannot delete Outlook event");
+            results.push({ technician_id: link.technician_id, name: tech?.name, status: "failed", reason: "delegated_token_unavailable" });
+            continue;
           }
+        } else if (link.calendar_event_id) {
+          results.push({ technician_id: link.technician_id, status: "failed", reason: "recipient_identity_unresolved" });
+          continue;
         }
 
         await supabaseAdmin.from("job_calendar_links").update({
@@ -736,8 +745,8 @@ Deno.serve(async (req) => {
         operation_id: operationId,
         action: "unlink",
         technicians_count: results.length,
-        successes_count: results.length,
-        failures_count: 0,
+        successes_count: results.filter(r => r.status === "unlinked").length,
+        failures_count: results.filter(r => r.status !== "unlinked").length,
         started_at: startedAt,
         finished_at: new Date().toISOString(),
         summary: { results },
@@ -747,7 +756,7 @@ Deno.serve(async (req) => {
         event_id: job_id,
         action_type: "outlook_calendar_unlinked",
         performed_by: authUser.id,
-        change_summary: `Outlook-hendelser fjernet for ${results.length} tekniker(e)`,
+        change_summary: `Outlook-fjerning bekreftet for ${results.filter(r => r.status === "unlinked").length}; ${results.filter(r => r.status !== "unlinked").length} krever avstemming`,
       });
 
       return respond({ results, logs });
