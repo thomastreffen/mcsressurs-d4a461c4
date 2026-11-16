@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { approvalResponseStatus } from "@/lib/approval-response-status";
 
 export interface ApprovalSummary {
   total: number;
@@ -56,11 +57,13 @@ export function useApprovalSummaries(eventIds: string[]) {
           eventStartTime: null,
         });
       }
-      const s = map.get(jobId)!;
+      const s = map.get(jobId);
+      if (!s) continue;
+      const status = approvalResponseStatus(row.status);
       s.total++;
-      if (row.status === "approved") s.approved++;
-      else if (row.status === "declined") s.declined++;
-      else if (row.status === "change_request") s.changeRequest++;
+      if (status === "approved") s.approved++;
+      else if (status === "declined") s.declined++;
+      else if (status === "change_request") s.changeRequest++;
       else s.pending++;
       if ((row as any).reminders_paused) s.hasPaused = true;
       // Use highest reminder_count across approvals

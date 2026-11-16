@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { approvalResponseStatus } from "@/lib/approval-response-status";
 import { JOB_STATUS_CONFIG, type JobStatus, type StatusAxis } from "@/lib/job-status";
 
 interface JobStatusBadgeProps {
@@ -48,7 +49,7 @@ export function JobStatusGroup({
   // Sort order: declined > change_request > pending > approved
   const statusPriority: Record<string, number> = { declined: 0, change_request: 1, pending: 2, approved: 3 };
   const sorted = acceptanceStatuses
-    ? [...acceptanceStatuses].sort((a, b) => (statusPriority[a.status] ?? 2) - (statusPriority[b.status] ?? 2))
+    ? acceptanceStatuses.map(a => ({ ...a, status: approvalResponseStatus(a.status) })).sort((a, b) => (statusPriority[a.status] ?? 2) - (statusPriority[b.status] ?? 2))
     : [];
 
   const isSingleTech = sorted.length <= 1;

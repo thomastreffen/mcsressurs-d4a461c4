@@ -46,6 +46,7 @@ export default function JobDetail() {
   const { activeCompany } = useCompanyContext();
   const canEditPlan = hasPermission("projects.edit_plan");
   const canDeleteAttachment = hasPermission("projects.delete_attachment");
+  const isOwnAssignment = job?.technicianIds.length ? false : false;
 
   const activeTab = searchParams.get("tab") || "home";
   const setActiveTab = (tab: string) => {
