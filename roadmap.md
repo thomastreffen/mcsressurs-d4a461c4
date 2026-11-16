@@ -1,3 +1,9 @@
+# Kalenderstatus fra jobbskuff – 16. november
+
+- [ ] Skill historisk personlig feil, aldri forsøkt kø, faktisk Graph-feil og akseptert e-post
+- [ ] Trygge kalenderknapper fra lesebekreftet personlig kobling; ingen dispatcher/full resend
+- [ ] Auditvisning for utgått/ukjent mottaker uten å endre kø; isolerte tester og PC/mobil
+
 # Montørens jobbinfo – 16. november
 
 - [x] Flow-sjekk: Min dag, Mine, kalender, PC/mobil jobbhjem, jobbinfo, akseptlenke, infomail/påminnelse, RLS/RPC og varseltrigger lest; rette visning av rejected/reschedule_requested i tre svarvisninger

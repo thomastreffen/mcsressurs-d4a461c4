@@ -922,7 +922,7 @@ Deno.serve(async (req) => {
     // eksisterende kalenderkoblinger, aldri opprettelse av nye hendelser.
     const updateOnly = body.update_only === true;
 
-    if (!["create", "update", "force_update", "delete", "reconcile", "create_missing_days"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
+    if (!["create", "update", "force_update", "delete", "reconcile", "create_missing_days", "read_capability"].includes(action) || typeof event_id !== "string" || !/^[0-9a-f-]{36}$/i.test(event_id)) {
       return new Response(JSON.stringify({ error: "Missing action or event_id" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -970,6 +970,26 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    }
+
+    // Read-only UI capability: return BEFORE normalization, token refresh, logging or writes.
+    // Same company edit check as mutations; no secrets/token values leave the server.
+    if (action === "read_capability") {
+      const { data: links, error: linkError } = await supabaseAdmin.from("job_calendar_day_links")
+        .select("technician_id,outlook_event_id").eq("event_id", event_id);
+      if (linkError) throw linkError;
+      const technicians = await Promise.all((event.event_technicians ?? []).map(async (et: any) => {
+        const uid = et.technicians?.user_id;
+        const { data: account, error: accountError } = uid ? await supabaseAdmin.from("user_accounts")
+          .select("auth_user_id").eq("auth_user_id", uid).eq("is_active", true).maybeSingle() : { data: null, error: null };
+        if (accountError) throw accountError;
+        const user = account ? await supabaseAdmin.auth.admin.getUserById(uid) : null;
+        const meta = user?.data?.user?.user_metadata ?? {};
+        const delegated_available = !!meta.ms_access_token && (!!meta.ms_refresh_token || Date.parse(meta.ms_expires_at ?? "") > Date.now() + 300_000);
+        return { technician_id: et.technician_id, delegated_available,
+          existing_link: !!et.calendar_event_id || (links ?? []).some((l: any) => l.technician_id === et.technician_id && !!l.outlook_event_id) };
+      }));
+      return new Response(JSON.stringify({ technicians }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Server-side overnight normalization: ensure end > start in DB
