@@ -4,14 +4,14 @@ import vm from "node:vm";
 import ts from "typescript";
 import { expect, it } from "vitest";
 
-async function dispatch(emailSent: boolean) {
+async function dispatch(emailSent: boolean, reasonCode?: string) {
   let handler: (req: Request) => Promise<Response> = async () => new Response();
   const updates: any[] = [];
   const job = { id: "queue", technician_id: "tech", operation: "create", revision: 1, attempt_count: 0, status: "pending" };
   const db = {
     rpc: async () => ({ data: true }),
     functions: { invoke: async (name: string) => ({ data: { results: [name === "create-approval"
-      ? { techId: "tech", autoApproved: true, emailSent }
+      ? { techId: "tech", autoApproved: true, emailSent, reasonCode }
       : { techId: "tech", status: "created", state: "accepted_by_graph" }] } }) },
     from(table: string) {
       const data = () => table === "events" ? { company_id: "company" }
@@ -40,4 +40,7 @@ it("autoapproval with calendar success but no email acceptance is not accepted d
 });
 it("autoapproval with actual email and calendar acceptance is accepted dispatch", async () => {
   expect(await dispatch(true)).toBe("accepted");
+});
+it("an unknown self-assignment mail outcome is held, not marked retryable failed", async () => {
+  expect(await dispatch(false, "unknown_graph_outcome")).toBe("uncertain");
 });

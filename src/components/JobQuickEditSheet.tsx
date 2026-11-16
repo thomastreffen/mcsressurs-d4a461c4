@@ -172,7 +172,7 @@ export function JobQuickEditSheet({
         const notified = await invokeWithSession("create-approval", {
           body: { job_id: job.id, technician_ids: timeChanged ? techIds : toAdd, time_change: timeChanged },
         });
-        if (notified.error || notified.data?.results?.some((r: any) => !r.emailSent)) toast.warning("Lagret, men varsling er ikke komplett – se status per montør");
+        if (notified.error || notified.data?.error || !notified.data?.results?.length || notified.data.results.some((r: any) => !r.emailSent)) toast.warning("Lagret, men varsling er ikke komplett – se status per montør");
       }
 
       toast.success("Oppdatering lagret", {
