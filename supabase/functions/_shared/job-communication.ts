@@ -1,12 +1,10 @@
 // Pure operational communication shared by mail and both calendar adapters.
-import { jobInfoUrl } from "./job-access-policy.ts";
+import { jobInfoUrl, jobInfoAction } from "./job-access-policy.ts";
 import { buildOperationalJobBrief, escapeHtml } from "./job-brief.ts";
 import { formatJobSchedule } from "./job-time.ts";
 import { formatPlannedDays } from "./multi-day-calendar.ts";
 
-export function jobInfoAction(id: string): string {
-  return `<p style="margin:16px 0;"><a href="${jobInfoUrl(id)}" style="display:block;padding:14px 18px;min-height:20px;background:#2563b0;color:#fff;text-align:center;text-decoration:none;font-size:16px;font-weight:600;border-radius:6px;">Åpne jobbinfo</a></p>`;
-}
+export { jobInfoAction };
 
 export function recipientPlannedDays(blocks: { technician_id: string; start_at: string; end_at: string }[], technicianId: string): string[] {
   return formatPlannedDays(blocks.filter(b => b.technician_id === technicianId));

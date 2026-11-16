@@ -8,7 +8,8 @@ export function assignmentInfo(
   const ownIds = new Set(assigned.filter(a => a.technicians?.user_id === uid).map(a => a.technician_id));
   const days = new Map<string, { start: string; end: string }>();
   for (const b of blocks) {
-    if (ownIds.has(b.technician_id)) days.set(`${b.start_at}|${b.end_at}`, { start: b.start_at, end: b.end_at });
+    // Authorized planner has no own assignment: show the live assigned team's days.
+    if (ownIds.has(b.technician_id) || (ownIds.size === 0 && assigned.some(a => a.technician_id === b.technician_id))) days.set(`${b.start_at}|${b.end_at}`, { start: b.start_at, end: b.end_at });
   }
   return {
     planned_days: [...days.values()].sort((a, b) => a.start.localeCompare(b.start)),

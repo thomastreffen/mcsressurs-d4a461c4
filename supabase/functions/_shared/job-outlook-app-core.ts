@@ -1,4 +1,5 @@
-// Pure, import-free core for CENTRAL app-only project-job -> Outlook calendar writes.
+import { jobCalendarHtml } from "./job-communication.ts";
+// Pure core for CENTRAL app-only project-job -> Outlook calendar writes.
 // No network, no DB. Imported by the edge function (Deno) and vitest (Node).
 // Contract: Hub is the only source of project jobs; Outlook never creates jobs.
 // No attendees => no invitations; the event is written straight into each person's calendar.
@@ -14,6 +15,11 @@ export type HubJob = {
   end_at: string | null;
   status: string | null;
   deleted_at: string | null;
+  job_number?: string | null;
+  internal_number?: string | null;
+  description?: string | null;
+  site_contact_name?: string | null;
+  site_contact_phone?: string | null;
 };
 
 export type JobLink = {
@@ -30,7 +36,7 @@ export type JobOutbound =
 const CANCELLED = new Set(["cancelled", "archived", "rejected"]);
 
 export function jobFingerprint(j: HubJob, technicianId: string): string {
-  const s = [j.title, j.address ?? "", j.start_at ?? "", j.end_at ?? "", j.status ?? "", j.deleted_at ? "del" : "", technicianId].join("\u241F");
+  const s = [j.title, j.address ?? "", j.start_at ?? "", j.end_at ?? "", j.status ?? "", j.deleted_at ? "del" : "", technicianId, j.job_number ?? j.internal_number ?? "", j.description ?? "", j.site_contact_name ?? "", j.site_contact_phone ?? ""].join("\u241F");
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return "j1-" + (h >>> 0).toString(16);
@@ -57,7 +63,7 @@ export function buildJobPayload(j: HubJob, technicianId: string, key: string): R
     body: {
       contentType: "HTML",
       // Hidden marker: outlook-schedule-sync skips MCS-created events, so this never round-trips into a job.
-      content: `<p>Planlagt i MCS Hub. Åpne jobben i Hub for detaljer.</p><!-- MCS_SOURCE:true MCS_EVENT_ID:${j.id} MCS_TECHNICIAN_ID:${technicianId} -->`,
+      content: `${jobCalendarHtml(j, j.start_at ?? "", j.end_at ?? "")}<!-- MCS_SOURCE:true MCS_EVENT_ID:${j.id} MCS_TECHNICIAN_ID:${technicianId} -->`,
     },
     start: { dateTime: j.start_at, timeZone: "UTC" },
     end: { dateTime: j.end_at, timeZone: "UTC" },
