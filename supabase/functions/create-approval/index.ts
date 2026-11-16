@@ -4,7 +4,7 @@ import { resolveJobAddress } from "../_shared/job-address.ts";
 import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
-import { jobInfoAction, recipientPlannedDays } from "../_shared/job-communication.ts";
+import { jobInfoAction, recipientPlannedDays, plannedDaysHtml } from "../_shared/job-communication.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
