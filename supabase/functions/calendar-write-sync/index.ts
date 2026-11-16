@@ -7,7 +7,7 @@ import { resolveJobAddress } from "../_shared/job-address.ts";
 import { shouldQueueFallback } from "../_shared/job-outlook-app-core.ts";
 import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
 import { planCalendarUpdate } from "../_shared/job-save-flow.ts";
-import { jobInfoUrl } from "../_shared/job-access-policy.ts";
+import { jobCalendarHtml } from "../_shared/job-communication.ts";
 import { syncTechnicianDays, type DayStore, type DayGraph } from "../_shared/multi-day-sync.ts";
 import { dayOperationKey, aggregateTechDayDelivery, type DayPlanItem, type DayLinkRow } from "../_shared/multi-day-calendar.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -232,63 +232,11 @@ function buildGraphBody(
     ? subjectParts.join(" – ")
     : event.title || "Oppdrag";
 
-  const timeDisplay = formatTimeRange(normalizedStart, normalizedEnd);
-  const addressDisplay = event.address || "Ikke angitt";
-  const mapsUrl = event.address ? mapsLink(event.address) : "";
-
   const startD = new Date(normalizedStart);
   const endD = new Date(normalizedEnd);
-  const isOvernight = startD.toDateString() !== endD.toDateString();
-
-  let html = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a1a;">`;
-
-  html += `<p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Oppdrag</p>`;
-  html += `<p style="margin: 0 0 ${event.assignment_notes ? "8" : "16"}px; font-size: 15px;">${event.title || typeLabel}${event.description ? `<br/><span style="color: #6b7280;">${event.description}</span>` : ""}${isOvernight ? '<br/><span style="color: #7c3aed;">🌙 Nattoppdrag</span>' : ""}</p>`;
-
-  if (assignment?.techName) {
-    html += `<p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Tildelt montør</p>`;
-    html += `<p style="margin: 0 0 16px; font-size: 15px; color: #1a1a1a;">${assignment.techName}</p>`;
-  }
-
-  if (event.assignment_notes) {
-    html += `<p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Instruks for denne tildelingen</p>`;
-    html += `<p style="margin: 0 0 16px; font-size: 15px; color: #1a1a1a;">${event.assignment_notes}</p>`;
-  }
-
-  html += `<p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Tidspunkt</p>`;
-  html += `<p style="margin: 0 0 16px; font-size: 15px; white-space: pre-line;">${timeDisplay}</p>`;
-
-  html += `<p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Sted</p>`;
-  html += `<p style="margin: 0 0 4px; font-size: 15px;">${addressDisplay}</p>`;
-  if (mapsUrl) {
-    html += `<p style="margin: 0 0 16px;"><a href="${mapsUrl}" style="color: #2563eb; text-decoration: none;">📍 Åpne i kart</a></p>`;
-  } else {
-    html += `<p style="margin: 0 0 16px;"></p>`;
-  }
-
-  if (customerName || customer?.main_phone || customer?.main_email) {
-    html += `<p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Kontakt</p>`;
-    const contactParts: string[] = [];
-    if (customerName) contactParts.push(customerName);
-    if (customer?.main_phone) contactParts.push(`📞 <a href="tel:${customer.main_phone}" style="color: #2563eb; text-decoration: none;">${customer.main_phone}</a>`);
-    if (customer?.main_email) contactParts.push(`✉️ ${customer.main_email}`);
-    html += `<p style="margin: 0 0 16px; font-size: 15px;">${contactParts.join("<br/>")}</p>`;
-  }
-
-  const attachments = Array.isArray(event.attachments) ? event.attachments : [];
-  if (attachments.length > 0) {
-    html += `<p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Vedlegg</p>`;
-    html += `<ul style="margin: 0 0 16px; padding-left: 20px;">`;
-    html += `<li><a href="${jobInfoUrl(event.id)}">Åpne ${attachments.length} vedlegg i MCS Hub (innlogging kreves)</a></li>`;
-    html += `</ul>`;
-  }
-
-  const jobUrl = jobInfoUrl(event.id);
-  html += `<p style="margin: 16px 0 0;"><a href="${jobUrl}" style="color: #2563eb; text-decoration: none; font-size: 13px;">🔗 Åpne i MCS Ressurs</a></p>`;
-
+  const isOvernight = !isSameOsloDay(normalizedStart, normalizedEnd);
+  let html = jobCalendarHtml(event, normalizedStart, normalizedEnd);
   html += `<!-- MCS_SOURCE:true MCS_EVENT_ID:${event.id}${assignment?.eventTechnicianId ? ` MCS_ASSIGNMENT_ID:${assignment.eventTechnicianId}` : ""}${assignment?.technicianId ? ` MCS_TECHNICIAN_ID:${assignment.technicianId}` : ""} -->`;
-
-  html += `</div>`;
 
   const body: any = {
     subject: isOvernight ? `🌙 ${subject}` : subject,

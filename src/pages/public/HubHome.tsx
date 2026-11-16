@@ -60,7 +60,11 @@ export default function HubHome() {
     sessionStorage.setItem("mcs:hub-post-login", "1");
     if (nextPath && nextPath !== "/") sessionStorage.setItem(NEXT_KEY, nextPath);
     try {
-      const result = await lovable.auth.signInWithOAuth("microsoft", { redirect_uri: window.location.origin });
+      // Public callback retains the job even if OAuth returns in a new browser/PWA context.
+      const redirectUri = nextPath && nextPath !== "/"
+        ? `${window.location.origin}/login?next=${encodeURIComponent(nextPath)}`
+        : window.location.origin;
+      const result = await lovable.auth.signInWithOAuth("microsoft", { redirect_uri: redirectUri });
       if (result.error) {
         toast.error("Innlogging feilet", { description: result.error.message || "Kunne ikke koble til Microsoft." });
         setSigningIn(false);

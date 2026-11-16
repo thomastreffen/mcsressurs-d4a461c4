@@ -1,3 +1,12 @@
+# Ett trykk til jobbinfo – 16. november
+
+- [x] Revidert tildeling/tidsendring/resend/info/påminnelse/endringsmail; tydelig varig jobbinfohandling, separate svarlenker og uendrede fulladresser
+- [x] Kalenderens delegated og app-only single/per-day deler operativ HTML; eldre ms-calendar/confirm-lenker rettet; ingen writes kjørt
+- [x] Mottakerspesifikke maildager, planleggerens teamdager og Mine-direktelenke; auth-retur i URL bevarer jobb uten delt PWA-storage, auth/RLS/gates beholdt
+- [x] 60570: begge mailkanaler 202 uten verification_signal, Mats personlig kalenderfeil og pending 0 forsøk, Emil to synkede dager; ingen leveringsløfte
+- [x] Funksjoner deployet; 901 tester bestått, bygg OK og PC/mobil/eget innloggingsvindu med mock kontrollert; ingen utsending/dataendring
+- [ ] Publisering av Mine/innloggingsretur kreves; Mats faktisk konto, ekte OAuth/PWA og Outlook-visning må testes av brukerne etter publisering, kalender RAOP/pilot fortsatt blokkert
+
 # Falsk tilgangsnekt på jobbinfo – 16. november
 
 - [x] Flytkontroll: akseptlenke viser lesefeil fremfor stille Min dag-fallback; full oppdragsside skiller feil og tilbyr sikker jobbinfo; Min dag bruker technician-id via login, ikke antatt person-id; fremtidige påminnelser/endringsvarsler peker til jobbinfo

@@ -4,6 +4,7 @@
 // unexpired, unrevoked pilot target matches mailbox + job + technician + work date + company.
 import { buildPerDayPlan, type DayPlanItem } from "./multi-day-calendar.ts";
 import { jobGate, type AppFlags, type HubJob } from "./job-outlook-app-core.ts";
+import { jobCalendarHtml } from "./job-communication.ts";
 
 export interface PilotTarget {
   id: string; company_id: string; event_id: string; technician_id: string; mailbox: string;
@@ -39,7 +40,7 @@ export function jobDayDedupKey(eventId: string, technicianId: string, workDate: 
 }
 
 export function dayFingerprint(j: HubJob, d: { technicianId: string; workDate: string; startAt: string; endAt: string }): string {
-  const s = [j.title, j.address ?? "", d.startAt, d.endAt, d.workDate, j.status ?? "", d.technicianId].join("\u241F");
+  const s = [j.title, j.address ?? "", d.startAt, d.endAt, d.workDate, j.status ?? "", d.technicianId, j.job_number ?? j.internal_number ?? "", j.description ?? "", j.site_contact_name ?? "", j.site_contact_phone ?? ""].join("\u241F");
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return "d1-" + (h >>> 0).toString(16);
@@ -67,7 +68,7 @@ export function dayGate(flags: AppFlags, targets: PilotTarget[], q: Parameters<t
 export function buildDayPayload(j: HubJob, d: DayPlanItem, key: string): Record<string, unknown> {
   return {
     subject: j.title,
-    body: { contentType: "HTML", content: `<p>Planlagt i MCS Hub. Åpne jobben i Hub for detaljer.</p><!-- MCS_SOURCE:true MCS_EVENT_ID:${j.id} MCS_TECHNICIAN_ID:${d.technicianId} MCS_WORK_DATE:${d.workDate} -->` },
+    body: { contentType: "HTML", content: `${jobCalendarHtml(j, d.startAt, d.endAt)}<!-- MCS_SOURCE:true MCS_EVENT_ID:${j.id} MCS_TECHNICIAN_ID:${d.technicianId} MCS_WORK_DATE:${d.workDate} -->` },
     start: { dateTime: d.startAt, timeZone: "UTC" },
     end: { dateTime: d.endAt, timeZone: "UTC" },
     location: j.address ? { displayName: j.address } : undefined,

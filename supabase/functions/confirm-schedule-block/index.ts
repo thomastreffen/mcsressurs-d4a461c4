@@ -1,3 +1,5 @@
+import { jobInfoAction } from "../_shared/job-access-policy.ts";
+import { escapeHtml } from "../_shared/job-brief.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -117,8 +119,7 @@ async function updateOutlookEvent(supabase: any, block: any, projectId: string) 
     .single();
 
   const projectTitle = project?.title || "Ukjent prosjekt";
-  const appUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", "") || "";
-  const projectLink = `${appUrl}/projects/${projectId}`;
+
 
   // Get app token
   const tokenRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
@@ -144,7 +145,7 @@ async function updateOutlookEvent(supabase: any, block: any, projectId: string) 
     categories: ["MCS"],
     body: {
       contentType: "HTML",
-      content: `<p>Koblet til MCS prosjekt: <strong>${projectTitle}</strong></p><p><a href="${projectLink}">Åpne i MCS</a></p><p>MCS_EVENT_ID:${projectId}</p><p>MCS_TECHNICIAN_ID:${block.technician_id}</p><p>MCS_BLOCK_ID:${block.id}</p>`,
+      content: `<p>Koblet til MCS prosjekt: <strong>${escapeHtml(projectTitle)}</strong></p>${jobInfoAction(projectId)}<p>MCS_EVENT_ID:${projectId}</p><p>MCS_TECHNICIAN_ID:${block.technician_id}</p><p>MCS_BLOCK_ID:${block.id}</p>`,
     },
   };
 

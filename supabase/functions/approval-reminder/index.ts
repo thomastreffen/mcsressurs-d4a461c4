@@ -4,7 +4,7 @@ import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
-import { jobInfoUrl } from "../_shared/job-access-policy.ts";
+import { jobInfoAction, recipientPlannedDays, plannedDaysHtml } from "../_shared/job-communication.ts";
 
 
 
@@ -69,13 +69,14 @@ function buildReminderEmail(
   reminderNumber: number,
   techStartAt?: string | null,
   techEndAt?: string | null,
+  plannedDays: string[] = [],
 ): { subject: string; body: string } {
   const { startDate, startTime, endTime } = formatJobSchedule(job.start_time, job.end_time, techStartAt, techEndAt);
 
   const approveUrl = `${APP_URL}/approval/${token}?action=approve`;
   const rescheduleUrl = `${APP_URL}/approval/${token}?action=reschedule`;
   const rejectUrl = `${APP_URL}/approval/${token}?action=reject`;
-  const jobUrl = jobInfoUrl(job.id);
+
 
   const subject = `Påminnelse: Du har ikke bekreftet oppdrag – ${displayNumber}`;
 
@@ -100,13 +101,15 @@ function buildReminderEmail(
       <tr><td style="padding: 8px 0; color: #64748b;">Tid</td><td style="padding: 8px 0;">${startTime} – ${endTime}</td></tr>
     </table>
     
+    ${plannedDaysHtml(plannedDays)}
+    ${jobInfoAction(job.id)}
     <div style="margin: 24px 0; text-align: center;">
       <a href="${approveUrl}" style="display: inline-block; background: #22c55e; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 4px;">✓ Godkjenn</a>
       <a href="${rescheduleUrl}" style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 4px;">⏰ Foreslå nytt tidspunkt</a>
       <a href="${rejectUrl}" style="display: inline-block; background: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 4px;">✕ Avslå</a>
     </div>
     
-    <p style="margin-top: 16px;"><a href="${jobUrl}" style="color: #2563eb; text-decoration: none; font-size: 13px;">🔗 Åpne oppdrag</a></p>
+
     
     <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">Denne lenken er gyldig i 48 timer. Du trenger ikke å logge inn for å svare.</p>
   </div>
@@ -244,8 +247,11 @@ Deno.serve(async (req) => {
     const assignmentTimeMap = new Map<string, Map<string, { start_at: string | null; end_at: string | null }>>();
     for (const a of allAssignments || []) {
       if (!assignmentTimeMap.has(a.event_id)) assignmentTimeMap.set(a.event_id, new Map());
-      assignmentTimeMap.get(a.event_id)!.set(a.technician_id, { start_at: a.start_at, end_at: a.end_at });
+      assignmentTimeMap.get(a.event_id)?.set(a.technician_id, { start_at: a.start_at, end_at: a.end_at });
     }
+
+    const { data: allBlocks } = await supabase.from("schedule_blocks")
+      .select("project_id,technician_id,start_at,end_at").in("project_id", jobIds).is("deleted_at", null);
 
     let sent = 0;
     let skipped = 0;
@@ -375,7 +381,7 @@ Deno.serve(async (req) => {
       // ── ALL GUARDS PASSED — Send reminder ──
       const displayNumber = job.job_number || job.internal_number || "—";
       const techTimes = tech ? assignmentTimeMap.get(approval.job_id)?.get(tech.id) : null;
-      const { subject, body } = buildReminderEmail(job, tech.name, approval.token, displayNumber, currentCount + 1, techTimes?.start_at, techTimes?.end_at);
+      const { subject, body } = buildReminderEmail(job, tech.name, approval.token, displayNumber, currentCount + 1, techTimes?.start_at, techTimes?.end_at, recipientPlannedDays((allBlocks ?? []).filter((b: any) => b.project_id === job.id), tech.id));
 
       const useSystem = systemSenderEnabled();
       const msToken = useSystem ? null : job.created_by ? await getValidMsToken(supabase, job.created_by) : null;

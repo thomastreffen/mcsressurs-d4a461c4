@@ -4,7 +4,7 @@ import { resolveJobAddress } from "../_shared/job-address.ts";
 import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
-import { formatPlannedDays } from "../_shared/multi-day-calendar.ts";
+import { jobInfoAction, recipientPlannedDays } from "../_shared/job-communication.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
@@ -177,6 +177,7 @@ function buildApprovalEmail(
       </ul>
     </div>` : ""}
     
+    ${jobInfoAction(job.id)}
     ${attachmentsHtml}
     ${buildInfoChangesHtml(infoChanges)}
     
@@ -186,7 +187,7 @@ function buildApprovalEmail(
       <a href="${rejectUrl}" style="display: inline-block; background: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 4px;">✕ Avslå</a>
     </div>
     
-    <p style="margin-top: 16px;"><a href="${jobUrl}" style="color: #2563eb; text-decoration: none; font-size: 13px;">🔗 Se jobben i MCS Ressurs</a></p>
+
     
     <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">Svarlenkene er gyldige i 48 timer og kan brukes én gang. Jobbinfo og vedlegg i MCS Hub er tilgjengelig også etter godkjenning, med innlogging og gjeldende jobbtilgang.</p>
   </div>
@@ -287,10 +288,10 @@ Deno.serve(async (req) => {
     // and the approval covers every listed day – not just day 1.
     const { data: jobBlocks } = await supabaseAdmin
       .from("schedule_blocks")
-      .select("start_at,end_at")
+      .select("technician_id,start_at,end_at")
       .eq("project_id", job_id)
       .is("deleted_at", null);
-    const plannedDays = formatPlannedDays(jobBlocks ?? []);
+
     // Operational brief: edited event fields win, linked order fills the gaps (same helper as the app view).
     {
       let orderId: string | null = job.source_order_form_id ?? null;
@@ -358,6 +359,7 @@ Deno.serve(async (req) => {
     const results: any[] = [];
 
     for (const tech of technicians) {
+      const plannedDays = recipientPlannedDays(jobBlocks ?? [], tech.id);
       if (!rRequired) {
         if (queue_dispatch === true) {
           const { data: previous } = await supabaseAdmin.from("event_recipient_delivery").select("status").eq("event_id", job_id).eq("technician_id", tech.id).eq("channel", "email").maybeSingle();
@@ -406,7 +408,7 @@ Deno.serve(async (req) => {
           { personalToken: msToken, useSystem });
         const ok = sent.ok;
         if (!sent.ok) console.error("[create-approval] Resend failed:", sent.reason, sent.status);
-        results.push({ techId: tech.id, techName: tech.name, emailSent: ok, ...(sent.ok ? {} : { reasonCode: sent.reason, graphStatus: sent.status, error: sent.detail }) });
+        results.push({ techId: tech.id, techName: tech.name, emailSent: ok, graphStatus: sent.status, ...(sent.ok ? {} : { reasonCode: sent.reason, error: sent.detail }) });
         await supabaseAdmin.from("event_logs").insert({
           event_id: job_id, performed_by: callerUserId, action_type: "info_resent",
           change_summary: ok ? `Jobbinfo med vedlegg sendt på nytt til ${tech.name} (${tech.email})` : `Kunne ikke sende jobbinfo på nytt til ${tech.name}`,
