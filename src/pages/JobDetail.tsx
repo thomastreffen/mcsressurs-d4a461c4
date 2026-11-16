@@ -46,7 +46,6 @@ export default function JobDetail() {
   const { activeCompany } = useCompanyContext();
   const canEditPlan = hasPermission("projects.edit_plan");
   const canDeleteAttachment = hasPermission("projects.delete_attachment");
-  const isOwnAssignment = job?.technicianIds.length ? false : false;
 
   const activeTab = searchParams.get("tab") || "home";
   const setActiveTab = (tab: string) => {
@@ -57,6 +56,7 @@ export default function JobDetail() {
   const [loading, setLoading] = useState(true);
   const [financialProjectNumber, setFinancialProjectNumber] = useState<string | null>(null);
   const [technicianNames, setTechnicianNames] = useState<string[]>([]);
+  const [isOwnAssignment, setIsOwnAssignment] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [accessDrawerOpen, setAccessDrawerOpen] = useState(false);
@@ -77,7 +77,7 @@ export default function JobDetail() {
         *,
         event_technicians (
           technician_id,
-          technicians ( id, name, color )
+          technicians ( id, name, color, user_id )
         )
       `)
       .eq("id", id)
@@ -94,6 +94,7 @@ export default function JobDetail() {
       .map((et: any) => et.technicians);
 
     setTechnicianNames(techs.map((t: any) => t.name));
+    setIsOwnAssignment(techs.some((t: any) => t.user_id === user?.id));
 
     // TPX-F4.1a: display-only project reference, requires active Tripletex link (server-side)
     const refs = await fetchFinancialProjectNumbers([data.id]);
@@ -129,7 +130,7 @@ export default function JobDetail() {
       meetingCreatedAt: data.meeting_created_at ? new Date(data.meeting_created_at) : null,
     });
     setLoading(false);
-  }, [id]);
+  }, [id, user?.id]);
 
   useEffect(() => { fetchJob(); }, [fetchJob]);
 
@@ -187,7 +188,8 @@ export default function JobDetail() {
 
         {/* Tab content */}
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 pb-28 md:pb-8">
-          {activeTab === "home" && !hasPermission("resource_plan.plan_resources") && <section className="mb-6"><JobInformation eventId={id} embedded /></section>}
+          {activeTab === "home" && (isOwnAssignment || !hasPermission("resource_plan.plan_resources")) && <section className="mb-6"><JobInformation eventId={id} embedded /></section>}
+          {activeTab === "home" && !isOwnAssignment && hasPermission("resource_plan.plan_resources") && job.description && <section className="mb-6"><h2 className="font-semibold mb-2">Arbeidsbeskrivelse</h2><p className="whitespace-pre-wrap break-words">{job.description}</p></section>}
           {activeTab === "home" && isMobile && (
             <div className="mb-4"><OrderBriefingSection eventId={job.id} compact /></div>
           )}
