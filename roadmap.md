@@ -1,3 +1,9 @@
+# Varslingshull JOB-000420 – 16. november
+
+- [ ] Les faktisk historikk og omfang; skill fravalg fra manglende audit
+- [ ] Rett stille oppgaveopprettelse, mottakerutvalg og feilkvitteringer uten utsending
+- [ ] Isolerte regresjoner, PC/mobil status, deploy og rapporter kontroll ved neste ordinære jobb
+
 # Ett trykk til jobbinfo – 16. november
 
 - [x] Revidert tildeling/tidsendring/resend/info/påminnelse/endringsmail; tydelig varig jobbinfohandling, separate svarlenker og uendrede fulladresser
