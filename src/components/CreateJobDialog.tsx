@@ -183,7 +183,7 @@ function CreateJobDialogInner({
         { body: { job_id: createdEvent.id } }
       );
 
-      if (approvalError || approvalData?.error || !approvalData?.results?.length || approvalData.results.some((r: any) => !r.emailSent && !r.autoApproved)) {
+      if (approvalError || approvalData?.error || !approvalData?.results?.length || approvalData.results.some((r: any) => !r.emailSent)) {
         toast.warning("Prosjekt opprettet, men varsling er ikke komplett – se status per montør");
       } else {
         toast.success("Prosjekt opprettet – e-post akseptert av Microsoft", {

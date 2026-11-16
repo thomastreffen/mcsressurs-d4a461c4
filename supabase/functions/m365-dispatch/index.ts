@@ -45,7 +45,7 @@ Deno.serve(async req => {
       const result = mail.data?.results?.find((r: any) => r.techId === job.technician_id);
       const calendarResult = calendar.data?.results?.find((r: any) => r.techId === job.technician_id);
       const calendarAccepted = calendarResult && ["created", "updated", "already_exists"].includes(calendarResult.status) && !["failed", "awaiting"].includes(calendarResult.state);
-      const state = uncertain ? "uncertain" : (result?.emailSent || result?.autoApproved) && calendarAccepted ? "accepted" : "failed";
+      const state = uncertain ? "uncertain" : result?.emailSent && calendarAccepted ? "accepted" : "failed";
       const { data: current } = await db.from("m365_communication_queue").select("revision").eq("id", job.id).single();
       const stale = current?.revision !== job.revision;
       await db.from("m365_communication_queue").update({ status: stale ? "pending" : state, reason_code: uncertain ? "unknown_outcome_do_not_replay" : result?.reasonCode ?? calendarResult?.status ?? null }).eq("id", job.id).eq("status", "processing");

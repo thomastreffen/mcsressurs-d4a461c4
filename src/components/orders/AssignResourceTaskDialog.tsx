@@ -326,7 +326,7 @@ export function AssignResourceTaskDialog({
         const { data, error } = await invokeWithSession("create-approval", { body: { job_id: newEvent.id } });
         if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
         for (const r of ((data as any)?.results || []) as any[]) {
-          if (r.emailSent || r.autoApproved) techMail.sent++;
+          if (r.emailSent) techMail.sent++;
           else techMail.failed++;
         }
       } catch (e: any) {

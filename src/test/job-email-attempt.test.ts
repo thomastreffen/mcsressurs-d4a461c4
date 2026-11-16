@@ -40,5 +40,5 @@ it("claim/audit failure prevents every mail call", async () => {
 it("partial success and transport errors never pass as all recipients notified", () => {
   expect(() => assertNotificationResult({ data: { results: [{ emailSent: true }, { emailSent: false }] } })).toThrow();
   expect(() => assertNotificationResult({ error: { message: "401" } })).toThrow("401");
-  expect(() => assertNotificationResult({ data: { results: [{ emailSent: true }, { autoApproved: true }] } })).not.toThrow();
+  expect(() => assertNotificationResult({ data: { results: [{ emailSent: true }, { autoApproved: true }] } })).toThrow();
 });

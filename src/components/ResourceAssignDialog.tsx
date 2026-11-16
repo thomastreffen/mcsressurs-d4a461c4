@@ -243,7 +243,7 @@ export function ResourceAssignDialog({
       const notified = await invokeWithSession("create-approval", {
         body: { job_id: created.id },
       });
-      if (notified.error || notified.data?.results?.some((r: any) => !r.emailSent && !r.autoApproved)) toast.warning("Lagret, men varsling er ikke komplett – se status per montør");
+      if (notified.error || notified.data?.results?.some((r: any) => !r.emailSent)) toast.warning("Lagret, men varsling er ikke komplett – se status per montør");
 
       toast.success("Hendelse opprettet", {
         description: `${title} er tildelt ${techIds.length} montør(er).`,
@@ -295,7 +295,7 @@ export function ResourceAssignDialog({
         const notified = await invokeWithSession("create-approval", {
           body: { job_id: selectedJobId, technician_ids: newTechs },
         });
-        if (notified.error || notified.data?.results?.some((r: any) => !r.emailSent && !r.autoApproved)) toast.warning("Tildeling lagret, men varsling er ikke komplett – se status per montør");
+        if (notified.error || notified.data?.results?.some((r: any) => !r.emailSent)) toast.warning("Tildeling lagret, men varsling er ikke komplett – se status per montør");
       }
 
       toast.success("Montør(er) tildelt", {
