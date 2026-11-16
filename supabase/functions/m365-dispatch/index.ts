@@ -45,10 +45,11 @@ Deno.serve(async req => {
       const result = mail.data?.results?.find((r: any) => r.techId === job.technician_id);
       const calendarResult = calendar.data?.results?.find((r: any) => r.techId === job.technician_id);
       const calendarAccepted = calendarResult && ["created", "updated", "already_exists"].includes(calendarResult.status) && !["failed", "awaiting"].includes(calendarResult.state);
-      const state = uncertain ? "uncertain" : (result?.emailSent || result?.autoApproved) && calendarAccepted ? "accepted" : "failed";
+      const recipientUncertain = uncertain || result?.reasonCode === "unknown_graph_outcome" || calendarResult?.state === "awaiting";
+      const state = recipientUncertain ? "uncertain" : result?.emailSent && calendarAccepted ? "accepted" : "failed";
       const { data: current } = await db.from("m365_communication_queue").select("revision").eq("id", job.id).single();
       const stale = current?.revision !== job.revision;
-      await db.from("m365_communication_queue").update({ status: stale ? "pending" : state, reason_code: uncertain ? "unknown_outcome_do_not_replay" : result?.reasonCode ?? calendarResult?.status ?? null }).eq("id", job.id).eq("status", "processing");
+      await db.from("m365_communication_queue").update({ status: recipientUncertain ? "uncertain" : stale ? "pending" : state, reason_code: recipientUncertain ? "unknown_outcome_do_not_replay" : result?.reasonCode ?? calendarResult?.status ?? null }).eq("id", job.id).eq("status", "processing");
     }
     return json({ processed: claimed.length, uncertain, results: mail.data?.results ?? [] });
   } catch { return json({ error: "Dispatch failed; inspect pending/uncertain delivery status before retry" }, 500); }

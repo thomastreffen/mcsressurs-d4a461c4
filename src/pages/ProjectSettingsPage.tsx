@@ -172,7 +172,7 @@ export default function ProjectSettingsPage() {
 
       if (notifyParticipants) {
         const result = await invokeWithSession("create-approval", { body: { job_id: jobId } });
-        if (result.error || !result.data?.results?.length || result.data.results.some((r: any) => !r.emailSent && !r.autoApproved)) toast.warning("Prosjektet er lagret, men varsling er ikke komplett – se status per montør");
+        if (result.error || !result.data?.results?.length || result.data.results.some((r: any) => !r.emailSent)) toast.warning("Prosjektet er lagret, men varsling er ikke komplett – se status per montør");
       }
 
       toast.success("Prosjekt oppdatert");

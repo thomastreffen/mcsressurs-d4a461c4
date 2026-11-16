@@ -1,3 +1,14 @@
+# Selv-tildeling JOB-000440 – 16. november
+
+- [x] Flow-sweep lest: EventDrawer opprett/arbeidsbesøk/task/endre/resend; CreateJobDialog/EditJobDialog/JobQuickEditSheet/ResourceAssignDialog/bestilling→oppgave; Jobs/ProjectSettings; ProjectNew/ConvertToJob/PlanJob/DropConfirm/ResourcePlan flytt+resize; notifyJobAssignment; ProjectDashboard resend; create-approval/info/self/resend/time-change; notify-event-changes/reminder; create-job-from-schedule-block; dispatcher; delegated/ms-calendar/app-only/organizer; jobbinfo/Min dag/Mine/login; DB 0065/0093/0097/0098. Kvitteringer krever emailSent, ikke autoApproved; selv-resend informativ; ukjent køresultat holdes uncertain
+- [x] 115 isolerte tester bestått, build OK; create-approval og m365-dispatch redeployet uten invocation. Nye kvitteringsrettinger i skjermene krever publisering
+- [x] Separate tasks/task_assignees og samtaleeskalering/digest lest: annet livsløp, ingen ny jobbmailregel eller tilgang lagt til. Historisk self_assigned-kvittering beholdt uendret
+
+- [x] Auto-godkjenning beholdt, informasjonsmail med stabil lenke og atomisk duplikatvern; eksplisitt fravalg logges
+- [x] Kalenderproveniens: delegated per dag, 17.11 synced med id; ingen organizer-link. Graph-body ikke live inspisert: ingen tilgjengelig trygg eksisterende content-read-inngang, ingen impersonation/ny tilgang
+- [x] 33 isolerte tester bestått, build OK; create-approval + calendar-write-sync deployet. Kalenderemne inkluderer jobbnummer/tittel. Oppgaveretting 0098/navigasjon urørt
+- [ ] Thomas kontrollerer mottatt mail/jobbinfo og faktisk body i Outlook ved neste ordinære jobb; JOB-000440 ikke omskrevet eller sendt på nytt
+
 # Frittstående Ressursplan-oppgave – 16. november
 
 - [x] Flow-sweep lest: Opprett/Overview, bestilling→service, redigering/tildeling, kalenderlesing, job-access, varsling, prosjektvelgere, delegated/app-only, database parent/blokk/tidsendring/fakturering; Mine gjøremål + MyTasks rettet til egen jobbinfo for task

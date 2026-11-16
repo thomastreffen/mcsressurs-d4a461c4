@@ -4,7 +4,7 @@ import { resolveJobAddress } from "../_shared/job-address.ts";
 import { buildOperationalJobBrief, briefEmailRows } from "../_shared/job-brief.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { formatJobSchedule } from "../_shared/job-time.ts";
-import { jobInfoAction, recipientPlannedDays } from "../_shared/job-communication.ts";
+import { jobInfoAction, recipientPlannedDays, plannedDaysHtml } from "../_shared/job-communication.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { recordDelivery } from "../_shared/recipient-delivery.ts";
@@ -122,6 +122,7 @@ function buildApprovalEmail(
   techEndAt?: string | null,
   infoChanges: InfoChange[] = [],
   plannedDays: string[] = [],
+  includeApprovalActions: boolean = true,
 ): { subject: string; body: string } {
   // Use technician-specific time override if available, otherwise fall back to event times
   const { startDate, startTime, endTime } = formatJobSchedule(job.start_time, job.end_time, techStartAt, techEndAt);
@@ -158,7 +159,7 @@ function buildApprovalEmail(
   </div>
   <div style="border: 1px solid #e2e8f0; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
     <p>Hei ${techName},</p>
-    <p>${isTimeChange
+    <p>${!includeApprovalActions ? "Jobbinfo for din tildeling. Ingen ny oppdragsbekreftelse kreves." : isTimeChange
       ? (infoChanges.length > 0
           ? "Tidspunktet for et oppdrag du er tildelt har blitt endret, og det er gjort flere praktiske oppdateringer på oppdraget. Vennligst bekreft det nye tidspunktet. Øvrige endringer er kun til informasjon."
           : "Tidspunktet for et oppdrag du er tildelt har blitt endret. Vennligst bekreft om du kan ta oppdraget på nytt tid.")
@@ -182,15 +183,15 @@ function buildApprovalEmail(
     ${attachmentsHtml}
     ${buildInfoChangesHtml(infoChanges)}
     
-    <div style="margin: 24px 0; text-align: center;">
+    ${includeApprovalActions ? `<div style="margin: 24px 0; text-align: center;">
       <a href="${approveUrl}" style="display: inline-block; background: #22c55e; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 4px;">✓ Godkjenn</a>
       <a href="${rescheduleUrl}" style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 4px;">⏰ Foreslå nytt tidspunkt</a>
       <a href="${rejectUrl}" style="display: inline-block; background: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 4px;">✕ Avslå</a>
-    </div>
+    </div>` : ""}
     
 
     
-    <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">Svarlenkene er gyldige i 48 timer og kan brukes én gang. Jobbinfo og vedlegg i MCS Hub er tilgjengelig også etter godkjenning, med innlogging og gjeldende jobbtilgang.</p>
+    <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">${includeApprovalActions ? "Svarlenkene er gyldige i 48 timer og kan brukes én gang. " : ""}Jobbinfo og vedlegg i MCS Hub er tilgjengelig også etter godkjenning, med innlogging og gjeldende jobbtilgang.</p>
   </div>
 </body>
 </html>`;
@@ -237,7 +238,7 @@ Deno.serve(async (req) => {
     // resource_plan edit on the job's own company (checked after job fetch).
     const isGlobalAdmin = await requireGlobalAccessManager(supabaseAdmin, callerUserId);
 
-    const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes, resend, technician_ids, queue_dispatch } = await req.json();
+    const { job_id, reminder_profile, reminder_config, response_required, time_change, info_changes, resend, technician_ids, queue_dispatch, send_notification } = await req.json();
     const isResend = resend === true || queue_dispatch === true;
     if (typeof job_id !== "string" || !/^[0-9a-f-]{36}$/i.test(job_id)) {
       return new Response(JSON.stringify({ error: "Missing job_id" }), {
@@ -281,6 +282,14 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    }
+    if (send_notification === false) {
+      await supabaseAdmin.from("event_logs").insert({ event_id: job_id, performed_by: callerUserId,
+        action_type: "notifications_skipped", change_summary: "Eksplisitt lagret uten e-postvarsling",
+        metadata: { notification_choice: "without_notification" } });
+      return new Response(JSON.stringify({ skipped: true, reason: "explicit_opt_out", results: [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
     rRequired = requiresApproval(job, response_required);
     // Operative address: newest event address, else the order's oppdragssted
@@ -402,7 +411,7 @@ Deno.serve(async (req) => {
           continue;
         }
         const techTimes = techTimeMap.get(tech.id);
-        const { subject, body } = buildApprovalEmail(job, tech.name, token ?? "", displayNumber, false, techTimes?.start_at, techTimes?.end_at, [], plannedDays);
+        const { subject, body } = buildApprovalEmail(job, tech.name, token ?? "", displayNumber, false, techTimes?.start_at, techTimes?.end_at, [], plannedDays, !isSelf);
         const sent = await sendJobEmail(supabaseAdmin, job_id, tech.id, { to: tech.email, subject: `Jobbinfo (sendt på nytt): ${displayNumber} – ${job.title}`, html: body, replyTo },
           { personalToken: msToken, useSystem }, true);
         const ok = sent.ok;
@@ -417,20 +426,18 @@ Deno.serve(async (req) => {
       }
 
       if (isSelf && !isTimeChange) {
-        // Auto-approve when assigning to yourself – no email needed
-        const { data: approval, error: approvalErr } = await supabaseAdmin
+        // Approval and information are independent. Reuse settled responses on replay.
+        const { data: previous, error: previousError } = await supabaseAdmin.from("job_approvals").select("token,status")
+          .eq("job_id", job_id).eq("technician_user_id", tech.user_id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (previousError) {
+          results.push({ techId: tech.id, error: "Tidligere godkjenning kunne ikke kontrolleres; ingen e-post sendt" });
+          continue;
+        }
+        const { error: approvalErr } = previous ? { error: null } : await supabaseAdmin
           .from("job_approvals")
-          .insert({
-            job_id: job_id,
-            technician_user_id: tech.user_id,
-            status: "approved",
-            responded_at: new Date().toISOString(),
-            response_required: rRequired,
-            reminder_profile: rProfile,
-            reminder_config: rConfig,
-          })
-          .select("token")
-          .single();
+          .insert({ job_id, technician_user_id: tech.user_id, status: "approved",
+            responded_at: new Date().toISOString(), response_required: rRequired,
+            reminder_profile: rProfile, reminder_config: rConfig });
 
         if (approvalErr) {
           console.error("[create-approval] Self-approve insert error:", tech.id, approvalErr);
@@ -438,13 +445,21 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        results.push({ techId: tech.id, token: approval?.token, emailSent: false, autoApproved: true });
+        const times = techTimeMap.get(tech.id);
+        const schedule = formatJobSchedule(job.start_time, job.end_time, times?.start_at, times?.end_at);
+        const html = `<h1>${escapeHtml(job.title)}</h1><p>Jobbinfo for din tildeling – ingen ny oppdragsbekreftelse kreves.</p><table>${briefEmailRows(job.__brief, { date: schedule.startDate, time: `${schedule.startTime} – ${schedule.endTime}` })}</table>${plannedDaysHtml(plannedDays)}${jobAttachmentLinks(job.id, job.attachments)}`;
+        const sent = await sendJobEmail(supabaseAdmin, job_id, tech.id,
+          { to: tech.email ?? "", subject: `Jobbinfo: ${displayNumber} – ${job.title}`, html, replyTo },
+          { personalToken: msToken, useSystem });
+        results.push({ techId: tech.id, emailSent: sent.ok, graphStatus: sent.status,
+          autoApproved: !previous || previous.status === "approved", alreadyRecorded: sent.duplicate,
+          ...(!sent.ok ? { reasonCode: sent.reason, error: sent.detail } : {}) });
 
         await supabaseAdmin.from("event_logs").insert({
           event_id: job_id,
           performed_by: callerUserId,
           action_type: "created",
-          change_summary: `${tech.name} automatisk godkjent (tildelt seg selv)`,
+          change_summary: `${tech.name}: selv-tildeling, ${sent.ok ? "informasjonsmail akseptert av Microsoft, ikke bekreftet levert" : "informasjonsmail ikke akseptert – se kanalstatus"}`,
         });
 
         continue;
@@ -535,11 +550,6 @@ Deno.serve(async (req) => {
     for (const r of results) {
       const tech = technicians.find((t: any) => t.id === r.techId);
       if (!tech || r.alreadyRecorded) continue;
-      if (r.autoApproved) {
-        await recordDelivery(supabaseAdmin, { eventId: job_id, technicianId: tech.id, technicianUserId: tech.user_id,
-          recipientEmail: tech.email, channel: "email", status: "skipped", reasonCode: "self_assigned", attemptedBy: callerUserId });
-        continue;
-      }
       const reason = r.emailSent ? null
         : r.reasonCode ? r.reasonCode
         : !canSend ? "sender_no_ms_connection"

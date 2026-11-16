@@ -22,6 +22,12 @@ describe("stable operational communication, no real Graph or mail", () => {
   it("both legacy calendar builders and both app-only payloads point to the exact authenticated job", () => {
     const event = { ...job, start_time: job.start_at, end_time: job.end_at };
     const delegated = legacyBody("supabase/functions/calendar-write-sync/index.ts", "buildGraphBody")(event);
+    expect(delegated.subject).toContain("60570");
+    expect(delegated.subject).toContain("Isolated");
+    expect(delegated.body.contentType).toBe("HTML");
+    expect(delegated.body.content).toContain(`href="${jobInfoUrl(id)}"`);
+    expect(delegated.start.timeZone).toBe("Europe/Oslo");
+    expect(delegated.showAs).toBe("busy");
     const legacy = legacyBody("supabase/functions/ms-calendar/index.ts", "buildHtmlBody")(event, id);
     const single = buildJobPayload(job, "test", "key") as any;
     const perDay = buildDayPayload(job, day, "key") as any;

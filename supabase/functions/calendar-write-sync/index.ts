@@ -228,9 +228,8 @@ function buildGraphBody(
   const locationShort = event.address?.split(",")[0]?.trim() || "";
 
   const subjectParts = [customerName, typeLabel, locationShort].filter(Boolean);
-  const subject = subjectParts.length >= 2
-    ? subjectParts.join(" – ")
-    : event.title || "Oppdrag";
+  const reference = event.project_number || event.job_number || event.internal_number;
+  const subject = [reference, event.title || "Oppdrag", ...subjectParts].filter(Boolean).join(" – ");
 
   const startD = new Date(normalizedStart);
   const endD = new Date(normalizedEnd);

@@ -214,7 +214,7 @@ export function EditJobDialog({ open, onOpenChange, jobId, onSaved }: EditJobDia
         const { data: approvalData, error: approvalError } = await invokeWithSession("create-approval", {
           body: { job_id: jobId },
         });
-        if (approvalError || !approvalData?.results?.length || approvalData.results.some((r: any) => !r.emailSent && !r.autoApproved)) {
+        if (approvalError || !approvalData?.results?.length || approvalData.results.some((r: any) => !r.emailSent)) {
           toast.warning("Jobb lagret, men varsling er ikke komplett – se status per montør");
           onSaved?.(); onOpenChange(false); return;
         }
