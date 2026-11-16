@@ -1,3 +1,9 @@
+# Kalenderpilot – trygg velger 16. november
+
+- [ ] Erstatt UUID-felt med jobbsøk, tildelt montør og faktiske arbeidsdager; eksplisitt dagbekreftelse
+- [ ] Lesetest før simulering; ingen frigivelse/skriving uten separat godkjenning
+- [ ] Isolerte tester og PC/mobil; produksjonsdata kun lest
+
 # Godkjenningsvarsler 12. november
 
 - [x] Read-only diagnose: 8 approved + 8 all_approved fra global admintrigger, 5 approval_pending fra handle-approval; ingen dokumentert push-levering
