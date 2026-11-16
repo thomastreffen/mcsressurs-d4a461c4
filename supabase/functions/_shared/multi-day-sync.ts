@@ -120,8 +120,9 @@ export async function syncTechnicianDays(args: {
       continue;
     }
     try {
-      await graph.updateEvent(email, link.outlook_event_id!, buildBody(item));
-      await store.markSynced(eventId, item, link.outlook_event_id!);
+      if (!link.outlook_event_id) continue;
+      await graph.updateEvent(email, link.outlook_event_id, buildBody(item));
+      await store.markSynced(eventId, item, link.outlook_event_id);
       results.push({ technicianId, workDate: item.workDate, state: "synket", outlookEventId: link.outlook_event_id, outcome: "updated" });
     } catch (e: any) {
       await store.markFailed(eventId, item, String(e?.status ?? e?.message ?? e));

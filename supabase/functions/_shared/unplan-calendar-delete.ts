@@ -31,11 +31,17 @@ export async function processUnplanDeletes(db: any, jobs: DeleteJob[], getToken:
         .select("outlook_event_id").eq("event_id", job.event_id).eq("technician_id", job.technician_id);
       if (centralError) throw new Error("calendar_provenance_lookup_failed");
       if (central?.some((l: any) => l.outlook_event_id)) throw new Error("central_delete_requires_gated_reconciliation");
+      const { data: organizers, error: organizerError } = await db.from("m365_organizer_links")
+        .select("graph_event_id,state").eq("event_id", job.event_id).eq("technician_id", job.technician_id);
+      if (organizerError) throw new Error("calendar_provenance_lookup_failed");
+      if (organizers?.some((l: any) => l.graph_event_id && l.state !== "deleted")) throw new Error("organizer_delete_requires_gated_reconciliation");
       const ids: string[] = [...new Set<string>(removed.map((l: any) => l.outlook_event_id).filter((id: unknown): id is string => typeof id === "string" && !id.startsWith("pending:")))];
       if (!ids.length && !(links ?? []).length && !activeDays.size && Array.isArray(job.candidate_event_ids)) {
         ids.push(...new Set<string>(job.candidate_event_ids.filter((id: unknown): id is string => typeof id === "string" && !!id && !id.startsWith("pending:"))));
       }
       if (!ids.length) throw new Error("no_exact_outlook_id_reconciliation_required");
+      const snapshot = await db.from("calendar_delete_retry_queue").update({ candidate_event_ids: ids }).eq("id", job.id);
+      if (snapshot.error) throw new Error("delete_candidate_snapshot_failed");
       const { data: tech, error: techError } = await db.from("technicians").select("user_id,email").eq("id", job.technician_id).maybeSingle();
       if (techError || !tech?.user_id || !tech.email || tech.email.toLowerCase() !== job.mailbox?.toLowerCase()) throw new Error("recipient_identity_mismatch");
       const token = await getToken(tech.user_id);

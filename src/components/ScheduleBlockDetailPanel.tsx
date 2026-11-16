@@ -308,7 +308,9 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
       });
 
       if (isImportedOutlook && result?.status === "ok") {
-        toast.success(forceDeleteOutlook ? "Fjernet fra plan og Outlook ✓" : "Skjult i Hub – avtalen er urørt i Outlook");
+        if (forceDeleteOutlook && (!result.deleted_in_outlook || result.outlook_error)) {
+          toast.warning("Skjult i Hub, men Outlook-fjerning er ikke bekreftet", { description: result.outlook_error || "Avstemming kreves før nytt forsøk." });
+        } else toast.success(forceDeleteOutlook ? "Fjernet fra plan og Outlook ✓" : "Skjult i Hub – avtalen er urørt i Outlook");
       } else if (result?.status === "success" || result?.status === "already_removed") {
         const warning = result?.warnings?.[0];
         if (warning) {
