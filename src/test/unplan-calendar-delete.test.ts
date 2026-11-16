@@ -59,3 +59,12 @@ it("replanned day blocks deletion", async () => {
   expect((await processUnplanDeletes(x.db,[job],async () => "mock",graph))[0].error).toBe("job_replanned_delete_blocked");
   expect(graph).not.toHaveBeenCalled();
 });
+it("candidate snapshot is persisted before exact Graph deletion", async () => {
+  const x = fixture(["2026-11-18"]);
+  const graph = vi.fn(async () => {
+    expect(x.writes.some(w => w.table === "calendar_delete_retry_queue" && w.candidate_event_ids?.[0] === "exact/17")).toBe(true);
+    return new Response(null,{status:204});
+  });
+  await processUnplanDeletes(x.db,[job],async () => "mock",graph);
+  expect(graph).toHaveBeenCalledTimes(1);
+});

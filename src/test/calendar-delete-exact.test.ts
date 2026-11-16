@@ -40,3 +40,16 @@ it("imported exact delete uses escaped ID and accepts already-missing object", a
   expect(await remove("mock","isolated@example.test","id/part")).toEqual({ok:true,status:404});
   expect(String(graph.mock.calls[0]?.[0])).toContain("id%2Fpart");
 });
+it.each([403, 500])("absence deletion %s retains the stored Outlook mapping", async status => {
+  const source = readFileSync("supabase/functions/absence-calendar-sync/index.ts", "utf8");
+  const start = source.indexOf('      if (msRes.ok || msRes.status === 404)');
+  const end = source.indexOf('\n    return new Response(JSON.stringify({ status: "unknown_action"', start);
+  const block = source.slice(start,end).replace(/\n    }\s*$/, "");
+  const updates: unknown[] = [];
+  const sb = { from: () => ({ update: (v: unknown) => { updates.push(v); return { eq: async () => ({}) }; } }) };
+  const response = await vm.runInNewContext(`(async () => { ${block} })()`, {
+    msRes: new Response("denied",{status}), sb, absence_id:"isolated", corsHeaders:{}, Response, console:{error(){}},
+  });
+  expect((await response.json()).status).toBe("error");
+  expect(updates).toHaveLength(0);
+});
