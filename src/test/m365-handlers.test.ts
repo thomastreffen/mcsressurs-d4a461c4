@@ -24,6 +24,7 @@ function fixture(name: string, internal = false) {
         if (table === "events") return single ? event : [event];
         if (table === "event_technicians") return techs.map(t => ({ technician_id: t.id, event_id: eventId }));
         if (table === "technicians") return techs;
+        if (table === "schedule_blocks") return ["19", "20"].map(d => ({ project_id: eventId, technician_id: "a", start_at: `2026-11-${d}T05:00:00Z`, end_at: `2026-11-${d}T13:00:00Z` }));
         if (table === "company_reminder_settings") return [{ company_id: "company", enabled: true, max_reminders: 3 }];
         if (table === "job_approvals") return single ? { token: "mock-approval" } : techs.map(t => ({ id: t.id, job_id: eventId, technician_user_id: t.user_id, token: "mock-approval", reminder_profile: "standard", reminder_count: 0, created_at: "2020-01-01", expires_at: "2035-01-01" }));
         if (table === "event_logs") return writes.filter(w => w.table === "event_logs").map(w => w.values);
@@ -55,13 +56,16 @@ describe("Actual handlers, mocked Cloud and Graph only", () => {
     expect(f.sends.every(s => s.opts.personalToken === null && s.opts.useSystem)).toBe(true);
     expect(f.records.filter(r => r.status === "failed").map(r => r.technicianId)).toEqual(["b"]);
   });
-  it.each([{}, { action: "resend_info" }, { time_changed: true }])("approval/info paths retain exact recipient addresses and stable job access %j", async payload => {
+  it.each([{}, { resend: true }, { time_change: true }])("approval/info paths retain exact recipient addresses and stable job access %j", async payload => {
     const f = fixture("create-approval"); await f.call({ job_id: eventId, ...payload });
     expect(f.sends.map(s => s.input.to)).toEqual(["rune@example.test", "marcus@example.test"]);
     expect(f.sends.every(s => s.input.html.includes(jobInfoUrl(eventId)))).toBe(true);
     const accepted = f.records.filter(r => r.status === "sent");
+    expect(accepted).toHaveLength(1);
     expect(accepted.every(r => r.graphStatus === 202)).toBe(true);
     expect(f.sends).toHaveLength(2);
+    expect(f.sends[0].input.html).toContain("19."); expect(f.sends[0].input.html).toContain("20.");
+    expect(f.sends[1].input.html).not.toContain("19.");
   });
   it("internal meeting has no approval rows or approval links", async () => {
     const f = fixture("create-approval", true); await f.call({ job_id: eventId });
@@ -74,6 +78,8 @@ describe("Actual handlers, mocked Cloud and Graph only", () => {
     expect(f.writes.filter(w => w.table === "job_approvals")).toHaveLength(1);
     expect(f.records.some(r => r.reasonCode === "graph_forbidden")).toBe(true);
     expect(f.sends.every(s => s.input.html.includes(jobInfoUrl(eventId)) && !s.input.html.includes(`/jobs/${eventId}`))).toBe(true);
+    expect(f.sends[0].input.html).toContain("20.");
+    expect(f.sends[1].input.html).not.toContain("20.");
   });
   it("change notification attempts both recipients without creator token", async () => {
     const f = fixture("notify-event-changes"); await f.call({ job_id: eventId, changes: [{ label: "Adresse", newValue: "Mock" }] });

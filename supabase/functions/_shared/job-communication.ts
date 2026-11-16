@@ -26,6 +26,8 @@ export function jobCalendarHtml(event: Record<string, unknown> & { id: string },
     line("Adresse", b.address),
     line("Kontaktperson", [b.contactName, b.contactPhone, b.contactEmail].filter(Boolean).join(" · ")),
     line("Arbeidsbeskrivelse", b.workDescription.length > 600 ? `${b.workDescription.slice(0, 600)}…` : b.workDescription),
+    line("Instruks for tildelingen", typeof event.assignment_notes === "string" ? event.assignment_notes : ""),
+    typeof event.meeting_join_url === "string" && /^https:\/\/teams\.microsoft\.com\//i.test(event.meeting_join_url) ? `<p><a href="${escapeHtml(event.meeting_join_url)}">Bli med i Teams-møtet</a></p>` : "",
     "<p>Full jobbinfo, alle arbeidsdager og vedlegg finnes i Hub. Innlogging og gjeldende jobbtilgang kreves.</p>",
     `<p><a href="${jobInfoUrl(event.id)}">${jobInfoUrl(event.id)}</a></p>`,
   ].join("");
