@@ -92,6 +92,10 @@ Deno.serve(async (req) => {
     });
     if (localError) return json({ error: localError.message }, 500);
 
+    if (local?.status === "already_removed") return json({ status: "already_removed", local,
+      outlook_complete: false, warnings: [{ error: "explicit_event_delete_confirmation_required", technician_id: technicianId,
+        retry_requires_confirmation: true }] });
+
     const resolvedEventId = local?.event_id;
     const query = db.from("calendar_delete_retry_queue").select("*").eq("event_id", resolvedEventId);
     const { data: jobs, error: queueError } = technicianId && action !== "remove_event"

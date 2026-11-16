@@ -1,3 +1,8 @@
+# Kalenderfjerning JOB-000440 – 16. november
+
+- [ ] Rett eksakt dagskobling, personlig token, 404/idempotens, sanert feil og sperr gamle automatiske retries; ingen live Graph eller DB-mutasjoner
+- [ ] Mock-tester/deploy og avklar eksplisitt videre slettegodkjenning
+
 # Selv-tildeling JOB-000440 – 16. november
 
 - [x] Flow-sweep lest: EventDrawer opprett/arbeidsbesøk/task/endre/resend; CreateJobDialog/EditJobDialog/JobQuickEditSheet/ResourceAssignDialog/bestilling→oppgave; Jobs/ProjectSettings; ProjectNew/ConvertToJob/PlanJob/DropConfirm/ResourcePlan flytt+resize; notifyJobAssignment; ProjectDashboard resend; create-approval/info/self/resend/time-change; notify-event-changes/reminder; create-job-from-schedule-block; dispatcher; delegated/ms-calendar/app-only/organizer; jobbinfo/Min dag/Mine/login; DB 0065/0093/0097/0098. Kvitteringer krever emailSent, ikke autoApproved; selv-resend informativ; ukjent køresultat holdes uncertain

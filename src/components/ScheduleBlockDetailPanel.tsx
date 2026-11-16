@@ -313,7 +313,7 @@ export const ScheduleBlockDetailPanel = memo(function ScheduleBlockDetailPanel({
         const warning = result?.warnings?.[0];
         if (warning) {
           toast.warning(`Fjernet i ressursplan, men Outlook-sletting feilet for ${warning.technician_name || block.technician_name}`, {
-            description: "Nytt forsøk er satt i kø.",
+            description: "Outlook-fjerning er ikke bekreftet. Nytt forsøk krever eksplisitt bekreftelse; ingen automatisk retry.",
           });
         } else {
           toast.success(result.status === "already_removed" ? "Allerede fjernet ✓" : "Fjernet fra plan og Outlook ✓");

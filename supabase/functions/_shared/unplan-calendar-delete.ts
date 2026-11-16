@@ -11,11 +11,17 @@ export async function processUnplanDeletes(db: any, jobs: DeleteJob[], getToken:
     let error: string | null = null;
     const attempts: { source: string; status: number; code: string | null }[] = [];
     try {
+      const { data: claim, error: claimError } = await db.from("calendar_delete_retry_queue")
+        .update({ status: "processing" }).eq("id", job.id).in("status", ["pending", "failed"]).select("id").maybeSingle();
+      if (claimError || !claim) {
+        results.push({ technician_id: job.technician_id, status: "queued", error: "delete_claim_unavailable", retry_requires_confirmation: true });
+        continue;
+      }
       const { data: links, error: linkError } = await db.from("job_calendar_day_links")
         .select("work_date,outlook_event_id").eq("event_id", job.event_id).eq("technician_id", job.technician_id);
       if (linkError) throw new Error("day_link_lookup_failed");
       const { data: active, error: activeError } = await db.from("schedule_blocks")
-        .select("start_at").eq("job_id", job.event_id).eq("technician_id", job.technician_id).is("deleted_at", null);
+        .select("start_at").or(`job_id.eq.${job.event_id},project_id.eq.${job.event_id}`).eq("technician_id", job.technician_id).is("deleted_at", null);
       if (activeError) throw new Error("live_plan_lookup_failed");
       const activeDays = new Set((active ?? []).map((b: any) => osloDayKey(b.start_at)));
       const removed = (links ?? []).filter((l: any) => !activeDays.has(l.work_date));
@@ -49,6 +55,9 @@ export async function processUnplanDeletes(db: any, jobs: DeleteJob[], getToken:
         const cleaned = await db.from("job_calendar_day_links").delete().eq("event_id", job.event_id)
           .eq("technician_id", job.technician_id).eq("outlook_event_id", id);
         if (cleaned.error) throw new Error("outlook_removed_local_reconciliation_required");
+        const legacy = await db.from("job_calendar_links").update({ sync_status: "unlinked", calendar_event_id: null, calendar_event_url: null })
+          .eq("job_id", job.event_id).eq("technician_id", job.technician_id).eq("calendar_event_id", id);
+        if (legacy.error) throw new Error("outlook_removed_local_reconciliation_required");
       }
     } catch (e) { error = e instanceof Error ? e.message : "unknown_delete_outcome_reconciliation_required"; }
     const next = new Date(Date.now() + Math.min(360, 5 * 2 ** Math.min(job.attempts, 6)) * 60000).toISOString();
