@@ -1,5 +1,7 @@
 # Varslingshull JOB-000420 – 16. november
 
+- [ ] Flytsjekk: nye prosjekter/konvertering/henvendelse, drag/drop/resize, prosjektinnstillinger, resends, påminnelser og databasekø; rett resterende hull uten live utsending
+
 - [x] 420: kun opprettet/tildelt i event_logs; ingen kanal/approval/notification/activity, intet fravalg bevist. 6/19 nyere planlagte ikke-testtitler uten mailaudit; fem har approval, historisk levering ukjent
 - [x] Stille task-gren sender nå info uten godkjenning; mottakerutvalg for ny tildeling, feilkvittering/fravalgsaudit og timestamp-deduplikering rettet
 - [x] Migrasjon 0097: service-only atomisk e-postclaim, akseptert/ukjent aldri replay; 906 tester og isolert PC/mobil, ingen utsending/produksjonsrader endret

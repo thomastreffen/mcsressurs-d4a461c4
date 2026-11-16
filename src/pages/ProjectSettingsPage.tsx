@@ -166,11 +166,13 @@ export default function ProjectSettingsPage() {
         event_id: jobId,
         action_type: "updated",
         performed_by: userId || null,
-        change_summary: `Prosjekt oppdatert${notifyParticipants ? " (deltakere varslet)" : " (uten varsling)"}`,
+        change_summary: `Prosjekt oppdatert${notifyParticipants ? " (varsling bestilt, se kanalstatus)" : " (uten varsling)"}`,
+        metadata: { notification_choice: notifyParticipants ? "send" : "without_notification", technician_ids: techIds },
       });
 
       if (notifyParticipants) {
-        await invokeWithSession("create-approval", { body: { job_id: jobId } }).catch(() => {});
+        const result = await invokeWithSession("create-approval", { body: { job_id: jobId } });
+        if (result.error || !result.data?.results?.length || result.data.results.some((r: any) => !r.emailSent && !r.autoApproved)) toast.warning("Prosjektet er lagret, men varsling er ikke komplett – se status per montør");
       }
 
       toast.success("Prosjekt oppdatert");

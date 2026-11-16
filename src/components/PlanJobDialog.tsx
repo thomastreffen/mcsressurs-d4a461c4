@@ -10,6 +10,7 @@ import { Hammer, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTechnicians } from "@/hooks/useTechnicians";
+import { notifyJobAssignment } from "@/lib/notify-job-assignment";
 
 interface PlanJobDialogProps {
   open: boolean;
@@ -93,6 +94,7 @@ export function PlanJobDialog({
           event_id: projectId,
           technician_id: techId,
         } as any);
+        await notifyJobAssignment(projectId, [techId]);
       }
 
       const { data: sj, error: sjErr } = await supabase

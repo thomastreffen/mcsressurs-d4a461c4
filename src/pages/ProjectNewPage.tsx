@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { TechnicianMultiSelect } from "@/components/TechnicianMultiSelect";
+import { notifyJobAssignment } from "@/lib/notify-job-assignment";
 
 interface CustomerOption {
   id: string;
@@ -146,6 +147,7 @@ export default function ProjectNewPage() {
       });
     }
 
+    if (techIds.length > 0) await notifyJobAssignment(data.id, techIds);
     toast.success("Prosjekt opprettet", { description: title });
     navigate(`/projects/${data.id}`);
   };

@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { notifyJobAssignment } from "@/lib/notify-job-assignment";
 
 
 interface Props {
@@ -100,6 +101,7 @@ export function ConvertToJobDialog({
       }
 
       // 3. Update calculation status to "converted"
+      if (projectLeader) await notifyJobAssignment(event.id, [projectLeader], false);
       await supabase.from("calculations").update({
         status: "converted" as any,
       }).eq("id", calculationId);
