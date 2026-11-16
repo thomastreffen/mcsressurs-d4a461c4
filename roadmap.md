@@ -1,3 +1,10 @@
+# Ett trykk til jobbinfo – 16. november
+
+- [ ] Revider alle montørmailer og begge kalenderveier; samme varige lenke, egne godkjenningshandlinger og faktiske mottakeradresser
+- [ ] Rett konkrete mal-/flerdagshull; behold eksisterende auth/RLS og alle sendings-/pilotgates
+- [ ] Les per-montør kvitteringer for 60570 uten leveringsløfter; isolerte tester og PC/mobil/innloggingsretur
+- [ ] Rapporter deploy/publisering og manglende faktisk Mats-/Outlook-verifisering; ingen ekte utsending eller dataendring
+
 # Falsk tilgangsnekt på jobbinfo – 16. november
 
 - [x] Flytkontroll: akseptlenke viser lesefeil fremfor stille Min dag-fallback; full oppdragsside skiller feil og tilbyr sikker jobbinfo; Min dag bruker technician-id via login, ikke antatt person-id; fremtidige påminnelser/endringsvarsler peker til jobbinfo
