@@ -62,10 +62,12 @@ Deno.serve(async req => {
     const signature = check(await admin.rpc("assignment_schedule_signature", { _event: x.event_id, _user: tech.user_id }));
     const c: OneShotContext = { job: { ...job, start_at: job.start_time, end_at: job.end_time }, target, assigned: !!assignment, identityActive: !!account && !!person?.is_active && employed.length > 0 && !tech.archived_at && !tech.deleted_at, mailbox: tech.email?.trim().toLowerCase() ?? "", approval: approval?.status ?? "unknown", blocks, probe: probe as any, settings };
     const denied = oneShotGate(c, new Date());
-    if (denied) return json({ error: denied }, 409);
+    // Recovery is read-only and must remain possible after a target or preview expires.
+    // It still requires this exact scope, active identity, live assignment and caller company access.
+    if (denied && (b.action !== "reconcile" || ["exact_scope_mismatch", "inactive_assignment_or_identity"].includes(denied))) return json({ error: denied }, 409);
     const payload = oneShotPayload(c.job);
     const digest = await hash(JSON.stringify(payload));
-    if (b.action === "create" && (digest !== run?.payload_hash || signature !== run.schedule_signature || JSON.stringify(job) !== JSON.stringify(run.job_snapshot))) return json({ error: "preview_changed" }, 409);
+    if (b.action === "create" && (digest !== run?.payload_hash || signature !== run.schedule_signature)) return json({ error: "preview_changed" }, 409);
     const diag = check(await admin.from("hub_calendar_diagnostic_runs").select("run_at,overall,checks").order("run_at", { ascending: false }).limit(1).maybeSingle());
     const diagDenied = diagnosticGate(diag as any, new Date());
     if (diagDenied) return json({ error: diagDenied }, 409);
