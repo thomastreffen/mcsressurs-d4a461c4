@@ -1,0 +1,1 @@
+- `event_logs.action_type` is a closed CHECK allow-list; a new writer adds its exact value by migration and must pass src/test/event-logs-action-types.test.ts. Why: unknown values abort atomic RPCs (standalone task) or silently drop history.
