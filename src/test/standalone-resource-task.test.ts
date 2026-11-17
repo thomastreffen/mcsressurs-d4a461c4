@@ -40,10 +40,12 @@ beforeAll(async()=>{
  `);
  await db.exec(readFileSync('drizzle/migrations/0098_standalone_resource_tasks.sql','utf8'));
  // Before the fix the exact prod failure reproduces and nothing is left behind
- await expect(create('30000000-0000-0000-0000-0000000000f0')).rejects.toThrow(/event_logs_action_type_check|row-level security/);
+ await expect(create('30000000-0000-0000-0000-0000000000f0')).rejects.toThrow(/row-level security/);
  expect((await db.query("select * from events where client_request_id='30000000-0000-0000-0000-0000000000f0'")).rows).toHaveLength(0);
- await db.exec(`ALTER TABLE event_logs DROP CONSTRAINT event_logs_action_type_check; ALTER TABLE event_logs ADD CONSTRAINT event_logs_action_type_check CHECK (action_type IN ('created','updated','notifications_sent','technician_added'))`);
- await expect(create('30000000-0000-0000-0000-0000000000f1')).rejects.toThrow(/event_logs_action_type_check/);
+ // Non-admin planner hit RLS first; an admin (Thomas) hit the exact CHECK from the screenshot
+ await db.exec(`CREATE OR REPLACE FUNCTION legacy_admin_in_company(uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT true $$`);
+ await expect(create('30000000-0000-0000-0000-0000000000f1')).rejects.toThrow(/violates check constraint "event_logs_action_type_check"/);
+ await db.exec(`CREATE OR REPLACE FUNCTION legacy_admin_in_company(uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$`);
  for (const f of ['0099_event_logs_notification_choice_actions','0100_standalone_task_log_and_block_link']) await db.exec(readFileSync(`drizzle/migrations/${f}.sql`,'utf8'));
  expect((await db.query('select count(*)::int n from events')).rows).toEqual([{n:0}]);
  expect((await db.query('select count(*)::int n from schedule_blocks')).rows).toEqual([{n:0}]);
