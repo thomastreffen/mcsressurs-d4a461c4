@@ -123,3 +123,16 @@ it('failed reassign rolls back additions, days, responses and removal queue',asy
  await expect(db.query(`SELECT edit_resource_job_plan('${E}',ARRAY['${id(99)}'::uuid],'2026-11-19 07:00Z','2026-11-19 15:00Z','2026-11-19 07:00Z','2026-11-19 15:00Z',ARRAY['${T}'::uuid,'${S}'::uuid])`)).rejects.toThrow('invalid_company_assignee');
  await db.exec('RESET ROLE'); expect((await db.query('SELECT * FROM event_technicians')).rows).toHaveLength(2); expect((await db.query('SELECT * FROM calendar_delete_retry_queue')).rows).toHaveLength(0);
 });
+it('concurrent repeated response claims only once and does not change Mats',async()=>{
+ const t=await token();const r=await Promise.all([respond(t),respond(t),respond(t)]);
+ expect(r.filter(x=>x.rows[0].r.success)).toHaveLength(1);expect((await db.query('SELECT * FROM event_logs')).rows).toHaveLength(1);
+ expect((await db.query<{status:string}>(`SELECT status FROM job_approvals WHERE technician_user_id='${V}'`)).rows[0].status).toBe('pending');
+});
+it('explicit full task cancellation only after all references removed; mappings held',async()=>{
+ await db.exec(`SELECT remove_work_visit_from_plan('${E}',NULL,true,NULL,'${P}')`);
+ expect((await db.query<{status:string}>('SELECT status FROM events')).rows[0].status).toBe('cancelled');
+ expect((await db.query('SELECT * FROM event_technicians')).rows).toHaveLength(0);
+ expect((await db.query('SELECT * FROM schedule_blocks WHERE deleted_at IS NULL')).rows).toHaveLength(0);
+ expect((await db.query('SELECT * FROM job_calendar_day_links')).rows).toHaveLength(2);
+ expect((await db.query('SELECT * FROM calendar_delete_retry_queue')).rows).toHaveLength(2);
+});
