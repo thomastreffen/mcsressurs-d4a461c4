@@ -178,7 +178,7 @@ export default function ApprovalPage() {
               <div className="flex items-center gap-3 rounded-lg bg-status-approved/10 p-4">
                 <CheckCircle2 className="h-6 w-6 text-status-approved shrink-0" />
                 <div>
-                  <p className="font-medium">Godkjenn jobben</p>
+                  <p className="font-medium">Godkjenn din tildeling</p>
                   <p className="text-sm text-muted-foreground">Bekreft at du kan ta dette oppdraget.</p>
                 </div>
               </div>
@@ -204,8 +204,8 @@ export default function ApprovalPage() {
               <div className="flex items-center gap-3 rounded-lg bg-destructive/10 p-4">
                 <XCircle className="h-6 w-6 text-destructive shrink-0" />
                 <div>
-                  <p className="font-medium">Avslå jobben</p>
-                  <p className="text-sm text-muted-foreground">Du må oppgi en begrunnelse.</p>
+                  <p className="font-medium">Avslå din tildeling</p>
+                  <p className="text-sm text-muted-foreground">Du må oppgi en begrunnelse. Planreservasjonen beholdes til planlegger avplanlegger.</p>
                 </div>
               </div>
               <div>

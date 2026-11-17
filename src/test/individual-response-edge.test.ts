@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { expect,it,vi } from 'vitest';
 async function handler(result:unknown={success:true,http_status:200,message:'Din tildeling er avslått.'}){
  let serve:((r:Request)=>Promise<Response>)|undefined;
- const rpc=vi.fn(async()=>({data:result,error:null}));
+ const rpc=vi.fn(async(_name:string,_args:unknown)=>({data:result,error:null}));
  const createClient=()=>({rpc});
  const Deno={env:{get:()=> 'isolated-server-configuration'},serve:(h:(r:Request)=>Promise<Response>)=>{serve=h;}};
  const source=readFileSync('supabase/functions/handle-approval/index.ts','utf8').replace(/^import .*;\n/gm,'');
