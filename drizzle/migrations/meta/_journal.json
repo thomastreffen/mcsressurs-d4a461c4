@@ -722,6 +722,13 @@
       "when": 1794901724331,
       "tag": "0102_event_logs_writer_action_types",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1794902130450,
+      "tag": "0103_parent_module_access_static_sql",
+      "breakpoints": true
     }
   ]
 }
