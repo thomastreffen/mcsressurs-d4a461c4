@@ -29,6 +29,7 @@ beforeAll(async () => {
   CREATE FUNCTION assignment_schedule_signature(e uuid,u uuid) RETURNS text LANGUAGE sql AS $$SELECT 'unchanged-signature'::text$$;`);
   // Fixed local clock tests the deployed SQL on the exact future day without relying on runner timezone/date.
   await db.exec(readFileSync("drizzle/migrations/0105_job_calendar_one_shot.sql", "utf8").replace(/now\(\)/g, `'${clock}'::timestamptz`));
+  await db.exec(readFileSync("drizzle/migrations/0106_one_shot_conflict_consent.sql", "utf8").replace(/now\(\)/g, `'${clock}'::timestamptz`));
 }, 120000);
 afterAll(() => db.close());
 beforeEach(async () => {
@@ -44,8 +45,8 @@ beforeEach(async () => {
   INSERT INTO job_outlook_app_pilot_actions VALUES('${target}','probe_mailbox','2026-11-17 09:00Z','{"http":200,"pass":true,"tid_match":true,"appid_match":true}');
   INSERT INTO job_outlook_app_queue SELECT 'pending',0,NULL FROM generate_series(1,5);`);
 });
-async function prepare() { return (await db.query<{id:string}>(`INSERT INTO job_calendar_one_shot_runs(target_id,actor,event_id,technician_id,company_id,mailbox,work_date,payload,payload_hash,job_snapshot,schedule_signature) SELECT $1,$2,id,$3,company_id,$4,$5,'{}','frozen',to_jsonb(e),'unchanged-signature' FROM events e RETURNING id`, [target, actor, x.technician_id, x.mailbox, x.work_date])).rows[0].id; }
-const claim = async (id: string, who = actor) => (await db.query<{ok:boolean}>("SELECT claim_job_calendar_one_shot($1,$2,'frozen') ok", [id,who])).rows[0].ok;
+async function prepare() { return (await db.query<{id:string}>(`INSERT INTO job_calendar_one_shot_runs(target_id,actor,event_id,technician_id,company_id,mailbox,work_date,payload,payload_hash,job_snapshot,schedule_signature,calendar_signature,conflict_summary) SELECT $1,$2,id,$3,company_id,$4,$5,'{}','frozen',to_jsonb(e),'unchanged-signature','calendar-frozen','{"category":"clear"}' FROM events e RETURNING id`, [target, actor, x.technician_id, x.mailbox, x.work_date])).rows[0].id; }
+const claim = async (id: string, who = actor) => (await db.query<{ok:boolean}>("SELECT claim_job_calendar_one_shot($1,$2,'frozen','calendar-frozen',false,true,'OPPRETT MATS 19.11.2026 08–16') ok", [id,who])).rows[0].ok;
 it("only one simultaneous permit consumes and reserves exact day; global OFF and five queue intents untouched", async () => {
   const ids = await Promise.all([prepare(),prepare()]); const results = await Promise.all(ids.map(id => claim(id).catch(() => false))); expect(results.filter(Boolean)).toHaveLength(1);
   expect((await db.query("SELECT work_date::text,status,last_error FROM job_calendar_day_links")).rows).toEqual([{ work_date: "2026-11-19", status: "pending", last_error: "one_shot_reserved" }]);

@@ -47,7 +47,7 @@ describe("formatSlotOslo – UTC → Europe/Oslo med dato", () => {
 
 describe("filterOwnBusySlots – jobbens egne Outlook-kopier er aldri konflikter", () => {
   it("filtrerer legacy egen-kopi (Emil dag 1, 07:00–15:00 UTC)", () => {
-    const slots = [{ start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z"), status: "busy" }];
+    const slots = [{ identityVerified:true, start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z"), status: "busy" }];
     const { kept, removedOwn } = filterOwnBusySlots(slots, [DAY1, DAY2]);
     expect(kept).toHaveLength(0);
     expect(removedOwn).toHaveLength(1);
@@ -55,8 +55,8 @@ describe("filterOwnBusySlots – jobbens egne Outlook-kopier er aldri konflikter
 
   it("filtrerer adopterte flerdags-kopier på begge dager", () => {
     const slots = [
-      { start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") },
-      { start: graphUtc("2026-11-20T07:00:00.000Z"), end: graphUtc("2026-11-20T15:00:00.000Z") },
+      { identityVerified:true, start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") },
+      { identityVerified:true, start: graphUtc("2026-11-20T07:00:00.000Z"), end: graphUtc("2026-11-20T15:00:00.000Z") },
     ];
     const { kept } = filterOwnBusySlots(slots, [DAY1, DAY2]);
     expect(kept).toHaveLength(0);
@@ -64,8 +64,8 @@ describe("filterOwnBusySlots – jobbens egne Outlook-kopier er aldri konflikter
 
   it("beholder reell ekstern gjentakende avtale (Mats 13:00–13:30 Oslo)", () => {
     const slots = [
-      { start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") }, // egen kopi
-      { start: graphUtc("2026-11-19T12:00:00.000Z"), end: graphUtc("2026-11-19T12:30:00.000Z"), status: "busy" }, // ekstern
+      { identityVerified:true, start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") }, // egen kopi
+      { identityVerified:true, start: graphUtc("2026-11-19T12:00:00.000Z"), end: graphUtc("2026-11-19T12:30:00.000Z"), status: "busy" }, // ekstern
     ];
     const { kept, removedOwn } = filterOwnBusySlots(slots, [DAY1, DAY2]);
     expect(removedOwn).toHaveLength(1);
@@ -75,9 +75,9 @@ describe("filterOwnBusySlots – jobbens egne Outlook-kopier er aldri konflikter
 
   it("flerdagsjobb: ekstern konflikt på dag 2 beholdes og tilordnes riktig dag", () => {
     const slots = [
-      { start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") },
-      { start: graphUtc("2026-11-20T07:00:00.000Z"), end: graphUtc("2026-11-20T15:00:00.000Z") },
-      { start: graphUtc("2026-11-20T10:00:00.000Z"), end: graphUtc("2026-11-20T11:00:00.000Z") },
+      { identityVerified:true, start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") },
+      { identityVerified:true, start: graphUtc("2026-11-20T07:00:00.000Z"), end: graphUtc("2026-11-20T15:00:00.000Z") },
+      { identityVerified:true, start: graphUtc("2026-11-20T10:00:00.000Z"), end: graphUtc("2026-11-20T11:00:00.000Z") },
     ];
     const { kept } = filterOwnBusySlots(slots, [DAY1, DAY2]);
     expect(kept).toHaveLength(1);
@@ -85,17 +85,17 @@ describe("filterOwnBusySlots – jobbens egne Outlook-kopier er aldri konflikter
   });
 
   it("toleranse: ±1 min drift filtreres, 5 min avvik beholdes", () => {
-    const drifted = { start: graphUtc("2026-11-19T07:01:00.000Z"), end: graphUtc("2026-11-19T15:01:00.000Z") };
+    const drifted = { identityVerified:true, start: graphUtc("2026-11-19T07:01:00.000Z"), end: graphUtc("2026-11-19T15:01:00.000Z") };
     expect(isOwnJobSlot(drifted, [DAY1])).toBe(true);
-    const off = { start: graphUtc("2026-11-19T07:05:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") };
+    const off = { identityVerified:true, start: graphUtc("2026-11-19T07:05:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") };
     expect(isOwnJobSlot(off, [DAY1])).toBe(false);
     expect(OWN_SLOT_TOLERANCE_MS).toBe(2 * 60 * 1000);
   });
 
   it("samme dager, ulik tekniker: egne vinduer er per tekniker", () => {
     // Emil har egen kopi dag 1; Mats har ingen kopi (no_ms_connection) → hans slot beholdes.
-    const emilSlots = [{ start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") }];
-    const matsSlots = [{ start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") }];
+    const emilSlots = [{ identityVerified:true, start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") }];
+    const matsSlots = [{ identityVerified:true, start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z") }];
     expect(filterOwnBusySlots(emilSlots, [DAY1, DAY2]).kept).toHaveLength(0);
     expect(filterOwnBusySlots(matsSlots, []).kept).toHaveLength(1);
   });

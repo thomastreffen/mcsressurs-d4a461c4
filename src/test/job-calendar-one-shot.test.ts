@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from "vitest";
-import { ONE_SHOT as x, oneShotGate, oneShotPayload, createOneShot, inspectMailbox, inspectOneShotEvents, diagnoseOneShotEvents, assertOneShotRequest, oneShotBase, oneShotView, type OneShotContext } from "../../supabase/functions/_shared/job-calendar-one-shot";
+import { ONE_SHOT as x, oneShotGate, oneShotPayload, oneShotConflictGuard, createOneShot, inspectMailbox, inspectOneShotEvents, diagnoseOneShotEvents, assertOneShotRequest, oneShotBase, oneShotView, type OneShotContext } from "../../supabase/functions/_shared/job-calendar-one-shot";
 const now = new Date("2026-11-17T10:00:00Z");
 const context = (): OneShotContext => ({ job: { id: x.event_id, company_id: x.company_id, title: "60570 Majorstua stasjon", address: null, deleted_at: null, status: "rejected", start_at: x.start, end_at: x.end }, target: { ...x, id: "test", expires_at: "2026-11-18T09:00:00Z", revoked_at: null }, assigned: true, identityActive: true, mailbox: x.mailbox, approval: "pending", blocks: [{ company_id: x.company_id, technician_id: x.technician_id, start_at: x.start, end_at: x.end }, { company_id: x.company_id, technician_id: x.technician_id, start_at: "2026-11-20T07:00:00Z", end_at: "2026-11-20T15:00:00Z" }], probe: { created_at: "2026-11-17T09:09:50Z", result: { pass: true, http: 200, tid_match: true, appid_match: true } }, settings: { enabled: false, dry_run: true, pilot_mailboxes: [], scope_verified_at: null } });
 describe("exact one-shot gate", () => {
@@ -22,7 +22,7 @@ describe("mock Graph one POST maximum", () => {
   });
   it("duplicate direct calendar event blocks claim and POST", async () => {
     const graph = vi.fn(async () => ({ status: 200, data: { value: [{ id: "existing", start: { dateTime: x.start, timeZone: "UTC" }, end: { dateTime: x.end, timeZone: "UTC" } }] } })); const claim = vi.fn();
-    expect((await createOneShot(graph, {}, claim, vi.fn())).state).toBe("duplicate_or_conflict"); expect(claim).not.toHaveBeenCalled(); expect(graph).toHaveBeenCalledTimes(1);
+    expect((await createOneShot(graph, {}, claim, vi.fn())).state).toBe("calendar_identity_unresolved"); expect(claim).not.toHaveBeenCalled(); expect(graph).toHaveBeenCalledTimes(1);
   });
   it.each([503, 408, 201, 403, 429])("HTTP %s is audited and consumed without blind retry", async http => {
     let consumed = false; const claim = async () => { if (consumed) return false; consumed = true; return true; };
@@ -39,7 +39,7 @@ describe("mock Graph one POST maximum", () => {
   it("incomplete paged read or 403 never reaches POST", async () => { const graph = vi.fn(async () => ({ status: 200, data: { value: [], "@odata.nextLink": "untrusted" } })); const claim = vi.fn(); await expect(createOneShot(graph, {}, claim, vi.fn())).rejects.toThrow("mailbox_lookup_incomplete"); expect(claim).not.toHaveBeenCalled(); });
 });
 describe("read-only privacy-preserving conflict diagnosis", () => {
-  const event = { id: "private-id", subject: "Private meeting", body: { content: "Private details" }, start: { dateTime: x.start, timeZone: "UTC" }, end: { dateTime: x.end, timeZone: "UTC" }, showAs: "busy", type: "singleInstance" };
+  const event = { id: "private-id", subject: "Private meeting", body: { content: "Private details" }, start: { dateTime: x.start, timeZone: "UTC" }, end: { dateTime: x.end, timeZone: "UTC" }, showAs: "busy", type: "singleInstance", isCancelled: false, isAllDay: false };
   it.each([
     [{ showAs: "free" }, "free_overlap"], [{ isCancelled: true }, "cancelled_overlap"],
     [{ type: "occurrence" }, "other_busy"], [{ showAs: "unknown" }, "unknown_availability"],
