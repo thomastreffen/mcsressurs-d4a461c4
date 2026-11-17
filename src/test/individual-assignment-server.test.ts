@@ -113,3 +113,13 @@ it('reassign last task recipient is atomic; no accidental task cancel; stale edi
  expect((await db.query('SELECT technician_id FROM event_technicians')).rows).toEqual([{technician_id:S}]);
  expect((await db.query(`SELECT * FROM schedule_blocks WHERE technician_id='${S}' AND deleted_at IS NULL`)).rows).toHaveLength(2);
 });
+it('Oslo whole-visit shift preserves 08:00 across winter-to-summer offset',async()=>{
+ await db.exec(`UPDATE events SET start_time='2026-03-27 07:00Z',end_time='2026-03-27 15:00Z';`);
+ await db.exec(`UPDATE events SET start_time='2026-03-30 06:00Z',end_time='2026-03-30 14:00Z';`);
+ expect((await db.query(`SELECT start_at AT TIME ZONE 'Europe/Oslo' s FROM schedule_blocks ORDER BY start_at`)).rows.map((r:any)=>String(r.s))).toEqual(['2026-03-30T08:00:00','2026-03-30T08:00:00','2026-03-31T08:00:00','2026-03-31T08:00:00']);
+});
+it('failed reassign rolls back additions, days, responses and removal queue',async()=>{
+ await db.exec(`SET ROLE authenticated`);
+ await expect(db.query(`SELECT edit_resource_job_plan('${E}',ARRAY['${id(99)}'::uuid],'2026-11-19 07:00Z','2026-11-19 15:00Z','2026-11-19 07:00Z','2026-11-19 15:00Z',ARRAY['${T}'::uuid,'${S}'::uuid])`)).rejects.toThrow('invalid_company_assignee');
+ await db.exec('RESET ROLE'); expect((await db.query('SELECT * FROM event_technicians')).rows).toHaveLength(2); expect((await db.query('SELECT * FROM calendar_delete_retry_queue')).rows).toHaveLength(0);
+});

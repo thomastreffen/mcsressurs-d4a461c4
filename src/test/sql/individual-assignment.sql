@@ -75,7 +75,7 @@ GRANT EXECUTE ON FUNCTION public.invalidate_assignment_response(uuid,uuid) TO se
 CREATE OR REPLACE FUNCTION public.invalidate_changed_plan_response()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 BEGIN
- IF TG_OP='UPDATE' AND NEW.start_at IS NOT DISTINCT FROM OLD.start_at AND NEW.end_at IS NOT DISTINCT FROM OLD.end_at AND NEW.deleted_at IS NOT DISTINCT FROM OLD.deleted_at THEN RETURN NEW; END IF;
+ IF TG_OP='UPDATE' AND NEW.start_at IS NOT DISTINCT FROM OLD.start_at AND NEW.end_at IS NOT DISTINCT FROM OLD.end_at AND NEW.deleted_at IS NOT DISTINCT FROM OLD.deleted_at AND NEW.technician_id IS NOT DISTINCT FROM OLD.technician_id AND NEW.project_id IS NOT DISTINCT FROM OLD.project_id AND NEW.job_id IS NOT DISTINCT FROM OLD.job_id THEN RETURN NEW; END IF;
  IF TG_OP<>'DELETE' AND NEW.source IN ('manual','system') THEN
   PERFORM public.invalidate_assignment_response(COALESCE(NEW.job_id,NEW.project_id),NEW.technician_id);
  END IF;
