@@ -12,7 +12,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { missingSecrets } from "../_shared/hub-calendar-diagnostics-core.ts";
 import type { HubJob } from "../_shared/job-outlook-app-core.ts";
-import { pilotChoices, freshMailboxProbe } from "../_shared/job-outlook-pilot-selector.ts";
+import { pilotChoices, freshMailboxProbe, existingTargetDecision } from "../_shared/job-outlook-pilot-selector.ts";
 import { planJobDays, clampTargetHours, type PilotTarget } from "../_shared/job-outlook-app-days.ts";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -109,9 +109,17 @@ Deno.serve(async (req) => {
     const { data: et } = await admin.from("event_technicians").select("technicians(email)").eq("event_id", eventId).eq("technician_id", techId).maybeSingle();
     const email = ((et as any)?.technicians?.email ?? "").trim().toLowerCase();
     if (!email) return json({ error: "no_mailbox" }, 409);
+    const { data: prior } = await admin.from("job_outlook_app_pilot_targets").select("id,revoked_at,expires_at").eq("event_id", eventId).eq("technician_id", techId).eq("work_date", workDate).is("revoked_at", null).maybeSingle();
+    const decision = existingTargetDecision(prior as any, now);
+    if (decision === "active") return json({ error: "active_target_exists", target_id: (prior as any).id }, 409);
+    if (decision === "expired") {
+      // Retire only if still unrevoked AND expired (compare-and-set; concurrent confirmations race on the unique index).
+      const { data: retired } = await admin.from("job_outlook_app_pilot_targets").update({ revoked_at: now.toISOString(), revoked_by: caller }).eq("id", (prior as any).id).is("revoked_at", null).lte("expires_at", now.toISOString()).select("id");
+      if (retired?.length) await audit("retire_expired_target", { reason: "replaced_by_new_confirmation", work_date: workDate }, { target_id: (prior as any).id });
+    }
     const expires_at = new Date(now.getTime() + clampTargetHours(b.expires_hours) * 3600_000).toISOString();
     const { data, error } = await admin.from("job_outlook_app_pilot_targets").insert({ company_id: ev.company_id, event_id: eventId, technician_id: techId, mailbox: email, work_date: workDate, approved_by: caller, expires_at, note: typeof b.note === "string" ? b.note.slice(0, 200) : null }).select("id").maybeSingle();
-    if (error || !data) return json({ error: error?.code === "23505" ? "target_exists" : "insert_failed" }, 409);
+    if (error || !data) return json({ error: error?.code === "23505" ? "active_target_exists" : "insert_failed" }, 409);
     await audit("add_target", { work_date: workDate }, { target_id: data.id });
     return json({ ok: true, id: data.id, expires_at });
   }
