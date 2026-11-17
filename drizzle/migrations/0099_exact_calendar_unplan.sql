@@ -106,7 +106,14 @@ BEGIN
     ON CONFLICT (event_id,technician_id) DO UPDATE SET
       event_technician_id=COALESCE(EXCLUDED.event_technician_id,calendar_delete_retry_queue.event_technician_id), technician_user_id=COALESCE(EXCLUDED.technician_user_id,calendar_delete_retry_queue.technician_user_id),
       technician_name=COALESCE(EXCLUDED.technician_name,calendar_delete_retry_queue.technician_name), mailbox=COALESCE(EXCLUDED.mailbox,calendar_delete_retry_queue.mailbox),
-      candidate_event_ids=CASE WHEN jsonb_array_length(EXCLUDED.candidate_event_ids)>0 THEN EXCLUDED.candidate_event_ids ELSE calendar_delete_retry_queue.candidate_event_ids END,
+      candidate_event_ids=CASE
+        -- An unresolved earlier day must survive a later day's unplan on the same recipient row.
+        WHEN calendar_delete_retry_queue.status<>'resolved' AND jsonb_array_length(calendar_delete_retry_queue.candidate_event_ids)>0 THEN
+          (SELECT COALESCE(jsonb_agg(DISTINCT v),'[]'::jsonb) FROM (
+             SELECT jsonb_array_elements(calendar_delete_retry_queue.candidate_event_ids) v
+             UNION SELECT jsonb_array_elements(EXCLUDED.candidate_event_ids)) u)
+        WHEN jsonb_array_length(EXCLUDED.candidate_event_ids)>0 THEN EXCLUDED.candidate_event_ids
+        ELSE calendar_delete_retry_queue.candidate_event_ids END,
       start_at=COALESCE(EXCLUDED.start_at,calendar_delete_retry_queue.start_at), end_at=COALESCE(EXCLUDED.end_at,calendar_delete_retry_queue.end_at),
       status='pending', next_attempt_at=now(),
       last_error=CASE WHEN calendar_delete_retry_queue.status='resolved' THEN calendar_delete_retry_queue.last_error ELSE NULL END;
