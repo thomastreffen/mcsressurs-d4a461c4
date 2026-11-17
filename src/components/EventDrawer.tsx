@@ -717,6 +717,7 @@ export function EventDrawer({
     });
     if (planError) throw new Error(`Kunne ikke lagre planen: ${planError.message}`);
     const toAdd: string[] = plan?.added ?? [];
+    const toRemove: { technician_id: string }[] = (plan?.removed ?? []).map((technician_id: string) => ({ technician_id }));
     if (plan?.removed?.length) toast.warning("Planen er lagret; Outlook-fjerning krever eksplisitt bekreftet oppfølging.");
 
     const remainingTechIds = techIds.filter((id) => existingIds.has(id));
