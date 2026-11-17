@@ -10455,6 +10455,7 @@ export type Database = {
           reminders_paused: boolean
           responded_at: string | null
           response_required: boolean
+          schedule_signature: string | null
           status: string
           technician_user_id: string
           token: string
@@ -10475,6 +10476,7 @@ export type Database = {
           reminders_paused?: boolean
           responded_at?: string | null
           response_required?: boolean
+          schedule_signature?: string | null
           status?: string
           technician_user_id: string
           token?: string
@@ -10495,6 +10497,7 @@ export type Database = {
           reminders_paused?: boolean
           responded_at?: string | null
           response_required?: boolean
+          schedule_signature?: string | null
           status?: string
           technician_user_id?: string
           token?: string
@@ -18688,6 +18691,10 @@ export type Database = {
         }
         Returns: string
       }
+      assignment_schedule_signature: {
+        Args: { _event: string; _user: string }
+        Returns: string
+      }
       attach_competence_document: {
         Args: {
           _actor: string
@@ -18983,6 +18990,18 @@ export type Database = {
           start_at: string
           technician_id: string
         }[]
+      }
+      edit_resource_job_plan: {
+        Args: {
+          _end: string
+          _event: string
+          _expected_end: string
+          _expected_start: string
+          _expected_technicians: string[]
+          _start: string
+          _technicians: string[]
+        }
+        Returns: Json
       }
       event_company_id: { Args: { _event_id: string }; Returns: string }
       event_module_access: {
@@ -19497,6 +19516,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      invalidate_assignment_response: {
+        Args: { _event: string; _tech: string }
+        Returns: undefined
+      }
       is_active_hub_user: { Args: never; Returns: boolean }
       is_active_member_of: { Args: { _company_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
@@ -19960,6 +19983,16 @@ export type Database = {
           economic_project_master: boolean
           test_search_enabled: boolean
         }[]
+      }
+      respond_to_job_assignment: {
+        Args: {
+          _action: string
+          _comment?: string
+          _end?: string
+          _start?: string
+          _token: string
+        }
+        Returns: Json
       }
       save_form_answers: {
         Args: { _answers: Json; _expected_revision: number; _id: string }

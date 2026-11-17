@@ -729,6 +729,13 @@
       "when": 1794902130450,
       "tag": "0103_parent_module_access_static_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1794908597020,
+      "tag": "0104_individual_assignment_response_and_plan",
+      "breakpoints": true
     }
   ]
 }
