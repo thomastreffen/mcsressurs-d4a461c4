@@ -694,6 +694,13 @@
       "when": 1794828042537,
       "tag": "0098_standalone_resource_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1794900699678,
+      "tag": "0099_event_logs_notification_choice_actions",
+      "breakpoints": true
     }
   ]
 }
