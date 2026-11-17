@@ -80,4 +80,15 @@ it("Oslo midnight uses winter/summer/DST workday, not UTC date",async()=>{
 it("resolved old queue is reopened only by a new explicit removal, no definition-triggered write",async()=>{
  await remove(); await db.exec("update calendar_delete_retry_queue set status='resolved'"); await remove();
  expect((await db.query("select status from calendar_delete_retry_queue")).rows).toEqual([{status:"pending"}]);
+});it("unconfirmed earlier day survives a later day's unplan on the same recipient row",async()=>{
+ await remove(); await db.exec("update calendar_delete_retry_queue set status='failed'");
+ await remove("40000000-0000-0000-0000-000000000002");
+ const ids=(await db.query<{candidate_event_ids:string[]}>("select candidate_event_ids from calendar_delete_retry_queue")).rows[0].candidate_event_ids;
+ expect([...ids].sort()).toEqual(["exact17","exact18"]);
+ expect((await db.query("select * from calendar_delete_retry_queue where candidate_event_ids ? 'other17'")).rows).toHaveLength(0);
+});
+it("old failed row with empty candidates (JOB-000440 shape) is never drained by the definition itself",async()=>{
+ await db.query("insert into calendar_delete_retry_queue(event_id,technician_id,candidate_event_ids,status,next_attempt_at) values($1,$2,'[]','failed',now()-interval '1 day')",[E,T]);
+ expect((await db.query("select status,candidate_event_ids from calendar_delete_retry_queue")).rows).toEqual([{status:"failed",candidate_event_ids:[]}]);
+ expect((await db.query("select * from job_calendar_day_links where technician_id=$1",[T])).rows).toHaveLength(2);
 });
