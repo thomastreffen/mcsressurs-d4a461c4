@@ -184,9 +184,15 @@ Deno.serve(async (req) => {
     const plan = planJobDays({ job, blocks: (blocks ?? []) as any, assignees: (rows ?? []).map((r: any) => ({ technician_id: r.technician_id, email: r.technicians?.email ?? null })),
       appLinks: ((appLinks ?? []) as any[]).filter((l) => l.work_date), legacyLinks: (legacy ?? []) as any, targets: [t],
       flags: { enabled: true, dryRun: true, scopeVerified: true, pilotMailboxes: [t.mailbox] }, now });
-    const days = plan.map((r) => ({ technician_id: r.technicianId, technician_name: current.technicians.find(x => x.id === r.technicianId)?.name ?? "Montør", work_date: r.workDate, start_at: r.startAt, end_at: r.endAt, in_pilot: !r.gate, gate: r.gate, decision: r.decision.kind, reason: (r.decision as any).reason ?? null }));
-    await audit("simulate", { days: days.length, writable: days.filter((d) => d.in_pilot && d.decision !== "skip").length }, { target_id: t.id });
-    return json({ ok: true, simulation: true, days });
+    // Read-only "what if the job were active" comparison; never used for any gate or write.
+    const hypo = planJobDays({ job: { ...job, status: "scheduled" }, blocks: (blocks ?? []) as any, assignees: (rows ?? []).map((r: any) => ({ technician_id: r.technician_id, email: r.technicians?.email ?? null })),
+      appLinks: ((appLinks ?? []) as any[]).filter((l) => l.work_date), legacyLinks: (legacy ?? []) as any, targets: [t],
+      flags: { enabled: true, dryRun: true, scopeVerified: true, pilotMailboxes: [t.mailbox] }, now });
+    const { data: gs } = await admin.from("job_outlook_app_sync_settings").select("enabled,dry_run,pilot_mailboxes,scope_verified_at").eq("id", true).maybeSingle();
+    const global = { enabled: !!gs?.enabled, dry_run: gs?.dry_run !== false, scope_verified: !!gs?.scope_verified_at, mailbox_allowed: ((gs?.pilot_mailboxes ?? []) as string[]).map((m) => m.toLowerCase()).includes(t.mailbox.toLowerCase()) };
+    const days = plan.map((r) => ({ job_status: ev.status ?? null, what_if_active: hypo.find((h) => h.technicianId === r.technicianId && h.workDate === r.workDate)?.decision.kind ?? null, technician_id: r.technicianId, technician_name: current.technicians.find(x => x.id === r.technicianId)?.name ?? "Montør", work_date: r.workDate, start_at: r.startAt, end_at: r.endAt, in_pilot: !r.gate, gate: r.gate, decision: r.decision.kind, reason: (r.decision as any).reason ?? null }));
+    await audit("simulate", { days: days.length, writable: days.filter((d) => d.in_pilot && d.decision !== "skip").length, job_status: ev.status ?? null }, { target_id: t.id });
+    return json({ ok: true, simulation: true, days, global });
   }
 
   if (action === "release_queue") {

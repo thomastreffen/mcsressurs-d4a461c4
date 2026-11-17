@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { freshMailboxProbe } from "../../../supabase/functions/_shared/job-outlook-pilot-selector";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck } from "lucide-react";
-import { DECISION_LABELS } from "../../../supabase/functions/_shared/job-outlook-app-days";
+import { simOutcome, globalGateNotes } from "../../../supabase/functions/_shared/job-outlook-pilot-sim-view";
 
 type Any = Record<string, any>;
 async function call(body: Any): Promise<Any> {
@@ -38,6 +38,7 @@ export function JobOutlookPilotScopeCard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [sim, setSim] = useState<Any[] | null>(null);
+  const [simGlobal, setSimGlobal] = useState<Any | null>(null);
 
   const run = async (key: string, body: Any, after?: (r: Any) => void) => {
     setBusy(key); setMsg(null);
@@ -118,7 +119,7 @@ export function JobOutlookPilotScopeCard() {
                 {active && (
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`p${t.id}`, { action: "probe_mailbox", target_id: t.id }, (r) => setMsg(r.result.pass ? "Lesetest bestått (200): appen når kalenderen." : `Lesetest feilet: ${r.result.http}${r.result.graph_code ? ` ${r.result.graph_code}` : ""}`))}>Lesetest kalender</Button>
-                    <Button size="sm" variant="outline" disabled={!!busy || !readPassed} onClick={() => run(`s${t.id}`, { action: "simulate", target_id: t.id }, (r) => setSim(r.days))}>Simuler</Button>
+                    <Button size="sm" variant="outline" disabled={!!busy || !readPassed} onClick={() => run(`s${t.id}`, { action: "simulate", target_id: t.id }, (r) => { setSim(r.days); setSimGlobal(r.global ?? null); })}>Simuler</Button>
                     <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => run(`r${t.id}`, { action: "revoke_target", target_id: t.id })}>Trekk tilbake</Button>
                   </div>
                 )}
@@ -130,12 +131,15 @@ export function JobOutlookPilotScopeCard() {
         {sim && (
           <div className="rounded-md border p-2 space-y-1">
             <p className="font-medium">Simulering (testmodus, ingen skriving)</p>
+            {simGlobal && globalGateNotes(simGlobal as any).length > 0 && (
+              <p className="text-muted-foreground">Holdt igjen uansett: {globalGateNotes(simGlobal as any).join(", ")}. Simuleringen viser hva som ville skjedd om bare denne pilotdagen ble åpnet.</p>
+            )}
             {sim.map((d, i) => (
               <div key={i} className="flex flex-wrap gap-2">
                 <span>{d.technician_name ?? "Montør"}</span>
                 <span>{fmtDate(d.work_date)} {fmtTime(d.start_at)}–{fmtTime(d.end_at)}</span>
-                <Badge variant={d.in_pilot ? "default" : "outline"}>{d.in_pilot ? "I pilot" : "Stengt"}</Badge>
-                <span className="text-muted-foreground">{d.in_pilot ? DECISION_LABELS[d.decision] : "Ikke berørt"}</span>
+                <Badge variant={d.in_pilot ? "default" : "outline"}>{d.in_pilot ? "Pilotdag" : "Utenfor pilot"}</Badge>
+                <span className={simOutcome(d as any).tone === "blocked" ? "text-destructive" : "text-muted-foreground"}>{simOutcome(d as any).label}</span>
               </div>
             ))}
           </div>
