@@ -29,7 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import type { CalendarEvent } from "@/hooks/useCalendarEvents";
-import type { JobStatus } from "@/lib/job-status";
+import { getExecutionStatus, type JobStatus } from "@/lib/job-status";
 
 interface JobQuickEditSheetProps {
   open: boolean;
@@ -162,7 +162,7 @@ export function JobQuickEditSheet({
                 Rediger tid og ressurser direkte
               </SheetDescription>
             </div>
-            <JobStatusBadge status={job.status} />
+            <JobStatusBadge status={getExecutionStatus(job.status)} />
           </div>
 
           {/* Info summary */}

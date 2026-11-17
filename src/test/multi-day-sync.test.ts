@@ -234,7 +234,7 @@ describe("multi-day sync orchestration (mocked Graph)", () => {
     expect(aggregateDayCoverage(res.map((r) => r.state))).toBe("delvis");
   });
 
-  it("failed day is retried on next run (claim released)", async () => {
+  it("uncertain 5xx create is held for reconciliation, not blindly replayed", async () => {
     const { store } = memStore();
     const { graph, calls } = memGraph(["2026-11-20"]);
     await syncTechnicianDays({
@@ -246,8 +246,8 @@ describe("multi-day sync orchestration (mocked Graph)", () => {
       eventId: EVENT, technicianId: EMIL, email: "emil@mcs.no", blocks: twoDays,
       action: "update", store, graph: okGraph.graph, buildBody,
     });
-    expect(okGraph.calls.filter((c) => c.op === "create")).toHaveLength(1); // only the failed day
-    expect(res.every((r) => r.state === "synket")).toBe(true);
+    expect(okGraph.calls.filter((c) => c.op === "create")).toHaveLength(0);
+    expect(res.find(r => r.workDate === "2026-11-20")?.state).toBe("venter");
     expect(calls.filter((c) => c.op === "create")).toHaveLength(2); // no extra writes on first mock
   });
 

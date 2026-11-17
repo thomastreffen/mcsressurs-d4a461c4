@@ -30,7 +30,7 @@ beforeAll(async()=>{
  CREATE POLICY own_company ON events TO authenticated USING(has_company_access(auth.uid(),company_id,'resource_plan','view'));
  `);
  await db.exec(readFileSync('drizzle/migrations/0101_exact_calendar_unplan.sql','utf8'));
- await db.exec(readFileSync('src/test/sql/individual-assignment.sql','utf8'));
+ await db.exec(readFileSync('drizzle/migrations/0104_individual_assignment_response_and_plan.sql','utf8'));
  await db.exec(`CREATE TRIGGER sync_assignment AFTER INSERT OR UPDATE OR DELETE ON event_technicians FOR EACH ROW EXECUTE FUNCTION sync_schedule_block_for_event_technician();
  CREATE TRIGGER sync_event AFTER UPDATE ON events FOR EACH ROW EXECUTE FUNCTION sync_schedule_blocks_for_event_time_change();`);
 },120000);
