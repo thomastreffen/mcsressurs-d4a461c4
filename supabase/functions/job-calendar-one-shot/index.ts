@@ -40,11 +40,15 @@ Deno.serve(async req => {
   const publicRun = (r: any) => ({ id: r.id, state: r.state, consumed_at: r.consumed_at, expires_at: r.expires_at, http_status: r.http_status, event_id_persisted: !!r.graph_event_id });
   try {
     const history = check(await admin.from("job_calendar_one_shot_runs").select("id,state,consumed_at,expires_at,http_status,graph_event_id").order("created_at", { ascending: false }).limit(15));
-    if (b.action === "status") return json({ scope: { event_id: x.event_id, technician_id: x.technician_id, mailbox: x.mailbox, work_date: x.work_date }, runs: history.map(publicRun), consumed: history.some(r => !!r.consumed_at) });
+    // A consumed permit cannot fall out of a bounded recent-preflight list.
+    const consumedRun = check(await admin.from("job_calendar_one_shot_runs").select("id,state,consumed_at,expires_at,http_status,graph_event_id").not("consumed_at", "is", null).limit(1));
+    const consumed = consumedRun.length > 0;
+    if (consumed && !history.some(r => r.id === consumedRun[0].id)) history.unshift(consumedRun[0]);
+    if (b.action === "status") return json({ scope: { event_id: x.event_id, technician_id: x.technician_id, mailbox: x.mailbox, work_date: x.work_date }, runs: history.map(publicRun), consumed });
     const run = b.action === "create" || b.action === "reconcile" ? check(await admin.from("job_calendar_one_shot_runs").select("*").eq("id", b.run_id).maybeSingle()) : null;
     if (b.action !== "preflight" && !run) return json({ error: "run_not_found" }, 404);
     if (b.action === "create" && (run?.actor !== caller || run.payload_hash !== b.payload_hash || run.state !== "prepared" || Date.parse(run.expires_at) <= Date.now() || run.consumed_at)) return json({ error: "preflight_expired_or_consumed" }, 409);
-    if (b.action === "preflight" && history.some(r => !!r.consumed_at)) return json({ error: "permit_already_consumed", runs: history.map(publicRun) }, 409);
+    if (b.action === "preflight" && consumed) return json({ error: "permit_already_consumed", runs: history.map(publicRun) }, 409);
     if (b.action === "reconcile" && (!run?.consumed_at || run.state === "succeeded")) return json({ error: "no_uncertain_run" }, 409);
     const job = check(await uc.from("events").select("*").eq("id", x.event_id).eq("company_id", x.company_id).maybeSingle());
     if (!job) return json({ error: "job_not_visible" }, 403);

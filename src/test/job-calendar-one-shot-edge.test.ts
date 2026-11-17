@@ -5,7 +5,7 @@ import { z } from "zod";
 import * as core from "../../supabase/functions/_shared/job-calendar-one-shot";
 async function load(options: { admin?: boolean; company?: boolean; user?: boolean } = {}) {
   let serve: ((req: Request) => Promise<Response>) | undefined;
-  const from = vi.fn(() => { const q: any = { select: () => q, order: () => q, limit: async () => ({ data: [], error: null }) }; return q; });
+  const from = vi.fn(() => { const q: any = { select: () => q, order: () => q, not: () => q, limit: async () => ({ data: [], error: null }) }; return q; });
   const rpc = vi.fn(async () => ({ data: options.company !== false, error: null }));
   const client = { from, rpc, auth: { getClaims: async () => ({ data: { claims: { sub: options.user === false ? null : "authenticated-operator" } }, error: null }) } };
   const Deno = { env: { get: () => "isolated-config" }, serve: (s: typeof serve) => { serve = s; } };
