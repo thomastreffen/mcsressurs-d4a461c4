@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ONE_SHOT, type OneShotDiagnosis, type OneShotConflictClass } from "../../../supabase/functions/_shared/job-calendar-one-shot";
 
-type Preview = { run_id: string; payload_hash: string; expires_at: string; mailbox: string; local_time: string; approval: string; payload: { subject: string; body: { content: string }; location?: { displayName: string } }; request_method: string; request_path: string };
+type Preview = { run_id: string; payload_hash: string; calendar_signature: string; conflict_override_required: boolean; expires_at: string; mailbox: string; local_time: string; approval: string; payload: { subject: string; body: { content: string }; location?: { displayName: string } }; request_method: string; request_path: string };
 type Result = { preview?: Preview; diagnosis?: OneShotDiagnosis; existing_mapping?: boolean; state?: string; consumed?: boolean; runs?: { id: string; state: string; consumed_at: string | null; event_id_persisted: boolean; http_status: number | null }[] };
 class CalendarCheckError extends Error { constructor(code: string, public diagnosis?: OneShotDiagnosis) { super(code); } }
 async function call(body: Record<string, unknown>): Promise<Result> {
@@ -30,6 +30,9 @@ const messages: Record<string, string> = {
   preflight_expired_or_consumed: "Forhåndskontrollen er utløpt eller allerede brukt.",
   preview_changed: "Jobben eller planen har endret seg. Ny forhåndskontroll kreves.",
   individual_response_blocks_pilot: "Mats’ eget svar sperrer denne piloten.",
+  same_hub_job_exists: "Samme Hub-oppdrag finnes allerede. Koblingen må avklares; opprettelse kan ikke overstyres.",
+  calendar_identity_unresolved: "Kalenderidentiteten eller nødvendige opplysninger er uavklart. Opprettelse kan ikke overstyres.",
+  conflict_confirmation_required: "Bekreft korrekt ressursplan, kjent tidskonflikt og den særskilte engangsteksten.",
 };
 const outcomes: Record<string, string> = {
   succeeded: "Avtalen er bekreftet i Microsoft, og nøyaktig kalender-ID er lagret. Dette bekrefter ikke at Mats har lest den.",
@@ -38,6 +41,10 @@ const outcomes: Record<string, string> = {
   already_claimed: "Tillatelsen er allerede brukt eller dagens vilkår er endret. Ingenting sendes på nytt.",
   duplicate_or_conflict: "En eksisterende avtale sperrer opprettelsen.",
   unresolved_no_repost: "Lesekontrollen kunne ikke bekrefte avtalen. Ingen ny opprettelse er tillatt.",
+  same_hub_job_exists: messages.same_hub_job_exists,
+  calendar_identity_unresolved: messages.calendar_identity_unresolved,
+  conflict_override_required: "Tidskonflikten må bekreftes eksplisitt før opprettelse.",
+  calendar_changed_requires_preflight: "Kalenderen er endret siden forhåndsvisningen. Ny lesekontroll og bekreftelse kreves; ingenting er opprettet.",
 };
 const conflictLabels: Record<OneShotConflictClass, string> = {
   same_one_shot: "Samme engangspilot finnes allerede", same_hub_day: "Samme Hub-oppdrag og dag finnes allerede",
@@ -50,6 +57,8 @@ export function JobCalendarOneShot() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [confirm, setConfirm] = useState("");
   const [busyAccepted, setBusyAccepted] = useState(false);
+  const [planAccepted, setPlanAccepted] = useState(false);
+  const [conflictAccepted, setConflictAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [diagnosis, setDiagnosis] = useState<OneShotDiagnosis | null>(null);
@@ -58,7 +67,7 @@ export function JobCalendarOneShot() {
     try {
       const r = await call(body);
       if (r.diagnosis) setDiagnosis(r.diagnosis);
-      if (r.preview) { setPreview(r.preview); setConfirm(""); setBusyAccepted(false); }
+      if (r.preview) { setPreview(r.preview); setConfirm(""); setBusyAccepted(false); setPlanAccepted(false); setConflictAccepted(false); }
       else { setPreview(null); setMessage(r.diagnosis ? (r.existing_mapping ? messages.existing_mapping_requires_reconciliation : "Lesediagnose fullført. Ingen engangstillatelse opprettet eller brukt.") : outcomes[r.state ?? ""] ?? "Kontroll fullført uten ny utsending."); }
     } catch (e) { setPreview(null); if (e instanceof CalendarCheckError && e.diagnosis) setDiagnosis(e.diagnosis); const code = e instanceof Error ? e.message : "stopped_requires_status_check"; setMessage(messages[code] ?? `Sperret: ${code}`); }
     finally { await status.refetch(); setBusy(false); }
@@ -72,9 +81,9 @@ export function JobCalendarOneShot() {
     <Button variant="outline" disabled={busy || status.isLoading || !!status.error || !!status.data?.consumed} onClick={() => perform({ action: "preflight" })}>Lesekontroll og forhåndsvisning</Button>
     <Button variant="outline" disabled={busy || status.isLoading || !!status.error} onClick={() => perform({ action: "diagnose" })}>Undersøk kalenderkonflikt – kun lesing</Button>
     {diagnosis && <div className="space-y-2 border-l-2 border-border pl-3" aria-label="Kalenderkonfliktdiagnose">
-      <p>{diagnosis.checked_count} avtaler kontrollert · {diagnosis.blocking_count} sperrende overlapp · {diagnosis.same_hub_count} med samme Hub-oppdrag · {diagnosis.non_busy_count} ledige eller avlyste</p>
+      <p>{diagnosis.checked_count} avtaler kontrollert · {diagnosis.blocking_count} treff · {diagnosis.same_hub_count} med samme Hub-oppdrag · {diagnosis.non_busy_count} ledige eller avlyste</p>
       <ul className="space-y-2">{diagnosis.conflicts.map((c, i) => <li key={i} className="break-words">{conflictLabels[c.classification]} · {c.local_overlap ?? "Ukjent tid"} Europe/Oslo · {c.show_as}{c.all_day ? " · Heldag" : ""}{["occurrence", "exception"].includes(c.event_type) ? " · Gjentakende avtale" : ""}{c.cancelled ? " · Avlyst" : ""}</li>)}</ul>
-      <p className="text-muted-foreground">Konfliktsperren er uendret, også for ledige og avlyste overlapp. Ingen ny avtale opprettes fra denne kontrollen.</p>
+      <p className="text-muted-foreground">{diagnosis.category === "other" ? "Annen Outlook-tid endrer ikke ressursplanen. Opprettelse krever eksplisitt bekreftelse på kjent tidskonflikt." : diagnosis.category === "clear" ? "Ingen tidskonflikt funnet." : "Samme oppdrag eller uavklart identitet kan ikke overstyres."} Ingen ny avtale opprettes fra lesekontrollen.</p>
     </div>}
     {preview && <div className="space-y-3 border-l-2 border-border pl-3">
       <p className="font-medium">{preview.payload.subject}</p>
@@ -84,8 +93,10 @@ export function JobCalendarOneShot() {
       <details><summary className="cursor-pointer">Eksakte forespørselsdata</summary><pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs">{JSON.stringify({ method: preview.request_method, path: preview.request_path, payload: preview.payload, payload_hash: preview.payload_hash }, null, 2)}</pre></details>
       <p className="text-muted-foreground">Bekreftelsen utløper {new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", hour: "2-digit", minute: "2-digit" }).format(new Date(preview.expires_at))}. Globale brytere og ventende kø forblir stengt.</p>
       <label className="flex items-start gap-2"><Checkbox checked={busyAccepted} onCheckedChange={v => setBusyAccepted(v === true)} /><span>Jeg godkjenner «Opptatt» for Mats selv om hans svar fortsatt venter.</span></label>
-      <Input aria-label="Engangsbekreftelse" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={ONE_SHOT.phrase} />
-      <Button disabled={busy || !busyAccepted || confirm !== ONE_SHOT.phrase || Date.parse(preview.expires_at) <= Date.now() || !!status.data?.consumed} onClick={() => perform({ action: "create", run_id: preview.run_id, payload_hash: preview.payload_hash, confirm, pending_busy_confirmed: true })}>Opprett én avtale for Mats 19. november</Button>
+      <label className="flex items-start gap-2"><Checkbox aria-label="Ressursplanen er korrekt" checked={planAccepted} onCheckedChange={v => setPlanAccepted(v === true)} /><span>Jeg bekrefter at ressursplanen er korrekt: Mats, 60570, 19. november 08:00–16:00.</span></label>
+      {preview.conflict_override_required && <label className="flex items-start gap-2"><Checkbox aria-label="Tidskonflikt kjent" checked={conflictAccepted} onCheckedChange={v => setConflictAccepted(v === true)} /><span>Opprett likevel, tidskonflikt kjent. Jeg har kontrollert treffene; andre Outlook-avtaler skal ikke endres.</span></label>}
+      <Input aria-label="Engangsbekreftelse" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={preview.conflict_override_required ? ONE_SHOT.overridePhrase : ONE_SHOT.phrase} />
+      <Button className="h-auto min-h-11 whitespace-normal" disabled={busy || !busyAccepted || !planAccepted || preview.conflict_override_required && !conflictAccepted || confirm !== (preview.conflict_override_required ? ONE_SHOT.overridePhrase : ONE_SHOT.phrase) || Date.parse(preview.expires_at) <= Date.now() || !!status.data?.consumed} onClick={() => perform({ action: "create", run_id: preview.run_id, payload_hash: preview.payload_hash, calendar_signature: preview.calendar_signature, confirm, pending_busy_confirmed: true, resource_plan_confirmed: true, conflict_override: preview.conflict_override_required && conflictAccepted })}>{preview.conflict_override_required ? "Opprett likevel for Mats – tidskonflikt kjent" : "Opprett én avtale for Mats 19. november"}</Button>
     </div>}
     {(status.data?.runs ?? []).filter(r => !!r.consumed_at).map(r => <div key={r.id} className="space-y-2">
       <p>Forsøk: {r.state === "posting" ? "Påbegynt – resultat må kontrolleres" : outcomes[r.state] ?? r.state}{r.http_status ? ` · HTTP ${r.http_status}` : ""}</p>

@@ -250,7 +250,8 @@ export function JobCalendarSync({
         body: { action: "availability", user_ids: userIds, start: jobStart.toISOString(), end: jobEnd.toISOString(), job_id: jobId },
       });
 
-      if (!availErr && availData?.results?.some((r: AvailabilityResult) => r.busy)) {
+      if (availErr || availData?.error || !Array.isArray(availData?.results) || availData.results.some((r: any) => r.lookup_error)) throw new Error("Kalenderlesingen er uavklart. Synk er stoppet.");
+      if (availData.results.some((r: AvailabilityResult) => r.busy)) {
         // Show conflict modal
         setConflictModal({
           open: true,
@@ -272,7 +273,7 @@ export function JobCalendarSync({
     setSyncing(true);
     try {
       const userIds = Array.from(techUserMap.values()).map((t) => t.user_id);
-      const { data, error } = await supabase.functions.invoke("ms-calendar", {
+      const { data, error } = await invokeWithSession("ms-calendar", {
         body: { action: "upsert_job_events", job_id: jobId, user_ids: userIds, override_conflicts: overrideConflicts },
       });
       if (error) throw error;
@@ -628,7 +629,7 @@ export function JobCalendarSync({
               Kalenderkonflikter oppdaget
             </DialogTitle>
             <DialogDescription>
-              Følgende teknikere har andre avtaler i dette tidsrommet (jobbens egne Outlook-hendelser er utelatt). Vil du synke likevel?
+              Outlook viser opptatt tid. Tilgjengelighetsdata alene kan ikke bevise hvilken avtale som er en Hub-kopi. Ressursplanens tidspunkt beholdes; andre avtaler skal ikke endres.
             </DialogDescription>
           </DialogHeader>
 

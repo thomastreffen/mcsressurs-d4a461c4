@@ -5,6 +5,7 @@
 import { osloDayKey } from "./multi-day-calendar.ts";
 
 export interface BusySlot {
+  identityVerified?: boolean;
   status?: string;
   subject?: string | null;
   start?: string;
@@ -33,11 +34,11 @@ export function parseGraphUtcDateTime(dt: string): Date {
 
 /** True when a busy slot matches one of the job's own windows (start AND end within tolerance). */
 export function isOwnJobSlot(
-  slot: Pick<BusySlot, "start" | "end">,
+  slot: Pick<BusySlot, "start" | "end" | "identityVerified">,
   ownWindows: OwnWindow[],
   toleranceMs: number = OWN_SLOT_TOLERANCE_MS,
 ): boolean {
-  if (!slot.start || !slot.end) return false;
+  if (slot.identityVerified !== true || !slot.start || !slot.end) return false;
   const s = parseGraphUtcDateTime(slot.start).getTime();
   const e = parseGraphUtcDateTime(slot.end).getTime();
   if (Number.isNaN(s) || Number.isNaN(e)) return false;
@@ -49,7 +50,7 @@ export function isOwnJobSlot(
 }
 
 /** Split busy slots into real external conflicts and the job's own copies. */
-export function filterOwnBusySlots<T extends Pick<BusySlot, "start" | "end">>(
+export function filterOwnBusySlots<T extends Pick<BusySlot, "start" | "end" | "identityVerified">>(
   slots: T[],
   ownWindows: OwnWindow[],
 ): { kept: T[]; removedOwn: T[] } {
