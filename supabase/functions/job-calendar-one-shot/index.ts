@@ -5,6 +5,8 @@ import { z } from "npm:zod@3";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { tokenRoles } from "../_shared/hub-calendar-diagnostics-core.ts";
 import { diagnosticGate } from "../_shared/hub-calendar-write-pilot-core.ts";
+import { buildDayPayload } from "../_shared/job-outlook-app-days.ts";
+import { MUTATIONS_APPROVED, assertMutationRequest, storedScopeOk, verifyCopy, mutationGate, patchDiff, exactGetPath, type StoredCopy } from "../_shared/job-calendar-one-shot-mutation.ts";
 import { ONE_SHOT, oneShotGate, oneShotPayload, assertOneShotRequest, inspectMailbox, createOneShot, oneShotConflictGuard, type OneShotContext, type OneShotGraph } from "../_shared/job-calendar-one-shot.ts";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -14,6 +16,8 @@ const Schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("diagnose") }).strict(),
   z.object({ action: z.literal("create"), run_id: z.string().uuid(), payload_hash: z.string().regex(/^[a-f0-9]{64}$/), confirm: z.union([z.literal(ONE_SHOT.phrase), z.literal(ONE_SHOT.overridePhrase)]), pending_busy_confirmed: z.literal(true), conflict_override: z.boolean().default(false), resource_plan_confirmed: z.literal(true), calendar_signature: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   z.object({ action: z.literal("reconcile"), run_id: z.string().uuid() }).strict(),
+  z.object({ action: z.literal("mutation_preview"), kind: z.enum(["update", "delete"]) }).strict(),
+  z.object({ action: z.literal("mutation_execute"), kind: z.enum(["update", "delete"]) }).passthrough(),
 ]);
 const check = <T>(r: { data: T; error: unknown }): T => { if (r.error) throw new Error("authoritative_read_failed"); return r.data; };
 const hash = async (s: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))).map(b => b.toString(16).padStart(2, "0")).join("");
@@ -38,6 +42,8 @@ Deno.serve(async req => {
   const parsed = Schema.safeParse(input);
   if (!parsed.success) return json({ error: "invalid_input" }, 400);
   const b = parsed.data, x = ONE_SHOT;
+  // Locked until separate written approval + claim migration: no PATCH/DELETE path exists.
+  if (b.action === "mutation_execute" && !MUTATIONS_APPROVED) return json({ error: "mutation_not_approved", no_graph_call: true }, 409);
   const publicRun = (r: any) => ({ id: r.id, state: r.state, consumed_at: r.consumed_at, expires_at: r.expires_at, http_status: r.http_status, event_id_persisted: !!r.graph_event_id });
   try {
     const history = check(await admin.from("job_calendar_one_shot_runs").select("id,state,consumed_at,expires_at,http_status,graph_event_id").order("created_at", { ascending: false }).limit(15));
@@ -70,13 +76,14 @@ Deno.serve(async req => {
     const denied = oneShotGate(c, new Date());
     // Recovery is read-only and must remain possible after a target or preview expires.
     // It still requires this exact scope, active identity, live assignment and caller company access.
-    if (denied && (b.action !== "reconcile" || ["exact_scope_mismatch", "inactive_assignment_or_identity"].includes(denied))) return json({ error: denied }, 409);
+    const mutationReadable = b.action === "mutation_preview" && !!denied && !["exact_scope_mismatch", "global_settings_changed"].includes(denied);
+    if (denied && !mutationReadable && (b.action !== "reconcile" || ["exact_scope_mismatch", "inactive_assignment_or_identity"].includes(denied))) return json({ error: denied }, 409);
     const payload = oneShotPayload(c.job);
     const digest = await hash(JSON.stringify(payload));
     if (b.action === "create" && (digest !== run?.payload_hash || signature !== run.schedule_signature)) return json({ error: "preview_changed" }, 409);
     const diag = check(await admin.from("hub_calendar_diagnostic_runs").select("run_at,overall,checks").order("run_at", { ascending: false }).limit(1).maybeSingle());
     const diagDenied = diagnosticGate(diag as any, new Date());
-    if (diagDenied) return json({ error: diagDenied }, 409);
+    if (diagDenied && b.action !== "mutation_preview") return json({ error: diagDenied }, 409);
     const tenant = env("HUB_CALENDAR_TENANT_ID"), client = env("HUB_CALENDAR_CLIENT_ID"), secret = env("HUB_CALENDAR_CLIENT_SECRET"), mailClient = env("AZURE_CLIENT_ID");
     if (!tenant || !client || !secret || !mailClient || client === mailClient) return json({ error: "calendar_identity_unverified" }, 409);
     const tokenRes = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenant)}/oauth2/v2.0/token`, { method: "POST", signal: AbortSignal.timeout(15000), headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: client, client_secret: secret, grant_type: "client_credentials", scope: "https://graph.microsoft.com/.default" }) });
@@ -94,6 +101,25 @@ Deno.serve(async req => {
       let data = null; try { data = text ? JSON.parse(text) : null; } catch { /* non-JSON is held */ }
       return { status: res.status, data };
     };
+    if (b.action === "mutation_preview") {
+      // Read-only: one GET of the exact stored ID. No claim, audit, queue, flag or Graph write.
+      const stored = check(await admin.from("job_calendar_one_shot_runs").select("graph_event_id,graph_change_key,mailbox,event_id,technician_id,work_date,company_id,state,payload").eq("state", "succeeded").not("consumed_at", "is", null).limit(2));
+      if (stored.length !== 1) return json({ error: "no_verified_copy" }, 409);
+      const s = stored[0] as StoredCopy & { payload: Record<string, unknown> };
+      const scope = storedScopeOk(s); if (scope) return json({ error: scope }, 409);
+      if (c.mailbox !== x.mailbox) return json({ error: "exact_scope_mismatch" }, 409);
+      const path = exactGetPath(s.graph_event_id);
+      assertMutationRequest("GET", path, s.graph_event_id);
+      const res = await fetch(`https://graph.microsoft.com${path}`, { method: "GET", signal: AbortSignal.timeout(20000), headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC", IdType="ImmutableId"' } });
+      let data = null; try { data = await res.json(); } catch { /* held as unknown */ }
+      const v = verifyCopy({ status: res.status, data }, s);
+      const day = blocks.filter(bl => bl.start_at.slice(0, 10) === x.work_date && bl.company_id === x.company_id);
+      const dayStillPlanned = !!assignment && day.length > 0;
+      const desired = day.length === 1 ? { ...buildDayPayload(c.job, { technicianId: x.technician_id, workDate: x.work_date, startAt: new Date(day[0].start_at).toISOString(), endAt: new Date(day[0].end_at).toISOString(), operationKey: x.key }, x.key), isReminderOn: false, isOnlineMeeting: false } : s.payload;
+      const changes = Object.keys(patchDiff(desired, s.payload));
+      const blockedBy = mutationGate(b.kind, v, { dayStillPlanned, specialDeletePermit: false, desired, current: s.payload });
+      return json({ read_only: true, kind: b.kind, verification: v.verification, facts: v.facts ?? null, day_still_planned: dayStillPlanned, changed_fields: changes, blocked_by: blockedBy ?? "mutation_not_approved", writes_enabled: MUTATIONS_APPROVED, confirm_phrase_required: true });
+    }
     if (b.action === "reconcile") {
       const seen = await inspectMailbox(graph);
       if (!seen.own) {

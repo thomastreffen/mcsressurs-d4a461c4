@@ -52,6 +52,45 @@ const conflictLabels: Record<OneShotConflictClass, string> = {
   other_busy: "Annen opptatt avtale", free_overlap: "Overlapp merket Ledig", cancelled_overlap: "Avlyst overlapp",
   unreadable_time: "Klokkeslett kunne ikke bekreftes", unknown_availability: "Ukjent opptattstatus",
 };
+type MutationCheck = { kind: "update" | "delete"; verification: string; facts: { start_ok: boolean; end_ok: boolean; show_as: string; attendees: number; job_link: boolean } | null; day_still_planned: boolean; changed_fields: string[]; blocked_by: string; writes_enabled: boolean };
+const blockers: Record<string, string> = {
+  delete_requires_unplan: "Sletting er sperret: Mats er fortsatt planlagt 19. november. Avplanlegg først i Ressursplan.",
+  no_change_needed: "Ingen endring i ressursplanen; ingenting å oppdatere.",
+  update_requires_planned_day: "Dagen er ikke lenger planlagt; endring er ikke aktuelt.",
+  attendees_present: "Avtalen har deltakere og kan ikke endres herfra.",
+  copy_changed_in_outlook: "Avtalen er endret i Outlook etter opprettelsen. Avklares manuelt; Hub overskriver ikke.",
+  copy_missing: "Avtalen finnes ikke lenger i Mats’ kalender.",
+  copy_identity_mismatch: "Kalender-ID-en peker ikke på Hub-avtalen. Stoppet.",
+  copy_unknown: "Microsoft svarte ikke entydig. Stoppet.",
+  mutation_not_approved: "Kontrollen er godkjent, men endring/sletting er ikke aktivert. Krever separat skriftlig sluttgodkjenning.",
+};
+function MutationPanel() {
+  const [check, setCheck] = useState<MutationCheck | null>(null);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async (kind: "update" | "delete") => {
+    setBusy(true); setErr(""); setCheck(null);
+    try { setCheck(await call({ action: "mutation_preview", kind }) as unknown as MutationCheck); }
+    catch (e) { const c = e instanceof Error ? e.message : "stopped"; setErr(blockers[c] ?? messages[c] ?? `Sperret: ${c}`); }
+    finally { setBusy(false); }
+  };
+  return <div className="space-y-2 border-t border-border pt-3" aria-label="Endre eller slette Mats-avtalen">
+    <h4 className="font-medium">Endre eller slette den opprettede avtalen</h4>
+    <p className="text-muted-foreground">Leser kun den ene lagrede avtalen i Mats’ kalender. Andre avtaler, deltakere og dager berøres aldri.</p>
+    <div className="flex flex-wrap gap-2">
+      <Button variant="outline" disabled={busy} onClick={() => run("update")}>Kontroller endring – kun lesing</Button>
+      <Button variant="outline" disabled={busy} onClick={() => run("delete")}>Kontroller sletting – kun lesing</Button>
+    </div>
+    {err && <p role="alert">{err}</p>}
+    {check && <div className="space-y-1 border-l-2 border-border pl-3">
+      <p>{check.verification === "verified" ? "Microsoft bekrefter samme avtale (ID og versjon)." : blockers[`copy_${check.verification}`] ?? check.verification}</p>
+      {check.facts && <p>{check.facts.start_ok && check.facts.end_ok ? "08:00–16:00 Oslo" : "Tid avviker"} · {check.facts.show_as} · {check.facts.attendees} deltakere · {check.facts.job_link ? "jobblenke finnes" : "jobblenke mangler"}</p>}
+      <p>Ressursplan: {check.day_still_planned ? "Mats er planlagt 19. november" : "ikke planlagt"}{check.kind === "update" ? ` · endrede felt: ${check.changed_fields.join(", ") || "ingen"}` : ""}</p>
+      <p className="font-medium">{blockers[check.blocked_by] ?? check.blocked_by}</p>
+      <Button disabled aria-label={check.kind === "update" ? "Endre avtalen" : "Slett avtalen"}>{check.kind === "update" ? "Endre avtalen" : "Slett avtalen"} – ikke aktivert</Button>
+    </div>}
+  </div>;
+}
 export function JobCalendarOneShot() {
   const status = useQuery({ queryKey: ["job-calendar-one-shot"], queryFn: () => call({ action: "status" }), retry: false });
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -103,5 +142,6 @@ export function JobCalendarOneShot() {
       {r.state !== "succeeded" && <Button variant="outline" disabled={busy} onClick={() => perform({ action: "reconcile", run_id: r.id })}>Lesekontroller utfallet – ingen ny opprettelse</Button>}
     </div>)}
     {message && <p role="status">{message}</p>}
+  <MutationPanel />
   </section>;
 }
