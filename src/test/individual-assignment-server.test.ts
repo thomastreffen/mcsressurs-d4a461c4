@@ -63,7 +63,7 @@ it('acceptance never overrides explicit operational status and replay is refused
 });
 it('proposal stays on individual response and does not move a day',async()=>{
  const r=await db.query<{r:any}>(`SELECT respond_to_job_assignment($1,'reschedule',NULL,'2026-11-21 07:00Z','2026-11-21 15:00Z')r`,[await token()]);
- expect(r.rows[0].r.success).toBe(true); expect((await db.query('SELECT min(start_at)::text s FROM schedule_blocks')).rows[0].s).toContain('2026-11-19');
+ expect(r.rows[0].r.success).toBe(true); expect((await db.query<{s:string}>('SELECT min(start_at)::text s FROM schedule_blocks')).rows[0].s).toContain('2026-11-19');
 });
 it.each(['inactive','foreign','removed','expired','cancelled'])('refuses %s response without changing another recipient',async(mode)=>{
  const t=await token();
@@ -73,7 +73,7 @@ it.each(['inactive','foreign','removed','expired','cancelled'])('refuses %s resp
  if(mode==='expired') await db.exec(`UPDATE job_approvals SET expires_at=now()-interval '1 hour' WHERE technician_user_id='${U}'`);
  if(mode==='cancelled') await db.exec(`UPDATE events SET status='cancelled'`);
  expect((await respond(t)).rows[0].r.success).not.toBe(true);
- expect((await db.query(`SELECT status FROM job_approvals WHERE technician_user_id='${V}'`)).rows[0].status).toBe('pending');
+ expect((await db.query<{status:string}>(`SELECT status FROM job_approvals WHERE technician_user_id='${V}'`)).rows[0].status).toBe('pending');
 });
 it('one day edit rotates only own token; stale link cannot answer new plan',async()=>{
  const old=await token(),other=await token(V);
@@ -94,7 +94,7 @@ it('assignment edit moves only own dates, never most recent arbitrary block',asy
 it('SQL failure rolls back response together with audit',async()=>{
  const t=await token(); await db.exec(`ALTER TABLE event_logs ADD CONSTRAINT fail_audit CHECK(false) NOT VALID`);
  await expect(respond(t)).rejects.toThrow(); await db.exec('ALTER TABLE event_logs DROP CONSTRAINT fail_audit');
- expect((await db.query(`SELECT status FROM job_approvals WHERE token='${t}'`)).rows[0].status).toBe('pending');
+ expect((await db.query<{status:string}>(`SELECT status FROM job_approvals WHERE token='${t}'`)).rows[0].status).toBe('pending');
 });
 it('authenticated non-planner and foreign-company RLS cannot edit shared plan or call token command',async()=>{
  await db.exec(`SELECT set_config('request.jwt.claim.sub','${U}',false); SET ROLE authenticated`);
@@ -109,14 +109,14 @@ it('reassign last task recipient is atomic; no accidental task cancel; stale edi
  await db.exec(`SET ROLE authenticated`);
  await db.query(`SELECT edit_resource_job_plan('${E}',ARRAY['${S}'::uuid],'2026-11-19 07:00Z','2026-11-19 15:00Z','2026-11-19 07:00Z','2026-11-19 15:00Z',ARRAY['${T}'::uuid])`);
  await expect(db.query(`SELECT edit_resource_job_plan('${E}',ARRAY['${S}'::uuid],'2026-11-19 07:00Z','2026-11-19 15:00Z','2026-11-19 07:00Z','2026-11-19 15:00Z',ARRAY['${T}'::uuid])`)).rejects.toThrow('plan_changed_reload');
- await db.exec('RESET ROLE'); expect((await db.query('SELECT deleted_at FROM events')).rows[0].deleted_at).toBe(null);
+ await db.exec('RESET ROLE'); expect((await db.query<{deleted_at:string|null}>('SELECT deleted_at FROM events')).rows[0].deleted_at).toBe(null);
  expect((await db.query('SELECT technician_id FROM event_technicians')).rows).toEqual([{technician_id:S}]);
  expect((await db.query(`SELECT * FROM schedule_blocks WHERE technician_id='${S}' AND deleted_at IS NULL`)).rows).toHaveLength(2);
 });
 it('Oslo whole-visit shift preserves 08:00 across winter-to-summer offset',async()=>{
  await db.exec(`UPDATE events SET start_time='2026-03-27 07:00Z',end_time='2026-03-27 15:00Z';`);
  await db.exec(`UPDATE events SET start_time='2026-03-30 06:00Z',end_time='2026-03-30 14:00Z';`);
- expect((await db.query(`SELECT start_at AT TIME ZONE 'Europe/Oslo' s FROM schedule_blocks ORDER BY start_at`)).rows.map((r:any)=>String(r.s))).toEqual(['2026-03-30T08:00:00','2026-03-30T08:00:00','2026-03-31T08:00:00','2026-03-31T08:00:00']);
+ expect((await db.query(`SELECT start_at AT TIME ZONE 'Europe/Oslo' s FROM schedule_blocks ORDER BY start_at`)).rows.map((r:any)=>new Date(r.s).toISOString().slice(0,19))).toEqual(['2026-03-30T08:00:00','2026-03-30T08:00:00','2026-03-31T08:00:00','2026-03-31T08:00:00']);
 });
 it('failed reassign rolls back additions, days, responses and removal queue',async()=>{
  await db.exec(`SET ROLE authenticated`);
