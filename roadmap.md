@@ -2,8 +2,10 @@
 
 - [x] Kartlegg faktisk produksjonsstatus, svarskrivere, plan-/kalenderveier og eierskap uten produksjonswrites
 - [x] Godkjent policy: individuelle svar endrer ikke global utførelse; reservasjon beholdes til eksplisitt person/dag-avplanlegging
-- [ ] Delvis kildefiks: felles lifecycle, rejected ikke cancellation, mailbox-konflikt sperret, implicit delegated delete sperret, Mine/pilotvisning rettet. Ikke deployet.
-- [ ] Fullfør atomisk respons uten legacy Graph/global status, plantransaksjoner/tidstriggere, øvrige kalendergrenser og SQL-/UI-regresjon før samlet deploy. Blokkert av credits.
+- [x] Migrasjon 0104 og seks funksjoner deployet: atomisk personlig respons uten Graph/global status, plan-diff/tidstriggere, per-day/calendar gates og ukjent POST hold; 1023 tester + build OK, isolert PC/mobil, prod SELECT urørt
+- [ ] Publiser skjermer og kontroller faktisk brukerflyt; venter på eierens publisering og separat godkjent operativ test
+- [ ] Rest av bred arkitekturplan: samlet detalj/vedlegg/plantransaksjon, eksplisitt staggered reassign-dagvalg, atomisk dagflytt med gammel-dag-intent, separat legacy task POST-idempotens. Ikke ferdig; ingen aktivering
+- [ ] Sentral eksakt person/dag-slettesluse og live kalenderpilot: separat godkjenning mangler; generisk release gir ikke DELETE, fem intents holdes
 
 # Historikktyper (event_logs) – 17. november
 
