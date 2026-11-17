@@ -1,3 +1,9 @@
+# Individuelle mottakere og jobbstatus – 17. november
+
+- [ ] Kartlegg faktisk produksjonsstatus, svarskrivere, plan-/kalenderveier og eierskap uten produksjonswrites
+- [ ] Avklar felles policy: individuelle svar endrer ikke global utførelse; avplanlegging begrenses til person/dag, kansellering krever autorisert planlegger
+- [ ] Etter godkjent plan: gjennomfør samlet retting, isolerte SQL-/Graph-/UI-regresjoner og sikker deploy; ingen aktivering/replay
+
 # Historikktyper (event_logs) – 17. november
 
 - [x] Alle skrivere kartlagt mot live regel; 14 manglende typer lagt til i lukket liste (migrasjon 0102), vakttest for alle skrivere + RLS/rollback
