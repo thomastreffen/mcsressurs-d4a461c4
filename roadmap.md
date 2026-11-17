@@ -1,6 +1,8 @@
 # Individuelle mottakere og jobbstatus – 17. november
 
 ## Engangspilot Mats – 19. november
+- [ ] Klargjør auditert konflikt-overstyring for eksakt engangspilot; samme oppdrag/ukjent identitet fail closed, fresh recheck før claim, ingen live skriver
+- [ ] Fullfør policygjennomgang: fjern tidsbasert skjuling av eksterne konflikter, lesefeil stopper manuell synk, regressjonstester/deploy/rapport
 - [x] Skrivebeskyttet konfliktdiagnose deployet: én tentative/gjentakende overlapp 13:00–13:30 Oslo, ingen bekreftet Hub-kopi; 58 tester, PC/mobil, ingen DB/Graph-writes; ny skjerm krever publisering
 - [x] Eksakt separat preflight/engangsclaim deployet (0105 + job-calendar-one-shot); ingen globale flagg/køfrigivelse
 - [x] 1069 tester + bygg OK, mock Graph/SQL rollback/RLS/samtidighet, isolert PC/mobil og ekte innlogget statuslesing; ingen live Graph-write
