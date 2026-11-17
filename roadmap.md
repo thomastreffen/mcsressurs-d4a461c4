@@ -1,6 +1,7 @@
 # Individuelle mottakere og jobbstatus – 17. november
 
 ## Engangspilot Mats – 19. november
+- [ ] Skrivebeskyttet konfliktdiagnose: avgrenset kalenderlesing, anonymiserte klasser/tider, uendret opprettelsessperre, isolerte tester og produksjonskontroll
 - [x] Eksakt separat preflight/engangsclaim deployet (0105 + job-calendar-one-shot); ingen globale flagg/køfrigivelse
 - [x] 1069 tester + bygg OK, mock Graph/SQL rollback/RLS/samtidighet, isolert PC/mobil og ekte innlogget statuslesing; ingen live Graph-write
 - [x] Dokumentert eksakt operatørbekreftelse og full request-preview; pending Busy krever eksplisitt valg

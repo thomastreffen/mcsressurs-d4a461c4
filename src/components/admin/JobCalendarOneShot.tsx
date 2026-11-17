@@ -4,17 +4,19 @@ import { invokeWithSession } from "@/lib/invoke-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ONE_SHOT } from "../../../supabase/functions/_shared/job-calendar-one-shot";
+import { ONE_SHOT, type OneShotDiagnosis, type OneShotConflictClass } from "../../../supabase/functions/_shared/job-calendar-one-shot";
 
 type Preview = { run_id: string; payload_hash: string; expires_at: string; mailbox: string; local_time: string; approval: string; payload: { subject: string; body: { content: string }; location?: { displayName: string } }; request_method: string; request_path: string };
-type Result = { preview?: Preview; state?: string; consumed?: boolean; runs?: { id: string; state: string; consumed_at: string | null; event_id_persisted: boolean; http_status: number | null }[] };
+type Result = { preview?: Preview; diagnosis?: OneShotDiagnosis; existing_mapping?: boolean; state?: string; consumed?: boolean; runs?: { id: string; state: string; consumed_at: string | null; event_id_persisted: boolean; http_status: number | null }[] };
+class CalendarCheckError extends Error { constructor(code: string, public diagnosis?: OneShotDiagnosis) { super(code); } }
 async function call(body: Record<string, unknown>): Promise<Result> {
   const r = await invokeWithSession<Result>("job-calendar-one-shot", { body });
   if (r.error) {
     let code = r.error.message;
+    let diagnosis: OneShotDiagnosis | undefined;
     const ctx = (r.error as any).context;
-    if (ctx?.json) { const details = await ctx.json().catch(() => null); code = details?.error ?? code; }
-    throw new Error(code);
+    if (ctx?.json) { const details = await ctx.json().catch(() => null); code = details?.error ?? code; diagnosis = details?.diagnosis; }
+    throw new CalendarCheckError(code, diagnosis);
   }
   return r.data ?? {};
 }
@@ -37,6 +39,12 @@ const outcomes: Record<string, string> = {
   duplicate_or_conflict: "En eksisterende avtale sperrer opprettelsen.",
   unresolved_no_repost: "Lesekontrollen kunne ikke bekrefte avtalen. Ingen ny opprettelse er tillatt.",
 };
+const conflictLabels: Record<OneShotConflictClass, string> = {
+  same_one_shot: "Samme engangspilot finnes allerede", same_hub_day: "Samme Hub-oppdrag og dag finnes allerede",
+  related_hub_job: "Samme Hub-oppdrag – dag eller mottaker må kontrolleres", same_title_unverified: "Samme tittel, men Hub-kobling er ikke bekreftet",
+  other_busy: "Annen opptatt avtale", free_overlap: "Overlapp merket Ledig", cancelled_overlap: "Avlyst overlapp",
+  unreadable_time: "Klokkeslett kunne ikke bekreftes", unknown_availability: "Ukjent opptattstatus",
+};
 export function JobCalendarOneShot() {
   const status = useQuery({ queryKey: ["job-calendar-one-shot"], queryFn: () => call({ action: "status" }), retry: false });
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -44,13 +52,15 @@ export function JobCalendarOneShot() {
   const [busyAccepted, setBusyAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [diagnosis, setDiagnosis] = useState<OneShotDiagnosis | null>(null);
   const perform = async (body: Record<string, unknown>) => {
-    setBusy(true); setMessage("");
+    setBusy(true); setMessage(""); setDiagnosis(null);
     try {
       const r = await call(body);
+      if (r.diagnosis) setDiagnosis(r.diagnosis);
       if (r.preview) { setPreview(r.preview); setConfirm(""); setBusyAccepted(false); }
-      else { setPreview(null); setMessage(outcomes[r.state ?? ""] ?? "Kontroll fullført uten ny utsending."); }
-    } catch (e) { setPreview(null); const code = e instanceof Error ? e.message : "stopped_requires_status_check"; setMessage(messages[code] ?? `Sperret: ${code}`); }
+      else { setPreview(null); setMessage(r.diagnosis ? (r.existing_mapping ? messages.existing_mapping_requires_reconciliation : "Lesediagnose fullført. Ingen engangstillatelse opprettet eller brukt.") : outcomes[r.state ?? ""] ?? "Kontroll fullført uten ny utsending."); }
+    } catch (e) { setPreview(null); if (e instanceof CalendarCheckError && e.diagnosis) setDiagnosis(e.diagnosis); const code = e instanceof Error ? e.message : "stopped_requires_status_check"; setMessage(messages[code] ?? `Sperret: ${code}`); }
     finally { await status.refetch(); setBusy(false); }
   };
   return <section className="space-y-3 border-t border-border pt-4" aria-label="Engangspilot Mats">
@@ -60,6 +70,12 @@ export function JobCalendarOneShot() {
     <p className="text-muted-foreground">Ventende godkjenning beholdes. Ingen e-post, invitasjon, påminnelse eller endring av 20. november.</p>
     {status.error && <p role="alert" className="text-destructive">Kunne ikke hente forsøksstatus. Skriving sperret.</p>}
     <Button variant="outline" disabled={busy || status.isLoading || !!status.error || !!status.data?.consumed} onClick={() => perform({ action: "preflight" })}>Lesekontroll og forhåndsvisning</Button>
+    <Button variant="outline" disabled={busy || status.isLoading || !!status.error} onClick={() => perform({ action: "diagnose" })}>Undersøk kalenderkonflikt – kun lesing</Button>
+    {diagnosis && <div className="space-y-2 border-l-2 border-border pl-3" aria-label="Kalenderkonfliktdiagnose">
+      <p>{diagnosis.checked_count} avtaler kontrollert · {diagnosis.blocking_count} sperrende overlapp · {diagnosis.same_hub_count} med samme Hub-oppdrag · {diagnosis.non_busy_count} ledige eller avlyste</p>
+      <ul className="space-y-2">{diagnosis.conflicts.map((c, i) => <li key={i} className="break-words">{conflictLabels[c.classification]} · {c.local_overlap ?? "Ukjent tid"} Europe/Oslo · {c.show_as}{c.all_day ? " · Heldag" : ""}{["occurrence", "exception"].includes(c.event_type) ? " · Gjentakende avtale" : ""}{c.cancelled ? " · Avlyst" : ""}</li>)}</ul>
+      <p className="text-muted-foreground">Konfliktsperren er uendret, også for ledige og avlyste overlapp. Ingen ny avtale opprettes fra denne kontrollen.</p>
+    </div>}
     {preview && <div className="space-y-3 border-l-2 border-border pl-3">
       <p className="font-medium">{preview.payload.subject}</p>
       <p>{preview.local_time} · {preview.payload.location?.displayName}</p>

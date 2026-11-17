@@ -11,6 +11,7 @@ const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { sta
 const Schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("status") }).strict(),
   z.object({ action: z.literal("preflight") }).strict(),
+  z.object({ action: z.literal("diagnose") }).strict(),
   z.object({ action: z.literal("create"), run_id: z.string().uuid(), payload_hash: z.string().regex(/^[a-f0-9]{64}$/), confirm: z.literal(ONE_SHOT.phrase), pending_busy_confirmed: z.literal(true) }).strict(),
   z.object({ action: z.literal("reconcile"), run_id: z.string().uuid() }).strict(),
 ]);
@@ -46,7 +47,7 @@ Deno.serve(async req => {
     if (consumed && !history.some(r => r.id === consumedRun[0].id)) history.unshift(consumedRun[0]);
     if (b.action === "status") return json({ scope: { event_id: x.event_id, technician_id: x.technician_id, mailbox: x.mailbox, work_date: x.work_date }, runs: history.map(publicRun), consumed });
     const run = b.action === "create" || b.action === "reconcile" ? check(await admin.from("job_calendar_one_shot_runs").select("*").eq("id", b.run_id).maybeSingle()) : null;
-    if (b.action !== "preflight" && !run) return json({ error: "run_not_found" }, 404);
+    if ((b.action === "create" || b.action === "reconcile") && !run) return json({ error: "run_not_found" }, 404);
     if (b.action === "create" && (run?.actor !== caller || run.payload_hash !== b.payload_hash || run.state !== "prepared" || Date.parse(run.expires_at) <= Date.now() || run.consumed_at)) return json({ error: "preflight_expired_or_consumed" }, 409);
     if (b.action === "preflight" && consumed) return json({ error: "permit_already_consumed", runs: history.map(publicRun) }, 409);
     if (b.action === "reconcile" && (!run?.consumed_at || run.state === "succeeded")) return json({ error: "no_uncertain_run" }, 409);
@@ -106,10 +107,16 @@ Deno.serve(async req => {
     const dayLinks = check(await admin.from("job_calendar_day_links").select("id").eq("event_id", x.event_id).eq("technician_id", x.technician_id).eq("work_date", x.work_date));
     const legacy = check(await admin.from("job_calendar_links").select("id").eq("job_id", x.event_id).eq("technician_id", x.technician_id).not("calendar_event_id", "is", null));
     const organizer = check(await admin.from("m365_organizer_links").select("event_id").eq("event_id", x.event_id).eq("technician_id", x.technician_id).not("graph_event_id", "is", null));
-    if (appLinks.some(l => l.work_date === x.work_date || !l.work_date) || dayLinks.length || legacy.length || organizer.length || assignment?.calendar_event_id || approval?.outlook_event_id) return json({ error: "existing_mapping_requires_reconciliation" }, 409);
+    const hasMapping = !!(appLinks.some(l => l.work_date === x.work_date || !l.work_date) || dayLinks.length || legacy.length || organizer.length || assignment?.calendar_event_id || approval?.outlook_event_id);
+    if (b.action === "diagnose") {
+      // Explicit read-only action: no prepared permit, audit, claim, receipt or queue/flag writes.
+      const seen = await inspectMailbox(graph, c.job.title);
+      return json({ diagnosis: seen.diagnosis, existing_mapping: hasMapping, read_only: true });
+    }
+    if (hasMapping) return json({ error: "existing_mapping_requires_reconciliation" }, 409);
     if (b.action === "preflight") {
-      const seen = await inspectMailbox(graph);
-      if (seen.blocked || seen.own) return json({ error: "duplicate_or_calendar_conflict" }, 409);
+      const seen = await inspectMailbox(graph, c.job.title);
+      if (seen.blocked || seen.own) return json({ error: "duplicate_or_calendar_conflict", diagnosis: seen.diagnosis }, 409);
       const prepared = check(await admin.from("job_calendar_one_shot_runs").insert({ target_id: target.id, actor: caller, event_id: x.event_id, technician_id: x.technician_id, company_id: x.company_id, mailbox: x.mailbox, work_date: x.work_date, payload, payload_hash: digest, job_snapshot: job, schedule_signature: signature }).select("id,expires_at").single());
       check(await admin.from("job_calendar_one_shot_audit").insert({ run_id: prepared.id, actor: caller, action: "preflight", state: "prepared" }));
       return json({ preview: { run_id: prepared.id, payload_hash: digest, expires_at: prepared.expires_at, mailbox: x.mailbox, work_date: x.work_date, local_time: "08:00–16:00 Europe/Oslo", approval: c.approval, show_as: "busy", payload, request_method: "POST", request_path: oneShotPathForPreview() } });
