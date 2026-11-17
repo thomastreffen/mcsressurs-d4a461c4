@@ -42,7 +42,7 @@ export function JobOutlookPilotScopeCard() {
   const run = async (key: string, body: Any, after?: (r: Any) => void) => {
     setBusy(key); setMsg(null);
     try { const r = await call(body); after?.(r); await qc.invalidateQueries({ queryKey: ["job-outlook-pilot"] }); }
-    catch (e) { setMsg(`Avvist: ${(e as Error).message}`); }
+    catch (e) { const m = (e as Error).message; setMsg(m === "active_target_exists" ? "Avvist: en aktiv pilotdag finnes allerede for denne personen og dagen – bruk den eller trekk den tilbake." : `Avvist: ${m}`); }
     finally { setBusy(null); }
   };
 
