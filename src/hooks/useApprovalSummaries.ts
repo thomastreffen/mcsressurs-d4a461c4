@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { approvalResponseStatus } from "@/lib/approval-response-status";
+import { liveAssignmentResponses } from "@/lib/live-assignment-responses";
 
 export interface ApprovalSummary {
   total: number;
@@ -30,7 +31,7 @@ export function useApprovalSummaries(eventIds: string[]) {
 
     const { data, error } = await supabase
       .from("job_approvals")
-      .select("job_id, status, reminder_profile, reminder_count, last_reminded_at, response_required, created_at, reminders_paused")
+      .select("job_id, technician_user_id, status, reminder_profile, reminder_count, last_reminded_at, response_required, created_at, reminders_paused")
       .in("job_id", eventIds);
 
     if (error || !data) {
@@ -38,8 +39,12 @@ export function useApprovalSummaries(eventIds: string[]) {
       return;
     }
 
+    const { data: assignments, error: assignmentError } = await supabase.from("event_technicians")
+      .select("event_id,technicians(user_id)").in("event_id", eventIds);
+    if (assignmentError) { setSummaries(new Map()); return; }
+    const live = (assignments ?? []).map(a => ({ event_id: a.event_id, user_id: a.technicians?.user_id ?? null }));
     const map = new Map<string, ApprovalSummary>();
-    for (const row of data) {
+    for (const row of liveAssignmentResponses(data, live)) {
       const jobId = row.job_id;
       if (!map.has(jobId)) {
         map.set(jobId, {
