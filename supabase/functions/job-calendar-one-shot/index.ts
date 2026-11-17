@@ -5,14 +5,14 @@ import { z } from "npm:zod@3";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { tokenRoles } from "../_shared/hub-calendar-diagnostics-core.ts";
 import { diagnosticGate } from "../_shared/hub-calendar-write-pilot-core.ts";
-import { ONE_SHOT, oneShotGate, oneShotPayload, assertOneShotRequest, inspectMailbox, createOneShot, type OneShotContext, type OneShotGraph } from "../_shared/job-calendar-one-shot.ts";
+import { ONE_SHOT, oneShotGate, oneShotPayload, assertOneShotRequest, inspectMailbox, createOneShot, oneShotConflictGuard, type OneShotContext, type OneShotGraph } from "../_shared/job-calendar-one-shot.ts";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const Schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("status") }).strict(),
   z.object({ action: z.literal("preflight") }).strict(),
   z.object({ action: z.literal("diagnose") }).strict(),
-  z.object({ action: z.literal("create"), run_id: z.string().uuid(), payload_hash: z.string().regex(/^[a-f0-9]{64}$/), confirm: z.literal(ONE_SHOT.phrase), pending_busy_confirmed: z.literal(true) }).strict(),
+  z.object({ action: z.literal("create"), run_id: z.string().uuid(), payload_hash: z.string().regex(/^[a-f0-9]{64}$/), confirm: z.union([z.literal(ONE_SHOT.phrase), z.literal(ONE_SHOT.overridePhrase)]), pending_busy_confirmed: z.literal(true), conflict_override: z.boolean().default(false), resource_plan_confirmed: z.literal(true), calendar_signature: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   z.object({ action: z.literal("reconcile"), run_id: z.string().uuid() }).strict(),
 ]);
 const check = <T>(r: { data: T; error: unknown }): T => { if (r.error) throw new Error("authoritative_read_failed"); return r.data; };
@@ -49,6 +49,7 @@ Deno.serve(async req => {
     const run = b.action === "create" || b.action === "reconcile" ? check(await admin.from("job_calendar_one_shot_runs").select("*").eq("id", b.run_id).maybeSingle()) : null;
     if ((b.action === "create" || b.action === "reconcile") && !run) return json({ error: "run_not_found" }, 404);
     if (b.action === "create" && (run?.actor !== caller || run.payload_hash !== b.payload_hash || run.state !== "prepared" || Date.parse(run.expires_at) <= Date.now() || run.consumed_at)) return json({ error: "preflight_expired_or_consumed" }, 409);
+    if (b.action === "create" && (run.calendar_signature !== b.calendar_signature || b.confirm !== (run.conflict_summary?.category === "other" ? x.overridePhrase : x.phrase) || (run.conflict_summary?.category === "other" && !b.conflict_override))) return json({ error: "conflict_confirmation_required" }, 409);
     if (b.action === "preflight" && consumed) return json({ error: "permit_already_consumed", runs: history.map(publicRun) }, 409);
     if (b.action === "reconcile" && (!run?.consumed_at || run.state === "succeeded")) return json({ error: "no_uncertain_run" }, 409);
     const job = check(await uc.from("events").select("*").eq("id", x.event_id).eq("company_id", x.company_id).maybeSingle());
@@ -116,16 +117,17 @@ Deno.serve(async req => {
     if (hasMapping) return json({ error: "existing_mapping_requires_reconciliation" }, 409);
     if (b.action === "preflight") {
       const seen = await inspectMailbox(graph, c.job.title);
-      if (seen.blocked || seen.own) return json({ error: "duplicate_or_calendar_conflict", diagnosis: seen.diagnosis }, 409);
-      const prepared = check(await admin.from("job_calendar_one_shot_runs").insert({ target_id: target.id, actor: caller, event_id: x.event_id, technician_id: x.technician_id, company_id: x.company_id, mailbox: x.mailbox, work_date: x.work_date, payload, payload_hash: digest, job_snapshot: job, schedule_signature: signature }).select("id,expires_at").single());
+      const conflictDenied = oneShotConflictGuard(seen.diagnosis, true);
+      if (conflictDenied) return json({ error: conflictDenied, diagnosis: seen.diagnosis }, 409);
+      const prepared = check(await admin.from("job_calendar_one_shot_runs").insert({ target_id: target.id, actor: caller, event_id: x.event_id, technician_id: x.technician_id, company_id: x.company_id, mailbox: x.mailbox, work_date: x.work_date, payload, payload_hash: digest, job_snapshot: job, schedule_signature: signature, calendar_signature: seen.signature, conflict_summary: seen.diagnosis }).select("id,expires_at").single());
       check(await admin.from("job_calendar_one_shot_audit").insert({ run_id: prepared.id, actor: caller, action: "preflight", state: "prepared" }));
-      return json({ preview: { run_id: prepared.id, payload_hash: digest, expires_at: prepared.expires_at, mailbox: x.mailbox, work_date: x.work_date, local_time: "08:00–16:00 Europe/Oslo", approval: c.approval, show_as: "busy", payload, request_method: "POST", request_path: oneShotPathForPreview() } });
+      return json({ diagnosis: seen.diagnosis, preview: { run_id: prepared.id, payload_hash: digest, calendar_signature: seen.signature, conflict_override_required: seen.diagnosis.category === "other", expires_at: prepared.expires_at, mailbox: x.mailbox, work_date: x.work_date, local_time: "08:00–16:00 Europe/Oslo", approval: c.approval, show_as: "busy", payload, request_method: "POST", request_path: oneShotPathForPreview() } });
     }
     if (b.action === "create") {
-      const result = await createOneShot(graph, run.payload, async () => check(await admin.rpc("claim_job_calendar_one_shot", { _run: run.id, _actor: caller, _hash: b.payload_hash })) === true, async (state, id, http, changeKey) => {
+      const result = await createOneShot(graph, run.payload, async () => check(await admin.rpc("claim_job_calendar_one_shot", { _run: run.id, _actor: caller, _hash: b.payload_hash, _calendar_signature: b.calendar_signature, _override: b.conflict_override, _resource_plan_confirmed: b.resource_plan_confirmed, _confirm: b.confirm })) === true, async (state, id, http, changeKey) => {
         const saved = check(await admin.rpc("finish_job_calendar_one_shot", { _run: run.id, _actor: caller, _state: state, _event_id: id, _http: http, _change_key: changeKey ?? null, _reconcile: false }));
         if (!saved) throw new Error("receipt_not_persisted");
-      });
+      }, { override: b.conflict_override, signature: b.calendar_signature });
       return json({ ...result, event_id_persisted: result.state === "succeeded" });
     }
     return json({ error: "invalid_action" }, 400);

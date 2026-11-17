@@ -12,6 +12,7 @@ export const ONE_SHOT = Object.freeze({
   start: "2026-11-19T07:00:00.000Z", end: "2026-11-19T15:00:00.000Z",
   key: "3d5f38ae-63a7-4d23-8179-863e169a88f5",
   phrase: "OPPRETT MATS 19.11.2026 08–16",
+  overridePhrase: "OPPRETT LIKEVEL MATS 19.11.2026 08–16 – TIDSKONFLIKT KJENT",
 });
 export interface OneShotContext {
   job: HubJob; target: { id: string; event_id: string; technician_id: string; company_id: string; mailbox: string; work_date: string; expires_at: string; revoked_at: string | null };
@@ -61,11 +62,11 @@ export function inspectOneShotEvents(events: OneShotEvent[]) {
 export type OneShotConflictClass = "same_one_shot" | "same_hub_day" | "related_hub_job" | "same_title_unverified" | "other_busy" | "free_overlap" | "cancelled_overlap" | "unreadable_time" | "unknown_availability";
 export interface OneShotDiagnosis {
   checked_count: number; blocking_count: number; same_hub_count: number; non_busy_count: number;
-  policy: "all_overlaps_block_unchanged";
+  policy: "hub_authoritative_explicit_override";
+  category: "duplicate" | "unknown" | "other" | "clear";
   conflicts: { classification: OneShotConflictClass; local_overlap: string | null; show_as: string; event_type: string; all_day: boolean; cancelled: boolean }[];
 }
-/** Privacy projection only. No titles, bodies, IDs, people or full private meeting intervals leave this function.
- * Availability classes do NOT change the conservative write gate or authorize adoption/reposting. */
+/** Strong identity and complete metadata precede any availability override. No private content leaves this projection. */
 export function diagnoseOneShotEvents(events: OneShotEvent[], jobTitle: string): OneShotDiagnosis {
   const x = ONE_SHOT, start = Date.parse(x.start), end = Date.parse(x.end);
   const normalize = (s: string) => s.trim().toLocaleLowerCase("nb-NO").replace(/\s+/g, " ");
@@ -74,36 +75,53 @@ export function diagnoseOneShotEvents(events: OneShotEvent[], jobTitle: string):
   const conflicts: OneShotDiagnosis["conflicts"] = [];
   for (const e of events) {
     const a = instant(e.start), b = instant(e.end), readable = Number.isFinite(a) && Number.isFinite(b) && b > a;
-    if (readable && !(a < end && b > start)) continue;
     const body = e.body?.content ?? "";
     const tagged = (name: string, value: string) => new RegExp(`${name}:${value}(?=\\s|-->|$)`).test(body);
     const sameJob = tagged("MCS_EVENT_ID", x.event_id);
     const sameDay = sameJob && tagged("MCS_TECHNICIAN_ID", x.technician_id) && tagged("MCS_WORK_DATE", x.work_date);
+    const complete = !!e.id && typeof e.subject === "string" && typeof e.body?.content === "string" && typeof e.isCancelled === "boolean" && typeof e.isAllDay === "boolean" && ["singleInstance", "occurrence", "exception"].includes(e.type ?? "") && ["free", "tentative", "busy", "oof", "workingElsewhere"].includes(e.showAs ?? "");
+    // A same-job copy anywhere on this Oslo day is not an unrelated free-time slot.
+    if (readable && complete && !sameJob && e.transactionId !== x.key && !(a < end && b > start)) continue;
     const showAs = ["free", "tentative", "busy", "oof", "workingElsewhere", "unknown"].includes(e.showAs ?? "") ? e.showAs ?? "unknown" : "unknown";
     let classification: OneShotConflictClass;
     if (!readable) classification = "unreadable_time";
     else if (own === e) classification = "same_one_shot";
     else if (sameDay) classification = "same_hub_day";
     else if (sameJob) classification = "related_hub_job";
+    else if (e.transactionId === x.key || /MCS_(?:SOURCE|EVENT_ID|TECHNICIAN_ID|WORK_DATE):/.test(body) && !sameJob || !complete) classification = "unknown_availability";
     else if (jobTitle.trim() && normalize(e.subject ?? "") === normalize(jobTitle)) classification = "same_title_unverified";
     else if (e.isCancelled === true) classification = "cancelled_overlap";
     else if (showAs === "free") classification = "free_overlap";
     else if (["busy", "tentative", "oof", "workingElsewhere"].includes(showAs)) classification = "other_busy";
     else classification = "unknown_availability";
-    conflicts.push({ classification, local_overlap: readable ? `${clock(Math.max(a, start))}–${clock(Math.min(b, end))}` : null, show_as: showAs, event_type: ["singleInstance", "occurrence", "exception", "seriesMaster"].includes(e.type ?? "") ? e.type ?? "unknown" : "unknown", all_day: e.isAllDay === true, cancelled: e.isCancelled === true });
+    conflicts.push({ classification, local_overlap: readable && a < end && b > start ? `${clock(Math.max(a, start))}–${clock(Math.min(b, end))}` : null, show_as: showAs, event_type: ["singleInstance", "occurrence", "exception", "seriesMaster"].includes(e.type ?? "") ? e.type ?? "unknown" : "unknown", all_day: e.isAllDay === true, cancelled: e.isCancelled === true });
   }
-  return { checked_count: events.length, blocking_count: conflicts.length, same_hub_count: conflicts.filter(c => ["same_one_shot", "same_hub_day", "related_hub_job"].includes(c.classification)).length, non_busy_count: conflicts.filter(c => c.cancelled || c.show_as === "free").length, policy: "all_overlaps_block_unchanged", conflicts };
+  const same = conflicts.filter(c => ["same_one_shot", "same_hub_day", "related_hub_job"].includes(c.classification)).length;
+  const unknown = conflicts.some(c => ["same_title_unverified", "unreadable_time", "unknown_availability"].includes(c.classification));
+  return { checked_count: events.length, blocking_count: conflicts.length, same_hub_count: same, non_busy_count: conflicts.filter(c => c.cancelled || c.show_as === "free").length, policy: "hub_authoritative_explicit_override", category: same ? "duplicate" : unknown ? "unknown" : conflicts.length ? "other" : "clear", conflicts };
+}
+export function oneShotConflictGuard(d: OneShotDiagnosis, override: boolean): string | null {
+  if (d.category === "duplicate") return "same_hub_job_exists";
+  if (d.category === "unknown") return "calendar_identity_unresolved";
+  if (d.category === "other" && !override) return "conflict_override_required";
+  return null;
 }
 export type OneShotGraph = (method: "GET" | "POST", path: string, payload?: unknown) => Promise<{ status: number; data: any }>;
 export async function inspectMailbox(graph: OneShotGraph, jobTitle = "") {
   const r = await graph("GET", oneShotView());
   if (r.status !== 200 || !Array.isArray(r.data?.value) || r.data["@odata.nextLink"]) throw new Error("mailbox_lookup_incomplete");
-  return { ...inspectOneShotEvents(r.data.value), diagnosis: diagnoseOneShotEvents(r.data.value, jobTitle) };
+  const diagnosis = diagnoseOneShotEvents(r.data.value, jobTitle);
+  // Hash full read transiently; never persist/expose raw event IDs, titles or bodies.
+  const canonical = r.data.value.map((e: OneShotEvent) => JSON.stringify(e)).sort().join("\n");
+  const signature = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical)))).map(b => b.toString(16).padStart(2, "0")).join("");
+  return { ...inspectOneShotEvents(r.data.value), blocked: ["duplicate", "unknown"].includes(diagnosis.category), diagnosis, signature };
 }
 /** claim() durably consumes the one permit BEFORE POST. Any failure afterwards is terminal/held. */
-export async function createOneShot(graph: OneShotGraph, payload: Record<string, unknown>, claim: () => Promise<boolean>, receipt: (state: "succeeded" | "uncertain" | "failed", id: string | null, http: number | null, changeKey?: string) => Promise<void>) {
-  const seen = await inspectMailbox(graph);
-  if (seen.blocked || seen.own) return { state: "duplicate_or_conflict" };
+export async function createOneShot(graph: OneShotGraph, payload: Record<string, unknown>, claim: () => Promise<boolean>, receipt: (state: "succeeded" | "uncertain" | "failed", id: string | null, http: number | null, changeKey?: string) => Promise<void>, consent?: { override: boolean; signature: string }) {
+  const seen = await inspectMailbox(graph, typeof payload.subject === "string" ? payload.subject : "");
+  const denied = oneShotConflictGuard(seen.diagnosis, consent?.override === true);
+  if (denied) return { state: denied, diagnosis: seen.diagnosis };
+  if (consent && consent.signature !== seen.signature) return { state: "calendar_changed_requires_preflight", diagnosis: seen.diagnosis };
   if (!await claim()) return { state: "already_claimed" };
   let r;
   try { r = await graph("POST", oneShotBase(), payload); }
