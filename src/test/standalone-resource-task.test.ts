@@ -19,14 +19,35 @@ beforeAll(async()=>{
  CREATE TABLE events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),company_id uuid,created_by uuid,client_request_id uuid UNIQUE,project_type text,entity_type text,parent_project_id uuid REFERENCES events,title text,description text,customer text,address text,start_time timestamptz,end_time timestamptz,technician_id uuid,status text,deleted_at timestamptz);
  CREATE TABLE technicians(id uuid PRIMARY KEY); INSERT INTO technicians VALUES('${T}');
  CREATE TABLE event_technicians(event_id uuid REFERENCES events,technician_id uuid REFERENCES technicians,start_at timestamptz,end_at timestamptz,UNIQUE(event_id,technician_id));
- CREATE TABLE schedule_blocks(id uuid DEFAULT gen_random_uuid(),company_id uuid,technician_id uuid REFERENCES technicians,project_id uuid REFERENCES events,job_id uuid REFERENCES events,source text,start_at timestamptz,end_at timestamptz,title text,match_state text,match_confidence int,match_reason text,deleted_at timestamptz);
+ CREATE TABLE schedule_blocks(id uuid DEFAULT gen_random_uuid(),company_id uuid,technician_id uuid REFERENCES technicians,project_id uuid REFERENCES events,job_id uuid REFERENCES events,source text,start_at timestamptz,end_at timestamptz,title text,location text,match_state text,match_confidence int,match_reason text,deleted_at timestamptz);
  CREATE TABLE event_logs(event_id uuid REFERENCES events,action_type text,performed_by uuid,change_summary text,metadata jsonb);
+ -- Production CHECK before 0099 (exact copy of the list that rejected the task)
+ ALTER TABLE event_logs ADD CONSTRAINT event_logs_action_type_check CHECK (action_type IN ('created','updated','notifications_sent','technician_added'));
+ CREATE FUNCTION event_company_id(uuid) RETURNS uuid LANGUAGE sql SECURITY DEFINER AS $$ SELECT company_id FROM events WHERE id=$1 $$;
+ CREATE FUNCTION legacy_admin_in_company(uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
+ ALTER TABLE event_logs ENABLE ROW LEVEL SECURITY;
+ CREATE POLICY admins ON event_logs FOR INSERT TO authenticated WITH CHECK (legacy_admin_in_company(event_company_id(event_id)));
+ CREATE POLICY reads ON event_logs FOR SELECT TO authenticated USING (true);
+ -- Production trigger: assignment insert auto-creates a day-1 block without job_id
+ CREATE FUNCTION sync_block() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM schedule_blocks WHERE project_id=NEW.event_id AND technician_id=NEW.technician_id AND start_at=NEW.start_at AND end_at=NEW.end_at AND deleted_at IS NULL) THEN
+   INSERT INTO schedule_blocks(company_id,technician_id,project_id,source,start_at,end_at,title,match_state) SELECT company_id,NEW.technician_id,NEW.event_id,'manual',NEW.start_at,NEW.end_at,title,'manual' FROM events WHERE id=NEW.event_id; END IF; RETURN NEW; END $$;
+ CREATE TRIGGER sync_block AFTER INSERT ON event_technicians FOR EACH ROW EXECUTE FUNCTION sync_block();
  GRANT USAGE ON SCHEMA auth TO authenticated;
  GRANT ALL ON events,event_technicians,schedule_blocks,event_logs TO authenticated;
  ALTER TABLE events ENABLE ROW LEVEL SECURITY;
  CREATE POLICY scope ON events TO authenticated USING(has_company_access(auth.uid(),company_id,'resource_plan','edit')) WITH CHECK(has_company_access(auth.uid(),company_id,'resource_plan','edit'));
  `);
  await db.exec(readFileSync('drizzle/migrations/0098_standalone_resource_tasks.sql','utf8'));
+ // Before the fix the exact prod failure reproduces and nothing is left behind
+ await expect(create('30000000-0000-0000-0000-0000000000f0')).rejects.toThrow(/event_logs_action_type_check|row-level security/);
+ expect((await db.query("select * from events where client_request_id='30000000-0000-0000-0000-0000000000f0'")).rows).toHaveLength(0);
+ await db.exec(`ALTER TABLE event_logs DROP CONSTRAINT event_logs_action_type_check; ALTER TABLE event_logs ADD CONSTRAINT event_logs_action_type_check CHECK (action_type IN ('created','updated','notifications_sent','technician_added'))`);
+ await expect(create('30000000-0000-0000-0000-0000000000f1')).rejects.toThrow(/event_logs_action_type_check/);
+ for (const f of ['0099_event_logs_notification_choice_actions','0100_standalone_task_log_and_block_link']) await db.exec(readFileSync(`drizzle/migrations/${f}.sql`,'utf8'));
+ expect((await db.query('select count(*)::int n from events')).rows).toEqual([{n:0}]);
+ expect((await db.query('select count(*)::int n from schedule_blocks')).rows).toEqual([{n:0}]);
+ expect((await db.query('select count(*)::int n from event_technicians')).rows).toEqual([{n:0}]);
 },30000);
 afterAll(()=>db.close());
 it('standalone task has no parent, internal semantics, assigned technician and two Oslo 08-16 days',async()=>{
@@ -36,6 +57,12 @@ it('standalone task has no parent, internal semantics, assigned technician and t
  expect((await db.query('select project_type,entity_type,parent_project_id,status from events where id=$1',[id])).rows).toEqual([{project_type:'task',entity_type:'internal',parent_project_id:null,status:'scheduled'}]);
  expect((await db.query('select * from event_technicians where event_id=$1',[id])).rows).toHaveLength(1);
  expect((await db.query('select * from schedule_blocks where project_id=$1 and job_id=$1',[id])).rows).toHaveLength(2);
+ expect((await db.query('select * from schedule_blocks where project_id=$1',[id])).rows).toHaveLength(2);
+ expect((await db.query('select action_type,performed_by from event_logs where event_id=$1 order by action_type',[id])).rows).toEqual([{action_type:'created',performed_by:U},{action_type:'notifications_requested',performed_by:U}]);
+});
+it('non-admin planner cannot forge a log entry in another name',async()=>{
+ const id=(await create('30000000-0000-0000-0000-0000000000f2')).rows[0].r.event_id;
+ await expect(db.transaction(async tx=>{await tx.exec(`SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${U}',true)`);await tx.query(`insert into event_logs(event_id,action_type,performed_by) values($1,'updated','10000000-0000-0000-0000-000000000099')`,[id]);})).rejects.toThrow(/row-level security/);
 });
 it('same request key reuses one event and never duplicates blocks or notification choice',async()=>{
  const key='30000000-0000-0000-0000-000000000002'; const a=await create(key,[T,T]);const b=await create(key);
