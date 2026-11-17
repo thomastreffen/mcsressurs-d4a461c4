@@ -21,7 +21,7 @@ async function load(options: { admin?: boolean; company?: boolean; user?: boolea
     const q: any = { select: () => q, order: () => q, not: () => q, limit: () => q, eq: () => q, is: () => q, insert: mutations, update: mutations, delete: mutations, single: async () => ({ data: row[table], error: null }), maybeSingle: async () => ({ data: row[table], error: null }), then: (resolve: any) => Promise.resolve({ data: array, error: null }).then(resolve) };
     return q;
   });
-  const rpc = vi.fn(async () => ({ data: options.company !== false, error: null }));
+  const rpc = vi.fn(async (_name: string, _args?: unknown) => ({ data: options.company !== false, error: null }));
   const client = { from, rpc, auth: { getClaims: async () => ({ data: { claims: { sub: options.user === false ? null : "authenticated-operator" } }, error: null }) } };
   const Deno = { env: { get: (n: string) => n === "AZURE_CLIENT_ID" ? "mail-app" : "isolated-config" }, serve: (s: typeof serve) => { serve = s; } };
   const ts = await import("typescript");
