@@ -21,11 +21,18 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) throw new Error("Unauthorized");
 
-    const { task_id, remove_user_id } = await req.json();
+    const { task_id, remove_user_id, confirm_calendar_delete } = await req.json();
     if (!task_id) throw new Error("task_id required");
+
+    const { data: scopedTask, error: scopedTaskError } = await userClient.from("tasks").select("company_id").eq("id", task_id).maybeSingle();
+    const { data: allowed, error: scopeError } = scopedTask ? await sb.rpc("has_company_access", {
+      _uid: user.id, _company: scopedTask.company_id, _module: "resource_plan", _level: "edit",
+    }) : { data: false, error: null };
+    if (scopedTaskError || scopeError || !allowed) return new Response(JSON.stringify({ error: "Ingen tilgang" }), { status: 403, headers: corsHeaders });
 
     // Handle removal: delete calendar event for specific user
     if (remove_user_id) {
+      if (confirm_calendar_delete !== true) return new Response(JSON.stringify({ status: "reconciliation_required", reason: "explicit_delete_confirmation_required" }), { status: 409, headers: corsHeaders });
       const { data: task } = await userClient.from("tasks").select("company_id").eq("id", task_id).maybeSingle();
       const { data: scope } = task ? await sb.rpc("has_company_access", { _uid: user.id,
         _company: task.company_id, _module: "resource_plan", _level: "edit" }) : { data: false };
@@ -74,6 +81,7 @@ Deno.serve(async (req) => {
       sb.from("task_assignees").select("*").eq("task_id", task_id).is("removed_at", null),
     ]);
 
+    if (taskRes.error || assigneesRes.error) throw new Error("authoritative_read_failed");
     const task = taskRes.data;
     if (!task) throw new Error("Task not found");
     if (!task.planned_start_at || !task.planned_end_at) {
@@ -99,15 +107,18 @@ Deno.serve(async (req) => {
     for (const assignee of assignees) {
       if (hasMsIntegration) {
         const { data: userData } = await sb.auth.admin.getUserById(assignee.user_id);
-        const msTokens = userData?.user?.user_metadata?.ms_tokens;
+        const { data: activeAccount } = await sb.from("user_accounts").select("auth_user_id").eq("auth_user_id", assignee.user_id).eq("is_active", true).maybeSingle();
+        const meta = userData?.user?.user_metadata;
+        const msTokens = activeAccount && meta?.ms_access_token && Date.parse(meta.ms_expires_at ?? "") > Date.now() + 60000
+          ? { access_token: meta.ms_access_token } : null;
 
         if (msTokens?.access_token) {
           try {
             const eventBody = {
               subject: `[Oppgave] ${task.title}`,
               body: { contentType: "Text", content: task.description || "" },
-              start: { dateTime: task.planned_start_at, timeZone: "Europe/Oslo" },
-              end: { dateTime: task.planned_end_at, timeZone: "Europe/Oslo" },
+              start: { dateTime: task.planned_start_at, timeZone: "UTC" },
+              end: { dateTime: task.planned_end_at, timeZone: "UTC" },
               isReminderOn: true,
               reminderMinutesBeforeStart: 15,
             };
@@ -115,7 +126,7 @@ Deno.serve(async (req) => {
             const existingEventId = assignee.calendar_event_id;
             const method = existingEventId ? "PATCH" : "POST";
             const url = existingEventId
-              ? `https://graph.microsoft.com/v1.0/me/events/${existingEventId}`
+              ? `https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(existingEventId)}`
               : "https://graph.microsoft.com/v1.0/me/events";
 
             const msRes = await fetch(url, {
@@ -128,7 +139,8 @@ Deno.serve(async (req) => {
             });
 
             if (msRes.ok) {
-              const msEvent = await msRes.json();
+              const text = await msRes.text();
+              const msEvent = text ? JSON.parse(text) : { id: existingEventId };
               await sb.from("task_assignees")
                 .update({ calendar_event_id: msEvent.id })
                 .eq("id", assignee.id);

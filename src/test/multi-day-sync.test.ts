@@ -234,7 +234,7 @@ describe("multi-day sync orchestration (mocked Graph)", () => {
     expect(aggregateDayCoverage(res.map((r) => r.state))).toBe("delvis");
   });
 
-  it("failed day is retried on next run (claim released)", async () => {
+  it("uncertain 5xx create is held for reconciliation, not blindly replayed", async () => {
     const { store } = memStore();
     const { graph, calls } = memGraph(["2026-11-20"]);
     await syncTechnicianDays({
@@ -246,8 +246,8 @@ describe("multi-day sync orchestration (mocked Graph)", () => {
       eventId: EVENT, technicianId: EMIL, email: "emil@mcs.no", blocks: twoDays,
       action: "update", store, graph: okGraph.graph, buildBody,
     });
-    expect(okGraph.calls.filter((c) => c.op === "create")).toHaveLength(1); // only the failed day
-    expect(res.every((r) => r.state === "synket")).toBe(true);
+    expect(okGraph.calls.filter((c) => c.op === "create")).toHaveLength(0);
+    expect(res.find(r => r.workDate === "2026-11-20")?.state).toBe("venter");
     expect(calls.filter((c) => c.op === "create")).toHaveLength(2); // no extra writes on first mock
   });
 
@@ -292,4 +292,27 @@ describe("day delivery states", () => {
     expect(aggregateDayCoverage(["feilet", "i_hub"])).toBe("mangler");
     expect(aggregateDayCoverage([])).toBe("ingen_dager");
   });
+});
+describe('explicit day removal boundaries and Graph errors',()=>{
+ it.each([401,403,429,500,503])('retains exact mapping on HTTP %s without harming other technician',async(status)=>{
+  const own:DayLinkRow={technician_id:EMIL,work_date:'2026-11-19',start_at:'2026-11-19T07:00Z',end_at:'2026-11-19T15:00Z',outlook_event_id:'own-copy',status:'synced'};
+  const other={...own,technician_id:MATS,outlook_event_id:'other-copy'};
+  const {store,rows}=memStore([own,other]);const calls:string[]=[];
+  const graph:DayGraph={createEvent:async()=>{throw Error('unexpected POST')},updateEvent:async()=>{throw Error('unexpected PATCH')},deleteEvent:async(email,id)=>{calls.push(id);throw {status}}};
+  const res=await syncTechnicianDays({eventId:EVENT,technicianId:EMIL,email:'emil@mcs.no',blocks:[],action:'delete',confirmedDeleteDays:['2026-11-19'],store,graph,buildBody});
+  expect(calls).toEqual(['own-copy']);expect(rows).toHaveLength(2);expect(res[0].outcome).toBe('failed');
+ });
+ it('404 confirms absence, but a retained active day is never deleted even when listed',async()=>{
+  const own:DayLinkRow={technician_id:EMIL,work_date:'2026-11-19',start_at:'2026-11-19T07:00Z',end_at:'2026-11-19T15:00Z',outlook_event_id:'gone',status:'synced'};
+  const {store,rows}=memStore([own,{...own,work_date:'2026-11-20',outlook_event_id:'retain'}]);const calls:string[]=[];
+  const graph:DayGraph={createEvent:async()=>{throw Error('unexpected')},updateEvent:async()=>{},deleteEvent:async(email,id)=>{calls.push(id);throw {status:404}}};
+  await syncTechnicianDays({eventId:EVENT,technicianId:EMIL,email:'emil@mcs.no',blocks:[block(EMIL,'2026-11-20')],action:'delete',confirmedDeleteDays:['2026-11-19','2026-11-20'],store,graph,buildBody});
+  expect(calls).toEqual(['gone']);expect(rows.map(r=>r.outlook_event_id)).toEqual(['retain']);
+ });
+ it('updateOnly and createMissingOnly never DELETE an absent day mapping',async()=>{
+  for(const mode of ['updateOnly','createMissingOnly'] as const){
+   const {store,rows}=memStore([{technician_id:EMIL,work_date:'2026-11-19',start_at:'2026-11-19T07:00Z',end_at:'2026-11-19T15:00Z',outlook_event_id:'retain',status:'synced'}]);const {graph,calls}=memGraph();
+   await syncTechnicianDays({eventId:EVENT,technicianId:EMIL,email:'emil@mcs.no',blocks:[],action:'update',[mode]:true,confirmedDeleteDays:['2026-11-19'],store,graph,buildBody});expect(calls).toHaveLength(0);expect(rows).toHaveLength(1);
+  }
+ });
 });

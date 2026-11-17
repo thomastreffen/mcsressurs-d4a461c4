@@ -473,7 +473,7 @@ Deno.serve(async (req) => {
       } else if (isTimeChange && previousApproval) {
         // Time change: update existing approval record with a new token
         // Preserve the stable response locator; replays must not invalidate an accepted mail.
-        const newToken = previousApproval.token;
+        const newToken = previousApproval.status === "pending" ? previousApproval.token : crypto.randomUUID();
         const { error: updateErr } = await supabaseAdmin
           .from("job_approvals")
           .update({
@@ -572,32 +572,7 @@ Deno.serve(async (req) => {
       } as any);
     }
 
-    // After processing: update job status
-    if (isTimeChange && rRequired) {
-      // Time change: set status back to requested since approvals are reset
-      await supabaseAdmin.from("events").update({ status: "requested" }).eq("id", job_id);
-    } else {
-      const hasSelfApproved = results.some((r: any) => r.autoApproved);
-      if (hasSelfApproved) {
-        const { data: allApprovals } = await supabaseAdmin
-          .from("job_approvals")
-          .select("status")
-          .eq("job_id", job_id);
-
-        const allApproved = allApprovals && allApprovals.length > 0 && allApprovals.every((a: any) => a.status === "approved");
-        if (allApproved) {
-          await supabaseAdmin.from("events").update({ status: "scheduled" }).eq("id", job_id);
-          await supabaseAdmin.from("event_logs").insert({
-            event_id: job_id,
-            performed_by: callerUserId,
-            action_type: "status_change",
-            change_summary: "Alle montører godkjent – status satt til Planlagt",
-          });
-        } else {
-          await supabaseAdmin.from("events").update({ status: "approved" }).eq("id", job_id);
-        }
-      }
-    }
+    // Individual responses never overwrite operational lifecycle.
 
     return new Response(JSON.stringify({ success: true, results }), {
       status: 200,

@@ -58,7 +58,7 @@ export const JOB_STATUS_CONFIG: Record<JobStatus, StatusConfig> = {
     iconHint: "clock-change",
   },
   rejected: {
-    label: "Avslått",
+    label: "Historisk montøravslag",
     className: "bg-status-rejected text-status-rejected-foreground",
     borderClass: "border-l-status-rejected",
     dotClass: "bg-status-rejected",
@@ -187,8 +187,7 @@ export function getExecutionStatus(status: JobStatus): JobStatus {
  * Falls back to "requested" if status is not an acceptance type.
  */
 export function getAcceptanceFromLegacy(status: JobStatus): JobStatus | null {
-  if (ACCEPTANCE_STATUSES.includes(status)) return status;
-  // If the job has moved past acceptance (scheduled, in_progress, etc.), it was implicitly approved
-  if (EXECUTION_STATUSES.includes(status) || BILLING_STATUSES.includes(status)) return "approved";
+  // Shared lifecycle is not evidence of any person's response.
+  if (status === "requested") return "requested";
   return null;
 }

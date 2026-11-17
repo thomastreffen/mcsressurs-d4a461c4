@@ -118,8 +118,10 @@ export async function syncTechnicianDays(args: {
       await store.markSynced(eventId, item, created.id);
       results.push({ technicianId, workDate: item.workDate, state: "synket", outlookEventId: created.id, outcome: "created" });
     } catch (e: any) {
-      // Keep the row as failed: the UI shows "Feilet" and the next run reclaims it.
-      await store.markFailed(eventId, item, String(e?.status ?? e?.message ?? e));
+      // An uncertain POST may already exist. Retain its pending claim; never blindly POST again.
+      if (typeof e?.status === "number" && e.status < 500) {
+        await store.markFailed(eventId, item, String(e.status));
+      }
       results.push({ technicianId, workDate: item.workDate, state: "feilet", error: String(e?.status ?? e), outcome: "failed" });
     }
   }

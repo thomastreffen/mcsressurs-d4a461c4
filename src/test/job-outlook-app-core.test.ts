@@ -42,3 +42,8 @@ describe("central app-only job calendar", () => {
     expect(clampBatch(500)).toBe(5);
   });
 });
+it('historical aggregate rejected never deletes or suppresses an active recipient', () => {
+ const active = {...job,status:'rejected'};
+ expect(planJobOutbound(active,null,'mats','pilot@mcs.no',true).kind).toBe('create');
+ expect(planJobOutbound(active,{hub_version:'old',outlook_event_id:'mats-copy',outlook_change_key:'k',state:'synced'},'mats','pilot@mcs.no',true).kind).not.toBe('delete');
+});

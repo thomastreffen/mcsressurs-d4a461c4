@@ -50,16 +50,18 @@ Deno.serve(async (req) => {
 
   // One Outlook event per (job, technician, Oslo work date). Every day passes flags + exact pilot target gate.
   const syncOne = async (eventId: string, onlyTech?: string) => {
-    const { data: ev } = await sb.from("events").select("id,company_id,title,address,start_time,end_time,status,deleted_at,project_type,job_number,internal_number,description,site_contact_name,site_contact_phone").eq("id", eventId).maybeSingle();
+    const { data: ev, error: eventError } = await sb.from("events").select("id,company_id,title,address,start_time,end_time,status,deleted_at,project_type,job_number,internal_number,description,site_contact_name,site_contact_phone").eq("id", eventId).maybeSingle();
+    if (eventError) return [{ status: "authoritative_read_failed" }];
     if (!ev) return [{ status: "not_found" }];
     if (ev.project_type === "task") return [{ status: "not_a_project_job" }];
     const job: HubJob = { ...ev, id: ev.id, company_id: ev.company_id, title: ev.title, address: ev.address, start_at: ev.start_time, end_at: ev.end_time, status: ev.status, deleted_at: ev.deleted_at };
-    const [{ data: rows }, { data: blocks }, { data: appLinks }, { data: legacy }] = await Promise.all([
+    const [{ data: rows, error: assignmentError }, { data: blocks, error: blockError }, { data: appLinks, error: linkError }, { data: legacy, error: legacyError }] = await Promise.all([
       sb.from("event_technicians").select("technician_id, technicians(email)").eq("event_id", eventId),
       sb.from("schedule_blocks").select("technician_id,start_at,end_at").eq("project_id", eventId).is("deleted_at", null),
       sb.from("job_outlook_app_links").select("*").eq("event_id", eventId),
       sb.from("job_calendar_day_links").select("id,technician_id,work_date,start_at,end_at,outlook_event_id,status").eq("event_id", eventId),
     ]);
+    if (assignmentError || blockError || linkError || legacyError) return [{ status: "authoritative_read_failed" }];
     const plan = planJobDays({
       job, blocks: (blocks ?? []) as any, assignees: (rows ?? []).map((r: any) => ({ technician_id: r.technician_id, email: r.technicians?.email ?? null })),
       appLinks: ((appLinks ?? []) as any[]).filter((l) => l.work_date), legacyLinks: (legacy ?? []) as any, targets, flags, now, onlyTechnicianId: onlyTech,
@@ -75,6 +77,12 @@ Deno.serve(async (req) => {
       const nowIso = new Date().toISOString();
       const linkBase = { company_id: ev.company_id, event_id: eventId, technician_id: row.technicianId, mailbox: row.mailbox!, work_date: row.workDate, dedup_key: row.dedupKey ?? row.link!.dedup_key };
       const d = row.decision;
+      // A create/update queue release is not consent to delete. Central deletion
+      // remains held until a separately reviewed exact person/day removal exists.
+      if (d.kind === "delete") {
+        out.push({ ...base, status: "explicit_day_delete_approval_required" });
+        continue;
+      }
       if (d.kind === "adopt") {
         await sb.from("job_outlook_app_links").upsert({ ...linkBase, outlook_event_id: d.outlookEventId, hub_version: d.fingerprint, state: "synced", adopted_from_day_link_id: d.legacyId, last_error: null, updated_at: nowIso }, { onConflict: "dedup_key" });
         await log("adopt", {}); out.push({ ...base, status: "adopted" }); continue;
@@ -99,6 +107,7 @@ Deno.serve(async (req) => {
     return out;
   };
 
+  if (action === "sync_event" && !flags.dryRun) return json({ status: "explicit_queue_release_required" }, 409);
   if (action === "sync_event") return json({ status: "ok", dry_run: flags.dryRun, results: await syncOne(body.event_id!) });
 
   // Only explicitly released intents are ever drained. Held (released_at null) intents are never touched.
