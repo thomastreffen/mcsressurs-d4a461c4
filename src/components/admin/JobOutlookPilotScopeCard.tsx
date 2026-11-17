@@ -10,6 +10,7 @@ import { freshMailboxProbe } from "../../../supabase/functions/_shared/job-outlo
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { simOutcome, globalGateNotes } from "../../../supabase/functions/_shared/job-outlook-pilot-sim-view";
+import { JobCalendarOneShot } from "./JobCalendarOneShot";
 
 type Any = Record<string, any>;
 async function call(body: Any): Promise<Any> {
@@ -52,7 +53,7 @@ export function JobOutlookPilotScopeCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-4 w-4" />Sentral jobbkalender – pilotavgrensning</CardTitle>
-        <CardDescription>Én montør, én jobb og én dag om gangen. Ingenting skrives til Outlook herfra, og synken slås ikke på.</CardDescription>
+        <CardDescription>Pilotutvalg og lesetester slår ikke synken på. Mats’ engangsopprettelse har egen bekreftelse nederst.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -156,6 +157,7 @@ export function JobOutlookPilotScopeCard() {
           ))}
         </div>
         {msg && <p role="status">{msg}</p>}
+        <JobCalendarOneShot />
       </CardContent>
     </Card>
   );
