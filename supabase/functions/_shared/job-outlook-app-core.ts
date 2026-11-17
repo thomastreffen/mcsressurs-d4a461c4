@@ -1,4 +1,5 @@
 import { jobCalendarHtml } from "./job-communication.ts";
+import { isJobEnded } from "./assignment-lifecycle.ts";
 // Pure core for CENTRAL app-only project-job -> Outlook calendar writes.
 // No network, no DB. Imported by the edge function (Deno) and vitest (Node).
 // Contract: Hub is the only source of project jobs; Outlook never creates jobs.
@@ -33,7 +34,6 @@ export type JobOutbound =
   | { kind: "skip"; reason: string }
   | { kind: "create" | "update" | "delete"; fingerprint: string; payload: Record<string, unknown> | null };
 
-const CANCELLED = new Set(["cancelled", "archived", "rejected"]);
 
 export function jobFingerprint(j: HubJob, technicianId: string): string {
   const s = [j.title, j.address ?? "", j.start_at ?? "", j.end_at ?? "", j.status ?? "", j.deleted_at ? "del" : "", technicianId, j.job_number ?? j.internal_number ?? "", j.description ?? "", j.site_contact_name ?? "", j.site_contact_phone ?? ""].join("\u241F");
@@ -79,7 +79,7 @@ export function buildJobPayload(j: HubJob, technicianId: string, key: string): R
 export function planJobOutbound(j: HubJob, link: JobLink | null, technicianId: string, mailbox: string, assigned: boolean): JobOutbound {
   if (!j.company_id) return { kind: "skip", reason: "no_company_scope" };
   const fp = jobFingerprint(j, technicianId);
-  if (j.deleted_at || !assigned || CANCELLED.has(j.status ?? "")) {
+  if (isJobEnded(j) || !assigned) {
     if (!link?.outlook_event_id || link.state === "deleted") return { kind: "skip", reason: "nothing_to_delete" };
     return { kind: "delete", fingerprint: fp, payload: null };
   }

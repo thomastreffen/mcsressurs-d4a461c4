@@ -4,6 +4,7 @@ import {
   buildPerDayPlan, diffDayPlan, dayDeliveryState,
   type DayPlanItem, type DayLinkRow, type DayDeliveryState,
 } from "./multi-day-calendar.ts";
+import { permitsDayDelete } from "./assignment-lifecycle.ts";
 
 export interface DayStore {
   listLinks(eventId: string, technicianId: string): Promise<DayLinkRow[]>;
@@ -52,6 +53,8 @@ export async function syncTechnicianDays(args: {
    * event (or earlier failures). Never PATCH or DELETE existing events.
    */
   createMissingOnly?: boolean;
+  /** Exact dates from an explicit authorized removal, never inferred from a missing read. */
+  confirmedDeleteDays?: string[];
   store: DayStore;
   graph: DayGraph;
   buildBody: (item: DayPlanItem) => unknown;
@@ -63,6 +66,10 @@ export async function syncTechnicianDays(args: {
   if (action === "delete") {
     const results: DayResult[] = [];
     for (const link of links) {
+      if (!permitsDayDelete(link.work_date, new Set(plan.map(p => p.workDate)), args.confirmedDeleteDays ?? [])) {
+        results.push({ technicianId, workDate: link.work_date, state: "venter", error: "explicit_day_removal_required", outcome: "skipped" });
+        continue;
+      }
       if (link.outlook_event_id) {
         try {
           await graph.deleteEvent(email, link.outlook_event_id);
@@ -135,7 +142,11 @@ export async function syncTechnicianDays(args: {
   }
 
   for (const link of diff.deletes) {
-    if (args.createMissingOnly) continue; // never delete from a create-missing action
+    // Missing plan rows are not deletion intent. Dedicated exact-unplan owns removal.
+    if (args.createMissingOnly || args.updateOnly || !permitsDayDelete(link.work_date, new Set(plan.map(p => p.workDate)), args.confirmedDeleteDays ?? [])) {
+      results.push({ technicianId, workDate: link.work_date, state: "venter", error: "explicit_day_removal_required", outcome: "skipped" });
+      continue;
+    }
     if (link.outlook_event_id) {
       try {
         await graph.deleteEvent(email, link.outlook_event_id);

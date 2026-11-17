@@ -5,6 +5,7 @@
 import { buildPerDayPlan, type DayPlanItem } from "./multi-day-calendar.ts";
 import { jobGate, type AppFlags, type HubJob } from "./job-outlook-app-core.ts";
 import { jobCalendarHtml } from "./job-communication.ts";
+import { isJobEnded } from "./assignment-lifecycle.ts";
 
 export interface PilotTarget {
   id: string; company_id: string; event_id: string; technician_id: string; mailbox: string;
@@ -33,7 +34,6 @@ export interface DayRow {
 }
 
 const norm = (m: string | null | undefined) => (m ?? "").trim().toLowerCase();
-const CANCELLED = new Set(["cancelled", "archived", "rejected"]);
 
 export function jobDayDedupKey(eventId: string, technicianId: string, workDate: string, mailbox: string): string {
   return `mcs-jobday-${eventId}-${technicianId}-${workDate}-${norm(mailbox)}`;
@@ -77,7 +77,7 @@ export function buildDayPayload(j: HubJob, d: DayPlanItem, key: string): Record<
 }
 
 function decideOne(j: HubJob, d: DayPlanItem | null, link: AppDayLink | null, legacy: LegacyDayLink | null, mailbox: string): DayDecision {
-  const ended = !!j.deleted_at || CANCELLED.has(j.status ?? "");
+  const ended = isJobEnded(j);
   if (!d || ended) {
     // Only events this app created are removed; adopted legacy events are never deleted by the app.
     if (link?.adopted_from_day_link_id && link.outlook_event_id && link.state !== "deleted") return { kind: "skip", reason: "adopted_legacy_not_deleted" };
@@ -112,12 +112,13 @@ export function planJobDays(input: {
     if (input.onlyTechnicianId && d.technicianId !== input.onlyTechnicianId) continue;
     const mailbox = mail.get(d.technicianId) ?? null;
     const key = mailbox ? jobDayDedupKey(job.id, d.technicianId, d.workDate, mailbox) : null;
-    const link = input.appLinks.find((l) => l.technician_id === d.technicianId && l.work_date === d.workDate && l.state !== "deleted") ?? null;
+    const link = input.appLinks.find((l) => l.technician_id === d.technicianId && l.work_date === d.workDate && norm(l.mailbox) === norm(mailbox) && l.state !== "deleted") ?? null;
     if (link) seen.add(link.dedup_key);
     const legacy = input.legacyLinks.find((l) => l.technician_id === d.technicianId && l.work_date === d.workDate) ?? null;
     const q = { companyId: job.company_id, eventId: job.id, technicianId: d.technicianId, mailbox, workDate: d.workDate };
     const gate = mailbox ? dayGate(input.flags, input.targets, q, input.now) : "no_mailbox";
-    const decision = mailbox ? decideOne(job, d, link, legacy, mailbox) : { kind: "skip" as const, reason: "no_mailbox" };
+    const identityConflict = input.appLinks.some((l) => l.technician_id === d.technicianId && l.work_date === d.workDate && l.state !== "deleted" && norm(l.mailbox) !== norm(mailbox));
+    const decision = identityConflict ? { kind: "skip" as const, reason: "mailbox_identity_requires_reconciliation" } : mailbox ? decideOne(job, d, link, legacy, mailbox) : { kind: "skip" as const, reason: "no_mailbox" };
     rows.push({ technicianId: d.technicianId, mailbox, workDate: d.workDate, startAt: d.startAt, endAt: d.endAt, dedupKey: key, gate, decision, link });
   }
   for (const l of input.appLinks) {
@@ -125,7 +126,7 @@ export function planJobDays(input: {
     if (input.onlyTechnicianId && l.technician_id !== input.onlyTechnicianId) continue;
     const q = { companyId: job.company_id, eventId: job.id, technicianId: l.technician_id, mailbox: l.mailbox, workDate: l.work_date };
     rows.push({ technicianId: l.technician_id, mailbox: l.mailbox, workDate: l.work_date, startAt: null, endAt: null, dedupKey: l.dedup_key,
-      gate: dayGate(input.flags, input.targets, q, input.now), decision: decideOne(job, null, l, null, l.mailbox), link: l });
+      gate: dayGate(input.flags, input.targets, q, input.now), decision: assigned.has(l.technician_id) && norm(mail.get(l.technician_id)) !== norm(l.mailbox) ? { kind: "skip", reason: "mailbox_identity_requires_reconciliation" } : decideOne(job, null, l, null, l.mailbox), link: l });
   }
   return rows;
 }
