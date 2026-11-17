@@ -64,3 +64,22 @@ describe("read-only privacy-preserving conflict diagnosis", () => {
     expect(d.same_hub_count).toBe(1); expect(d.non_busy_count).toBe(1); expect(d.conflicts[0].classification).toBe("same_hub_day");
   });
 });
+describe("Hub-authoritative explicit consent",()=>{
+  const event={id:"other",subject:"Other appointment",body:{content:""},start:{dateTime:x.start,timeZone:"UTC"},end:{dateTime:x.end,timeZone:"UTC"},showAs:"tentative",type:"occurrence",isAllDay:false,isCancelled:false};
+  it.each(["busy","tentative","free","oof"])("known %s allows only explicitly confirmed override",async showAs=>{
+    const graph=vi.fn(async(method:string)=>method==="GET"?{status:200,data:{value:[{...event,showAs}]}}:{status:201,data:{id:"created"}});
+    const seen=await inspectMailbox(graph,"Majorstua"),claim=vi.fn(async()=>true),receipt=vi.fn(async()=>{});
+    expect(seen.diagnosis.category).toBe("other");expect(oneShotConflictGuard(seen.diagnosis,false)).toBe("conflict_override_required");
+    expect((await createOneShot(graph,{subject:"Majorstua"},claim,receipt,{override:false,signature:seen.signature})).state).toBe("conflict_override_required");expect(claim).not.toHaveBeenCalled();
+    expect((await createOneShot(graph,{subject:"Majorstua"},claim,receipt,{override:true,signature:seen.signature})).state).toBe("succeeded");expect(graph.mock.calls.filter(c=>c[0]==="POST")).toHaveLength(1);
+  });
+  it("full-day and recurring overlaps retain all warnings",()=>{const d=diagnoseOneShotEvents([{...event,isAllDay:true},{...event,id:"second"}],"Majorstua");expect(d.category).toBe("other");expect(d.blocking_count).toBe(2);expect(d.conflicts[0].local_overlap).toBe("08:00–16:00");});
+  it.each(["body","id","type","showAs","isAllDay","isCancelled"])("missing %s never overrides",field=>{const missing={...event};delete(missing as Record<string,unknown>)[field];expect(oneShotConflictGuard(diagnoseOneShotEvents([missing],"Majorstua"),true)).toBe("calendar_identity_unresolved");});
+  it("same job, unverified title and malformed transaction cannot override",()=>{
+    expect(oneShotConflictGuard(diagnoseOneShotEvents([{...event,body:{content:`MCS_EVENT_ID:${x.event_id} MCS_TECHNICIAN_ID:${x.technician_id} MCS_WORK_DATE:${x.work_date}`}}],"Majorstua"),true)).toBe("same_hub_job_exists");
+    expect(oneShotConflictGuard(diagnoseOneShotEvents([{...event,subject:"Majorstua"}],"Majorstua"),true)).toBe("calendar_identity_unresolved");
+    expect(oneShotConflictGuard(diagnoseOneShotEvents([{...event,transactionId:x.key}],"Majorstua"),true)).toBe("calendar_identity_unresolved");
+  });
+  it("changed calendar stops before claim",async()=>{const graph=vi.fn(async()=>({status:200,data:{value:[event]}})),claim=vi.fn();expect((await createOneShot(graph,{subject:"Majorstua"},claim,vi.fn(),{override:true,signature:"old"})).state).toBe("calendar_changed_requires_preflight");expect(claim).not.toHaveBeenCalled();});
+  it.each([403,500])("GET %s never claims/posts even with override",async status=>{const graph=vi.fn(async()=>({status,data:{value:[]}})),claim=vi.fn();await expect(createOneShot(graph,{},claim,vi.fn(),{override:true,signature:"old"})).rejects.toThrow("mailbox_lookup_incomplete");expect(claim).not.toHaveBeenCalled();expect(graph).toHaveBeenCalledTimes(1);});
+});

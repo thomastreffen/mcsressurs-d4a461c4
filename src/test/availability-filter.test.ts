@@ -46,6 +46,7 @@ describe("formatSlotOslo – UTC → Europe/Oslo med dato", () => {
 });
 
 describe("filterOwnBusySlots – jobbens egne Outlook-kopier er aldri konflikter", () => {
+  it("time equality alone never hides another commitment",()=>{const slot={start:DAY1.startAt,end:DAY1.endAt,status:"busy"};expect(filterOwnBusySlots([slot],[DAY1]).kept).toHaveLength(1);expect(isOwnJobSlot(slot,[DAY1])).toBe(false);});
   it("filtrerer legacy egen-kopi (Emil dag 1, 07:00–15:00 UTC)", () => {
     const slots = [{ identityVerified:true, start: graphUtc("2026-11-19T07:00:00.000Z"), end: graphUtc("2026-11-19T15:00:00.000Z"), status: "busy" }];
     const { kept, removedOwn } = filterOwnBusySlots(slots, [DAY1, DAY2]);

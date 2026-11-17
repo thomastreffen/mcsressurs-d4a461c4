@@ -27,3 +27,13 @@ it("read-only diagnosis never requests preflight, create or reconcile", async ()
   expect(invoke.mock.calls.every(c => ["status", "diagnose"].includes(c[1].body.action))).toBe(true);
   expect(screen.queryByRole("button", { name: "Opprett én avtale for Mats 19. november" })).not.toBeInTheDocument();
 });
+it("conflict write stays disabled until separate conflict consent, correct plan and override phrase",async()=>{
+  invoke.mockImplementation(async(_name,{body})=>({error:null,data:body.action==="status"?{consumed:false,runs:[]}:body.action==="preflight"?{preview:{run_id:"frozen-run",payload_hash:"frozen-hash",calendar_signature:"calendar-hash",conflict_override_required:true,expires_at:"2099-01-01",mailbox:ONE_SHOT.mailbox,local_time:"08:00–16:00",approval:"pending",payload:{subject:"60570",body:{content:"Jobbinfo"}}}}:{state:"succeeded"}}));
+  render(<QueryClientProvider client={new QueryClient()}><JobCalendarOneShot/></QueryClientProvider>);
+  const preflight=await screen.findByRole("button",{name:"Lesekontroll og forhåndsvisning"});await waitFor(()=>expect(preflight).not.toBeDisabled());fireEvent.click(preflight);
+  const create=await screen.findByRole("button",{name:"Opprett likevel for Mats – tidskonflikt kjent"});fireEvent.change(screen.getByRole("textbox",{name:"Engangsbekreftelse"}),{target:{value:ONE_SHOT.overridePhrase}});
+  fireEvent.click(screen.getAllByRole("checkbox")[0]);fireEvent.click(screen.getByRole("checkbox",{name:"Ressursplanen er korrekt"}));expect(create).toBeDisabled();
+  fireEvent.click(screen.getByRole("checkbox",{name:"Tidskonflikt kjent"}));await waitFor(()=>expect(create).not.toBeDisabled());fireEvent.click(create);
+  await waitFor(()=>expect(invoke).toHaveBeenCalledWith("job-calendar-one-shot",{body:{action:"create",run_id:"frozen-run",payload_hash:"frozen-hash",calendar_signature:"calendar-hash",confirm:ONE_SHOT.overridePhrase,pending_busy_confirmed:true,resource_plan_confirmed:true,conflict_override:true}}));
+  expect(invoke.mock.calls.filter(c=>c[1].body.action==="create")).toHaveLength(1);
+});
