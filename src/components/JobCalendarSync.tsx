@@ -224,7 +224,7 @@ export function JobCalendarSync({
       const { data, error } = await invokeWithSession("ms-calendar", {
         body: { action: "availability", user_ids: userIds, start: jobStart.toISOString(), end: jobEnd.toISOString(), job_id: jobId },
       });
-      if (error) throw error;
+      if (error || data?.error || data?.results?.some((r: any) => r.lookup_error)) throw new Error("Kalenderlesingen er uavklart.");
       setAvailability(data.results || []);
       if (data.results?.some((r: AvailabilityResult) => r.busy)) {
         toast.warning("Noen teknikere har konflikter i dette tidsrommet");
