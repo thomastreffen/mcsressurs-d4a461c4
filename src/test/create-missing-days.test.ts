@@ -106,7 +106,7 @@ describe("Opprett manglende kalenderdager (createMissingOnly)", () => {
     expect(rows.some((r) => r.work_date === "2026-11-18")).toBe(true);
   });
 
-  it("Graph failure on day 2 is reported as feilet, never synket, and is retryable", async () => {
+  it("uncertain Graph failure on day 2 is held, never blindly recreated", async () => {
     const { store } = memStore([day19Synced]);
     const { graph } = memGraph(["2026-11-20"]);
     const args = { eventId: EVENT, technicianId: EMIL, email: "emil@x", blocks, action: "create" as const, createMissingOnly: true, store, graph, buildBody };
@@ -114,7 +114,8 @@ describe("Opprett manglende kalenderdager (createMissingOnly)", () => {
     expect(first.find((r) => r.workDate === "2026-11-20")?.state).toBe("feilet");
     const ok = memGraph();
     const second = await syncTechnicianDays({ ...args, graph: ok.graph });
-    expect(second.find((r) => r.workDate === "2026-11-20")?.state).toBe("synket");
+    expect(second.find((r) => r.workDate === "2026-11-20")?.state).toBe("venter");
+    expect(ok.calls).toHaveLength(0);
   });
 
   it("missingDayItems lists only days without an Outlook event", () => {
