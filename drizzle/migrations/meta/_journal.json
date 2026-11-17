@@ -708,6 +708,20 @@
       "when": 1794900763775,
       "tag": "0100_standalone_task_log_and_block_link",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1794901703323,
+      "tag": "0101_exact_calendar_unplan",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1794901724331,
+      "tag": "0102_event_logs_writer_action_types",
+      "breakpoints": true
     }
   ]
 }

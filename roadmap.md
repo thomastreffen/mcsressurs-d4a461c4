@@ -1,6 +1,11 @@
+# Historikktyper (event_logs) – 17. november
+
+- [x] Alle skrivere kartlagt mot live regel; 14 manglende typer lagt til i lukket liste (migrasjon 0102), vakttest for alle skrivere + RLS/rollback
+- [ ] Publisering av historikketiketter; Thomas oppretter neste ordinære Oppgave med egen konto
+
 # Kalenderfjerning JOB-000440 – 16. november
 
-- [ ] Flow-sweep: importert/direct/legacy/unlink/day/organizer/app-only/queue/UI; rett søstergap, mock-tester og deploy, ingen live writes
+- [x] Flow-sweep: importert/direct/legacy/unlink/day/organizer/app-only/queue/UI; migrasjon 0101 aktiv (eksakt dag, uløst tidligere dag bevares), 9 funksjoner deployet 17.11, ingen live writes
 
 - [x] Rett eksakt dagskobling og aktive Oslo-dager, personlig token (ingen AZURE app fallback), 404/idempotens, sanert Graph-kode/backoff og sperr gamle automatiske retries; ingen live Graph eller DB-mutasjoner/migrasjon
 - [x] 45 isolerte tester bestått, build OK; remove-work-visit-from-plan + schedule-sweep-orphans deployet. Skjermers advarsel krever publisering. Andre aktive oppgave/mail-fikser urørt

@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
         await log(`${d.kind}_failed`, { status: res.status }); out.push({ ...base, status: state, code: res.status }); continue;
       }
       const g = d.kind === "delete" ? {} : text ? JSON.parse(text) : {};
-      await sb.from("job_outlook_app_links").upsert({ ...linkBase, outlook_event_id: d.kind === "delete" ? evId : g.id ?? row.link?.outlook_event_id, outlook_change_key: g.changeKey ?? row.link?.outlook_change_key ?? null, hub_version: d.kind === "delete" ? row.link?.hub_version : d.fingerprint, state: d.kind === "delete" ? "deleted" : "synced", last_error: null, last_attempt_at: nowIso, updated_at: nowIso }, { onConflict: "dedup_key" });
+      await sb.from("job_outlook_app_links").upsert({ ...linkBase, outlook_event_id: d.kind === "delete" ? evId : g.id ?? row.link?.outlook_event_id, outlook_change_key: g.changeKey ?? row.link?.outlook_change_key ?? null, hub_version: d.kind === "delete" ? row.link?.hub_version : (d as { fingerprint?: string }).fingerprint, state: d.kind === "delete" ? "deleted" : "synced", last_error: null, last_attempt_at: nowIso, updated_at: nowIso }, { onConflict: "dedup_key" });
       await log(d.kind, { status: res.status }); out.push({ ...base, status: d.kind });
     }
     return out;

@@ -886,7 +886,11 @@ Deno.serve(async (req) => {
     const customer = event.customers || null;
 
     // Get technicians with their event_technicians row info
-    const techRows = selectedCalendarRecipients((event.event_technicians ?? [])
+    type CalendarTechRow = {
+      eventTechRow: { id: string | null; calendar_event_id: string | null; start_at: string | null; end_at: string | null };
+      tech: any;
+    };
+    const techRows: CalendarTechRow[] = selectedCalendarRecipients<CalendarTechRow>((event.event_technicians ?? [])
       .filter((et: any) => et.technicians)
       .map((et: any) => ({
         eventTechRow: { id: et.id, calendar_event_id: et.calendar_event_id, start_at: et.start_at, end_at: et.end_at },
