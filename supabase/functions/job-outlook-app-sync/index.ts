@@ -50,16 +50,18 @@ Deno.serve(async (req) => {
 
   // One Outlook event per (job, technician, Oslo work date). Every day passes flags + exact pilot target gate.
   const syncOne = async (eventId: string, onlyTech?: string) => {
-    const { data: ev } = await sb.from("events").select("id,company_id,title,address,start_time,end_time,status,deleted_at,project_type,job_number,internal_number,description,site_contact_name,site_contact_phone").eq("id", eventId).maybeSingle();
+    const { data: ev, error: eventError } = await sb.from("events").select("id,company_id,title,address,start_time,end_time,status,deleted_at,project_type,job_number,internal_number,description,site_contact_name,site_contact_phone").eq("id", eventId).maybeSingle();
+    if (eventError) return [{ status: "authoritative_read_failed" }];
     if (!ev) return [{ status: "not_found" }];
     if (ev.project_type === "task") return [{ status: "not_a_project_job" }];
     const job: HubJob = { ...ev, id: ev.id, company_id: ev.company_id, title: ev.title, address: ev.address, start_at: ev.start_time, end_at: ev.end_time, status: ev.status, deleted_at: ev.deleted_at };
-    const [{ data: rows }, { data: blocks }, { data: appLinks }, { data: legacy }] = await Promise.all([
+    const [{ data: rows, error: assignmentError }, { data: blocks, error: blockError }, { data: appLinks, error: linkError }, { data: legacy, error: legacyError }] = await Promise.all([
       sb.from("event_technicians").select("technician_id, technicians(email)").eq("event_id", eventId),
       sb.from("schedule_blocks").select("technician_id,start_at,end_at").eq("project_id", eventId).is("deleted_at", null),
       sb.from("job_outlook_app_links").select("*").eq("event_id", eventId),
       sb.from("job_calendar_day_links").select("id,technician_id,work_date,start_at,end_at,outlook_event_id,status").eq("event_id", eventId),
     ]);
+    if (assignmentError || blockError || linkError || legacyError) return [{ status: "authoritative_read_failed" }];
     const plan = planJobDays({
       job, blocks: (blocks ?? []) as any, assignees: (rows ?? []).map((r: any) => ({ technician_id: r.technician_id, email: r.technicians?.email ?? null })),
       appLinks: ((appLinks ?? []) as any[]).filter((l) => l.work_date), legacyLinks: (legacy ?? []) as any, targets, flags, now, onlyTechnicianId: onlyTech,
@@ -99,6 +101,7 @@ Deno.serve(async (req) => {
     return out;
   };
 
+  if (action === "sync_event" && !flags.dryRun) return json({ status: "explicit_queue_release_required" }, 409);
   if (action === "sync_event") return json({ status: "ok", dry_run: flags.dryRun, results: await syncOne(body.event_id!) });
 
   // Only explicitly released intents are ever drained. Held (released_at null) intents are never touched.

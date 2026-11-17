@@ -600,9 +600,10 @@ function dayStore(supabaseAdmin: any): DayStore {
   const TABLE = "job_calendar_day_links";
   return {
     async listLinks(eventId, technicianId) {
-      const { data } = await supabaseAdmin.from(TABLE)
+      const { data, error } = await supabaseAdmin.from(TABLE)
         .select("technician_id,work_date,start_at,end_at,outlook_event_id,status,last_error")
         .eq("event_id", eventId).eq("technician_id", technicianId);
+      if (error) throw new Error("calendar_links_read_failed");
       return (data ?? []) as DayLinkRow[];
     },
     async claimCreate(eventId, item) {
@@ -930,11 +931,12 @@ Deno.serve(async (req) => {
     };
 
     // ── Multi-day plan: schedule blocks per technician (one Outlook event per workday) ──
-    const { data: schedBlocks } = await supabaseAdmin
+    const { data: schedBlocks, error: schedError } = await supabaseAdmin
       .from("schedule_blocks")
       .select("technician_id,start_at,end_at")
       .eq("project_id", event_id)
       .is("deleted_at", null);
+    if (schedError) throw new Error("plan_read_failed_reconciliation_required");
     const blocksByTech = new Map<string, { technician_id: string; start_at: string; end_at: string }[]>();
     for (const b of schedBlocks ?? []) {
       if (!b.technician_id) continue;
