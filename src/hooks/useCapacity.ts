@@ -155,8 +155,7 @@ export function useCapacity(
       const externalKey = `${slot.technicianId}|${roundToMinute(normalized.startMs)}|${roundToMinute(normalized.endMs)}`;
       if (seenExternal.has(externalKey)) continue;
       seenExternal.add(externalKey);
-      const internalIntervals = internalIntervalsByTech.get(slot.technicianId) || [];
-      if (internalIntervals.some((internal) => isLikelyMirrored(normalized, internal))) continue;
+      // Do not hide external commitments merely because a Hub job covers the same time.
       if (!externalByTechByDay.has(slot.technicianId)) externalByTechByDay.set(slot.technicianId, new Map());
       const dayMap = externalByTechByDay.get(slot.technicianId)!;
       const chunks = splitIntervalByDay(slot.start, slot.end);

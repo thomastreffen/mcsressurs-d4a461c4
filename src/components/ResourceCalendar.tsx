@@ -359,23 +359,9 @@ export const ResourceCalendar = memo(function ResourceCalendar({
           const tech = technicianMap.get(techId);
           if (!tech) continue;
           const merged = mergeExternalSlots(techSlots);
-          const techSbRanges = sbRangesByTech.get(techId) || [];
 
           for (const slot of merged) {
-            const slotStart = slot.start.getTime();
-            const slotEnd = slot.end.getTime();
-            // Widen tolerance to 65 minutes to catch timezone-shifted duplicates (±1h for CET/CEST)
-            const TZ_TOLERANCE = 65 * 60000;
-            const coveredBySb = techSbRanges.some(
-              (r) => r.start <= slotStart + TZ_TOLERANCE && r.end >= slotEnd - TZ_TOLERANCE
-            );
-            if (coveredBySb) continue;
-
-            const calRanges = calEventRangesByTech.get(techId) || [];
-            const coveredByCalEvent = calRanges.some(
-              (r) => r.start <= slotStart + TZ_TOLERANCE && r.end >= slotEnd - TZ_TOLERANCE
-            );
-            if (coveredByCalEvent) continue;
+            // Time coverage is not calendar identity. Keep other/unknown Outlook slots visible.
 
             const techName = tech?.name?.trim();
             const displayName = techName ? techName.split(" ")[0] : "Ukjent montør";

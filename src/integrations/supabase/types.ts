@@ -10699,6 +10699,7 @@ export type Database = {
           action: string
           actor: string
           created_at: string
+          detail: Json | null
           http_status: number | null
           id: string
           run_id: string
@@ -10708,6 +10709,7 @@ export type Database = {
           action: string
           actor: string
           created_at?: string
+          detail?: Json | null
           http_status?: number | null
           id?: string
           run_id: string
@@ -10717,6 +10719,7 @@ export type Database = {
           action?: string
           actor?: string
           created_at?: string
+          detail?: Json | null
           http_status?: number | null
           id?: string
           run_id?: string
@@ -10735,7 +10738,11 @@ export type Database = {
       job_calendar_one_shot_runs: {
         Row: {
           actor: string
+          calendar_signature: string | null
           company_id: string
+          confirmation_text: string | null
+          conflict_override_confirmed: boolean
+          conflict_summary: Json | null
           consumed_at: string | null
           created_at: string
           event_id: string
@@ -10750,6 +10757,7 @@ export type Database = {
           mailbox: string
           payload: Json
           payload_hash: string
+          resource_plan_confirmed: boolean
           schedule_signature: string
           state: string
           target_id: string
@@ -10758,7 +10766,11 @@ export type Database = {
         }
         Insert: {
           actor: string
+          calendar_signature?: string | null
           company_id: string
+          confirmation_text?: string | null
+          conflict_override_confirmed?: boolean
+          conflict_summary?: Json | null
           consumed_at?: string | null
           created_at?: string
           event_id: string
@@ -10773,6 +10785,7 @@ export type Database = {
           mailbox: string
           payload: Json
           payload_hash: string
+          resource_plan_confirmed?: boolean
           schedule_signature: string
           state?: string
           target_id: string
@@ -10781,7 +10794,11 @@ export type Database = {
         }
         Update: {
           actor?: string
+          calendar_signature?: string | null
           company_id?: string
+          confirmation_text?: string | null
+          conflict_override_confirmed?: boolean
+          conflict_summary?: Json | null
           consumed_at?: string | null
           created_at?: string
           event_id?: string
@@ -10796,6 +10813,7 @@ export type Database = {
           mailbox?: string
           payload?: Json
           payload_hash?: string
+          resource_plan_confirmed?: boolean
           schedule_signature?: string
           state?: string
           target_id?: string
@@ -18888,7 +18906,15 @@ export type Database = {
         Returns: Json
       }
       claim_job_calendar_one_shot: {
-        Args: { _actor: string; _hash: string; _run: string }
+        Args: {
+          _actor: string
+          _calendar_signature: string
+          _confirm: string
+          _hash: string
+          _override: boolean
+          _resource_plan_confirmed: boolean
+          _run: string
+        }
         Returns: boolean
       }
       claim_job_email_attempt: {

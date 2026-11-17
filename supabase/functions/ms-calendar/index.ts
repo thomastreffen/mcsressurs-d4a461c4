@@ -297,7 +297,7 @@ Deno.serve(async (req) => {
           .eq("project_id", job_id)
           .is("deleted_at", null);
         for (const b of blocks || []) {
-          addOwn(b.technician_id, b.start_at, b.end_at);
+          // Planned times expand the read, but do not prove an Outlook event's identity.
           if (b.start_at && b.start_at < queryStart) queryStart = b.start_at;
           if (b.end_at && b.end_at > queryEnd) queryEnd = b.end_at;
         }
@@ -370,6 +370,7 @@ Deno.serve(async (req) => {
 
       const results = (graphData.value || []).map((entry: any) => {
         const tech = emailToTech.get(entry.scheduleId?.toLowerCase());
+        if (entry.error || !Array.isArray(entry.scheduleItems)) return { technician_id: tech?.id ?? null, user_id: tech?.user_id ?? null, name: tech?.name ?? "Montør", busy: false, busy_slots: [], lookup_error: true };
         const rawSlots = (entry.scheduleItems || [])
           .filter((s: any) => s.status !== "free")
           .map((s: any) => ({

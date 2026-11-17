@@ -51,7 +51,7 @@ it("authenticated diagnose reads one exact calendarView without DB mutation, cla
   const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     if (String(url).startsWith("https://login.microsoftonline.com/")) return new Response(JSON.stringify({ access_token: fakeToken }), { status: 200 });
     expect(init?.method).toBe("GET"); expect(String(url)).toBe(`https://graph.microsoft.com${core.oneShotView()}`);
-    return new Response(JSON.stringify({ value: [{ id: "private-id", subject: "Private", showAs: "free", start: { dateTime: core.ONE_SHOT.start, timeZone: "UTC" }, end: { dateTime: core.ONE_SHOT.end, timeZone: "UTC" } }] }), { status: 200 });
+    return new Response(JSON.stringify({ value: [{ id: "private-id", subject: "Private", showAs: "free", body: {content:""}, type:"singleInstance", isCancelled:false, isAllDay:false, start: { dateTime: core.ONE_SHOT.start, timeZone: "UTC" }, end: { dateTime: core.ONE_SHOT.end, timeZone: "UTC" } }] }), { status: 200 });
   });
   try {
     const response = await serve(request({ action: "diagnose" })); expect(response.status).toBe(200);

@@ -99,6 +99,7 @@ export function useExternalBusy(technicianId: string | null, options?: UseExtern
       }
 
       const results: any[] = data?.results || [];
+      if (results.some(entry => entry.lookup_error)) { setError("Kalenderlesingen er uavklart for én eller flere montører."); }
       const slots: ExternalBusySlot[] = [];
       let totalSlots = 0;
       let matchedSlots = 0;
