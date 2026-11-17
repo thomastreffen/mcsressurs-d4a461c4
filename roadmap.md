@@ -1,5 +1,10 @@
 # Individuelle mottakere og jobbstatus – 17. november
 
+## Engangspilot Mats – 19. november
+- [ ] Bygg eksakt separat preflight/engangsclaim uten globale flagg eller køfrigivelse
+- [ ] Test mock Graph, duplikater, usikre utfall og konto/selskap/dag-grenser; deploy uten invocation
+- [ ] Verifiser skjerm og dokumenter separat endelig operatørbekreftelse; ingen live Graph-write
+
 - [x] Kartlegg faktisk produksjonsstatus, svarskrivere, plan-/kalenderveier og eierskap uten produksjonswrites
 - [x] Godkjent policy: individuelle svar endrer ikke global utførelse; reservasjon beholdes til eksplisitt person/dag-avplanlegging
 - [x] Migrasjon 0104 og seks funksjoner deployet: atomisk personlig respons uten Graph/global status, plan-diff/tidstriggere, per-day/calendar gates og ukjent POST hold; 1023 tester + build OK, isolert PC/mobil, prod SELECT urørt
