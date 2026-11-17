@@ -64,7 +64,7 @@ describe("one-shot update/delete primitives (locked)", () => {
     expect(classifyMutationStatus("delete", 503)).toBe("uncertain");
   });
   it("execute stops before claim and before any write while locked", async () => {
-    const graph = vi.fn(async (m: string) => m === "GET" ? { status: 200, data: graphEvent() } : { status: 204, data: null });
+    const graph = vi.fn(async (m: string, _p?: string) => m === "GET" ? { status: 200, data: graphEvent() } : { status: 204, data: null });
     const claim = vi.fn(async () => true), receipt = vi.fn(async () => {});
     expect((await executeMutation("delete", graph as any, stored, { ...planned, dayStillPlanned: false }, claim, receipt)).state).toBe("not_approved");
     expect((await executeMutation("update", graph as any, stored, planned, claim, receipt)).state).toBe("not_approved");
