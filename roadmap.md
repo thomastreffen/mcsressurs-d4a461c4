@@ -1,13 +1,13 @@
 # Individuelle mottakere og jobbstatus – 17. november
 
 ## Engangspilot Mats – 19. november
-- [ ] Klargjør auditert konflikt-overstyring for eksakt engangspilot; samme oppdrag/ukjent identitet fail closed, fresh recheck før claim, ingen live skriver
-- [ ] Fullfør policygjennomgang: fjern tidsbasert skjuling av eksterne konflikter, lesefeil stopper manuell synk, regressjonstester/deploy/rapport
+- [x] Auditert konflikt-overstyring klargjort/deployet (0106 + job-calendar-one-shot); A/C stop, B eksplisitt plan/konflikt/tekstbekreftelse, re-GET/hash før claim, ingen live skriver
+- [x] Policygjennomgang fullført: tidsbasert skjuling fjernet fra tilgjengelighet/kalender/kapasitet, lesefeil stopper manuell synk; ms-calendar deployet, 1107 tester/bygg OK, isolert PC/mobil og ekte diagnose, restbegrensninger rapportert
 - [x] Skrivebeskyttet konfliktdiagnose deployet: én tentative/gjentakende overlapp 13:00–13:30 Oslo, ingen bekreftet Hub-kopi; 58 tester, PC/mobil, ingen DB/Graph-writes; ny skjerm krever publisering
 - [x] Eksakt separat preflight/engangsclaim deployet (0105 + job-calendar-one-shot); ingen globale flagg/køfrigivelse
 - [x] 1069 tester + bygg OK, mock Graph/SQL rollback/RLS/samtidighet, isolert PC/mobil og ekte innlogget statuslesing; ingen live Graph-write
 - [x] Dokumentert eksakt operatørbekreftelse og full request-preview; pending Busy krever eksplisitt valg
-- [ ] Publisering + operatørens avklaring av faktisk kalenderoverlapp før ny preflight; separat endelig skrivegodkjenning gjenstår, ingen permit brukt
+- [ ] Publisering + operatørens preflight og særskilte plan/konflikt/tekstbekreftelser; separat endelig skrivegodkjenning gjenstår, ingen permit brukt
 
 - [x] Kartlegg faktisk produksjonsstatus, svarskrivere, plan-/kalenderveier og eierskap uten produksjonswrites
 - [x] Godkjent policy: individuelle svar endrer ikke global utførelse; reservasjon beholdes til eksplisitt person/dag-avplanlegging
