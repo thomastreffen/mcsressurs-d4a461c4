@@ -139,7 +139,7 @@ export function JobOutlookPilotScopeCard() {
                 <span>{d.technician_name ?? "Montør"}</span>
                 <span>{fmtDate(d.work_date)} {fmtTime(d.start_at)}–{fmtTime(d.end_at)}</span>
                 <Badge variant={d.in_pilot ? "default" : "outline"}>{d.in_pilot ? "Pilotdag" : "Utenfor pilot"}</Badge>
-                <span className={simOutcome(d).tone === "blocked" ? "text-destructive" : "text-muted-foreground"}>{simOutcome(d).label}</span>
+                <span className={simOutcome(d as any).tone === "blocked" ? "text-destructive" : "text-muted-foreground"}>{simOutcome(d as any).label}</span>
               </div>
             ))}
           </div>
