@@ -18,3 +18,12 @@ it("mount and preflight never create; final explicit phrase and busy consent sen
   await waitFor(() => expect(invoke).toHaveBeenCalledWith("job-calendar-one-shot", { body: { action: "create", run_id: "frozen-run", payload_hash: "frozen-hash", confirm: ONE_SHOT.phrase, pending_busy_confirmed: true } }));
   expect(invoke.mock.calls.filter(c => c[1].body.action === "create")).toHaveLength(1);
 });
+it("read-only diagnosis never requests preflight, create or reconcile", async () => {
+  invoke.mockImplementation(async (_name, { body }) => ({ error: null, data: body.action === "status" ? { consumed: false, runs: [] } : { diagnosis: { checked_count: 1, blocking_count: 1, same_hub_count: 0, non_busy_count: 1, policy: "all_overlaps_block_unchanged", conflicts: [{ classification: "free_overlap", local_overlap: "08:00–16:00", show_as: "free", event_type: "singleInstance", all_day: false, cancelled: false }] } } }));
+  render(<QueryClientProvider client={new QueryClient()}><JobCalendarOneShot /></QueryClientProvider>);
+  const button = await screen.findByRole("button", { name: "Undersøk kalenderkonflikt – kun lesing" });
+  await waitFor(() => expect(button).not.toBeDisabled()); fireEvent.click(button);
+  await waitFor(() => expect(invoke).toHaveBeenCalledWith("job-calendar-one-shot", { body: { action: "diagnose" } }));
+  expect(invoke.mock.calls.every(c => ["status", "diagnose"].includes(c[1].body.action))).toBe(true);
+  expect(screen.queryByRole("button", { name: "Opprett én avtale for Mats 19. november" })).not.toBeInTheDocument();
+});

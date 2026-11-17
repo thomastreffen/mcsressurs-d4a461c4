@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from "vitest";
-import { ONE_SHOT as x, oneShotGate, oneShotPayload, createOneShot, inspectMailbox, assertOneShotRequest, oneShotBase, oneShotView, type OneShotContext } from "../../supabase/functions/_shared/job-calendar-one-shot";
+import { ONE_SHOT as x, oneShotGate, oneShotPayload, createOneShot, inspectMailbox, inspectOneShotEvents, diagnoseOneShotEvents, assertOneShotRequest, oneShotBase, oneShotView, type OneShotContext } from "../../supabase/functions/_shared/job-calendar-one-shot";
 const now = new Date("2026-11-17T10:00:00Z");
 const context = (): OneShotContext => ({ job: { id: x.event_id, company_id: x.company_id, title: "60570 Majorstua stasjon", address: null, deleted_at: null, status: "rejected", start_at: x.start, end_at: x.end }, target: { ...x, id: "test", expires_at: "2026-11-18T09:00:00Z", revoked_at: null }, assigned: true, identityActive: true, mailbox: x.mailbox, approval: "pending", blocks: [{ company_id: x.company_id, technician_id: x.technician_id, start_at: x.start, end_at: x.end }, { company_id: x.company_id, technician_id: x.technician_id, start_at: "2026-11-20T07:00:00Z", end_at: "2026-11-20T15:00:00Z" }], probe: { created_at: "2026-11-17T09:09:50Z", result: { pass: true, http: 200, tid_match: true, appid_match: true } }, settings: { enabled: false, dry_run: true, pilot_mailboxes: [], scope_verified_at: null } });
 describe("exact one-shot gate", () => {
@@ -37,4 +37,30 @@ describe("mock Graph one POST maximum", () => {
     const read = vi.fn(async () => ({ status: 200, data: { value: [event] } })); expect((await inspectMailbox(read)).own?.id).toBe("found"); expect(read).toHaveBeenCalledWith("GET", oneShotView());
   });
   it("incomplete paged read or 403 never reaches POST", async () => { const graph = vi.fn(async () => ({ status: 200, data: { value: [], "@odata.nextLink": "untrusted" } })); const claim = vi.fn(); await expect(createOneShot(graph, {}, claim, vi.fn())).rejects.toThrow("mailbox_lookup_incomplete"); expect(claim).not.toHaveBeenCalled(); });
+});
+describe("read-only privacy-preserving conflict diagnosis", () => {
+  const event = { id: "private-id", subject: "Private meeting", body: { content: "Private details" }, start: { dateTime: x.start, timeZone: "UTC" }, end: { dateTime: x.end, timeZone: "UTC" }, showAs: "busy", type: "singleInstance" };
+  it.each([
+    [{ showAs: "free" }, "free_overlap"], [{ isCancelled: true }, "cancelled_overlap"],
+    [{ type: "occurrence" }, "other_busy"], [{ showAs: "unknown" }, "unknown_availability"],
+    [{ subject: "Majorstua" }, "same_title_unverified"],
+    [{ body: { content: `MCS_EVENT_ID:${x.event_id} MCS_TECHNICIAN_ID:${x.technician_id} MCS_WORK_DATE:${x.work_date}` } }, "same_hub_day"],
+    [{ body: { content: `MCS_EVENT_ID:${x.event_id}` } }, "related_hub_job"],
+    [{ start: { dateTime: x.start, timeZone: "Europe/Oslo" } }, "unreadable_time"],
+  ])("classifies %j without relaxing write gate", (override, classification) => {
+    const e = { ...event, ...override };
+    const d = diagnoseOneShotEvents([e], "Majorstua");
+    expect(d.conflicts[0].classification).toBe(classification);
+    expect(d.blocking_count).toBe(1);
+    expect(inspectOneShotEvents([e]).blocked).toBe(true);
+    expect(JSON.stringify(d)).not.toContain("private-id"); expect(JSON.stringify(d)).not.toContain("Private"); expect(JSON.stringify(d)).not.toContain(x.event_id);
+  });
+  it("clips all-day private intervals to 08–16 Oslo and ignores adjacent intervals", () => {
+    const d = diagnoseOneShotEvents([{ ...event, isAllDay: true, start: { dateTime: "2026-11-18T23:00:00Z", timeZone: "UTC" }, end: { dateTime: "2026-11-19T23:00:00Z", timeZone: "UTC" } }, { ...event, start: { dateTime: x.end, timeZone: "UTC" }, end: { dateTime: "2026-11-19T16:00:00Z", timeZone: "UTC" } }], "Majorstua");
+    expect(d.checked_count).toBe(2); expect(d.blocking_count).toBe(1); expect(d.conflicts[0].local_overlap).toBe("08:00–16:00");
+  });
+  it("same Hub markers remain duplicate evidence even when free or cancelled", () => {
+    const d = diagnoseOneShotEvents([{ ...event, isCancelled: true, showAs: "free", body: { content: `MCS_EVENT_ID:${x.event_id} MCS_TECHNICIAN_ID:${x.technician_id} MCS_WORK_DATE:${x.work_date}` } }], "Majorstua");
+    expect(d.same_hub_count).toBe(1); expect(d.non_busy_count).toBe(1); expect(d.conflicts[0].classification).toBe("same_hub_day");
+  });
 });
