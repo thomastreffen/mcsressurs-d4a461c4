@@ -680,8 +680,6 @@ export function EventDrawer({
 
     const { error: eventUpdateError } = await supabase.from("events")
       .update({
-        start_time: startISO,
-        end_time: endISO,
         title,
         customer,
         address,
@@ -711,123 +709,15 @@ export function EventDrawer({
     }
 
 
-    const { data: existing } = await supabase
-      .from("event_technicians").select("id, technician_id, start_at, end_at").eq("event_id", editEvent.id);
-    const existingIds = new Set((existing || []).map((e) => e.technician_id));
-    const newIds = new Set(techIds);
-    const toAdd = techIds.filter((id) => !existingIds.has(id));
-    const toRemove = (existing || []).filter((e) => !newIds.has(e.technician_id));
-
-    // VIKTIG: nye montører legges til FØR gamle fjernes, ellers tolker
-    // avplanleggingen det som «siste montør fjernet» og soft-sletter oppgaven.
-    if (toAdd.length > 0) {
-      const { error: addTechnicianError } = await supabase.from("event_technicians").insert(
-        toAdd.map((tid) => ({ event_id: editEvent.id, technician_id: tid })),
-      );
-      if (addTechnicianError) throw new Error(`Kunne ikke tildele ny montør: ${addTechnicianError.message}`);
-    }
-
-    if (toRemove.length > 0) {
-      const removedTechIds = toRemove.map((r) => r.technician_id);
-      for (const technicianId of removedTechIds) {
-        const { data: unplanResult, error: unplanError } = await supabase.functions.invoke("remove-work-visit-from-plan", {
-          body: { action: "remove_assignment", event_id: editEvent.id, technician_id: technicianId },
-        });
-        if (unplanError || unplanResult?.error) {
-          let serverMessage: string | null = unplanResult?.error ?? null;
-          if (!serverMessage) {
-            try {
-              const body = await (unplanError as any)?.context?.json?.();
-              serverMessage = body?.error ?? null;
-            } catch {
-              serverMessage = null;
-            }
-          }
-          throw new Error(
-            serverMessage ||
-              `Kunne ikke fjerne montøren fra planen (${techNameMap.get(technicianId) || "montør"}): ${unplanError?.message || "ukjent feil"}`,
-          );
-        }
-        if (unplanResult?.warnings?.length) {
-          toast.warning(`Montøren er fjernet, men Outlook-fjerning er ikke bekreftet for ${unplanResult.warnings[0].technician_name || "montør"}`, { description: "Nytt forsøk krever eksplisitt bekreftelse; ingen automatisk retry." });
-        }
-      }
-    }
-
-    // Sikkerhetsnett: oppgaven skal aldri bli borte når det finnes montører igjen.
-    if (techIds.length > 0) {
-      const { data: eventState } = await supabase
-        .from("events")
-        .select("id, company_id, status, deleted_at")
-        .eq("id", editEvent.id)
-        .maybeSingle();
-
-      if ((eventState as any)?.deleted_at || (eventState as any)?.status === "cancelled") {
-        await supabase
-          .from("events")
-          .update({
-            deleted_at: null,
-            deleted_by: null,
-            ...((eventState as any)?.status === "cancelled" ? { status: "scheduled" as any } : {}),
-          } as any)
-          .eq("id", editEvent.id);
-      }
-
-      // Gjenopprett/opprett kalenderblokker for montørene som skal ha oppdraget
-      const { data: liveBlocks } = await (supabase as any)
-        .from("schedule_blocks")
-        .select("id, technician_id, deleted_at, source")
-        .or(`project_id.eq.${editEvent.id},job_id.eq.${editEvent.id}`);
-
-      for (const techId of techIds) {
-        const rows = (liveBlocks || []).filter((b: any) => b.technician_id === techId);
-        const active = rows.find((b: any) => !b.deleted_at);
-        if (active) {
-          // The resource plan renders schedule_blocks as its source of truth.
-          // Keep an existing internal block aligned when the work visit moves.
-          if (timeChanged && ["manual", "system"].includes(active.source)) {
-            const assignment = (existing || []).find((row) => row.technician_id === techId);
-            const { error: activeBlockError } = await (supabase as any)
-              .from("schedule_blocks")
-              .update({
-                start_at: assignment?.start_at || startISO,
-                end_at: assignment?.end_at || endISO,
-                title,
-              })
-              .eq("id", active.id);
-            if (activeBlockError) {
-              throw new Error(`Kunne ikke flytte kalenderkortet: ${activeBlockError.message}`);
-            }
-          }
-          continue;
-        }
-        if (rows.length > 0) {
-          const { error: restoreBlockError } = await (supabase as any)
-            .from("schedule_blocks")
-            .update({ deleted_at: null, deleted_by: null, start_at: startISO, end_at: endISO, title })
-            .eq("id", rows[0].id);
-          if (restoreBlockError) {
-            throw new Error(`Kunne ikke gjenopprette kalenderkortet: ${restoreBlockError.message}`);
-          }
-        } else {
-          const { error: createBlockError } = await (supabase as any).from("schedule_blocks").insert({
-            company_id: (eventState as any)?.company_id ?? null,
-            technician_id: techId,
-            project_id: editEvent.id,
-            source: "manual",
-            start_at: startISO,
-            end_at: endISO,
-            title,
-            match_state: "manual",
-            match_confidence: 100,
-            match_reason: "Montør tildelt fra oppdragsdialog",
-          });
-          if (createBlockError) {
-            throw new Error(`Kunne ikke opprette kalenderkortet: ${createBlockError.message}`);
-          }
-        }
-      }
-    }
+    const existingIds = new Set(editEvent.technicians.map(t => t.id));
+    const { data: plan, error: planError } = await (supabase as any).rpc("edit_resource_job_plan", {
+      _event: editEvent.id, _technicians: techIds, _start: startISO, _end: endISO,
+      _expected_start: editEvent.start.toISOString(), _expected_end: editEvent.end.toISOString(),
+      _expected_technicians: editEvent.technicians.map(t => t.id),
+    });
+    if (planError) throw new Error(`Kunne ikke lagre planen: ${planError.message}`);
+    const toAdd: string[] = plan?.added ?? [];
+    if (plan?.removed?.length) toast.warning("Planen er lagret; Outlook-fjerning krever eksplisitt bekreftet oppfølging.");
 
     const remainingTechIds = techIds.filter((id) => existingIds.has(id));
 
@@ -852,27 +742,6 @@ export function EventDrawer({
     const combinedFlow = requiresApproval && infoOnlyChanges.length > 0;
     const shouldSendInfoOnly =
       sendNotifications && !requiresApproval && infoOnlyChanges.length > 0 && remainingTechIds.length > 0;
-
-    if (timeChanged && remainingTechIds.length > 0) {
-      const { data: remainTechs } = await supabase.from("technicians").select("user_id").in("id", remainingTechIds);
-      const remainUserIds = (remainTechs || []).map((t: any) => t.user_id).filter(Boolean);
-      if (remainUserIds.length > 0) {
-        await supabase
-          .from("job_approvals")
-          .update({
-            status: "pending",
-            responded_at: null,
-            comment: null,
-            proposed_start: null,
-            proposed_end: null,
-            reminder_count: 0,
-            last_reminded_at: null,
-            response_required: true,
-          } as any)
-          .eq("job_id", editEvent.id)
-          .in("technician_user_id", remainUserIds);
-      }
-    }
 
     // Propager tidsendring til koblede bestillinger (kunde-sporingsside)
     if (timeChanged) {
@@ -1971,7 +1840,7 @@ export function EventDrawer({
                       ? techApprovals.map((a) => ({ techName: a.technicianName.split(" ")[0], status: a.status }))
                       : editEvent.technicians.map((t) => ({
                           techName: t.name.split(" ")[0],
-                          status: ACCEPTANCE_STATUSES.includes(editEvent.status) ? (editEvent.status === "approved" ? "approved" : editEvent.status === "rejected" ? "declined" : editEvent.status === "time_change_proposed" ? "change_request" : "pending") : "approved",
+                          status: "pending",
                         }))
                   }
                   billingStatus={BILLING_STATUSES.includes(editEvent.status) ? editEvent.status : null}

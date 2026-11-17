@@ -110,62 +110,15 @@ export function JobQuickEditSheet({
       const startISO = new Date(`${date}T${startTime}`).toISOString();
       const endISO = new Date(`${date}T${endTime}`).toISOString();
 
-      // Update event time
-      const { error: updateErr } = await supabase
-        .from("events")
-        .update({ start_time: startISO, end_time: endISO })
-        .eq("id", job.id);
-
-      if (updateErr) throw updateErr;
-
-      // Sync technicians – get current, add new, remove old
-      const { data: existing } = await supabase
-        .from("event_technicians")
-        .select("id, technician_id")
-        .eq("event_id", job.id);
-
-      const existingIds = new Set((existing || []).map((e) => e.technician_id));
-      const newIds = new Set(techIds);
-
-      const toAdd = techIds.filter((id) => !existingIds.has(id));
-      const toRemove = (existing || []).filter(
-        (e) => !newIds.has(e.technician_id)
-      );
-
-      if (toRemove.length > 0) {
-        await supabase
-          .from("event_technicians")
-          .delete()
-          .in(
-            "id",
-            toRemove.map((r) => r.id)
-          );
-
-        // Clean up orphaned job_approvals for removed technicians
-        const removedTechIds = toRemove.map((r) => r.technician_id);
-        const { data: removedTechs } = await supabase
-          .from("technicians")
-          .select("user_id")
-          .in("id", removedTechIds);
-        const removedUserIds = (removedTechs || []).map((t: any) => t.user_id).filter(Boolean);
-        if (removedUserIds.length > 0) {
-          await supabase
-            .from("job_approvals")
-            .delete()
-            .eq("job_id", job.id)
-            .in("technician_user_id", removedUserIds);
-        }
-      }
-
       const timeChanged = startISO !== new Date(job.start).toISOString() || endISO !== new Date(job.end).toISOString();
-      if (toAdd.length > 0) {
-        await supabase.from("event_technicians").insert(
-          toAdd.map((tid) => ({
-            event_id: job.id,
-            technician_id: tid,
-          }))
-        );
-      }
+      const { data: plan, error: planError } = await (supabase as any).rpc("edit_resource_job_plan", {
+        _event: job.id, _technicians: techIds, _start: startISO, _end: endISO,
+        _expected_start: job.start.toISOString(), _expected_end: job.end.toISOString(),
+        _expected_technicians: job.technicians.map(t => t.id),
+      });
+      if (planError) throw planError;
+      const toAdd: string[] = plan?.added ?? [];
+      if (plan?.removed?.length) toast.warning("Planen er lagret; Outlook-fjerning krever bekreftet oppfølging per montør.");
 
       // Trigger re-approval if technicians changed
       if (toAdd.length > 0 || timeChanged) {
