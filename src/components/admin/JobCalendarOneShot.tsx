@@ -19,7 +19,7 @@ async function call(body: Record<string, unknown>): Promise<Result> {
   return r.data ?? {};
 }
 const messages: Record<string, string> = {
-  diagnostic_too_old: "Le kontroll av kalenderappens avgrensning er eldre enn 24 timer. Kjør tilkoblingskontrollen over på nytt.",
+  diagnostic_too_old: "Lesekontrollen av kalenderappens avgrensning er eldre enn 24 timer. Kjør tilkoblingskontrollen over på nytt.",
   fresh_200_required: "Kjør Mats’ kalenderlesetest på nytt før forhåndskontrollen.",
   pilot_expired: "Pilotdagen er utløpt. Bekreft samme dag på nytt i pilotutvalget.",
   existing_mapping_requires_reconciliation: "En kalenderkobling finnes allerede. Ingen ny avtale opprettes.",
