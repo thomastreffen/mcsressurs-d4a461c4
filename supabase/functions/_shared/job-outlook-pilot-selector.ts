@@ -20,3 +20,9 @@ export function freshMailboxProbe(probe: { created_at: string; result: { pass?: 
   const age = probe ? now.getTime() - Date.parse(probe.created_at) : NaN;
   return !!probe && probe.result?.pass === true && probe.result.http === 200 && age >= 0 && age < 24 * 3600_000;
 }
+/** Existing unrevoked target for the same (job, technician, day). Expired targets are retired
+ *  (revoked + audited) only when a superadmin explicitly confirms a new day; never auto-renewed. */
+export function existingTargetDecision(existing: { revoked_at: string | null; expires_at: string } | null, now: Date): "none" | "active" | "expired" {
+  if (!existing || existing.revoked_at) return "none";
+  return Date.parse(existing.expires_at) <= now.getTime() ? "expired" : "active";
+}
