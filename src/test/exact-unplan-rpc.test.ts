@@ -20,7 +20,7 @@ beforeAll(async()=>{
  CREATE TABLE calendar_delete_retry_queue(id uuid DEFAULT gen_random_uuid(),event_id uuid,technician_id uuid,event_technician_id uuid,technician_user_id uuid,technician_name text,mailbox text,candidate_event_ids jsonb,start_at timestamptz,end_at timestamptz,status text,next_attempt_at timestamptz,resolved_at timestamptz,last_error text,UNIQUE(event_id,technician_id));
  CREATE TABLE event_logs(event_id uuid,action_type text,performed_by uuid,change_summary text);
  CREATE TABLE activity_log(entity_type text,entity_id uuid,action text,type text,description text,performed_by uuid,metadata jsonb);`);
- await db.exec(readFileSync("drizzle/migrations/0099_exact_calendar_unplan.sql","utf8"));
+ await db.exec(readFileSync("drizzle/migrations/0101_exact_calendar_unplan.sql","utf8"));
 },30000);
 afterAll(()=>db.close());
 beforeEach(async()=>{
