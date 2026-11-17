@@ -10735,6 +10735,56 @@ export type Database = {
           },
         ]
       }
+      job_calendar_one_shot_mutations: {
+        Row: {
+          actor: string
+          claimed_at: string
+          finished_at: string | null
+          graph_event_id: string
+          http_status: number | null
+          id: string
+          if_match: string
+          kind: string
+          new_change_key: string | null
+          outcome: string | null
+          run_id: string
+        }
+        Insert: {
+          actor: string
+          claimed_at?: string
+          finished_at?: string | null
+          graph_event_id: string
+          http_status?: number | null
+          id?: string
+          if_match: string
+          kind: string
+          new_change_key?: string | null
+          outcome?: string | null
+          run_id: string
+        }
+        Update: {
+          actor?: string
+          claimed_at?: string
+          finished_at?: string | null
+          graph_event_id?: string
+          http_status?: number | null
+          id?: string
+          if_match?: string
+          kind?: string
+          new_change_key?: string | null
+          outcome?: string | null
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_calendar_one_shot_mutations_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "job_calendar_one_shot_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_calendar_one_shot_runs: {
         Row: {
           actor: string
@@ -16900,6 +16950,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_sender_test_runs: {
+        Row: {
+          actor: string
+          claimed_at: string
+          finished_at: string | null
+          http_status: number | null
+          id: string
+          outcome: string | null
+          recipient: string
+        }
+        Insert: {
+          actor: string
+          claimed_at?: string
+          finished_at?: string | null
+          http_status?: number | null
+          id?: string
+          outcome?: string | null
+          recipient: string
+        }
+        Update: {
+          actor?: string
+          claimed_at?: string
+          finished_at?: string | null
+          http_status?: number | null
+          id?: string
+          outcome?: string | null
+          recipient?: string
+        }
+        Relationships: []
       }
       task_assignees: {
         Row: {
