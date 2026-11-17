@@ -92,7 +92,7 @@ export function useMyWorkItems(limit = 6) {
             .from("events")
             .select("id, title, customer, status, start_time, internal_number, job_number, project_number")
             .is("deleted_at", null)
-            .in("status", ["requested", "approved", "scheduled", "in_progress", "time_change_proposed"])
+            .in("status", ["requested", "approved", "scheduled", "in_progress", "time_change_proposed", "rejected"])
             .order("start_time", { ascending: true, nullsFirst: false })
             .limit(limit)
         : Promise.resolve({ data: [] as Record<string, unknown>[] });

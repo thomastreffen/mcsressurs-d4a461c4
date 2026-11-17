@@ -1,8 +1,9 @@
 # Individuelle mottakere og jobbstatus – 17. november
 
-- [ ] Kartlegg faktisk produksjonsstatus, svarskrivere, plan-/kalenderveier og eierskap uten produksjonswrites
-- [ ] Avklar felles policy: individuelle svar endrer ikke global utførelse; avplanlegging begrenses til person/dag, kansellering krever autorisert planlegger
-- [ ] Etter godkjent plan: gjennomfør samlet retting, isolerte SQL-/Graph-/UI-regresjoner og sikker deploy; ingen aktivering/replay
+- [x] Kartlegg faktisk produksjonsstatus, svarskrivere, plan-/kalenderveier og eierskap uten produksjonswrites
+- [x] Godkjent policy: individuelle svar endrer ikke global utførelse; reservasjon beholdes til eksplisitt person/dag-avplanlegging
+- [ ] Delvis kildefiks: felles lifecycle, rejected ikke cancellation, mailbox-konflikt sperret, implicit delegated delete sperret, Mine/pilotvisning rettet. Ikke deployet.
+- [ ] Fullfør atomisk respons uten legacy Graph/global status, plantransaksjoner/tidstriggere, øvrige kalendergrenser og SQL-/UI-regresjon før samlet deploy. Blokkert av credits.
 
 # Historikktyper (event_logs) – 17. november
 

@@ -7,7 +7,7 @@ export interface SimDay {
 export interface SimGlobal { enabled: boolean; dry_run: boolean; scope_verified: boolean; mailbox_allowed: boolean }
 export type SimOutcome = { tone: "create" | "update" | "none" | "blocked" | "outside"; label: string };
 
-const BLOCKING_STATUS: Record<string, string> = { rejected: "avvist", cancelled: "kansellert", archived: "arkivert" };
+const BLOCKING_STATUS: Record<string, string> = { cancelled: "kansellert", archived: "arkivert" };
 
 export function simOutcome(d: SimDay): SimOutcome {
   if (!d.in_pilot) return { tone: "outside", label: d.gate === "pilot_target_expired" ? "Pilotdagen er utløpt – ikke berørt" : "Ikke valgt pilotdag – ikke berørt" };
@@ -21,6 +21,7 @@ export function simOutcome(d: SimDay): SimOutcome {
   if (d.decision === "adopt") return { tone: "update", label: "Ville tatt i bruk eksisterende avtale" };
   if (d.decision === "delete") return { tone: "update", label: "Ville slettet appens egen avtale" };
   if (d.reason === "unresolved_conflict") return { tone: "blocked", label: "Sperret: uløst konflikt i Outlook" };
+  if (d.reason === "mailbox_identity_requires_reconciliation") return { tone: "blocked", label: "Sperret: kalenderidentiteten må avklares" };
   return { tone: "none", label: "Ingen endring – allerede i samsvar" };
 }
 

@@ -167,7 +167,7 @@ describe("multi-day sync orchestration (mocked Graph)", () => {
     expect(res[0].state).toBe("venter");
   });
 
-  it("date change deletes the old day and creates the new one", async () => {
+  it("date change retains old mapping until explicit day removal", async () => {
     const { store } = memStore();
     const { graph, calls } = memGraph();
     await syncTechnicianDays({
@@ -180,7 +180,7 @@ describe("multi-day sync orchestration (mocked Graph)", () => {
       blocks: [twoDays[0], block(EMIL, "2026-11-21")],
       action: "update", store, graph, buildBody,
     });
-    expect(calls.filter((c) => c.op === "delete")).toHaveLength(1);
+    expect(calls.filter((c) => c.op === "delete")).toHaveLength(0);
     expect(calls.filter((c) => c.op === "create")).toHaveLength(3); // 2 initial + 1 new day
     expect(res.find((r) => r.workDate === "2026-11-21")?.state).toBe("synket");
   });
@@ -202,7 +202,7 @@ describe("multi-day sync orchestration (mocked Graph)", () => {
     expect(res.every((r) => r.state === "synket")).toBe(true);
   });
 
-  it("technician removal deletes only that technician's day events", async () => {
+  it("missing technician plan is not a deletion authorization", async () => {
     const { store, rows } = memStore();
     const { graph, calls } = memGraph();
     for (const tech of [EMIL, MATS]) {
@@ -216,10 +216,10 @@ describe("multi-day sync orchestration (mocked Graph)", () => {
       eventId: EVENT, technicianId: MATS, email: `${MATS}@mcs.no`, blocks: [],
       action: "update", store, graph, buildBody,
     });
-    expect(calls.filter((c) => c.op === "delete" && c.email === `${MATS}@mcs.no`)).toHaveLength(2);
-    expect(rows.filter((r) => r.technician_id === MATS)).toHaveLength(0);
+    expect(calls.filter((c) => c.op === "delete" && c.email === `${MATS}@mcs.no`)).toHaveLength(0);
+    expect(rows.filter((r) => r.technician_id === MATS)).toHaveLength(2);
     expect(rows.filter((r) => r.technician_id === EMIL)).toHaveLength(2);
-    expect(res).toHaveLength(0);
+    expect(res).toHaveLength(2);
   });
 
   it("partial failure: one failing day is 'feilet', the other still syncs", async () => {
@@ -270,8 +270,8 @@ describe("multi-day sync orchestration (mocked Graph)", () => {
       action: "create", store, graph, buildBody,
     });
     await syncTechnicianDays({
-      eventId: EVENT, technicianId: EMIL, email: "emil@mcs.no", blocks: twoDays,
-      action: "delete", store, graph, buildBody,
+      eventId: EVENT, technicianId: EMIL, email: "emil@mcs.no", blocks: [],
+      action: "delete", confirmedDeleteDays: ["2026-11-19", "2026-11-20"], store, graph, buildBody,
     });
     expect(calls.filter((c) => c.op === "delete")).toHaveLength(2);
     expect(rows).toHaveLength(0);
