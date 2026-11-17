@@ -77,6 +77,12 @@ Deno.serve(async (req) => {
       const nowIso = new Date().toISOString();
       const linkBase = { company_id: ev.company_id, event_id: eventId, technician_id: row.technicianId, mailbox: row.mailbox!, work_date: row.workDate, dedup_key: row.dedupKey ?? row.link!.dedup_key };
       const d = row.decision;
+      // A create/update queue release is not consent to delete. Central deletion
+      // remains held until a separately reviewed exact person/day removal exists.
+      if (d.kind === "delete") {
+        out.push({ ...base, status: "explicit_day_delete_approval_required" });
+        continue;
+      }
       if (d.kind === "adopt") {
         await sb.from("job_outlook_app_links").upsert({ ...linkBase, outlook_event_id: d.outlookEventId, hub_version: d.fingerprint, state: "synced", adopted_from_day_link_id: d.legacyId, last_error: null, updated_at: nowIso }, { onConflict: "dedup_key" });
         await log("adopt", {}); out.push({ ...base, status: "adopted" }); continue;
