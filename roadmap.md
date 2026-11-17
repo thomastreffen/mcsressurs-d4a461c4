@@ -1,5 +1,11 @@
 # Individuelle mottakere og jobbstatus – 17. november
 
+## Engangspilot Mats – 19. november
+- [x] Eksakt separat preflight/engangsclaim deployet (0105 + job-calendar-one-shot); ingen globale flagg/køfrigivelse
+- [x] 1069 tester + bygg OK, mock Graph/SQL rollback/RLS/samtidighet, isolert PC/mobil og ekte innlogget statuslesing; ingen live Graph-write
+- [x] Dokumentert eksakt operatørbekreftelse og full request-preview; pending Busy krever eksplisitt valg
+- [ ] Publisering + operatørens lesepreflight/endelige klikk gjenstår; full read-only diagnostikk må fornyes (<24h), ingen permit brukt
+
 - [x] Kartlegg faktisk produksjonsstatus, svarskrivere, plan-/kalenderveier og eierskap uten produksjonswrites
 - [x] Godkjent policy: individuelle svar endrer ikke global utførelse; reservasjon beholdes til eksplisitt person/dag-avplanlegging
 - [x] Migrasjon 0104 og seks funksjoner deployet: atomisk personlig respons uten Graph/global status, plan-diff/tidstriggere, per-day/calendar gates og ukjent POST hold; 1023 tester + build OK, isolert PC/mobil, prod SELECT urørt

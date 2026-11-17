@@ -10694,6 +10694,124 @@ export type Database = {
           },
         ]
       }
+      job_calendar_one_shot_audit: {
+        Row: {
+          action: string
+          actor: string
+          created_at: string
+          http_status: number | null
+          id: string
+          run_id: string
+          state: string
+        }
+        Insert: {
+          action: string
+          actor: string
+          created_at?: string
+          http_status?: number | null
+          id?: string
+          run_id: string
+          state: string
+        }
+        Update: {
+          action?: string
+          actor?: string
+          created_at?: string
+          http_status?: number | null
+          id?: string
+          run_id?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_calendar_one_shot_audit_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "job_calendar_one_shot_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_calendar_one_shot_runs: {
+        Row: {
+          actor: string
+          company_id: string
+          consumed_at: string | null
+          created_at: string
+          event_id: string
+          expires_at: string
+          finished_at: string | null
+          graph_change_key: string | null
+          graph_event_id: string | null
+          http_status: number | null
+          id: string
+          idempotency_key: string
+          job_snapshot: Json
+          mailbox: string
+          payload: Json
+          payload_hash: string
+          schedule_signature: string
+          state: string
+          target_id: string
+          technician_id: string
+          work_date: string
+        }
+        Insert: {
+          actor: string
+          company_id: string
+          consumed_at?: string | null
+          created_at?: string
+          event_id: string
+          expires_at?: string
+          finished_at?: string | null
+          graph_change_key?: string | null
+          graph_event_id?: string | null
+          http_status?: number | null
+          id?: string
+          idempotency_key?: string
+          job_snapshot: Json
+          mailbox: string
+          payload: Json
+          payload_hash: string
+          schedule_signature: string
+          state?: string
+          target_id: string
+          technician_id: string
+          work_date: string
+        }
+        Update: {
+          actor?: string
+          company_id?: string
+          consumed_at?: string | null
+          created_at?: string
+          event_id?: string
+          expires_at?: string
+          finished_at?: string | null
+          graph_change_key?: string | null
+          graph_event_id?: string | null
+          http_status?: number | null
+          id?: string
+          idempotency_key?: string
+          job_snapshot?: Json
+          mailbox?: string
+          payload?: Json
+          payload_hash?: string
+          schedule_signature?: string
+          state?: string
+          target_id?: string
+          technician_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_calendar_one_shot_runs_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "job_outlook_app_pilot_targets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_change_order_events: {
         Row: {
           actor_email: string | null
@@ -18769,6 +18887,10 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_job_calendar_one_shot: {
+        Args: { _actor: string; _hash: string; _run: string }
+        Returns: boolean
+      }
       claim_job_email_attempt: {
         Args: {
           _event: string
@@ -19028,6 +19150,18 @@ export type Database = {
           technician_id: string
           technician_name: string
         }[]
+      }
+      finish_job_calendar_one_shot: {
+        Args: {
+          _actor: string
+          _change_key?: string
+          _event_id: string
+          _http: number
+          _reconcile?: boolean
+          _run: string
+          _state: string
+        }
+        Returns: boolean
       }
       form_evidence_count: {
         Args: { _instance: string; _prefix: string }
