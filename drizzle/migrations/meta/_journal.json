@@ -743,6 +743,13 @@
       "when": 1794909727606,
       "tag": "0105_job_calendar_one_shot",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1794911317900,
+      "tag": "0106_one_shot_conflict_consent",
+      "breakpoints": true
     }
   ]
 }
