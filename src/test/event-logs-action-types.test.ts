@@ -19,7 +19,8 @@ function writtenActions(file: string): string[] {
   for (const m of src.matchAll(/(?:action_type|actionType)\s*:|logAction\(/g)) {
     const rest = src.slice(m.index! + m[0].length).replace(/^\s+/, "");
     const line = rest.split("\n")[0];
-    for (const lit of line.matchAll(/["']([a-z][a-z_]*)["']/g)) out.push(lit[1]);
+    // Literals compared with === are conditions, not written values.
+    for (const lit of line.replace(/===\s*["'][a-z_]+["']/g, "").matchAll(/["']([a-z][a-z_]*)["']/g)) out.push(lit[1]);
   }
   return out;
 }
