@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Building2, Loader2, Mail, Phone, Plus, History } from "lucide-react";
 import { toast } from "sonner";
+import { CrmEmailComposer } from "@/components/customer/CrmEmailComposer";
 import { filterContacts, HISTORY_LABELS, validOrgOrEmpty, type RegisterAccount, type RegisterContact, type RegisterData, type SaveResult } from "@/lib/customer-register";
 
 const NONE = "__none__";
@@ -30,6 +31,7 @@ export function CustomerRegisterPanel({ customerId }: { customerId: string }) {
   const [showInactive, setShowInactive] = useState(false);
   const [editAcc, setEditAcc] = useState<RegisterAccount | "new" | null>(null);
   const [editContact, setEditContact] = useState<RegisterContact | "new" | null>(null);
+  const [composing, setComposing] = useState(false);
   const reload = () => qc.invalidateQueries({ queryKey: key });
 
   if (!activeCompanyId) return <p className="text-sm text-muted-foreground">Velg aktivt selskap.</p>;
@@ -71,6 +73,7 @@ export function CustomerRegisterPanel({ customerId }: { customerId: string }) {
               </SelectContent>
             </Select>
             <label className="flex items-center gap-2 text-xs text-muted-foreground"><Checkbox checked={showInactive} onCheckedChange={(v) => setShowInactive(!!v)} />Vis sluttede</label>
+            {d.can_edit && <Button size="sm" variant="outline" className="rounded-xl gap-1.5 min-h-11 sm:min-h-9" onClick={() => setComposing(true)}><Mail className="h-4 w-4" />Send e-post</Button>}
             {d.can_edit && <Button size="sm" className="rounded-xl gap-1.5 min-h-11 sm:min-h-9" onClick={() => setEditContact("new")}><Plus className="h-4 w-4" />Ny kontakt</Button>}
           </div>
         </div>
@@ -99,6 +102,7 @@ export function CustomerRegisterPanel({ customerId }: { customerId: string }) {
         </section>
       )}
 
+      {composing && <CrmEmailComposer companyId={activeCompanyId} customerId={customerId} accountId={accFilter !== "all" && accFilter !== "none" ? accFilter : null} contacts={d.contacts} onClose={() => setComposing(false)} />}
       {editAcc && <AccountDrawer companyId={activeCompanyId} customerId={customerId} row={editAcc === "new" ? null : editAcc} onClose={() => setEditAcc(null)} onSaved={reload} />}
       {editContact && <ContactDrawer companyId={activeCompanyId} customerId={customerId} row={editContact === "new" ? null : editContact} accounts={d.accounts.filter((a) => !a.archived_at)} owners={(owners.data ?? []) as any} onClose={() => setEditContact(null)} onSaved={reload} />}
     </div>

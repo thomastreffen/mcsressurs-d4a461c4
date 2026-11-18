@@ -5056,6 +5056,98 @@ export type Database = {
           },
         ]
       }
+      crm_email_sends: {
+        Row: {
+          cc_emails: string[]
+          company_id: string
+          created_at: string
+          customer_account_id: string | null
+          customer_id: string
+          error_code: string | null
+          finished_at: string | null
+          graph_status: number | null
+          id: string
+          internet_message_id: string | null
+          lead_id: string | null
+          manual_emails: string[]
+          sender_email: string | null
+          sender_user_id: string
+          status: string
+          subject: string
+          thread_id: string | null
+          to_emails: string[]
+        }
+        Insert: {
+          cc_emails?: string[]
+          company_id: string
+          created_at?: string
+          customer_account_id?: string | null
+          customer_id: string
+          error_code?: string | null
+          finished_at?: string | null
+          graph_status?: number | null
+          id: string
+          internet_message_id?: string | null
+          lead_id?: string | null
+          manual_emails?: string[]
+          sender_email?: string | null
+          sender_user_id: string
+          status?: string
+          subject: string
+          thread_id?: string | null
+          to_emails?: string[]
+        }
+        Update: {
+          cc_emails?: string[]
+          company_id?: string
+          created_at?: string
+          customer_account_id?: string | null
+          customer_id?: string
+          error_code?: string | null
+          finished_at?: string | null
+          graph_status?: number | null
+          id?: string
+          internet_message_id?: string | null
+          lead_id?: string | null
+          manual_emails?: string[]
+          sender_email?: string | null
+          sender_user_id?: string
+          status?: string
+          subject?: string
+          thread_id?: string | null
+          to_emails?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_email_sends_customer_account_id_fkey"
+            columns: ["customer_account_id"]
+            isOneToOne: false
+            referencedRelation: "customer_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_email_sends_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_email_sends_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_email_sends_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cross_company_access_grants: {
         Row: {
           entity_id: string
@@ -19429,6 +19521,16 @@ export type Database = {
           name: string
           user_id: string
         }[]
+      }
+      crm_email_prepare: {
+        Args: {
+          _account_id: string
+          _company_id: string
+          _contact_ids: string[]
+          _customer_id: string
+          _lead_id: string
+        }
+        Returns: Json
       }
       customer_company_id: { Args: { _id: string }; Returns: string }
       customer_register_get: {

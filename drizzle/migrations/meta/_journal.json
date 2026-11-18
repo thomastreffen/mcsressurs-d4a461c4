@@ -785,6 +785,20 @@
       "when": 1794999710010,
       "tag": "0111_crm_units_contacts_phase2",
       "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1794999897023,
+      "tag": "0112_crm_email_sends",
+      "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1794999916210,
+      "tag": "0113_crm_email_prepare_thread_type",
+      "breakpoints": true
     }
   ]
 }

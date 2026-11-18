@@ -122,3 +122,4 @@
 - [x] Full test (751 grønne) + deploy; job-outlook-app-sync forblir AV/dry-run
 - [ ] Publisering av tidligere UI-endringer må bekreftes av eier; ikke del av godkjenningsrettelsen
 - [ ] Mats kalenderdekning blokkeres av manglende personlig kobling inntil sentral app har secrets + godkjent Graph-pilot; Emil 60570 begge dager bekreftet, ingen replay
+- [x] CRM e-post fra selgerens egen konto (steg 3–4) – bygget, sending av til godkjenning
