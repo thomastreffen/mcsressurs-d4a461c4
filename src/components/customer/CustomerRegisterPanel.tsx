@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Building2, Loader2, Mail, Phone, Plus, History } from "lucide-react";
 import { toast } from "sonner";
+import { CustomerTimeline } from "@/components/customer/CustomerTimeline";
 import { CrmEmailComposer } from "@/components/customer/CrmEmailComposer";
 import { filterContacts, HISTORY_LABELS, validOrgOrEmpty, type RegisterAccount, type RegisterContact, type RegisterData, type SaveResult } from "@/lib/customer-register";
 
@@ -93,7 +94,8 @@ export function CustomerRegisterPanel({ customerId }: { customerId: string }) {
         </div>
       </section>
 
-      {d.history.length > 0 && (
+      <CustomerTimeline companyId={activeCompanyId} customerId={customerId} accountId={accFilter !== "all" && accFilter !== "none" ? accFilter : null} />
+      {false && d.history.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-sm font-medium flex items-center gap-1.5"><History className="h-4 w-4" />Historikk</h3>
           <ul className="space-y-1 text-xs text-muted-foreground">

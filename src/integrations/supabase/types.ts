@@ -1271,6 +1271,7 @@ export type Database = {
           contact_person_id: string | null
           created_at: string
           created_by: string
+          customer_account_id: string | null
           customer_email: string | null
           customer_id: string | null
           customer_name: string
@@ -1315,6 +1316,7 @@ export type Database = {
           contact_person_id?: string | null
           created_at?: string
           created_by: string
+          customer_account_id?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name: string
@@ -1359,6 +1361,7 @@ export type Database = {
           contact_person_id?: string | null
           created_at?: string
           created_by?: string
+          customer_account_id?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string
@@ -1419,6 +1422,13 @@ export type Database = {
             columns: ["contact_person_id"]
             isOneToOne: false
             referencedRelation: "customer_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calculations_customer_account_id_fkey"
+            columns: ["customer_account_id"]
+            isOneToOne: false
+            referencedRelation: "customer_accounts"
             referencedColumns: ["id"]
           },
           {
@@ -1953,6 +1963,7 @@ export type Database = {
           contact_person_id: string | null
           created_at: string
           created_by: string | null
+          customer_account_id: string | null
           customer_id: string | null
           deleted_at: string | null
           deleted_by: string | null
@@ -1981,6 +1992,7 @@ export type Database = {
           contact_person_id?: string | null
           created_at?: string
           created_by?: string | null
+          customer_account_id?: string | null
           customer_id?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -2009,6 +2021,7 @@ export type Database = {
           contact_person_id?: string | null
           created_at?: string
           created_by?: string | null
+          customer_account_id?: string | null
           customer_id?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -2037,6 +2050,13 @@ export type Database = {
             columns: ["contact_person_id"]
             isOneToOne: false
             referencedRelation: "customer_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_cases_customer_account_id_fkey"
+            columns: ["customer_account_id"]
+            isOneToOne: false
+            referencedRelation: "customer_accounts"
             referencedColumns: ["id"]
           },
           {
@@ -6958,6 +6978,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           customer: string | null
+          customer_account_id: string | null
           customer_approval_status: string | null
           customer_approved_at: string | null
           customer_approved_by: string | null
@@ -7053,6 +7074,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer?: string | null
+          customer_account_id?: string | null
           customer_approval_status?: string | null
           customer_approved_at?: string | null
           customer_approved_by?: string | null
@@ -7148,6 +7170,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer?: string | null
+          customer_account_id?: string | null
           customer_approval_status?: string | null
           customer_approved_at?: string | null
           customer_approved_by?: string | null
@@ -7231,6 +7254,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_customer_account_id_fkey"
+            columns: ["customer_account_id"]
+            isOneToOne: false
+            referencedRelation: "customer_accounts"
             referencedColumns: ["id"]
           },
           {
@@ -19345,6 +19375,10 @@ export type Database = {
         Args: { _company: string; _perm: string; _uid: string }
         Returns: boolean
       }
+      company_tripletex_integrated: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
       competence_document_can_manage: {
         Args: { _actor: string; _competence_id: string }
         Returns: string
@@ -19450,6 +19484,16 @@ export type Database = {
         Returns: undefined
       }
       conversation_thread_company_id: { Args: { _id: string }; Returns: string }
+      convert_offer_to_project: {
+        Args: {
+          _mode: string
+          _offer_id: string
+          _project_id: string
+          _request_id: string
+          _title: string
+        }
+        Returns: Json
+      }
       create_material_suggestion: {
         Args: {
           p_comment: string
@@ -19559,6 +19603,14 @@ export type Database = {
           _customer_id: string
           _request_id: string
           _state: Json
+        }
+        Returns: Json
+      }
+      customer_timeline: {
+        Args: {
+          _account_id?: string
+          _company_id: string
+          _customer_id: string
         }
         Returns: Json
       }
@@ -20282,6 +20334,7 @@ export type Database = {
         }[]
       }
       normalize_project_search: { Args: { _value: string }; Returns: string }
+      offer_conversion_preview: { Args: { _offer_id: string }; Returns: Json }
       order_intake_recipients: {
         Args: { _company_id: string }
         Returns: string[]
@@ -20800,6 +20853,7 @@ export type Database = {
           contact_person_id: string | null
           created_at: string
           created_by: string | null
+          customer_account_id: string | null
           customer_id: string | null
           deleted_at: string | null
           deleted_by: string | null

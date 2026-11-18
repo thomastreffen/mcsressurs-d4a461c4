@@ -36,6 +36,8 @@ export default function OfferEditorPage() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [reference, setReference] = useState("");
   const [comment, setComment] = useState("");
+  // Source lead: links calculation/offer to the lead's customer, department and sales case (no copying of master data)
+  const [leadLink, setLeadLink] = useState<{ lead_id: string; commercial_case_id: string | null; customer_account_id: string | null; customer_id: string | null } | null>(null);
 
   // Order lines
   const [lines, setLines] = useState<OrderLine[]>([]);
@@ -63,6 +65,21 @@ export default function OfferEditorPage() {
     const cId = searchParams.get("customer");
     if (cName) setCustomerName(decodeURIComponent(cName));
     if (cId) setSelectedCustomerId(cId);
+    const leadId = searchParams.get("lead_id");
+    if (leadId) {
+      supabase.from("leads").select("id, company_name, email, notes, customer_id, customer_account_id, customer_contact_id, commercial_case_id")
+        .eq("id", leadId).maybeSingle().then(({ data }) => {
+          if (!data) return;
+          const l = data as any;
+          setLeadLink({ lead_id: l.id, commercial_case_id: l.commercial_case_id, customer_account_id: l.customer_account_id, customer_id: l.customer_id });
+          setCustomerName((v) => v || l.company_name || "");
+          setCustomerEmail((v) => v || l.email || "");
+          setProjectTitle((v) => v || l.company_name || "");
+          setComment((v) => v || l.notes || "");
+          if (l.customer_id) setSelectedCustomerId(l.customer_id);
+          if (l.customer_contact_id) setSelectedContactId(l.customer_contact_id);
+        });
+    }
   }, [searchParams]);
 
   const totals = useMemo(() => calcTotals(lines), [lines]);
@@ -97,6 +114,12 @@ export default function OfferEditorPage() {
         company_id: activeCompanyId || null,
         show_discount_in_offer: showDiscountInOffer,
       };
+      if (leadLink) {
+        calcPayload.lead_id = leadLink.lead_id;
+        calcPayload.commercial_case_id = leadLink.commercial_case_id;
+        // Department only follows while the lead's customer is still the selected customer.
+        calcPayload.customer_account_id = selectedCustomerId && selectedCustomerId === leadLink.customer_id ? leadLink.customer_account_id : null;
+      }
 
       if (cId) {
         const { error } = await supabase.from("calculations").update(calcPayload).eq("id", cId);
@@ -141,7 +164,7 @@ export default function OfferEditorPage() {
     } finally {
       setSaving(false);
     }
-  }, [calcId, projectTitle, customerName, customerEmail, selectedCustomerId, selectedContactId, comment, lines, totals, user, activeCompanyId, showDiscountInOffer]);
+  }, [calcId, projectTitle, customerName, customerEmail, selectedCustomerId, selectedContactId, comment, lines, totals, user, activeCompanyId, showDiscountInOffer, leadLink]);
 
   const generatePdf = async () => {
     const savedId = await saveOffer(true);

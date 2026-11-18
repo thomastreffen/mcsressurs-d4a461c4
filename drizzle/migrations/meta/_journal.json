@@ -799,6 +799,13 @@
       "when": 1794999916210,
       "tag": "0113_crm_email_prepare_thread_type",
       "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1795003557920,
+      "tag": "0114_sales_chain_links_and_conversion",
+      "breakpoints": true
     }
   ]
 }

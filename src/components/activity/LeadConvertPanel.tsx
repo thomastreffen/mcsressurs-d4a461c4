@@ -1,25 +1,17 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  ArrowRightLeft, Loader2, CheckCircle2, Users, FileText,
-  History, DollarSign, X,
-} from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowRightLeft, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { conversionError, type OfferConversionPreview } from "@/lib/offer-conversion";
 
 interface LeadConvertPanelProps {
-  lead: {
-    id: string;
-    company_name: string;
-    notes: string | null;
-    company_id: string | null;
-    estimated_value: number;
-  };
+  lead: { id: string; company_name: string; notes: string | null; company_id: string | null; estimated_value: number };
   participants: { user_id: string; role: string }[];
   offers: { id: string; offer_number: string; status: string }[];
   onConverted: (projectId: string) => void;
@@ -27,172 +19,101 @@ interface LeadConvertPanelProps {
   logActivity: (data: any) => Promise<void>;
 }
 
-export function LeadConvertPanel({
-  lead,
-  participants,
-  offers,
-  onConverted,
-  onCancel,
-  logActivity,
-}: LeadConvertPanelProps) {
-  const { user } = useAuth();
+/** Accepted offer -> link existing or create Hub project. Server-side, one-shot, explicit confirmation. No technicians, calendar or e-mail. */
+export function LeadConvertPanel({ lead, offers, onConverted, onCancel }: LeadConvertPanelProps) {
   const navigate = useNavigate();
-  const [converting, setConverting] = useState(false);
-  const [includeParticipants, setIncludeParticipants] = useState(true);
-  const [includeActivities, setIncludeActivities] = useState(true);
-  const [includeDocuments, setIncludeDocuments] = useState(true);
-  const [includeEstimates, setIncludeEstimates] = useState(true);
+  const accepted = offers.find((o) => o.status === "accepted" || o.status === "signed");
+  const [preview, setPreview] = useState<OfferConversionPreview | null>(null);
+  const [mode, setMode] = useState<"link" | "create">("link");
+  const [title, setTitle] = useState("");
+  const [q, setQ] = useState("");
+  const [projects, setProjects] = useState<{ id: string; title: string; project_number: string | null }[]>([]);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const requestId = useMemo(() => crypto.randomUUID(), []);
 
-  const acceptedOffer = offers.find(o => o.status === "accepted" || o.status === "signed");
+  useEffect(() => {
+    if (!accepted) return;
+    supabase.rpc("offer_conversion_preview", { _offer_id: accepted.id }).then(({ data, error }) => {
+      if (error) { toast.error("Ingen tilgang til å konvertere dette tilbudet"); return; }
+      const p = data as unknown as OfferConversionPreview; setPreview(p); setTitle(p.title ?? "");
+      if (!p.tripletex_integrated) setMode("link");
+    });
+  }, [accepted?.id]);
 
-  const handleConvert = async () => {
-    if (!user) return;
-    setConverting(true);
+  useEffect(() => {
+    if (!lead.company_id || mode !== "link") return;
+    const t = setTimeout(async () => {
+      let query = supabase.from("events").select("id, title, project_number").eq("company_id", lead.company_id!).eq("entity_type", "financial_project").is("deleted_at", null).is("offer_id", null).order("created_at", { ascending: false }).limit(15);
+      if (q.trim()) query = query.or(`title.ilike.%${q.trim().replace(/[%,()]/g, "")}%,project_number.ilike.%${q.trim().replace(/[%,()]/g, "")}%`);
+      const { data } = await query; setProjects((data as any) ?? []);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q, mode, lead.company_id]);
 
-    try {
-      // Find technician for current user
-      const techRes = await supabase.from("technicians").select("id").eq("user_id", user.id).single();
-      if (!techRes.data?.id) {
-        toast.error("Finner ikke montørprofil for innlogget bruker");
-        setConverting(false);
-        return;
-      }
-
-      const { data, error } = await supabase.from("events").insert({
-        title: `Prosjekt - ${lead.company_name}`,
-        customer: lead.company_name,
-        description: lead.notes || null,
-        company_id: lead.company_id,
-        offer_id: acceptedOffer?.id || null,
-        start_time: new Date().toISOString(),
-        end_time: new Date(Date.now() + 8 * 3600000).toISOString(),
-        technician_id: techRes.data.id,
-        created_by: user.id,
-        status: "scheduled",
-      } as any).select("id").single();
-
-      if (error) throw error;
-
-      // Copy participants
-      if (includeParticipants && participants.length > 0) {
-        for (const p of participants) {
-          await supabase.from("job_participants").insert({
-            job_id: data!.id,
-            user_id: p.user_id,
-            role_label: p.role,
-          });
-        }
-      }
-
-      // Mark lead as won and archived
-      await supabase.from("leads").update({
-        status: "won",
-      }).eq("id", lead.id);
-
-      // Log activity
-      await logActivity({
-        action: "converted_to_project",
-        description: "Konvertert til prosjekt",
-        type: "status_change",
-        title: "Lead konvertert til prosjekt",
-        performedBy: user.id,
-        metadata: {
-          job_id: data!.id,
-          offer_id: acceptedOffer?.id,
-          included: {
-            participants: includeParticipants,
-            activities: includeActivities,
-            documents: includeDocuments,
-            estimates: includeEstimates,
-          },
-        },
-      });
-
-      await supabase.from("lead_history").insert({
-        lead_id: lead.id,
-        action: "converted_to_project",
-        description: "Konvertert til prosjekt",
-        performed_by: user.id,
-        metadata: { job_id: data!.id },
-      });
-
-      toast.success("Prosjekt opprettet fra lead");
-      onConverted(data!.id);
-      navigate(`/projects/${data!.id}`);
-    } catch (err: any) {
-      console.error("[LeadConvertPanel] Error:", err);
-      toast.error("Kunne ikke konvertere", { description: err.message });
-    } finally {
-      setConverting(false);
-    }
+  const confirm = async () => {
+    if (!accepted) return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc("convert_offer_to_project", { _offer_id: accepted.id, _mode: mode, _project_id: projectId as any, _title: title, _request_id: requestId });
+    setBusy(false);
+    if (error) { toast.error(conversionError(error.message)); return; }
+    const r = data as { status: string; project_id: string };
+    toast.success(r.status === "already_linked" ? "Tilbudet var allerede koblet til et prosjekt" : r.status === "linked" ? "Tilbud koblet til prosjekt" : "Prosjekt opprettet");
+    onConverted(r.project_id); navigate(`/projects/${r.project_id}`);
   };
 
   return (
-    <Card className="rounded-2xl shadow-sm border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/10">
+    <Card className="rounded-2xl shadow-sm">
       <CardContent className="py-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <ArrowRightLeft className="h-4 w-4 text-emerald-600" />
-            Konverter til prosjekt
-          </h3>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}>
-            <X className="h-4 w-4" />
-          </Button>
+          <h3 className="text-sm font-semibold flex items-center gap-2"><ArrowRightLeft className="h-4 w-4" />Akseptert tilbud → prosjekt</h3>
+          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Lukk" onClick={onCancel}><X className="h-4 w-4" /></Button>
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          Opprett et nytt prosjekt fra «{lead.company_name}». Velg hva som skal tas med:
-        </p>
-
-        <div className="space-y-2.5">
-          <label className="flex items-center gap-2.5 cursor-pointer group">
-            <Checkbox checked={includeParticipants} onCheckedChange={v => setIncludeParticipants(!!v)} />
-            <Users className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-sm">Ta med deltakere ({participants.length})</span>
-          </label>
-          <label className="flex items-center gap-2.5 cursor-pointer group">
-            <Checkbox checked={includeActivities} onCheckedChange={v => setIncludeActivities(!!v)} />
-            <History className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-sm">Ta med aktivitetshistorikk</span>
-          </label>
-          <label className="flex items-center gap-2.5 cursor-pointer group">
-            <Checkbox checked={includeDocuments} onCheckedChange={v => setIncludeDocuments(!!v)} />
-            <FileText className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-sm">Ta med dokumenter</span>
-          </label>
-          <label className="flex items-center gap-2.5 cursor-pointer group">
-            <Checkbox checked={includeEstimates} onCheckedChange={v => setIncludeEstimates(!!v)} />
-            <DollarSign className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-sm">Ta med estimater og verdi</span>
-          </label>
-        </div>
-
-        {acceptedOffer && (
-          <div className="rounded-lg bg-background/60 border border-border/30 p-2.5 flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-            <span className="text-xs text-muted-foreground">
-              Akseptert tilbud: <span className="font-mono font-medium text-foreground">{acceptedOffer.offer_number}</span> kobles automatisk
-            </span>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 pt-1">
-          <Button
-            className="gap-1.5 rounded-xl flex-1"
-            onClick={handleConvert}
-            disabled={converting}
-          >
-            {converting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+        {!accepted && <p className="text-sm text-muted-foreground">Prosjekt kan først opprettes eller kobles når et tilbud er akseptert. Henvendelsen er markert som vunnet; ingen prosjekt opprettes automatisk.</p>}
+        {accepted && !preview && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        {preview && (
+          <>
+            {preview.existing_project_id ? (
+              <div className="space-y-2"><p className="text-sm">Tilbudet er allerede koblet til et prosjekt.</p><Button className="rounded-xl" onClick={() => navigate(`/projects/${preview.existing_project_id}`)}>Åpne prosjekt</Button></div>
+            ) : !preview.convertible ? (
+              <p className="text-sm text-muted-foreground">Tilbudet mangler kobling til kundekort og kan ikke konverteres. Koble kunden på tilbudet først.</p>
             ) : (
-              <ArrowRightLeft className="h-4 w-4" />
+              <>
+                <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm space-y-1" aria-label="Forhåndsvisning">
+                  <p><span className="text-muted-foreground">Kunde:</span> {preview.customer_name}{preview.account_name ? ` – ${preview.account_name}` : ""}</p>
+                  {preview.contact_name && <p><span className="text-muted-foreground">Kontakt:</span> {preview.contact_name}</p>}
+                  <p><span className="text-muted-foreground">Tilbud:</span> {preview.offer_number ?? "–"} · {Number(preview.total_ex_vat ?? 0).toLocaleString("nb-NO")} kr eks. mva · akseptert {preview.accepted_at ? new Date(preview.accepted_at).toLocaleDateString("nb-NO") : ""}{preview.accepted_name ? ` av ${preview.accepted_name}` : ""}</p>
+                  <p className="text-xs text-muted-foreground">Akseptert versjon {preview.has_snapshot ? "er låst som snapshot" : "har ikke lagret snapshot"}. Ingen montører, kalender eller e-post opprettes.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant={mode === "link" ? "default" : "outline"} className="rounded-xl min-h-11 sm:min-h-9" onClick={() => { setMode("link"); setConfirmed(false); }}>Koble til eksisterende prosjekt</Button>
+                  <Button size="sm" variant={mode === "create" ? "default" : "outline"} className="rounded-xl min-h-11 sm:min-h-9" disabled={preview.tripletex_integrated} onClick={() => { setMode("create"); setConfirmed(false); }}>Opprett nytt prosjekt</Button>
+                </div>
+                {preview.tripletex_integrated && <p className="text-xs text-muted-foreground">Selskapet bruker Tripletex: nye økonomiske prosjekter opprettes i Tripletex og importeres; her kan du bare koble til eksisterende.</p>}
+                {mode === "link" ? (
+                  <div className="space-y-2">
+                    <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk prosjektnavn eller nummer" aria-label="Søk prosjekt" />
+                    <div className="max-h-56 overflow-y-auto rounded-xl border border-border divide-y divide-border">
+                      {projects.length === 0 && <p className="p-3 text-sm text-muted-foreground">Ingen ledige prosjekter funnet.</p>}
+                      {projects.map((p) => (
+                        <button key={p.id} type="button" onClick={() => { setProjectId(p.id); setConfirmed(false); }} className={`w-full text-left p-3 text-sm min-h-11 ${projectId === p.id ? "bg-muted" : "hover:bg-muted/50"}`}>
+                          {p.project_number ? `${p.project_number} · ` : ""}{p.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1"><Label htmlFor="conv-title">Prosjektnavn</Label><Input id="conv-title" value={title} onChange={(e) => { setTitle(e.target.value); setConfirmed(false); }} /></div>
+                )}
+                <label className="flex items-center gap-2 text-sm"><Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} />Kunde, tilbud og prosjekt er kontrollert</label>
+                <Button className="w-full rounded-xl min-h-11" disabled={busy || !confirmed || (mode === "link" ? !projectId : !title.trim())} onClick={confirm}>
+                  {busy && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Bekreft
+                </Button>
+              </>
             )}
-            Opprett prosjekt
-          </Button>
-          <Button variant="outline" className="rounded-xl" onClick={onCancel}>
-            Avbryt
-          </Button>
-        </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
