@@ -806,6 +806,13 @@
       "when": 1795003557920,
       "tag": "0114_sales_chain_links_and_conversion",
       "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1795003874559,
+      "tag": "0115_crm_email_sends_traceability",
+      "breakpoints": true
     }
   ]
 }

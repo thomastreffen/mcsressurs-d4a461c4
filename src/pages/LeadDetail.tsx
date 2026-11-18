@@ -18,6 +18,7 @@ import { ActivityFeedList } from "@/components/activity/ActivityFeedList";
 import { LeadActionPanel, type ActionPanelTab } from "@/components/activity/LeadActionPanel";
 import { LeadStickyBar } from "@/components/activity/LeadStickyBar";
 import { NextStepCard } from "@/components/activity/NextStepCard";
+import { LeadEmailButton } from "@/components/leads/LeadEmailButton";
 import { LeadConvertPanel } from "@/components/activity/LeadConvertPanel";
 import { CreateOrderFromLeadCard } from "@/components/leads/CreateOrderFromLeadCard";
 import { FlowTrail } from "@/components/flow/FlowTrail";
@@ -68,6 +69,8 @@ interface Lead {
   notes: string | null;
   created_at: string;
   company_id: string | null;
+  customer_id?: string | null;
+  customer_account_id?: string | null;
   assigned_owner_user_id: string | null;
   owner_id: string | null;
   next_action_type: string | null;
@@ -644,7 +647,7 @@ function LeadDetailInner() {
 
             {/* Tilbud */}
             <Card className="rounded-2xl shadow-sm">
-              <CardHeader className="pb-3"><CardTitle className="text-base">Tilbud</CardTitle></CardHeader>
+              <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2"><CardTitle className="text-base">Tilbud</CardTitle><LeadEmailButton companyId={lead.company_id} customerId={lead.customer_id ?? null} accountId={lead.customer_account_id ?? null} leadId={lead.id} /></CardHeader>
               <CardContent>
                 {offers.length === 0 ? (
                   <div className="text-center py-4">

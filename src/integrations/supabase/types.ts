@@ -5078,13 +5078,17 @@ export type Database = {
       }
       crm_email_sends: {
         Row: {
+          body_text: string | null
           cc_emails: string[]
           company_id: string
+          contact_ids: string[]
           created_at: string
           customer_account_id: string | null
           customer_id: string
           error_code: string | null
           finished_at: string | null
+          graph_conversation_id: string | null
+          graph_message_id: string | null
           graph_status: number | null
           id: string
           internet_message_id: string | null
@@ -5093,18 +5097,23 @@ export type Database = {
           sender_email: string | null
           sender_user_id: string
           status: string
+          status_history: Json
           subject: string
           thread_id: string | null
           to_emails: string[]
         }
         Insert: {
+          body_text?: string | null
           cc_emails?: string[]
           company_id: string
+          contact_ids?: string[]
           created_at?: string
           customer_account_id?: string | null
           customer_id: string
           error_code?: string | null
           finished_at?: string | null
+          graph_conversation_id?: string | null
+          graph_message_id?: string | null
           graph_status?: number | null
           id: string
           internet_message_id?: string | null
@@ -5113,18 +5122,23 @@ export type Database = {
           sender_email?: string | null
           sender_user_id: string
           status?: string
+          status_history?: Json
           subject: string
           thread_id?: string | null
           to_emails?: string[]
         }
         Update: {
+          body_text?: string | null
           cc_emails?: string[]
           company_id?: string
+          contact_ids?: string[]
           created_at?: string
           customer_account_id?: string | null
           customer_id?: string
           error_code?: string | null
           finished_at?: string | null
+          graph_conversation_id?: string | null
+          graph_message_id?: string | null
           graph_status?: number | null
           id?: string
           internet_message_id?: string | null
@@ -5133,6 +5147,7 @@ export type Database = {
           sender_email?: string | null
           sender_user_id?: string
           status?: string
+          status_history?: Json
           subject?: string
           thread_id?: string | null
           to_emails?: string[]

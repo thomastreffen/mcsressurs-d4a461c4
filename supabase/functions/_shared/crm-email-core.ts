@@ -49,3 +49,25 @@ export function classifySend(status: number | null): "accepted" | "failed" | "un
   if (status === null || status >= 500 || status === 429) return "uncertain";
   return "failed";
 }
+
+/** Delegated scopes from an access token's `scp` claim (payload only; token is never logged or returned). */
+export function tokenScopes(token: string | null): string[] {
+  if (!token) return [];
+  try {
+    const part = token.split(".")[1];
+    const json = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "=")));
+    return typeof json.scp === "string" ? json.scp.split(" ") : [];
+  } catch { return []; }
+}
+
+export type SenderCapability = "can_send" | "missing_send" | "not_connected";
+export function senderCapability(token: string | null): SenderCapability {
+  if (!token) return "not_connected";
+  return tokenScopes(token).some((s) => s.toLowerCase() === "mail.send") ? "can_send" : "missing_send";
+}
+
+/** Reconciliation of an uncertain send: only a found Sent Items copy counts as accepted. */
+export function reconcileOutcome(foundInSentItems: boolean | null): "accepted" | "not_sent" | "uncertain" {
+  if (foundInSentItems === null) return "uncertain";
+  return foundInSentItems ? "accepted" : "not_sent";
+}

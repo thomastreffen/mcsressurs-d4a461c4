@@ -10,11 +10,12 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { selectableRecipients, type RegisterContact } from "@/lib/customer-register";
 
-type Preview = { sender: string | null; sender_connected: boolean; reply_to: string; to: string[]; manual: string[]; customer_name: string; account_name: string | null; reuses_thread: boolean; send_enabled: boolean };
+type Preview = { sender: string | null; sender_connected: boolean; capability: "can_send" | "missing_send" | "not_connected"; reply_to: string; to: string[]; manual: string[]; customer_name: string; account_name: string | null; reuses_thread: boolean; send_enabled: boolean };
 const ERR: Record<string, string> = {
   contact_not_available: "En valgt kontakt hører ikke til kunden eller har sluttet", manual_not_confirmed: "Bekreft manuelle adresser", invalid_manual_email: "Ugyldig manuell e-postadresse",
   no_recipients: "Velg minst én mottaker", too_many_recipients: "For mange mottakere", invalid_subject: "Emne mangler", invalid_body: "Meldingen er tom",
-  not_available: "Du har ikke tilgang til å sende for denne kunden", send_disabled: "Utsending er ikke slått på ennå", no_ms_connection: "Din Microsoft-konto er ikke tilkoblet – ingen e-post ble sendt",
+  not_available: "Du har ikke tilgang til å sende for denne kunden", send_disabled: "Utsending er ikke slått på ennå", no_ms_connection: "Din Microsoft-konto er ikke tilkoblet – logg inn med Microsoft på nytt. Ingen e-post ble sendt",
+  missing_mail_send: "Microsoft-tilkoblingen din mangler sendetilgang – ingen e-post ble sendt",
 };
 
 export function CrmEmailComposer({ companyId, customerId, accountId, leadId, contacts, onClose }: { companyId: string; customerId: string; accountId?: string | null; leadId?: string | null; contacts: RegisterContact[]; onClose: () => void }) {
@@ -22,21 +23,20 @@ export function CrmEmailComposer({ companyId, customerId, accountId, leadId, con
   const [picked, setPicked] = useState<string[]>([]); const [manual, setManual] = useState(""); const [manualOk, setManualOk] = useState(false);
   const [subject, setSubject] = useState(""); const [body, setBody] = useState(""); const [preview, setPreview] = useState<Preview | null>(null);
   const [confirmed, setConfirmed] = useState(false); const [busy, setBusy] = useState(false);
-  const requestId = useMemo(() => crypto.randomUUID(), []);
-  const reset = () => { setPreview(null); setConfirmed(false); };
-  const call = async (action: "preview" | "send") => {
-    setBusy(true);
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const [outcome, setOutcome] = useState<null | "sending" | "accepted" | "failed" | "uncertain" | "not_sent">(null);
+  const reset = () => { setPreview(null); setConfirmed(false); if (outcome === "failed" || outcome === "not_sent") { setOutcome(null); setRequestId(crypto.randomUUID()); } };
+  const call = async (action: "preview" | "send" | "reconcile") => {
+    setBusy(true); if (action === "send") setOutcome("sending");
     const { data, error } = await supabase.functions.invoke("crm-email-send", { body: { action, company_id: companyId, customer_id: customerId, account_id: accountId ?? null, lead_id: leadId ?? null,
       contact_ids: picked, manual_emails: manual.split(/[,;\s]+/).filter(Boolean), manual_confirmed: manualOk, subject, body, request_id: requestId, confirmed } });
     setBusy(false);
     let payload: any = data;
     if (error) { try { payload = await (error as any).context?.json?.(); } catch { payload = null; } }
-    if (payload?.error && !payload?.status) { toast.error(ERR[payload.error] ?? "Kunne ikke klargjøre e-posten"); if (payload.preview) setPreview(payload.preview); return; }
+    if (payload?.error && !payload?.status) { if (action === "send") setOutcome(null); toast.error(ERR[payload.error] ?? "Kunne ikke klargjøre e-posten"); if (payload.preview) setPreview(payload.preview); return; }
     if (action === "preview") { setPreview(payload.preview); return; }
-    if (payload.status === "accepted") toast.success("Akseptert av Microsoft (ikke bekreftet levert)");
-    else if (payload.status === "uncertain") toast.warning("Uavklart utfall – sjekk Sendte elementer før du prøver igjen");
-    else toast.error("Sending feilet – ingen e-post ble sendt");
-    onClose();
+    // Text and recipients stay in the form whatever the outcome.
+    setOutcome(payload.status);
   };
   return (
     <Sheet open onOpenChange={(v) => { if (!v && !busy) onClose(); }}>
@@ -60,8 +60,18 @@ export function CrmEmailComposer({ companyId, customerId, accountId, leadId, con
               <p><span className="text-muted-foreground">Svar til:</span> {preview.reply_to}</p>
               <p><span className="text-muted-foreground">Kobles til:</span> {preview.customer_name}{preview.account_name ? ` – ${preview.account_name}` : ""}{leadId ? " · henvendelse" : ""}{preview.reuses_thread ? " (eksisterende tråd)" : " (ny tråd)"}</p>
               {!preview.send_enabled && <p className="text-muted-foreground">Utsending er ikke slått på ennå. Ingenting sendes.</p>}
+              <p><span className="text-muted-foreground">Sendetilgang:</span> {preview.capability === "can_send" ? "Kan sende" : preview.capability === "missing_send" ? "Mangler sendetilgang – Send er sperret" : "Ikke tilkoblet / utløpt – logg inn med Microsoft på nytt"}</p>
               <label className="flex items-center gap-2 pt-2"><Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} />Mottakere og innhold er kontrollert</label>
-              <Button className="w-full min-h-11 mt-2" disabled={busy || !confirmed || !preview.send_enabled || !preview.sender_connected} onClick={() => call("send")}>{busy && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Send</Button>
+              <Button className="w-full min-h-11 mt-2" disabled={busy || !confirmed || !preview.send_enabled || preview.capability !== "can_send" || (outcome !== null && outcome !== "failed" && outcome !== "not_sent")} onClick={() => call("send")}>{busy && <Loader2 className="h-4 w-4 animate-spin mr-1" />}{outcome === "sending" ? "Sender …" : "Send"}</Button>
+            </div>
+          )}
+          {outcome && outcome !== "sending" && (
+            <div role="status" className="rounded-xl border border-border p-3 text-sm space-y-2">
+              {outcome === "accepted" && <p>Akseptert av Microsoft. Dette er ikke en bekreftelse på at e-posten er levert.</p>}
+              {outcome === "failed" && <p>Sending feilet – ingen e-post ble sendt. Teksten og mottakerne er beholdt; rett feilen og forhåndsvis på nytt.</p>}
+              {outcome === "not_sent" && <p>Kontrollert: e-posten finnes ikke i Sendte elementer. Du kan sende på nytt etter ny forhåndsvisning.</p>}
+              {outcome === "uncertain" && <><p>Uavklart utfall. Ikke send på nytt før Hub har kontrollert Sendte elementer.</p><Button size="sm" variant="outline" disabled={busy} onClick={() => call("reconcile")}>Kontroller nå</Button></>}
+              {outcome === "accepted" && <Button size="sm" variant="outline" onClick={onClose}>Lukk</Button>}
             </div>
           )}
         </div>

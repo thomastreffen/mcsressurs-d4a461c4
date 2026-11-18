@@ -34,3 +34,18 @@ describe("CRM email rules", () => {
     expect(validateContent("x", " ")).toBe("invalid_body");
   });
 });
+
+import { senderCapability, reconcileOutcome } from "../../supabase/functions/_shared/crm-email-core";
+const jwt = (scp: string) => `x.${btoa(JSON.stringify({ scp })).replace(/=+$/, "")}.y`;
+describe("sender capability and reconciliation", () => {
+  it("Send requires delegated Mail.Send; missing connection is reported honestly", () => {
+    expect(senderCapability(null)).toBe("not_connected");
+    expect(senderCapability(jwt("User.Read Mail.ReadWrite"))).toBe("missing_send");
+    expect(senderCapability(jwt("User.Read Mail.Send"))).toBe("can_send");
+  });
+  it("uncertain send becomes accepted only when found in Sent Items", () => {
+    expect(reconcileOutcome(true)).toBe("accepted");
+    expect(reconcileOutcome(false)).toBe("not_sent");
+    expect(reconcileOutcome(null)).toBe("uncertain");
+  });
+});
