@@ -11881,6 +11881,8 @@ export type Database = {
           company_name: string
           contact_name: string | null
           created_at: string
+          customer_account_id: string | null
+          customer_id: string | null
           delete_reason: string | null
           deleted_at: string | null
           deleted_by: string | null
@@ -11912,6 +11914,8 @@ export type Database = {
           company_name: string
           contact_name?: string | null
           created_at?: string
+          customer_account_id?: string | null
+          customer_id?: string | null
           delete_reason?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -11943,6 +11947,8 @@ export type Database = {
           company_name?: string
           contact_name?: string | null
           created_at?: string
+          customer_account_id?: string | null
+          customer_id?: string | null
           delete_reason?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -11978,6 +11984,20 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_customer_account_id_fkey"
+            columns: ["customer_account_id"]
+            isOneToOne: false
+            referencedRelation: "customer_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
@@ -19933,6 +19953,10 @@ export type Database = {
       is_super_admin: { Args: { _auth_user_id: string }; Returns: boolean }
       job_task_company_id: { Args: { _id: string }; Returns: string }
       lead_company_id: { Args: { _id: string }; Returns: string }
+      lead_customer_search: {
+        Args: { _company_id: string; _q?: string }
+        Returns: Json
+      }
       legacy_admin_excluded: {
         Args: { _company: string; _uid: string }
         Returns: boolean

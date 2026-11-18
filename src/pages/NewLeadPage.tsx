@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { NEXT_ACTION_TYPES } from "@/lib/lead-status";
+import { useCompanyContext } from "@/hooks/useCompanyContext";
+import { LeadCustomerPicker, leadCustomerPayload, type LeadCustomerValue } from "@/components/leads/LeadCustomerPicker";
 
 const SOURCE_OPTIONS = [
   "Eksisterende kunde",
@@ -30,7 +32,9 @@ export default function NewLeadPage() {
   const [companyUsers, setCompanyUsers] = useState<{ id: string; name: string }[]>([]);
 
   // Kunde / kontakt
-  const [companyName, setCompanyName] = useState("");
+  const { activeCompanyId } = useCompanyContext();
+  const [customer, setCustomer] = useState<LeadCustomerValue | null>(null);
+  const customerPayload = leadCustomerPayload(customer);
   const [contactName, setContactName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -62,14 +66,15 @@ export default function NewLeadPage() {
   }, [user, ownerId]);
 
   const handleCreate = async () => {
-    if (!companyName.trim()) {
-      toast.error("Installatør / kunde er påkrevd");
+    if (!customerPayload) {
+      toast.error("Velg kunde fra registeret eller oppgi ny virksomhet");
       return;
     }
     setSaving(true);
     try {
       const payload: any = {
-        company_name: companyName.trim(),
+        ...customerPayload,
+        company_id: activeCompanyId || null,
         contact_name: contactName.trim() || null,
         email: email.trim() || null,
         phone: phone.trim() || null,
@@ -90,7 +95,7 @@ export default function NewLeadPage() {
         .single();
 
       if (error || !data) {
-        toast.error("Kunne ikke opprette henvendelse");
+        toast.error(error?.message?.includes("not_available") ? "Valgt kunde eller avdeling er ikke tilgjengelig i aktivt selskap" : "Kunne ikke opprette henvendelse");
         setSaving(false);
         return;
       }
@@ -102,7 +107,7 @@ export default function NewLeadPage() {
       await supabase.from("lead_history").insert({
         lead_id: data.id,
         action: "created",
-        description: `Lead opprettet: ${companyName.trim()}`,
+        description: `Lead opprettet: ${customerPayload.company_name}${customerPayload.customer_id ? " (koblet til kundekort)" : ""}`,
         performed_by: user?.id,
       });
 
@@ -141,11 +146,11 @@ export default function NewLeadPage() {
         <h2 className="text-sm font-medium text-foreground">Kunde og kontakt</h2>
         <div className="space-y-1.5">
           <Label>Installatør / kunde *</Label>
-          <Input
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            placeholder="Elektro AS"
-            className="rounded-xl"
+          <LeadCustomerPicker
+            companyId={activeCompanyId ?? null}
+            value={customer}
+            onChange={setCustomer}
+            onContactPick={(k) => { setContactName(k.name); setPhone(k.phone ?? ""); setEmail(k.email ?? ""); }}
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -287,7 +292,7 @@ export default function NewLeadPage() {
         </Button>
         <Button
           onClick={handleCreate}
-          disabled={saving || !companyName.trim()}
+          disabled={saving || !customerPayload}
           className="gap-1.5 rounded-xl"
         >
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
