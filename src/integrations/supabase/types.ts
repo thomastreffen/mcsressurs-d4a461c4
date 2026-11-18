@@ -4910,6 +4910,8 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string | null
+          customer_account_id: string | null
+          customer_id: string | null
           decision_marked_at: string | null
           decision_marked_by: string | null
           decision_summary: string | null
@@ -4925,6 +4927,7 @@ export type Database = {
           last_activity_at: string
           last_author_name: string | null
           last_emailed_at: string | null
+          lead_id: string | null
           linked_offer_id: string | null
           linked_order_id: string | null
           linked_order_line_id: string | null
@@ -4943,6 +4946,8 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by?: string | null
+          customer_account_id?: string | null
+          customer_id?: string | null
           decision_marked_at?: string | null
           decision_marked_by?: string | null
           decision_summary?: string | null
@@ -4958,6 +4963,7 @@ export type Database = {
           last_activity_at?: string
           last_author_name?: string | null
           last_emailed_at?: string | null
+          lead_id?: string | null
           linked_offer_id?: string | null
           linked_order_id?: string | null
           linked_order_line_id?: string | null
@@ -4976,6 +4982,8 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string | null
+          customer_account_id?: string | null
+          customer_id?: string | null
           decision_marked_at?: string | null
           decision_marked_by?: string | null
           decision_summary?: string | null
@@ -4991,6 +4999,7 @@ export type Database = {
           last_activity_at?: string
           last_author_name?: string | null
           last_emailed_at?: string | null
+          lead_id?: string | null
           linked_offer_id?: string | null
           linked_order_id?: string | null
           linked_order_line_id?: string | null
@@ -5015,6 +5024,27 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_threads_customer_account_id_fkey"
+            columns: ["customer_account_id"]
+            isOneToOne: false
+            referencedRelation: "customer_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_threads_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_threads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {
@@ -5183,6 +5213,8 @@ export type Database = {
       }
       customer_accounts: {
         Row: {
+          archived_at: string | null
+          city: string | null
           company_id: string | null
           created_at: string
           customer_id: string | null
@@ -5194,6 +5226,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
+          city?: string | null
           company_id?: string | null
           created_at?: string
           customer_id?: string | null
@@ -5205,6 +5239,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
+          city?: string | null
           company_id?: string | null
           created_at?: string
           customer_id?: string | null
@@ -5303,32 +5339,54 @@ export type Database = {
       customer_contacts: {
         Row: {
           created_at: string
+          customer_account_id: string | null
           customer_id: string
           email: string | null
           id: string
+          is_active: boolean
           name: string
+          owner_user_id: string | null
           phone: string | null
           role: string | null
+          updated_at: string
+          verified_at: string | null
         }
         Insert: {
           created_at?: string
+          customer_account_id?: string | null
           customer_id: string
           email?: string | null
           id?: string
+          is_active?: boolean
           name: string
+          owner_user_id?: string | null
           phone?: string | null
           role?: string | null
+          updated_at?: string
+          verified_at?: string | null
         }
         Update: {
           created_at?: string
+          customer_account_id?: string | null
           customer_id?: string
           email?: string | null
           id?: string
+          is_active?: boolean
           name?: string
+          owner_user_id?: string | null
           phone?: string | null
           role?: string | null
+          updated_at?: string
+          verified_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_contacts_customer_account_id_fkey"
+            columns: ["customer_account_id"]
+            isOneToOne: false
+            referencedRelation: "customer_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customer_contacts_customer_id_fkey"
             columns: ["customer_id"]
@@ -5465,6 +5523,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      customer_register_history: {
+        Row: {
+          account_id: string | null
+          actor_name: string
+          actor_user_id: string | null
+          after_state: Json | null
+          before_state: Json | null
+          company_id: string
+          contact_id: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          kind: string
+        }
+        Insert: {
+          account_id?: string | null
+          actor_name?: string
+          actor_user_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          company_id: string
+          contact_id?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          kind: string
+        }
+        Update: {
+          account_id?: string | null
+          actor_name?: string
+          actor_user_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          company_id?: string
+          contact_id?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          kind?: string
+        }
+        Relationships: []
       }
       customer_tag_relations: {
         Row: {
@@ -11882,6 +11982,7 @@ export type Database = {
           contact_name: string | null
           created_at: string
           customer_account_id: string | null
+          customer_contact_id: string | null
           customer_id: string | null
           delete_reason: string | null
           deleted_at: string | null
@@ -11915,6 +12016,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string
           customer_account_id?: string | null
+          customer_contact_id?: string | null
           customer_id?: string | null
           delete_reason?: string | null
           deleted_at?: string | null
@@ -11948,6 +12050,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string
           customer_account_id?: string | null
+          customer_contact_id?: string | null
           customer_id?: string | null
           delete_reason?: string | null
           deleted_at?: string | null
@@ -11991,6 +12094,13 @@ export type Database = {
             columns: ["customer_account_id"]
             isOneToOne: false
             referencedRelation: "customer_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_customer_contact_id_fkey"
+            columns: ["customer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "customer_contacts"
             referencedColumns: ["id"]
           },
           {
@@ -18996,6 +19106,7 @@ export type Database = {
     }
     Functions: {
       _notif_admin_user_ids: { Args: never; Returns: string[] }
+      _register_actor: { Args: never; Returns: string }
       account_auth_user: { Args: { _account: string }; Returns: string }
       activity_entity_company: {
         Args: { _commercial_case: string; _id: string; _type: string }
@@ -19320,6 +19431,35 @@ export type Database = {
         }[]
       }
       customer_company_id: { Args: { _id: string }; Returns: string }
+      customer_register_get: {
+        Args: { _company_id: string; _customer_id: string }
+        Returns: Json
+      }
+      customer_register_save_account: {
+        Args: {
+          _account_id: string
+          _archived: boolean
+          _city: string
+          _company_id: string
+          _confirm_duplicate: boolean
+          _customer_id: string
+          _name: string
+          _org_number: string
+          _request_id: string
+        }
+        Returns: Json
+      }
+      customer_register_save_contact: {
+        Args: {
+          _company_id: string
+          _confirm_duplicate: boolean
+          _contact_id: string
+          _customer_id: string
+          _request_id: string
+          _state: Json
+        }
+        Returns: Json
+      }
       deactivate_conversation_participant: {
         Args: { _participant_id: string }
         Returns: undefined

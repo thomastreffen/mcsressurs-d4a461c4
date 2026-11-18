@@ -13,6 +13,7 @@ import { type JobStatus } from "@/lib/job-status";
 import { CustomerHeader } from "@/components/customer/CustomerHeader";
 import { CustomerProjectsList } from "@/components/customer/CustomerProjectsList";
 import { CustomerContactsTab } from "@/components/customer/CustomerContactsTab";
+import { CustomerRegisterPanel } from "@/components/customer/CustomerRegisterPanel";
 import { CustomerCasesSection } from "@/components/customer/CustomerCasesSection";
 import { CustomerInfoTab } from "@/components/customer/CustomerInfoTab";
 import { CustomerSnapshot } from "@/components/customer/CustomerSnapshot";
@@ -261,7 +262,7 @@ export default function CustomerDetailPage() {
               <FolderKanban className="h-3.5 w-3.5" /> Prosjekter ({projects.length})
             </TabsTrigger>
             <TabsTrigger value="contacts" className="rounded-lg gap-1.5">
-              <UserPlus className="h-3.5 w-3.5" /> Kontakter ({contacts.length})
+              <UserPlus className="h-3.5 w-3.5" /> Avdelinger og kontakter
             </TabsTrigger>
             <TabsTrigger value="cases" className="rounded-lg gap-1.5">
               <Inbox className="h-3.5 w-3.5" /> Saker
@@ -295,10 +296,7 @@ export default function CustomerDetailPage() {
           </TabsContent>
 
           <TabsContent value="contacts">
-            <CustomerContactsTab
-              contacts={contacts} isAdmin={isAdmin}
-              onAdd={handleAddContact} onDelete={handleDeleteContact}
-            />
+            <CustomerRegisterPanel customerId={customer.id} />
           </TabsContent>
 
           <TabsContent value="cases">

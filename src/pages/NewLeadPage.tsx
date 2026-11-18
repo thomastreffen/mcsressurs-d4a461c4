@@ -34,6 +34,7 @@ export default function NewLeadPage() {
   // Kunde / kontakt
   const { activeCompanyId } = useCompanyContext();
   const [customer, setCustomer] = useState<LeadCustomerValue | null>(null);
+  const [contactId, setContactId] = useState<string | null>(null);
   const customerPayload = leadCustomerPayload(customer);
   const [contactName, setContactName] = useState("");
   const [phone, setPhone] = useState("");
@@ -74,6 +75,7 @@ export default function NewLeadPage() {
     try {
       const payload: any = {
         ...customerPayload,
+        customer_contact_id: customerPayload.customer_id ? contactId : null,
         company_id: activeCompanyId || null,
         contact_name: contactName.trim() || null,
         email: email.trim() || null,
@@ -149,8 +151,8 @@ export default function NewLeadPage() {
           <LeadCustomerPicker
             companyId={activeCompanyId ?? null}
             value={customer}
-            onChange={setCustomer}
-            onContactPick={(k) => { setContactName(k.name); setPhone(k.phone ?? ""); setEmail(k.email ?? ""); }}
+            onChange={(v) => { setCustomer(v); setContactId(null); }}
+            onContactPick={(k) => { setContactId(k.id); setContactName(k.name); setPhone(k.phone ?? ""); setEmail(k.email ?? ""); }}
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -158,7 +160,7 @@ export default function NewLeadPage() {
             <Label>Kontaktperson</Label>
             <Input
               value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
+              onChange={(e) => { setContactName(e.target.value); setContactId(null); }}
               placeholder="Ola Nordmann"
               className="rounded-xl"
             />
