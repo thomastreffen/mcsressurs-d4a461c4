@@ -1,3 +1,8 @@
+# CRM kundeutvikling – kontrollert fase 1
+- [x] Liste/filtre → lokal kundeenhet → ansvarlig/oppfølging → sporbar historikk; 13 isolerte tester og PC/mobil verifisert
+- [x] Additivt CRM-lag med selskapskontroll, uten reparasjon/import eller endring av eksisterende kundedata; migrasjon 0108 aktiv, 0 CRM-/historikkrader
+- [ ] Publisering av CRM-skjermene (eier); ingen varsling eller integrasjonsaktivering
+
 # Individuelle mottakere og jobbstatus – 17. november
 
 ## Engangspilot Mats – 19. november

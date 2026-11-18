@@ -17,6 +17,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { SoftDeleteRowButton } from "@/components/shared/SoftDeleteRowButton";
+import { CustomerDevelopment } from "@/components/customer/CustomerDevelopment";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface CustomerRow {
   id: string;
@@ -46,6 +48,7 @@ export default function CustomersPage() {
   const [page, setPage] = useState(0);
   const [filterTag, setFilterTag] = useState<string>("__all__");
   const [filterValue, setFilterValue] = useState<string>("__all__");
+  const [view, setView] = useState("register");
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -193,6 +196,8 @@ export default function CustomersPage() {
         </div>
       </div>
 
+      <Tabs value={view} onValueChange={setView}><TabsList><TabsTrigger value="register">Kunderegister</TabsTrigger><TabsTrigger value="development">Kundeutvikling</TabsTrigger></TabsList></Tabs>
+      {view === "development" ? <CustomerDevelopment /> : <>
       {/* Search & Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1 max-w-sm">
@@ -385,6 +390,7 @@ export default function CustomersPage() {
           )}
         </>
       )}
+      </>}
     </div>
   );
 }

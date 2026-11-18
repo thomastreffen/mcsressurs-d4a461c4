@@ -20,6 +20,7 @@ import { CustomerActionRequired } from "@/components/customer/CustomerActionRequ
 import { CustomerSalesInfo } from "@/components/customer/CustomerSalesInfo";
 import { CustomerActivityList } from "@/components/customer/CustomerActivityList";
 import type { CustomerTag } from "@/hooks/useCustomerTags";
+import { CustomerDevelopment } from "@/components/customer/CustomerDevelopment";
 
 interface Customer {
   id: string;
@@ -251,7 +252,8 @@ export default function CustomerDetailPage() {
         />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="rounded-xl">
+          <TabsList className="rounded-xl max-w-full overflow-x-auto justify-start">
+            <TabsTrigger value="development" className="rounded-lg gap-1.5">Kundeutvikling</TabsTrigger>
             <TabsTrigger value="overview" className="rounded-lg gap-1.5">
               <Star className="h-3.5 w-3.5" /> Oversikt
             </TabsTrigger>
@@ -269,6 +271,7 @@ export default function CustomerDetailPage() {
             </TabsTrigger>
           </TabsList>
 
+          <TabsContent value="development"><CustomerDevelopment customerId={customer.id} /></TabsContent>
           <TabsContent value="overview">
             <div className="space-y-4">
               <CustomerSalesInfo

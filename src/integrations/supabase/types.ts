@@ -5070,6 +5070,117 @@ export type Database = {
           },
         ]
       }
+      customer_account_crm: {
+        Row: {
+          account_id: string
+          company_id: string
+          last_contact_on: string | null
+          next_action: string
+          next_followup_on: string | null
+          owner_user_id: string | null
+          priority: string
+          relationship: string
+          temperature: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          account_id: string
+          company_id: string
+          last_contact_on?: string | null
+          next_action?: string
+          next_followup_on?: string | null
+          owner_user_id?: string | null
+          priority?: string
+          relationship?: string
+          temperature?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          account_id?: string
+          company_id?: string
+          last_contact_on?: string | null
+          next_action?: string
+          next_followup_on?: string | null
+          owner_user_id?: string | null
+          priority?: string
+          relationship?: string
+          temperature?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_account_crm_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "customer_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_account_crm_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_account_crm_history: {
+        Row: {
+          account_id: string
+          actor_name: string
+          actor_user_id: string
+          after_state: Json
+          before_state: Json | null
+          company_id: string
+          created_at: string
+          id: string
+          kind: string
+          note: string
+        }
+        Insert: {
+          account_id: string
+          actor_name: string
+          actor_user_id: string
+          after_state: Json
+          before_state?: Json | null
+          company_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          note?: string
+        }
+        Update: {
+          account_id?: string
+          actor_name?: string
+          actor_user_id?: string
+          after_state?: Json
+          before_state?: Json | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_account_crm_history_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "customer_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_account_crm_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "internal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_accounts: {
         Row: {
           company_id: string | null
@@ -19180,6 +19291,14 @@ export type Database = {
             }
             Returns: Json
           }
+      crm_account_list: { Args: { _company_id: string }; Returns: Json }
+      crm_account_owners: {
+        Args: { _company_id: string }
+        Returns: {
+          name: string
+          user_id: string
+        }[]
+      }
       customer_company_id: { Args: { _id: string }; Returns: string }
       deactivate_conversation_participant: {
         Args: { _participant_id: string }
@@ -20233,6 +20352,20 @@ export type Database = {
           _token: string
         }
         Returns: Json
+      }
+      save_crm_account: {
+        Args: {
+          _account_id: string
+          _company_id: string
+          _customer_id: string
+          _expected_version: number
+          _name: string
+          _note: string
+          _request_id: string
+          _state: Json
+          _verified: boolean
+        }
+        Returns: string
       }
       save_form_answers: {
         Args: { _answers: Json; _expected_revision: number; _id: string }
