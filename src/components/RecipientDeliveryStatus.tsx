@@ -8,7 +8,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { CENTRAL_WAITING, projectQueue } from "@/lib/job-calendar-presentation";
 
 const REASON_LABEL: Record<string, string> = {
-  no_ms_connection: "Mangler Microsoft-kobling",
+  no_ms_connection: "Montøren har ikke egen Microsoft-kobling, og sentral kalender er ikke aktivert for denne dagen",
+  central_app_pending: "Venter på sentral kalender (krever administratorgodkjenning)",
+  central_partial_target_blocked: "Stoppet: sentral kalender er bare godkjent for noen av dagene",
   no_login_link: "Mangler brukerkobling",
   no_email: "Mangler e-post",
   sender_no_ms_connection: "Avsender mangler Microsoft-kobling",

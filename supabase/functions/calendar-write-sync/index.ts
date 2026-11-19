@@ -4,7 +4,7 @@ import { organizerEnabled } from "../_shared/m365-sender.ts";
 import { getApprovalCallerId } from "../_shared/approval-auth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { resolveJobAddress } from "../_shared/job-address.ts";
-import { shouldQueueFallback } from "../_shared/job-outlook-app-core.ts";
+import { osloDate, routeTechnicianCalendar, shouldQueueFallback } from "../_shared/job-outlook-app-core.ts";
 import { calendarResultToDelivery, syncEvidenceStatus, recordDelivery, type DeliveryStatus } from "../_shared/recipient-delivery.ts";
 import { planCalendarUpdate } from "../_shared/job-save-flow.ts";
 import { jobCalendarHtml } from "../_shared/job-communication.ts";
@@ -945,10 +945,29 @@ Deno.serve(async (req) => {
       blocksByTech.set(b.technician_id, list);
     }
 
+    // Central app-only routing (read-only lookups). With global flags off this always yields "delegated".
+    const { data: centralSettings } = await supabaseAdmin.from("job_outlook_app_sync_settings")
+      .select("enabled,dry_run,scope_verified_at,pilot_mailboxes").limit(1).maybeSingle();
+    const { data: centralTargets } = await supabaseAdmin.from("job_outlook_app_pilot_targets")
+      .select("technician_id,work_date,mailbox,expires_at,revoked_at").eq("event_id", event_id);
+
     // ── Sync for EACH technician independently ──
     const results: any[] = [];
     for (const { eventTechRow, tech } of techRows) {
       const techBlocks = blocksByTech.get(tech.id) ?? [];
+      const workDates = [...new Set((techBlocks.length ? techBlocks.map((b) => b.start_at) : [eventTechRow.start_at || event.start_time]).filter(Boolean).map((d: string) => osloDate(d)))];
+      const route = routeTechnicianCalendar({
+        settings: centralSettings as any, mailbox: tech.email ?? null, workDates,
+        targets: (centralTargets ?? []).filter((t: any) => t.technician_id === tech.id).map((t: any) => ({ ...t, work_date: String(t.work_date) })),
+      });
+      if (route !== "delegated") {
+        // Never a delegated write (no dual source) and no fallback queue intent; central writes stay operator-driven.
+        const central = route === "central";
+        await recordDelivery(supabaseAdmin, { eventId: event_id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email,
+          channel: "calendar", status: central ? "pending" : "failed", reasonCode: central ? "central_app_pending" : "central_partial_target_blocked", attemptedBy: callerUserId });
+        results.push({ techId: tech.id, techName: tech.name, status: central ? "central_pending" : "central_blocked", skipTechDelivery: true, excludeFromEvidence: true });
+        continue;
+      }
       if (action === "create_missing_days" && techBlocks.length === 0) {
         // Single-day assignment: this explicit action never touches the legacy path.
         results.push({ techId: tech.id, techName: tech.name, status: "not_applicable", skipTechDelivery: true, excludeFromEvidence: true });
