@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { invokeWithSession } from "@/lib/invoke-session";
+import { normalizeMailboxCandidates } from "@/lib/mailbox-candidates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,8 +28,9 @@ export function CentralCalendarActivation() {
   const [phrase, setPhrase] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const { data: techs } = useQuery({ queryKey: ["calendar-mailbox-candidates", activeCompanyId], enabled: !!activeCompanyId,
-    queryFn: async () => { const r = await invokeWithSession<{ technicians: Technician[] }>("job-outlook-app-pilot", { body: { action: "mailbox_candidates", company_id: activeCompanyId } }); if (r.error) throw r.error; return r.data?.technicians ?? []; } });
+  const { data: rawTechs } = useQuery({ queryKey: ["calendar-mailbox-candidates", activeCompanyId], enabled: !!activeCompanyId,
+    queryFn: async () => { const r = await invokeWithSession<{ technicians: Technician[] }>("job-outlook-app-pilot", { body: { action: "mailbox_candidates", company_id: activeCompanyId } }); if (r.error) throw r.error; return r.data; } });
+  const techs = normalizeMailboxCandidates(rawTechs);
   const { data: active } = useQuery({ queryKey: ["central-calendar-activations", activeCompanyId], enabled: !!activeCompanyId,
     queryFn: async () => { const r = await supabase.from("central_calendar_activations").select("id,scope,mailbox,effective_from").eq("company_id", activeCompanyId!).is("revoked_at", null); if (r.error) throw r.error; return r.data; } });
   const { data: status } = useQuery({ queryKey: ["central-calendar-status", activeCompanyId], enabled: !!activeCompanyId,
@@ -48,7 +50,7 @@ export function CentralCalendarActivation() {
   const revoke = async (id: string) => { const r = await supabase.rpc("revoke_central_calendar", { _id: id }); setMsg(r.error ? `Stopp feilet: ${r.error.message}` : "Stoppet. Eksisterende avtaler er ikke endret."); refresh(); };
   return <section className="space-y-3 border-t border-border pt-4" aria-label="Automatisk Outlook-kalender">
     <h3 className="font-semibold">Automatisk Outlook-kalender fra Ressursplan</h3>
-    {active?.length ? <ul className="space-y-1">{active.map(a => <li key={a.id} className="flex items-center gap-2">
+    {Array.isArray(active) && active.length ? <ul className="space-y-1">{active.map(a => <li key={a.id} className="flex items-center gap-2">
       <span>{a.scope === "all_active" ? "Alle aktive montører" : a.mailbox} · aktiv fra {new Date(a.effective_from).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" })}</span>
       <Button size="sm" variant="destructive" onClick={() => revoke(a.id)}>Stopp</Button></li>)}</ul>
       : <p className="text-muted-foreground">Ikke aktivert for noen montør.</p>}
@@ -63,6 +65,6 @@ export function CentralCalendarActivation() {
       <Button disabled={!ready || busy} onClick={activate}>Aktiver automatisk kalender</Button>
     </div>}
     {msg && <p role="status">{msg}</p>}
-    {!!status?.length && <div><h4 className="font-medium">Status per montør/dag</h4><ul className="text-sm">{status.map((s, i) => <li key={i}>{s.work_date} · {s.mailbox} · {s.has_outlook_copy ? "I Outlook" : "Ikke i Outlook"} · {s.last_operation ?? s.link_state}</li>)}</ul></div>}
+    {Array.isArray(status) && status.length > 0 && <div><h4 className="font-medium">Status per montør/dag</h4><ul className="text-sm">{status.map((s, i) => <li key={i}>{s.work_date} · {s.mailbox} · {s.has_outlook_copy ? "I Outlook" : "Ikke i Outlook"} · {s.last_operation ?? s.link_state}</li>)}</ul></div>}
   </section>;
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { invokeWithSession } from "@/lib/invoke-session";
+import { normalizeMailboxCandidates } from "@/lib/mailbox-candidates";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -15,7 +16,8 @@ export function TechnicianMailboxTest() {
   const [error, setError] = useState("");
   const { data, isLoading, error: loadError } = useQuery({ queryKey: ["calendar-mailbox-candidates", activeCompanyId], enabled: !!activeCompanyId,
     queryFn: async () => { const r = await invokeWithSession<{ technicians: Technician[] }>("job-outlook-app-pilot", { body: { action: "mailbox_candidates", company_id: activeCompanyId } }); if (r.error) throw r.error; return r.data; } });
-  const person = data?.technicians.find(t => t.id === selected);
+  const candidates = normalizeMailboxCandidates(data);
+  const person = candidates.find(t => t.id === selected);
   const run = async () => {
     setBusy(true); setError(""); setResult(null);
     try {
@@ -31,7 +33,7 @@ export function TechnicianMailboxTest() {
     {!activeCompanyId && <p>Velg ett selskap øverst for å se aktive montører.</p>}
     <Select value={person ? selected : ""} disabled={busy || isLoading} onValueChange={id => { setSelected(id); setResult(null); setError(""); }}>
       <SelectTrigger aria-label="Montør for postkassetest"><SelectValue placeholder="Velg aktiv montør" /></SelectTrigger>
-      <SelectContent>{data?.technicians.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+      <SelectContent>{candidates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
     </Select>
     {person && <p className="break-all">{person.email}</p>}
     <Button variant="outline" disabled={!person || busy} onClick={run}>{busy ? "Kontrollerer tilgang…" : "Test valgt postkasse – kun lesing"}</Button>
