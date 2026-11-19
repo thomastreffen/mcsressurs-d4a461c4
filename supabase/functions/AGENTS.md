@@ -31,3 +31,4 @@
 - Unplanning deletion resolves exact removed-day links and uses the recipient's delegated token; central links require their dedicated gate, and old retries require explicit event confirmation. Why: no mail-app fallback, wrong-day deletion or deployment-triggered writes.
 
 - Ordinary central calendar lifecycle uses `_shared/central-calendar-lifecycle.ts` + private daily journal/service-only exact claim; deployment approval stays false, existing app receipts or claims pin central ownership even while paused, and old queues never release. Why: exact day/version GET verification, no blind retries or dual delegated writes.
+- Standalone technician metadata tests reuse calendar-mailbox-probe via superadmin/company-edit/verified active identity and fresh diagnostic scope gates, with mandatory pre/post audit outside day-target approvals. Why: mailbox access can be proven without invented assignments or sync activation.

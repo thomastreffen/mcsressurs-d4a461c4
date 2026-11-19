@@ -10,6 +10,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
+import { probeCalendarMailbox } from "../_shared/calendar-mailbox-probe.ts";
+import { diagnosticGate } from "../_shared/hub-calendar-write-pilot-core.ts";
 import { missingSecrets } from "../_shared/hub-calendar-diagnostics-core.ts";
 import type { HubJob } from "../_shared/job-outlook-app-core.ts";
 import { pilotChoices, freshMailboxProbe, existingTargetDecision, activeIdentity, mailboxReadiness, type IdentityFacts } from "../_shared/job-outlook-pilot-selector.ts";
@@ -91,7 +93,7 @@ Deno.serve(async (req) => {
     if (!techIds.length) return out;
     const { data: techs } = await admin.from("technicians").select("id,user_id,email,archived_at,deleted_at").in("id", techIds);
     const users = (techs ?? []).map((t: any) => t.user_id).filter(Boolean);
-    const { data: accts } = users.length ? await admin.from("user_accounts").select("auth_user_id,person_id,is_active").in("auth_user_id", users).eq("is_active", true) : { data: [] as any[] };
+    const { data: accts } = users.length ? await admin.from("user_accounts").select("auth_user_id,person_id,is_active").in("auth_user_id", users).eq("is_active", true).not("verified_at", "is", null) : { data: [] as any[] };
     const persons = (accts ?? []).map((a: any) => a.person_id);
     const [{ data: ppl }, { data: emp }] = persons.length ? await Promise.all([
       admin.from("people").select("id,is_active").in("id", persons),
@@ -116,6 +118,37 @@ Deno.serve(async (req) => {
     const eligible = (rows ?? []).filter((r: any) => { const f = ids.get(r.technician_id); return !!f && activeIdentity(f); });
     return { job: ev, technicians: pilotChoices(ev, eligible.map((r: any) => ({ technician_id: r.technician_id, ...r.technicians })), blocks ?? [], links ?? []) };
   };
+  // Standalone metadata test: no target, job, day or rollout setting required/changed.
+  if (action === "mailbox_candidates" || action === "probe_technician_mailbox") {
+    const company = b.company_id;
+    if (typeof company !== "string" || !UUID.test(company)) return json({ error: "invalid_company" }, 400);
+    const rights = await uc.rpc("has_company_access", { _uid: caller, _company: company, _module: "resource_plan", _level: "edit" });
+    if (rights.error || rights.data !== true) return json({ error: "company_edit_required" }, 403);
+    const { data: techs, error: te } = await admin.from("technicians").select("id,name,email").is("archived_at", null).is("deleted_at", null);
+    if (te) return json({ error: "identity_lookup_failed" }, 409);
+    const facts = await identities((techs ?? []).map(t => t.id), company);
+    // Require verified canonical account too; membership never counts as employment.
+    const candidates = (techs ?? []).filter(t => { const f = facts.get(t.id); return !!f && activeIdentity(f); });
+    if (action === "mailbox_candidates") return json({ read_only: true, technicians: candidates });
+    if (typeof b.technician_id !== "string" || !UUID.test(b.technician_id) || b.confirm_read_only !== true) return json({ error: "invalid_input" }, 400);
+    const chosen = candidates.find(t => t.id === b.technician_id);
+    if (!chosen) return json({ error: "inactive_or_former_employee" }, 409);
+    const mailbox = chosen.email.trim().toLowerCase();
+    const context = { company_id: company, technician_id: chosen.id, mailbox, read_only: true, writes_enabled: false, no_queue_replay: true };
+    const { data: diag, error: de } = await admin.from("hub_calendar_diagnostic_runs").select("run_at,overall,checks").order("run_at", { ascending: false }).limit(1).maybeSingle();
+    const scopeDenied = de ? "scope_lookup_failed" : diagnosticGate(diag, now);
+    const { data: last, error: le } = await admin.from("job_outlook_app_pilot_actions").select("created_at").in("action", ["probe_mailbox", "probe_technician_mailbox_started"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (le) return json({ error: "audit_lookup_failed" }, 409);
+    if (last && now.getTime() - Date.parse(last.created_at) < PROBE_COOLDOWN_MS) return json({ error: "cooldown" }, 429);
+    // Mandatory pre-GET audit: if audit storage fails, Microsoft is never contacted.
+    const operation = crypto.randomUUID();
+    const started = await audit("probe_technician_mailbox_started", { ...context, scope_gate: scopeDenied ?? "passed" }, { idempotency_key: operation });
+    if (started.error) return json({ error: "audit_required", graph_read_attempted: false }, 409);
+    const result = scopeDenied ? { ...context, pass: false, step: "scope", reason: scopeDenied } : { ...context, ...await probeCalendarMailbox(mailbox, n => Deno.env.get(n)) };
+    const finished = await audit("probe_technician_mailbox", result, { idempotency_key: operation });
+    if (finished.error) return json({ error: "audit_result_failed", result, audit_complete: false }, 409);
+    return json({ ok: true, result, audit_complete: true, rollout_approved: false });
+  }
   if (action === "candidates") {
     if (b.event_id !== undefined) {
       if (typeof b.event_id !== "string" || !UUID.test(b.event_id)) return json({ error: "invalid_input" }, 400);
@@ -240,24 +273,7 @@ Deno.serve(async (req) => {
     if (missingSecrets(env).length) return json({ error: "not_configured" }, 409);
     const { data: last } = await admin.from("job_outlook_app_pilot_actions").select("created_at").eq("action", "probe_mailbox").order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (last && now.getTime() - Date.parse(last.created_at) < PROBE_COOLDOWN_MS) return json({ error: "cooldown" }, 429);
-    const tok = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(env("HUB_CALENDAR_TENANT_ID").trim())}/oauth2/v2.0/token`, {
-      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ client_id: env("HUB_CALENDAR_CLIENT_ID").trim(), client_secret: env("HUB_CALENDAR_CLIENT_SECRET").trim(), grant_type: "client_credentials", scope: "https://graph.microsoft.com/.default" }),
-    });
-    let result: Record<string, unknown>;
-    if (!tok.ok) { await tok.body?.cancel(); result = { pass: false, step: "token", http: tok.status }; }
-    else {
-      let token: string | null = (await tok.json()).access_token ?? null;
-      // Sanitized token facts only (never the token): tenant/app match and roles.
-      let claims: Record<string, unknown> = {};
-      try { const c = JSON.parse(atob((token ?? "").split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); claims = { tid_match: c.tid === env("HUB_CALENDAR_TENANT_ID").trim(), appid_match: (c.appid ?? c.azp) === env("HUB_CALENDAR_CLIENT_ID").trim(), roles: Array.isArray(c.roles) ? c.roles.filter((r: unknown) => typeof r === "string" && /^(Calendars|Mail)\./.test(r as string)) : [] }; } catch { claims = { decode: "failed" }; }
-      const clientRequestId = crypto.randomUUID();
-      const res = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(t.mailbox)}/calendar?$select=id`, { method: "GET", headers: { Authorization: `Bearer ${token}`, "client-request-id": clientRequestId, "return-client-request-id": "true" } });
-      token = null;
-      let code: string | null = null; let message: string | null = null;
-      if (res.ok) await res.body?.cancel(); else { try { const j = await res.json(); code = String(j?.error?.code ?? "").slice(0, 80) || null; message = String(j?.error?.message ?? "").replace(/[\w.+-]+@[\w.-]+/g, "<mailbox>").slice(0, 200) || null; } catch { /* ignore */ } }
-      result = { pass: res.status === 200, step: "calendar_get", http: res.status, graph_code: code, graph_message: message, request_id: res.headers.get("request-id"), client_request_id: clientRequestId, graph_date: res.headers.get("date"), endpoint: "GET /v1.0/users/{mailbox}/calendar?$select=id", ...claims };
-    }
+    const result = await probeCalendarMailbox(t.mailbox, env);
     await audit("probe_mailbox", result, { target_id: t.id });
     return json({ ok: true, result });
   }

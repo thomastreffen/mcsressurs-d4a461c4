@@ -17,6 +17,7 @@ export function CalendarRolloutReadiness({ selection, eligible }: { selection: S
   };
   return <section className="space-y-3 border-t border-border pt-4" aria-label="Vanlig kalenderutrulling">
     <h3 className="font-semibold">Vanlig Ressursplan → Outlook · valgt montør og dag</h3>
+    {!eligible && <p className="text-muted-foreground">Ingen fremtidige tildelinger valgt. Test postkassetilgang separat uten å opprette jobb.</p>}
     <Button variant="outline" disabled={!eligible||busy} onClick={read}>Kontroller valgt arbeidsdag – kun lesing</Button>
     {error&&<p role="alert">{error}</p>}
     {result&&<div className="space-y-2 border-l-2 border-border pl-3">

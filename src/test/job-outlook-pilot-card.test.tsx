@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { JobOutlookPilotScopeCard } from "@/components/admin/JobOutlookPilotScopeCard";
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@/lib/invoke-session", () => ({ invokeWithSession: mocks.invoke }));
+vi.mock("@/hooks/useCompanyContext", () => ({ useCompanyContext: () => ({ activeCompanyId: null }) }));
 const target = { id: "target", work_date: "2026-11-19", technician_name: "Mats", job: { title: "Majorstua" }, expires_at: "2099-01-01", revoked_at: null };
 beforeEach(() => { vi.clearAllMocks(); mocks.invoke.mockImplementation(async (_name, { body }) => ({ error: null, data: body.action === "status" ? { targets: [target], held_queue: [{ id: "old", job: { title: "60570" }, technician_name: "Mats" }], settings: { enabled: false, dry_run: true, pilot_mailboxes: [], scope_verified: false } } : { result: { pass: true, http: 200 } } })); });
 afterEach(cleanup);

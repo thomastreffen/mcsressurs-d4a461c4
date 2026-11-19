@@ -27,6 +27,7 @@ export function CentralCalendarReadiness() {
     {msg && <p role="status">{msg}</p>}
     {rows && <>
       <p>{rows.length} planlagte arbeidsdager for aktive ansatte · {excluded} dager utelatt (tidligere ansatte eller inaktiv tilgang)</p>
+      {rows.length === 0 && <p>Ingen fremtidige tildelinger. Test postkassetilgang separat uten å opprette jobb.</p>}
       <ul className="space-y-2">{rows.map((r, i) => <li key={i} className="break-words border-l-2 border-border pl-3">
         <span className="font-medium">{r.work_date} · {r.technician_name ?? "Ukjent"}</span> · {r.job?.project_number ?? ""} {r.job?.title ?? ""}
         <span className="block text-muted-foreground">Kalender: {cal[r.calendar] ?? r.calendar} · Sentral app: {central[r.central] ?? r.central}</span>
