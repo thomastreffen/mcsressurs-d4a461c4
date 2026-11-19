@@ -20,7 +20,7 @@ export function parseAttestation(raw: string | undefined): { value: RbacAttestat
 }
 
 export interface TokenFacts { tid: string | null; appId: string | null; roles: string[] }
-export type ScopeProof = { ok: true; path: "classic" | "exchange_rbac" } | { ok: false; path: "classic" | "exchange_rbac"; reason: string };
+export type ScopeProof = { ok: true; path: "classic" | "exchange_rbac"; reason?: undefined } | { ok: false; path: "classic" | "exchange_rbac"; reason: string };
 
 export function proveSendScope(env: (k: string) => string | undefined, t: TokenFacts | null, now = Date.now()): ScopeProof {
   const rawAtt = env("M365_RBAC_ATTESTATION")?.trim() ?? "";
