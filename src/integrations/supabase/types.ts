@@ -4396,9 +4396,12 @@ export type Database = {
           allowed_mailboxes: string[]
           consent_at: string | null
           consent_by: string | null
+          consent_revoked_at: string | null
           consent_text: string | null
+          dismissed_retention_days: number
           enabled: boolean
           id: boolean
+          retention_days: number
           scope_verified_at: string | null
           updated_at: string
         }
@@ -4406,9 +4409,12 @@ export type Database = {
           allowed_mailboxes?: string[]
           consent_at?: string | null
           consent_by?: string | null
+          consent_revoked_at?: string | null
           consent_text?: string | null
+          dismissed_retention_days?: number
           enabled?: boolean
           id?: boolean
+          retention_days?: number
           scope_verified_at?: string | null
           updated_at?: string
         }
@@ -4416,9 +4422,12 @@ export type Database = {
           allowed_mailboxes?: string[]
           consent_at?: string | null
           consent_by?: string | null
+          consent_revoked_at?: string | null
           consent_text?: string | null
+          dismissed_retention_days?: number
           enabled?: boolean
           id?: boolean
+          retention_days?: number
           scope_verified_at?: string | null
           updated_at?: string
         }
@@ -19653,6 +19662,15 @@ export type Database = {
       confirm_person_login_link: {
         Args: { _person_id: string }
         Returns: undefined
+      }
+      contract_watch_update: {
+        Args: {
+          _action: string
+          _consent_text?: string
+          _dismissed?: number
+          _retention?: number
+        }
+        Returns: Json
       }
       conversation_thread_company_id: { Args: { _id: string }; Returns: string }
       convert_offer_to_project: {

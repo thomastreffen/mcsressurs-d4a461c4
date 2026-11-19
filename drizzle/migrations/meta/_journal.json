@@ -820,6 +820,13 @@
       "when": 1795072974154,
       "tag": "0116_contract_watch_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1795073201409,
+      "tag": "0117_contract_watch_settings_rpcs",
+      "breakpoints": true
     }
   ]
 }

@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { HubCalendarDiagnosticsCard } from "@/components/admin/HubCalendarDiagnosticsCard";
-import { ContractWatchDiagnosticsCard } from "@/components/admin/ContractWatchDiagnosticsCard";
 import { HubCalendarWritePilotCard } from "@/components/admin/HubCalendarWritePilotCard";
 import {
   RefreshCw, ShieldOff, Plus, RotateCcw, CheckCircle2,
@@ -239,7 +238,6 @@ export default function MicrosoftAdminPage() {
       </div>
 
       <HubCalendarDiagnosticsCard />
-      <ContractWatchDiagnosticsCard />
       <HubCalendarWritePilotCard />
       <JobOutlookPilotScopeCard />
 

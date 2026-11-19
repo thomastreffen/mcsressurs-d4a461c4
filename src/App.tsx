@@ -96,6 +96,7 @@ import FormBuilderPage from "./pages/FormBuilderPage";
 import FormFillPage from "./pages/FormFillPage";
 import SuperofficeSettingsPage from "./pages/SuperofficeSettingsPage";
 import MicrosoftAdminPage from "./pages/MicrosoftAdminPage";
+import ContractWatchPage from "./pages/admin/ContractWatchPage";
 import ThreadInviteAcceptPage from "./pages/ThreadInviteAcceptPage";
 import ConfirmationsPage from "./pages/ConfirmationsPage";
 import AiMatcherReportPage from "./pages/AiMatcherReportPage";
@@ -579,6 +580,14 @@ const App = () => (
                 element={
                   <ProtectedRoute requiredPermission="postkontor.admin">
                     <SuperofficeSettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/avtalevakt"
+                element={
+                  <ProtectedRoute requiredRoles={["super_admin"]}>
+                    <ContractWatchPage />
                   </ProtectedRoute>
                 }
               />

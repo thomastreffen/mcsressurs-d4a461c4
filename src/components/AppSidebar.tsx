@@ -94,6 +94,7 @@ const adminItems = [
   { title: "Dataintegritet", url: "/admin/data-integrity", moduleKey: "admin_data_integrity" },
   { title: "Kontraktvarsler", url: "/admin/contract-cron", moduleKey: "admin_contract_cron" },
   { title: "Microsoft", url: "/admin/microsoft", requireSuperAdmin: true, moduleKey: "admin_microsoft" },
+  { title: "AI Avtalevakt", url: "/admin/avtalevakt", requireSuperAdmin: true, moduleKey: "admin_microsoft" },
   { title: "Innstillinger", url: "/admin/settings", moduleKey: "admin_settings" },
   { title: "Papirkurv", url: "/admin/trash", moduleKey: "admin_trash" },
   { title: "Tripletex import", url: "/admin/tripletex", moduleKey: "admin_tripletex" },
