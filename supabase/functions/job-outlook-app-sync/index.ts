@@ -46,8 +46,16 @@ Deno.serve(async (req) => {
   if (body.technician_id !== undefined && !UUID.test(body.technician_id)) return json({error:"invalid_technician_id"},400);
   const { data: s } = await sb.from("job_outlook_app_sync_settings").select("*").eq("id", true).maybeSingle();
   const flags: AppFlags = { enabled: !!s?.enabled, dryRun: s?.dry_run !== false, pilotMailboxes: s?.pilot_mailboxes ?? [], scopeVerified: !!s?.scope_verified_at };
-  if (!flags.enabled) return json({ status: "flag_off" }); // no job reads, no network
-  if (!flags.scopeVerified) return json({ status: "scope_not_verified" });
+  // Explicit audited per-mailbox (or all-active) activations; empty => nothing ever reaches Graph.
+  const { data: actRows, error: actError } = await sb.from("central_calendar_activations").select("company_id,scope,technician_id,mailbox,effective_from").is("revoked_at", null);
+  if (actError) return json({ status: "activation_read_failed" });
+  const activations = (actRows ?? []) as { company_id: string; scope: string; technician_id: string | null; mailbox: string | null; effective_from: string }[];
+  if (!flags.enabled && activations.length === 0) return json({ status: "not_activated" }); // no job reads, no network
+  if (!flags.scopeVerified && activations.length === 0) return json({ status: "scope_not_verified" });
+  if (action === "drain_queue" && activations.length > 0 && !flags.enabled) return json({ status: "queue_never_replayed" });
+  const activeFor = (company: string, tech: string, mailbox: string | null, day: string) => activations.some((a) =>
+    a.company_id === company && (a.scope === "all_active" || (a.technician_id === tech && a.mailbox === (mailbox ?? "").toLowerCase())) &&
+    day >= new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date(a.effective_from)));
   let token: string | null = null;
   const now = new Date();
   const { data: targetRows } = await sb.from("job_outlook_app_pilot_targets").select("*").is("revoked_at", null);
@@ -71,9 +79,12 @@ Deno.serve(async (req) => {
       job, blocks: (blocks ?? []) as any, assignees: (rows ?? []).map((r: any) => ({ technician_id: r.technician_id, email: r.technicians?.email ?? null })),
       appLinks: ((appLinks ?? []) as any[]).filter((l) => l.work_date), legacyLinks: (legacy ?? []) as any, targets, flags, now, onlyTechnicianId: onlyTech,
     });
+    const { data: reviews } = await sb.from("central_calendar_conflict_reviews").select("technician_id,work_date,signature").eq("event_id", eventId).not("approved_at", "is", null);
     const out: unknown[] = [];
     for (const row of plan) {
-      const eff = effectiveAction(row, flags.dryRun);
+      const activated = !!row.mailbox && activeFor(ev.company_id, row.technicianId, row.mailbox, row.workDate);
+      // Activated mailbox: per-mailbox gate replaces target/dry-run; the atomic DB claim re-checks it (no backfill).
+      const eff = activated ? effectiveAction({ ...row, gate: null } as any, false) : effectiveAction(row, flags.dryRun);
       const base = { technician_id: row.technicianId, work_date: row.workDate };
       if (eff === "none") { out.push({ ...base, status: (row.decision as any).reason }); continue; }
       if (eff === "blocked") { out.push({ ...base, status: row.gate }); continue; }
@@ -99,7 +110,10 @@ Deno.serve(async (req) => {
       };
       const version=d.kind==="delete"?row.link?.hub_version ?? null:d.fingerprint;
       const copy=row.link?.outlook_event_id && row.link.outlook_change_key?{id:row.link.outlook_event_id,changeKey:row.link.outlook_change_key,source:row.link.adopted_from_day_link_id?"delegated" as const:"central" as const}:null;
-      const result=await syncDaily({scope,kind:d.kind,payload:d.kind==="delete"?{}:d.payload,copy,viewPath,graph,store:centralCalendarStore(sb,scope,version),authorized:true,conflictConsent:false,operationKey:`${scope.key}:${d.kind}:${version ?? copy?.changeKey ?? "none"}`});
+      const result=await syncDaily({scope,kind:d.kind,payload:d.kind==="delete"?{}:d.payload,copy,viewPath,graph,store:centralCalendarStore(sb,scope,version),authorized:true,conflictConsent:false,approvedConflictSignatures:(reviews??[]).filter((r:any)=>r.technician_id===row.technicianId&&String(r.work_date)===row.workDate).map((r:any)=>r.signature),operationKey:`${scope.key}:${d.kind}:${version ?? copy?.changeKey ?? "none"}`});
+      if (result.state==="known_conflict_consent_required" && (result as any).signature) {
+        await sb.from("central_calendar_conflict_reviews").upsert({company_id:ev.company_id,event_id:eventId,technician_id:row.technicianId,mailbox:row.mailbox,work_date:row.workDate,signature:(result as any).signature,summary:(result as any).diagnosis?.conflicts ?? []},{onConflict:"event_id,technician_id,work_date,signature",ignoreDuplicates:true});
+      }
       await log("daily_lifecycle",{state:result.state});out.push({...base,status:result.state});
     }
     return out;

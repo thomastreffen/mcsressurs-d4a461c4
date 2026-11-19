@@ -15,6 +15,7 @@ import { CentralCalendarReadiness } from "./CentralCalendarReadiness";
 import { CalendarRolloutReadiness } from "./CalendarRolloutReadiness";
 import { SystemSenderDiagnostics } from "./SystemSenderDiagnostics";
 import { TechnicianMailboxTest } from "./TechnicianMailboxTest";
+import { CentralCalendarActivation } from "./CentralCalendarActivation";
 
 type Any = Record<string, any>;
 async function call(body: Any): Promise<Any> {
@@ -162,6 +163,7 @@ export function JobOutlookPilotScopeCard() {
         </div>
         {msg && <p role="status">{msg}</p>}
         <TechnicianMailboxTest key={"mailbox-test"} />
+        <CentralCalendarActivation key={"central-activation"} />
         <CentralCalendarReadiness />
         <CalendarRolloutReadiness key={`${form.event_id}:${form.technician_id}:${form.work_date}`} selection={form} eligible={!!day} />
         <JobCalendarOneShot />

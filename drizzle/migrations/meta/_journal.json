@@ -862,6 +862,13 @@
       "when": 1795083062349,
       "tag": "0122_central_calendar_exact_claim",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1795096125935,
+      "tag": "0123_central_calendar_mailbox_activation",
+      "breakpoints": true
     }
   ]
 }

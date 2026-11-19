@@ -137,8 +137,11 @@ export function routeTechnicianCalendar(p: {
   mailbox: string | null; workDates: string[];
   targets: { work_date: string; mailbox: string; expires_at: string | null; revoked_at: string | null }[];
   centralOwned?: boolean;
+  /** Explicit audited per-mailbox/all-active activation: central owns this recipient, never delegated. */
+  activated?: boolean;
   now?: Date;
 }): CalendarRoute {
+  if (p.activated) return "central";
   const now = (p.now ?? new Date()).getTime();
   const mb = (p.mailbox ?? "").toLowerCase();
   const active = p.targets.filter((t) => !t.revoked_at && (!t.expires_at || Date.parse(t.expires_at) > now) && t.mailbox.toLowerCase() === mb);

@@ -111,6 +111,11 @@ Deno.serve(async (req) => {
 
     const resolvedEventId = local?.event_id;
     if (!resolvedEventId) return json({ error: "local_removal_receipt_missing", local }, 500);
+    // Central app copies: exact-copy delete via the central lifecycle only (true-unplan re-checked in DB claim).
+    const { data: central } = await db.from("job_outlook_app_links").select("technician_id").eq("event_id", resolvedEventId).not("outlook_event_id", "is", null);
+    const centralTechs = [...new Set((central ?? []).map((c: any) => c.technician_id).filter((t: string) => action === "remove_event" || !technicianId || t === technicianId))];
+    const centralResults = [];
+    for (const t of centralTechs) centralResults.push((await db.functions.invoke("job-outlook-app-sync", { body: { action: "sync_event", event_id: resolvedEventId, technician_id: t } })).data ?? null);
     const query = db.from("calendar_delete_retry_queue").select("*").eq("event_id", resolvedEventId);
     const { data: jobs, error: queueError } = technicianId && action !== "remove_event"
       ? await query.eq("technician_id", technicianId)
@@ -123,6 +128,7 @@ Deno.serve(async (req) => {
       status: local?.status ?? "success",
       local,
       outlook,
+      central: centralResults,
       outlook_complete: warnings.length === 0,
       warnings,
     });

@@ -1956,6 +1956,90 @@ export type Database = {
           },
         ]
       }
+      central_calendar_activations: {
+        Row: {
+          activated_by: string
+          company_id: string
+          confirmation: Json
+          created_at: string
+          effective_from: string
+          id: string
+          mailbox: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          scope: string
+          technician_id: string | null
+        }
+        Insert: {
+          activated_by: string
+          company_id: string
+          confirmation?: Json
+          created_at?: string
+          effective_from?: string
+          id?: string
+          mailbox?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          scope: string
+          technician_id?: string | null
+        }
+        Update: {
+          activated_by?: string
+          company_id?: string
+          confirmation?: Json
+          created_at?: string
+          effective_from?: string
+          id?: string
+          mailbox?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          scope?: string
+          technician_id?: string | null
+        }
+        Relationships: []
+      }
+      central_calendar_conflict_reviews: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          company_id: string
+          detected_at: string
+          event_id: string
+          id: string
+          mailbox: string
+          signature: string
+          summary: Json
+          technician_id: string
+          work_date: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id: string
+          detected_at?: string
+          event_id: string
+          id?: string
+          mailbox: string
+          signature: string
+          summary?: Json
+          technician_id: string
+          work_date: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id?: string
+          detected_at?: string
+          event_id?: string
+          id?: string
+          mailbox?: string
+          signature?: string
+          summary?: Json
+          technician_id?: string
+          work_date?: string
+        }
+        Relationships: []
+      }
       commercial_cases: {
         Row: {
           case_number: string | null
@@ -19619,6 +19703,10 @@ export type Database = {
       _notif_admin_user_ids: { Args: never; Returns: string[] }
       _register_actor: { Args: never; Returns: string }
       account_auth_user: { Args: { _account: string }; Returns: string }
+      activate_central_calendar: {
+        Args: { _company: string; _phrase: string; _tech: string }
+        Returns: string
+      }
       activity_entity_company: {
         Args: { _commercial_case: string; _id: string; _type: string }
         Returns: string
@@ -19647,6 +19735,10 @@ export type Database = {
         Returns: Json
       }
       apply_duplicate_schedule_blocks_cleanup: { Args: never; Returns: Json }
+      approve_central_calendar_conflict: {
+        Args: { _review: string }
+        Returns: boolean
+      }
       approve_doc_rule: { Args: { _rule_id: string }; Returns: Json }
       assess_person_requirement: {
         Args: {
@@ -19711,6 +19803,29 @@ export type Database = {
         Returns: boolean
       }
       can_view_planning_finance: { Args: never; Returns: boolean }
+      central_calendar_mailbox_active: {
+        Args: {
+          _changed: string
+          _company: string
+          _day: string
+          _mailbox: string
+          _tech: string
+        }
+        Returns: boolean
+      }
+      central_calendar_status: {
+        Args: { _company: string }
+        Returns: {
+          event_id: string
+          has_outlook_copy: boolean
+          last_operation: string
+          link_state: string
+          mailbox: string
+          technician_id: string
+          updated_at: string
+          work_date: string
+        }[]
+      }
       check_permission: {
         Args: { _perm: string; _user_id: string }
         Returns: boolean
@@ -21092,6 +21207,7 @@ export type Database = {
         }
         Returns: Json
       }
+      revoke_central_calendar: { Args: { _id: string }; Returns: boolean }
       save_crm_account: {
         Args: {
           _account_id: string

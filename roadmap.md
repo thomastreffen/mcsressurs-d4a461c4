@@ -10,7 +10,8 @@
 - [x] Admin selected-day GET preflight and locked activation control; explicit target revocation is stop, no queue release
 - [x] Three functions deployed, database journal empty, seven held intents and global flags unchanged; signed-in locked screen verified
 - [ ] Live activation and active-staff probes: separate operator initiation/authorization required
-- [ ] Remaining readiness gaps: audit/consent-backed known-conflict release; automatic true-unplan dispatch hookup; per-day central status read model; narrow per-mailbox activation transaction independent of global enabled; live route check after approval
+- [x] Per-mailbox activation, conflict approval, unplan dispatch, status read model (0123) built/deployed; 1269 tests pass
+- [ ] Thomas activates Rune in Admin; first live write at Rune's next real assignment
 
 # Related pilot flow sweep
 - [x] Read exact permit/preview/claim/receipt/reconcile/UI/status and background paths; scoped original-copy read corrected without changing other flows

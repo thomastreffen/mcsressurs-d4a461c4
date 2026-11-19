@@ -954,7 +954,9 @@ Deno.serve(async (req) => {
       .select("technician_id,mailbox,outlook_event_id,state").eq("event_id", event_id);
     const { data: centralOperations, error: centralOperationsError } = await supabaseAdmin.from("job_calendar_daily_operations")
       .select("technician_id,state").eq("event_id", event_id);
-    if (centralSettingsError || centralTargetsError || centralCopiesError || centralOperationsError) throw new Error("calendar_source_read_failed_no_fallback");
+    const { data: centralActivations, error: centralActivationsError } = await supabaseAdmin.from("central_calendar_activations")
+      .select("scope,technician_id,mailbox").eq("company_id", event.company_id).is("revoked_at", null);
+    if (centralActivationsError || centralSettingsError || centralTargetsError || centralCopiesError || centralOperationsError) throw new Error("calendar_source_read_failed_no_fallback");
 
     // ── Sync for EACH technician independently ──
     const results: any[] = [];
@@ -965,6 +967,7 @@ Deno.serve(async (req) => {
         settings: centralSettings as any, mailbox: tech.email ?? null, workDates,
         targets: (centralTargets ?? []).filter((t: any) => t.technician_id === tech.id).map((t: any) => ({ ...t, work_date: String(t.work_date) })),
         centralOwned: (centralCopies ?? []).some((l: any) => l.technician_id === tech.id && !!l.outlook_event_id) || (centralOperations ?? []).some((o: any) => o.technician_id === tech.id),
+        activated: (centralActivations ?? []).some((a: any) => a.scope === "all_active" || (a.technician_id === tech.id && a.mailbox === (tech.email ?? "").trim().toLowerCase())),
       });
       if (route !== "delegated") {
         // Never a delegated write (no dual source) and no fallback queue intent; central writes stay operator-driven.
@@ -1039,6 +1042,14 @@ Deno.serve(async (req) => {
         microsoft_event_id: firstCreated.calendarEventId,
         outlook_last_synced_at: new Date().toISOString(),
       }).eq("id", event_id);
+    }
+
+    // Real unplan of a central recipient: exact stored copies of removed people/days are reconciled by the
+    // central lifecycle (exact Graph ID + If-Match, DB claim re-checks true unplan). Never delegated.
+    {
+      const present = new Set(techRows.map((r) => r.tech.id));
+      const removed = [...new Set((centralCopies ?? []).filter((l: any) => !!l.outlook_event_id && !present.has(l.technician_id)).map((l: any) => l.technician_id))];
+      for (const technician_id of removed) await supabaseAdmin.functions.invoke("job-outlook-app-sync", { body: { action: "sync_event", event_id, technician_id } });
     }
 
     // ── Per-recipient delivery record + honest overall status (create/update) ──

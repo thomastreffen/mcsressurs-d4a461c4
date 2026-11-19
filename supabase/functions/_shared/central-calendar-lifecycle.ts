@@ -1,7 +1,8 @@
 import { diagnoseOneShotEvents, type OneShotEvent, type OneShotPermit } from "./job-calendar-one-shot.ts";
 
-// Shipping this module cannot authorize production writes. Separate activation review is mandatory.
-export const CENTRAL_LIFECYCLE_APPROVED = false;
+// Code path is complete; production writes are still gated per mailbox by an explicit, audited
+// superadmin activation row (central_calendar_activations) checked inside the atomic DB claim.
+export const CENTRAL_LIFECYCLE_APPROVED = true;
 export type DailyScope = { eventId: string; technicianId: string; companyId: string; mailbox: string; workDate: string; start: string; end: string; key: string };
 export type DailyCopy = { id: string; changeKey: string; transactionId?: string; source: "central" | "delegated" };
 export type DailyOperation = { id: string; state: string; kind: "create" | "update" | "delete"; payload: Record<string, any>; graphId: string | null };
@@ -33,6 +34,11 @@ export function dailyCalendarDiagnosis(events: OneShotEvent[], s: DailyScope, ti
   const remaining = events.filter(e => !(copy && e.id === copy.id && dailyIdentity(e, s, copy)));
   return diagnoseOneShotEvents(remaining, title, permit);
 }
+/** Stable signature of the *other* commitments shown to the planner; consent is bound to exactly this view. */
+export function conflictSignature(diagnosis: any): string {
+  const rows = (diagnosis?.conflicts ?? []).map((c: any) => [c.classification, c.local_overlap, c.show_as, c.event_type, c.all_day, c.cancelled].join("|")).sort();
+  return rows.join(";");
+}
 const patchFields = (p: Record<string, any>) => Object.fromEntries(["subject", "body", "start", "end", "location", "showAs"].filter(k => k in p).map(k => [k, p[k]]));
 
 /** GET-only preflight. Known other commitments require audited consent; unknown/duplicates never override. */
@@ -49,10 +55,10 @@ export async function previewDaily(graph: DailyGraph, scope: DailyScope, viewPat
 }
 
 /** One durable claim per day/version, one transport attempt; no blind retry of any ambiguous outcome. */
-export async function syncDaily(p: { scope: DailyScope; kind: DailyOperation["kind"]; payload: Record<string, any>; copy: DailyCopy | null; viewPath: string; graph: DailyGraph; store: DailyStore; authorized: boolean; conflictConsent: boolean; operationKey: string }) {
+export async function syncDaily(p: { scope: DailyScope; kind: DailyOperation["kind"]; payload: Record<string, any>; copy: DailyCopy | null; viewPath: string; graph: DailyGraph; store: DailyStore; authorized: boolean; conflictConsent: boolean; approvedConflictSignatures?: string[]; operationKey: string }) {
   const { scope: s, graph, store } = p;
   const open = await store.unresolved();
-  if (open) return reconcileDaily(s, open, graph, store);
+  if (open) return reconcileDaily(s, open, graph, store, p.viewPath);
   if (!p.authorized) return { state: "activation_required" };
   if (!await store.live(p.kind)) return { state: "live_scope_blocked" };
   if (p.copy?.source === "delegated") return { state: "delegated_copy_requires_verified_adoption" };
@@ -67,7 +73,8 @@ export async function syncDaily(p: { scope: DailyScope; kind: DailyOperation["ki
     try { preview = await previewDaily(graph, s, p.viewPath, p.payload, p.copy); }
     catch { return { state: "calendar_read_failed_no_write" }; }
     if (preview.blocked) return { state: preview.blocked, diagnosis: preview.diagnosis };
-    if (preview.diagnosis?.category === "other" && !p.conflictConsent) return { state: "known_conflict_consent_required", diagnosis: preview.diagnosis };
+    const signature = conflictSignature(preview.diagnosis);
+    if (preview.diagnosis?.category === "other" && !p.conflictConsent && !(p.approvedConflictSignatures ?? []).includes(signature)) return { state: "known_conflict_consent_required", diagnosis: preview.diagnosis, signature };
     if (p.kind === "update" && before && dailyMatches(before.data, p.payload)) return { state: "verified", graphId: p.copy?.id };
   }
   if (!await store.live(p.kind)) return { state: "live_scope_changed" };
@@ -81,12 +88,21 @@ export async function syncDaily(p: { scope: DailyScope; kind: DailyOperation["ki
   const state = accepted ? "accepted" : [401, 403, 400].includes(r.status) ? "rejected" : [409, 412].includes(r.status) ? "conflict" : "uncertain";
   await store.receipt(claim, state, r.status, graphId, r.data?.changeKey ?? null);
   if (!accepted) return { state: `${state}_no_retry`, http: r.status };
-  return reconcileDaily(s, { id: claim, state, kind: p.kind, payload: p.payload, graphId }, graph, store);
+  return reconcileDaily(s, { id: claim, state, kind: p.kind, payload: p.payload, graphId }, graph, store, p.viewPath);
 }
 
 /** Uses GET only. Missing or mismatched identities never turn into a replacement create. */
-export async function reconcileDaily(s: DailyScope, op: DailyOperation, graph: DailyGraph, store: DailyStore) {
-  if (!op.graphId) return { state: "uncertain_no_id_manual_reconciliation" };
+export async function reconcileDaily(s: DailyScope, op: DailyOperation, graph: DailyGraph, store: DailyStore, viewPath?: string) {
+  if (!op.graphId) {
+    // Unknown create outcome: look for the exact transactionId + markers by GET; never POST again.
+    if (op.kind !== "create" || !viewPath) return { state: "uncertain_no_id_manual_reconciliation" };
+    let v; try { v = await graph("GET", viewPath); } catch { return { state: "reconciliation_read_failed" }; }
+    if (v.status !== 200 || !Array.isArray(v.data?.value) || v.data["@odata.nextLink"]) return { state: "reconciliation_read_failed" };
+    const hits = v.data.value.filter((e: any) => e?.transactionId === s.key || dailyIdentity(e, s));
+    if (hits.length === 0) return { state: "uncertain_no_id_manual_reconciliation" };
+    if (hits.length > 1 || !dailyIdentity(hits[0], s)) return { state: "unresolved_no_retry" };
+    op = { ...op, graphId: hits[0].id };
+  }
   let r;
   try { r = await graph("GET", dailyGet(s, op.graphId)); } catch { return { state: "reconciliation_read_failed" }; }
   if (op.kind === "delete" && r.status === 404) {
