@@ -2,6 +2,7 @@ import { activeIdentity } from "./job-outlook-pilot-selector.ts";
 import { osloDate } from "./job-outlook-app-core.ts";
 import { type DailyScope, type DailyStore, type DailyOperation, type DailyCopy } from "./central-calendar-lifecycle.ts";
 
+export const MANUAL_LINK_CUTOFF = "2026-11-19T15:00:00Z";
 const checked = (r: any) => { if (r.error) throw new Error("authoritative_daily_read_failed"); return r.data; };
 /** Adapter for the private daily journal; never touches old intent queues, jobs or approvals. */
 export function centralCalendarStore(db: any, s: DailyScope, version: string | null): DailyStore {
@@ -9,7 +10,8 @@ export function centralCalendarStore(db: any, s: DailyScope, version: string | n
   return {
     async unresolved() {
       const r = checked(await exact(db.from("job_calendar_daily_operations").select("*")).in("state", ["claimed", "accepted", "uncertain"]).maybeSingle());
-      return r ? { id: r.id, state: r.state, kind: r.kind, payload: r.payload, graphId: r.graph_event_id } as DailyOperation : null;
+      // Operations accepted before the verification fix are linked only by an explicit operator click.
+      return r ? { id: r.id, state: r.state, kind: r.kind, payload: r.payload, graphId: r.graph_event_id, manualOnly: Date.parse(r.created_at) < Date.parse(MANUAL_LINK_CUTOFF) } as DailyOperation : null;
     },
     async live(kind) {
       const job = checked(await db.from("events").select("company_id,status,deleted_at").eq("id", s.eventId).maybeSingle());

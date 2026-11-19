@@ -17,7 +17,7 @@ import { missingSecrets } from "../_shared/hub-calendar-diagnostics-core.ts";
 import type { HubJob } from "../_shared/job-outlook-app-core.ts";
 import { pilotChoices, freshMailboxProbe, existingTargetDecision, activeIdentity, mailboxReadiness, type IdentityFacts } from "../_shared/job-outlook-pilot-selector.ts";
 import { planJobDays, clampTargetHours, type PilotTarget } from "../_shared/job-outlook-app-days.ts";
-import { CENTRAL_LIFECYCLE_APPROVED, previewDaily, type DailyGraph, type DailyScope } from "../_shared/central-calendar-lifecycle.ts";
+import { CENTRAL_LIFECYCLE_APPROVED, previewDaily, dailyGet, dailyVerification, type DailyGraph, type DailyScope } from "../_shared/central-calendar-lifecycle.ts";
 import { osloDayWindow } from "../_shared/job-calendar-one-shot.ts";
 import { buildDayPayload, jobDayDedupKey } from "../_shared/job-outlook-app-days.ts";
 
@@ -150,6 +150,65 @@ Deno.serve(async (req) => {
     if (finished.error) return json({ error: "audit_result_failed", result, audit_complete: false }, 409);
     return json({ ok: true, result, audit_complete: true, rollout_approved: false });
   }
+  // Accepted-but-unverified central operations: GET-only inspection and explicit operator-confirmed linking. Never creates.
+  if (action === "inspect_central_operation" || action === "link_central_operation") {
+    const opId = b.operation_id;
+    if (typeof opId !== "string" || !UUID.test(opId)) return json({ error: "invalid_operation" }, 400);
+    const { data: op, error: oe } = await admin.from("job_calendar_daily_operations").select("*").eq("id", opId).maybeSingle();
+    if (oe || !op) return json({ error: "operation_not_found" }, 404);
+    if (op.kind !== "create" || !op.graph_event_id) return json({ error: "not_a_linkable_create" }, 409);
+    if (op.state === "verified") return json({ status: "already_verified", graph_write_attempted: false });
+    if (op.state !== "accepted") return json({ error: "operation_not_accepted", state: op.state }, 409);
+    const rights = await uc.rpc("has_company_access", { _uid: caller, _company: op.company_id, _module: "resource_plan", _level: "edit" });
+    if (rights.error || rights.data !== true) return json({ error: "company_edit_required" }, 403);
+    const live = (await identities([op.technician_id], op.company_id)).get(op.technician_id);
+    if (!live || !activeIdentity(live)) return json({ error: "inactive_or_former_employee" }, 409);
+    const { data: blk } = await admin.from("schedule_blocks").select("start_at,end_at").eq("project_id", op.event_id).eq("technician_id", op.technician_id).is("deleted_at", null);
+    const day = (blk ?? []).filter((x: any) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date(x.start_at)) === String(op.work_date));
+    if (day.length !== 1) return json({ error: "assignment_day_changed_manual_review" }, 409);
+    const mb = String(op.mailbox);
+    const scope: DailyScope = { eventId: op.event_id, technicianId: op.technician_id, companyId: op.company_id, mailbox: mb, workDate: String(op.work_date), start: day[0].start_at, end: day[0].end_at, key: jobDayDedupKey(op.event_id, op.technician_id, String(op.work_date), mb) };
+    const phrase = `KOBLE OUTLOOK ${mb} ${String(op.id).slice(0, 8)}`;
+    const env = (n: string) => Deno.env.get(n)?.trim() ?? "";
+    if (missingSecrets(env).length) return json({ error: "calendar_app_not_configured" }, 409);
+    if (action === "link_central_operation" && b.phrase !== phrase) return json({ error: "exact_phrase_required", phrase }, 400);
+    const t0 = Date.now();
+    let get: { status: number; data: any };
+    try {
+      const tr = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(env("HUB_CALENDAR_TENANT_ID"))}/oauth2/v2.0/token`, { method: "POST", signal: AbortSignal.timeout(15000), body: new URLSearchParams({ client_id: env("HUB_CALENDAR_CLIENT_ID"), client_secret: env("HUB_CALENDAR_CLIENT_SECRET"), grant_type: "client_credentials", scope: "https://graph.microsoft.com/.default" }) });
+      if (!tr.ok) return json({ error: "calendar_token_failed", graph_write_attempted: false }, 409);
+      const token = (await tr.json()).access_token;
+      const facts = JSON.parse(atob(String(token).split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      if (facts.tid !== env("HUB_CALENDAR_TENANT_ID") || (facts.appid ?? facts.azp) !== env("HUB_CALENDAR_CLIENT_ID") || env("HUB_CALENDAR_CLIENT_ID") === env("AZURE_CLIENT_ID")) return json({ error: "calendar_identity_unverified" }, 409);
+      const r = await fetch(`https://graph.microsoft.com${dailyGet(scope, op.graph_event_id)}`, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(20000), headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC", IdType="ImmutableId"' } });
+      get = { status: r.status, data: await r.json().catch(() => null) };
+    } catch { return json({ error: "calendar_read_failed", graph_write_attempted: false }, 409); }
+    const v = get.status === 200 ? dailyVerification(get.data, scope, { graphId: op.graph_event_id, payload: op.payload }) : { ok: false, checks: {} };
+    const report = { read_only: action === "inspect_central_operation", graph_write_attempted: false, http_status: get.status, latency_ms: Date.now() - t0, mailbox: mb, work_date: op.work_date, checks: v.checks, verified: v.ok, change_key_matches_receipt: get.data?.changeKey === op.graph_change_key, graph_created: get.data?.createdDateTime ?? null, phrase: v.ok ? phrase : null };
+    await audit(action, { operation_id: op.id, http_status: get.status, verified: v.ok, checks: v.checks });
+    if (action === "inspect_central_operation" || !v.ok) return json({ ...report, status: v.ok ? "ready_to_link" : get.status === 404 ? "graph_copy_missing_manual_review" : "verification_failed_no_link" });
+    const fp = String(op.operation_key).split(":create:")[1] ?? null;
+    const lk = await admin.from("job_outlook_app_links").upsert({ event_id: op.event_id, technician_id: op.technician_id, company_id: op.company_id, mailbox: mb, work_date: op.work_date, dedup_key: scope.key, state: "synced", outlook_event_id: get.data.id, outlook_change_key: get.data.changeKey, hub_version: fp, updated_at: new Date().toISOString() }, { onConflict: "dedup_key" });
+    if (lk.error) return json({ ...report, status: "link_write_failed" }, 409);
+    const up = await admin.from("job_calendar_daily_operations").update({ state: "verified", http_status: 200, graph_change_key: get.data.changeKey, finished_at: new Date().toISOString() }).eq("id", op.id).eq("state", "accepted").select("id");
+    if (up.error) return json({ ...report, status: "receipt_write_failed" }, 409);
+    await admin.from("event_recipient_delivery").update({ status: "sent", delivery_state: "verified", verification_signal: "exact_graph_get_200", reason_code: "central_verified_readback" }).eq("event_id", op.event_id).eq("technician_id", op.technician_id).eq("channel", "calendar");
+    return json({ ...report, status: (up.data ?? []).length ? "linked_verified" : "already_linked" });
+  }
+  if (action === "central_unverified") {
+    const company = b.company_id;
+    if (typeof company !== "string" || !UUID.test(company)) return json({ error: "invalid_company" }, 400);
+    const rights = await uc.rpc("has_company_access", { _uid: caller, _company: company, _module: "resource_plan", _level: "edit" });
+    if (rights.error || rights.data !== true) return json({ error: "company_edit_required" }, 403);
+    const { data, error } = await admin.from("job_calendar_daily_operations").select("id,company_id,event_id,technician_id,mailbox,work_date,kind,state,http_status,created_at").in("state", ["accepted", "uncertain", "claimed"]);
+    if (error) return json({ error: "journal_read_failed" }, 409);
+    const visible = [];
+    for (const o of data ?? []) {
+      const ok = o.company_id === company || (await uc.rpc("has_company_access", { _uid: caller, _company: o.company_id, _module: "resource_plan", _level: "edit" })).data === true;
+      if (ok) visible.push(o);
+    }
+    return json({ read_only: true, operations: visible });
+  }
   // Exact operator-authorized retry for ONE activated technician on ONE already-assigned job day. Never other recipients.
   if (action === "central_pending" || action === "retry_central_assignment") {
     const company = b.company_id;
@@ -172,6 +231,8 @@ Deno.serve(async (req) => {
       if (!live || !activeIdentity(live)) continue;
       const { data: done } = await admin.from("job_outlook_app_links").select("id").eq("event_id", p.event_id).eq("technician_id", p.technician_id).not("outlook_event_id", "is", null).limit(1);
       if (done?.length) continue;
+      const { data: openOp } = await admin.from("job_calendar_daily_operations").select("id").eq("event_id", p.event_id).eq("technician_id", p.technician_id).in("state", ["claimed", "accepted", "uncertain"]).limit(1);
+      if (openOp?.length) continue; // accepted/uncertain: only inspect/link, never another create
       rows.push({ event_id: p.event_id, technician_id: p.technician_id, mailbox, title: ev.title, job_number: ev.job_number ?? ev.internal_number, start_time: ev.start_time, reason_code: p.reason_code, phrase: `KJØR KALENDER ${mailbox} ${p.event_id.slice(0, 8)}` });
     }
     if (action === "central_pending") return json({ read_only: true, pending: rows });

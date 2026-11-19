@@ -5,7 +5,7 @@ import { diagnoseOneShotEvents, type OneShotEvent, type OneShotPermit } from "./
 export const CENTRAL_LIFECYCLE_APPROVED = true;
 export type DailyScope = { eventId: string; technicianId: string; companyId: string; mailbox: string; workDate: string; start: string; end: string; key: string };
 export type DailyCopy = { id: string; changeKey: string; transactionId?: string; source: "central" | "delegated" };
-export type DailyOperation = { id: string; state: string; kind: "create" | "update" | "delete"; payload: Record<string, any>; graphId: string | null };
+export type DailyOperation = { id: string; state: string; kind: "create" | "update" | "delete"; payload: Record<string, any>; graphId: string | null; manualOnly?: boolean };
 export type DailyGraph = (method: "GET" | "POST" | "PATCH" | "DELETE", path: string, body?: unknown, ifMatch?: string) => Promise<{ status: number; data: any }>;
 export interface DailyStore {
   unresolved(): Promise<DailyOperation | null>;
@@ -22,7 +22,8 @@ const utc = (d: any) => d?.timeZone === "UTC" && typeof d.dateTime === "string" 
 export function dailyIdentity(e: any, s: DailyScope, copy?: DailyCopy | null): boolean {
   const body = e?.body?.content;
   return !!e?.id && (!copy || e.id === copy.id) && typeof e.changeKey === "string" && !!e.changeKey &&
-    typeof body === "string" && [`MCS_EVENT_ID:${s.eventId}`, `MCS_TECHNICIAN_ID:${s.technicianId}`, `MCS_WORK_DATE:${s.workDate}`].every(m => body.includes(m)) &&
+    // Exchange strips HTML-comment markers; an exact stored Graph ID (from our own 201) is then the identity.
+    ((typeof body === "string" && [`MCS_EVENT_ID:${s.eventId}`, `MCS_TECHNICIAN_ID:${s.technicianId}`, `MCS_WORK_DATE:${s.workDate}`].every(m => body.includes(m))) || (!!copy && e.id === copy.id)) &&
     e.type === "singleInstance" && e.isCancelled === false && e.isAllDay === false && Array.isArray(e.attendees) && e.attendees.length === 0 && Number.isFinite(utc(e.start)) && Number.isFinite(utc(e.end));
 }
 export function dailyMatches(e: any, payload: Record<string, any>): boolean {
@@ -38,6 +39,25 @@ export function dailyCalendarDiagnosis(events: OneShotEvent[], s: DailyScope, ti
 export function conflictSignature(diagnosis: any): string {
   const rows = (diagnosis?.conflicts ?? []).map((c: any) => [c.classification, c.local_overlap, c.show_as, c.event_type, c.all_day, c.cancelled].join("|")).sort();
   return rows.join(";");
+}
+/** Field-by-field check of a GET copy against a stored operation. Graph rewrites HTML bodies, so the body is
+ * verified by exact Hub markers (or the exact transactionId we sent), never by byte equality. No content is returned. */
+export function dailyVerification(e: any, s: DailyScope, op: { graphId: string | null; payload: Record<string, any> }) {
+  const body = typeof e?.body?.content === "string" ? e.body.content : "";
+  const markers = [`MCS_EVENT_ID:${s.eventId}`, `MCS_TECHNICIAN_ID:${s.technicianId}`, `MCS_WORK_DATE:${s.workDate}`].every(m => body.includes(m));
+  const tx = typeof op.payload?.transactionId === "string" && e?.transactionId === op.payload.transactionId;
+  const checks = {
+    id_match: !!op.graphId && e?.id === op.graphId,
+    hub_identity: markers || tx, markers_in_body: markers, transaction_id_match: tx,
+    change_key_present: typeof e?.changeKey === "string" && !!e.changeKey,
+    single_instance: e?.type === "singleInstance", not_cancelled: e?.isCancelled === false, not_all_day: e?.isAllDay === false,
+    no_attendees: Array.isArray(e?.attendees) && e.attendees.length === 0,
+    start_match: Number.isFinite(utc(e?.start)) && utc(e?.start) === utc(op.payload?.start) && utc(e?.start) === Date.parse(s.start),
+    end_match: Number.isFinite(utc(e?.end)) && utc(e?.end) === utc(op.payload?.end) && utc(e?.end) === Date.parse(s.end),
+    subject_match: e?.subject === op.payload?.subject, show_as_match: e?.showAs === op.payload?.showAs,
+  };
+  const { markers_in_body: _m, transaction_id_match: _t, ...required } = checks;
+  return { ok: Object.values(required).every(Boolean), checks };
 }
 const patchFields = (p: Record<string, any>) => Object.fromEntries(["subject", "body", "start", "end", "location", "showAs"].filter(k => k in p).map(k => [k, p[k]]));
 
@@ -58,6 +78,7 @@ export async function previewDaily(graph: DailyGraph, scope: DailyScope, viewPat
 export async function syncDaily(p: { scope: DailyScope; kind: DailyOperation["kind"]; payload: Record<string, any>; copy: DailyCopy | null; viewPath: string; graph: DailyGraph; store: DailyStore; authorized: boolean; conflictConsent: boolean; approvedConflictSignatures?: string[]; operationKey: string }) {
   const { scope: s, graph, store } = p;
   const open = await store.unresolved();
+  if (open?.manualOnly) return { state: "manual_link_required_no_retry" };
   if (open) return reconcileDaily(s, open, graph, store, p.viewPath);
   if (!p.authorized) return { state: "activation_required" };
   if (!await store.live(p.kind)) return { state: "live_scope_blocked" };
@@ -98,9 +119,10 @@ export async function reconcileDaily(s: DailyScope, op: DailyOperation, graph: D
     if (op.kind !== "create" || !viewPath) return { state: "uncertain_no_id_manual_reconciliation" };
     let v; try { v = await graph("GET", viewPath); } catch { return { state: "reconciliation_read_failed" }; }
     if (v.status !== 200 || !Array.isArray(v.data?.value) || v.data["@odata.nextLink"]) return { state: "reconciliation_read_failed" };
-    const hits = v.data.value.filter((e: any) => e?.transactionId === s.key || dailyIdentity(e, s));
+    const tx = typeof op.payload?.transactionId === "string" ? op.payload.transactionId : s.key;
+    const hits = v.data.value.filter((e: any) => e?.transactionId === tx || dailyIdentity(e, s));
     if (hits.length === 0) return { state: "uncertain_no_id_manual_reconciliation" };
-    if (hits.length > 1 || !dailyIdentity(hits[0], s)) return { state: "unresolved_no_retry" };
+    if (hits.length > 1) return { state: "unresolved_no_retry" };
     op = { ...op, graphId: hits[0].id };
   }
   let r;
@@ -109,8 +131,9 @@ export async function reconcileDaily(s: DailyScope, op: DailyOperation, graph: D
     if (!await store.live("delete")) return { state: "replanned_reconciliation_required" };
     await store.saveCopy(null, true); await store.receipt(op.id, "verified", 404, op.graphId, null); return { state: "verified_absent" };
   }
-  if (r.status !== 200 || !dailyIdentity(r.data, s) || r.data.id !== op.graphId) return { state: "unresolved_no_retry" };
-  if (op.kind === "delete" || !dailyMatches(r.data, op.payload)) return { state: "unresolved_no_retry" };
+  if (r.status !== 200 || op.kind === "delete") return { state: "unresolved_no_retry", http: r.status };
+  const v = dailyVerification(r.data, s, op);
+  if (!v.ok) return { state: "unresolved_no_retry", http: r.status, failed_checks: Object.entries(v.checks).filter(([, ok]) => !ok).map(([k]) => k) };
   await store.saveCopy({ id: r.data.id, changeKey: r.data.changeKey, transactionId: r.data.transactionId, source: "central" }, false);
   await store.receipt(op.id, "verified", 200, r.data.id, r.data.changeKey);
   return { state: "verified", graphId: r.data.id };

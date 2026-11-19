@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
       if (result.state==="known_conflict_consent_required" && (result as any).signature) {
         await sb.from("central_calendar_conflict_reviews").upsert({company_id:ev.company_id,event_id:eventId,technician_id:row.technicianId,mailbox:row.mailbox,work_date:row.workDate,signature:(result as any).signature,summary:(result as any).diagnosis?.conflicts ?? []},{onConflict:"event_id,technician_id,work_date,signature",ignoreDuplicates:true});
       }
-      await log("daily_lifecycle",{state:result.state});out.push({...base,status:result.state});
+      await log("daily_lifecycle",{state:result.state,http:(result as any).http ?? null,failed_checks:(result as any).failed_checks ?? null});out.push({...base,status:result.state});
     }
     return out;
   };
