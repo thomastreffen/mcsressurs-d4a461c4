@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { simOutcome, globalGateNotes } from "../../../supabase/functions/_shared/job-outlook-pilot-sim-view";
 import { JobCalendarOneShot } from "./JobCalendarOneShot";
+import { CentralCalendarReadiness } from "./CentralCalendarReadiness";
 import { SystemSenderDiagnostics } from "./SystemSenderDiagnostics";
 
 type Any = Record<string, any>;
@@ -158,6 +159,7 @@ export function JobOutlookPilotScopeCard() {
           ))}
         </div>
         {msg && <p role="status">{msg}</p>}
+        <CentralCalendarReadiness />
         <JobCalendarOneShot />
         <SystemSenderDiagnostics />
       </CardContent>

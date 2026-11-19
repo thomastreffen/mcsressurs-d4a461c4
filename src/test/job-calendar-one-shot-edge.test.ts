@@ -7,7 +7,7 @@ async function load(options: { admin?: boolean; company?: boolean; user?: boolea
   let serve: ((req: Request) => Promise<Response>) | undefined;
   const mutations = vi.fn(() => { throw Error("DB mutations prohibited"); });
   const from = vi.fn((table: string) => {
-    if (!options.diagnose) { const q: any = { select: () => q, order: () => q, not: () => q, limit: async () => ({ data: [], error: null }) }; return q; }
+    if (!options.diagnose) { const q: any = { select: () => q, order: () => q, not: () => q, eq: () => q, limit: async () => ({ data: [], error: null }) }; return q; }
     const x = core.ONE_SHOT;
     const row: Record<string, unknown> = {
       events: { id: x.event_id, company_id: x.company_id, title: "Majorstua", status: "rejected", start_time: x.start, end_time: x.end },
@@ -53,10 +53,23 @@ it("authenticated diagnose reads one exact calendarView without DB mutation, cla
     expect(init?.method).toBe("GET"); expect(String(url)).toBe(`https://graph.microsoft.com${core.oneShotView()}`);
     return new Response(JSON.stringify({ value: [{ id: "private-id", subject: "Private", showAs: "free", body: {content:""}, type:"singleInstance", isCancelled:false, isAllDay:false, start: { dateTime: core.ONE_SHOT.start, timeZone: "UTC" }, end: { dateTime: core.ONE_SHOT.end, timeZone: "UTC" } }] }), { status: 200 });
   });
+  vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-11-18T12:00:00Z"));
   try {
     const response = await serve(request({ action: "diagnose" })); expect(response.status).toBe(200);
     const data = await response.json(); expect(data.read_only).toBe(true); expect(data.diagnosis.conflicts[0].classification).toBe("free_overlap");
     expect(mutations).not.toHaveBeenCalled(); expect(rpc.mock.calls.every(c => ["has_company_access", "assignment_schedule_signature"].includes(String(c[0])))).toBe(true);
     expect(fetch).toHaveBeenCalledTimes(2); expect(JSON.stringify(data)).not.toContain("private-id"); expect(JSON.stringify(data)).not.toContain("Private");
-  } finally { fetch.mockRestore(); }
+  } finally { fetch.mockRestore(); vi.useRealTimers(); }
+});it("unknown permit fails closed before reads or network", async () => {
+  const { serve, from } = await load(); const fetch = vi.spyOn(globalThis, "fetch").mockRejectedValue(Error("network prohibited"));
+  try { const r = await serve(request({ action: "status", permit: "emil_60570" })); expect(r.status).toBe(400); expect(from).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled(); } finally { fetch.mockRestore(); }
+});
+it("update/delete are never available for the 60576 permit", async () => {
+  const { serve, from } = await load(); const fetch = vi.spyOn(globalThis, "fetch").mockRejectedValue(Error("network prohibited"));
+  try { const r = await serve(request({ action: "mutation_preview", kind: "delete", permit: "mats_60576" })); expect(r.status).toBe(409); expect(from).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled(); } finally { fetch.mockRestore(); }
+});
+it("60576 wrong phrase (60570 phrase) is rejected before any read", async () => {
+  const { serve, from } = await load();
+  const r = await serve(request({ action: "create", permit: "mats_60576", run_id: "00000000-0000-4000-8000-000000000001", payload_hash: "a".repeat(64), confirm: core.ONE_SHOT.phrase, pending_busy_confirmed: true, resource_plan_confirmed: true, calendar_signature: "b".repeat(64) }));
+  expect(r.status).toBe(409); expect(from).not.toHaveBeenCalled();
 });

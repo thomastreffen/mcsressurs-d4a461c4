@@ -26,3 +26,22 @@ export function existingTargetDecision(existing: { revoked_at: string | null; ex
   if (!existing || existing.revoked_at) return "none";
   return Date.parse(existing.expires_at) <= now.getTime() ? "expired" : "active";
 }
+
+/** Former employees are never selectable, regardless of stale login/account rows. */
+export const EXCLUDED_TECHNICIANS: ReadonlySet<string> = new Set([
+  "ebc15ac7-fd4c-461d-a61c-06b97d705cc0", // Ståle Roar Jensen
+  "ba707f5e-0a7d-40b8-95f2-896d1c4c01c2", // Andre Midtgard
+]);
+export interface IdentityFacts { technician_id: string; archived: boolean; deleted: boolean; account_active: boolean; person_active: boolean; employed_in_company: boolean; mailbox: string }
+/** Central calendar eligibility = active technician + active Hub login + active person + active employment in the job company + mailbox. */
+export function activeIdentity(f: IdentityFacts): boolean {
+  return !EXCLUDED_TECHNICIANS.has(f.technician_id) && !f.archived && !f.deleted && f.account_active && f.person_active && f.employed_in_company && /^[^@\s]+@[^@\s]+$/.test(f.mailbox);
+}
+export type ReadinessState = "not_selected" | "probe_required" | "probe_ok" | "probe_failed";
+/** Per-mailbox read-only state: each mailbox needs its own fresh 200; one mailbox never proves another. */
+export function mailboxReadiness(probe: { created_at: string; result: { pass?: boolean; http?: number } } | null, hasTarget: boolean, now: Date): ReadinessState {
+  if (!hasTarget) return "not_selected";
+  if (!probe) return "probe_required";
+  if (freshMailboxProbe(probe, now)) return "probe_ok";
+  return probe.result?.pass === false ? "probe_failed" : "probe_required";
+}

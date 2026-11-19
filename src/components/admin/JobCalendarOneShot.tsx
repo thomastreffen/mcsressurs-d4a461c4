@@ -4,12 +4,12 @@ import { invokeWithSession } from "@/lib/invoke-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ONE_SHOT, type OneShotDiagnosis, type OneShotConflictClass } from "../../../supabase/functions/_shared/job-calendar-one-shot";
+import { ONE_SHOT, PERMITS, type OneShotPermit, type OneShotDiagnosis, type OneShotConflictClass } from "../../../supabase/functions/_shared/job-calendar-one-shot";
 
 type Preview = { run_id: string; payload_hash: string; calendar_signature: string; conflict_override_required: boolean; expires_at: string; mailbox: string; local_time: string; approval: string; payload: { subject: string; body: { content: string }; location?: { displayName: string } }; request_method: string; request_path: string };
 type Result = { preview?: Preview; diagnosis?: OneShotDiagnosis; existing_mapping?: boolean; state?: string; consumed?: boolean; runs?: { id: string; state: string; consumed_at: string | null; event_id_persisted: boolean; http_status: number | null }[] };
 class CalendarCheckError extends Error { constructor(code: string, public diagnosis?: OneShotDiagnosis) { super(code); } }
-async function call(body: Record<string, unknown>): Promise<Result> {
+async function callRaw(body: Record<string, unknown>): Promise<Result> {
   const r = await invokeWithSession<Result>("job-calendar-one-shot", { body });
   if (r.error) {
     let code = r.error.message;
@@ -70,7 +70,7 @@ function MutationPanel() {
   const [busy, setBusy] = useState(false);
   const run = async (kind: "update" | "delete") => {
     setBusy(true); setErr(""); setCheck(null);
-    try { setCheck(await call({ action: "mutation_preview", kind }) as unknown as MutationCheck); }
+    try { setCheck(await callRaw({ action: "mutation_preview", kind, permit: ONE_SHOT.id }) as unknown as MutationCheck); }
     catch (e) { const c = e instanceof Error ? e.message : "stopped"; setErr(blockers[c] ?? messages[c] ?? `Sperret: ${c}`); }
     finally { setBusy(false); }
   };
@@ -91,8 +91,13 @@ function MutationPanel() {
     </div>}
   </div>;
 }
+const dayLabel = (d: string) => new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${d}T00:00:00Z`));
 export function JobCalendarOneShot() {
-  const status = useQuery({ queryKey: ["job-calendar-one-shot"], queryFn: () => call({ action: "status" }), retry: false });
+  return <>{Object.values(PERMITS).map(p => <OneShotPermitPanel key={p.id} permit={p} />)}</>;
+}
+export function OneShotPermitPanel({ permit: x }: { permit: OneShotPermit }) {
+  const call = (body: Record<string, unknown>) => callRaw({ ...body, permit: x.id });
+  const status = useQuery({ queryKey: ["job-calendar-one-shot", x.id], queryFn: () => call({ action: "status" }), retry: false });
   const [preview, setPreview] = useState<Preview | null>(null);
   const [confirm, setConfirm] = useState("");
   const [busyAccepted, setBusyAccepted] = useState(false);
@@ -111,11 +116,11 @@ export function JobCalendarOneShot() {
     } catch (e) { setPreview(null); if (e instanceof CalendarCheckError && e.diagnosis) setDiagnosis(e.diagnosis); const code = e instanceof Error ? e.message : "stopped_requires_status_check"; setMessage(messages[code] ?? `Sperret: ${code}`); }
     finally { await status.refetch(); setBusy(false); }
   };
-  return <section className="space-y-3 border-t border-border pt-4" aria-label="Engangspilot Mats">
-    <h3 className="font-semibold">Engangspilot · Mats · 60570 Majorstua stasjon</h3>
-    <p className="break-all">{ONE_SHOT.mailbox}</p>
-    <p>19. november 2026 · 08:00–16:00 · Europe/Oslo</p>
-    <p className="text-muted-foreground">Ventende godkjenning beholdes. Ingen e-post, invitasjon, påminnelse eller endring av 20. november.</p>
+  return <section className="space-y-3 border-t border-border pt-4" aria-label={`Engangspilot ${x.label}`}>
+    <h3 className="font-semibold">Engangspilot · {x.label}</h3>
+    <p className="break-all">{x.mailbox}</p>
+    <p>{dayLabel(x.work_date)} · 08:00–16:00 · Europe/Oslo</p>
+    <p className="text-muted-foreground">Ventende godkjenning beholdes. Ingen e-post, invitasjon, påminnelse eller endring av andre dager. Bare denne ene dagen.</p>
     {status.error && <p role="alert" className="text-destructive">Kunne ikke hente forsøksstatus. Skriving sperret.</p>}
     <Button variant="outline" disabled={busy || status.isLoading || !!status.error || !!status.data?.consumed} onClick={() => perform({ action: "preflight" })}>Lesekontroll og forhåndsvisning</Button>
     <Button variant="outline" disabled={busy || status.isLoading || !!status.error} onClick={() => perform({ action: "diagnose" })}>Undersøk kalenderkonflikt – kun lesing</Button>
@@ -132,16 +137,16 @@ export function JobCalendarOneShot() {
       <details><summary className="cursor-pointer">Eksakte forespørselsdata</summary><pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs">{JSON.stringify({ method: preview.request_method, path: preview.request_path, payload: preview.payload, payload_hash: preview.payload_hash }, null, 2)}</pre></details>
       <p className="text-muted-foreground">Bekreftelsen utløper {new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", hour: "2-digit", minute: "2-digit" }).format(new Date(preview.expires_at))}. Globale brytere og ventende kø forblir stengt.</p>
       <label className="flex items-start gap-2"><Checkbox checked={busyAccepted} onCheckedChange={v => setBusyAccepted(v === true)} /><span>Jeg godkjenner «Opptatt» for Mats selv om hans svar fortsatt venter.</span></label>
-      <label className="flex items-start gap-2"><Checkbox aria-label="Ressursplanen er korrekt" checked={planAccepted} onCheckedChange={v => setPlanAccepted(v === true)} /><span>Jeg bekrefter at ressursplanen er korrekt: Mats, 60570, 19. november 08:00–16:00.</span></label>
+      <label className="flex items-start gap-2"><Checkbox aria-label="Ressursplanen er korrekt" checked={planAccepted} onCheckedChange={v => setPlanAccepted(v === true)} /><span>Jeg bekrefter at ressursplanen er korrekt: {x.label}.</span></label>
       {preview.conflict_override_required && <label className="flex items-start gap-2"><Checkbox aria-label="Tidskonflikt kjent" checked={conflictAccepted} onCheckedChange={v => setConflictAccepted(v === true)} /><span>Opprett likevel, tidskonflikt kjent. Jeg har kontrollert treffene; andre Outlook-avtaler skal ikke endres.</span></label>}
-      <Input aria-label="Engangsbekreftelse" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={preview.conflict_override_required ? ONE_SHOT.overridePhrase : ONE_SHOT.phrase} />
-      <Button className="h-auto min-h-11 whitespace-normal" disabled={busy || !busyAccepted || !planAccepted || preview.conflict_override_required && !conflictAccepted || confirm !== (preview.conflict_override_required ? ONE_SHOT.overridePhrase : ONE_SHOT.phrase) || Date.parse(preview.expires_at) <= Date.now() || !!status.data?.consumed} onClick={() => perform({ action: "create", run_id: preview.run_id, payload_hash: preview.payload_hash, calendar_signature: preview.calendar_signature, confirm, pending_busy_confirmed: true, resource_plan_confirmed: true, conflict_override: preview.conflict_override_required && conflictAccepted })}>{preview.conflict_override_required ? "Opprett likevel for Mats – tidskonflikt kjent" : "Opprett én avtale for Mats 19. november"}</Button>
+      <Input aria-label="Engangsbekreftelse" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={preview.conflict_override_required ? x.overridePhrase : x.phrase} />
+      <Button className="h-auto min-h-11 whitespace-normal" disabled={busy || !busyAccepted || !planAccepted || preview.conflict_override_required && !conflictAccepted || confirm !== (preview.conflict_override_required ? x.overridePhrase : x.phrase) || Date.parse(preview.expires_at) <= Date.now() || !!status.data?.consumed} onClick={() => perform({ action: "create", run_id: preview.run_id, payload_hash: preview.payload_hash, calendar_signature: preview.calendar_signature, confirm, pending_busy_confirmed: true, resource_plan_confirmed: true, conflict_override: preview.conflict_override_required && conflictAccepted })}>{preview.conflict_override_required ? "Opprett likevel for Mats – tidskonflikt kjent" : `Opprett én avtale for Mats ${dayLabel(x.work_date)}`}</Button>
     </div>}
     {(status.data?.runs ?? []).filter(r => !!r.consumed_at).map(r => <div key={r.id} className="space-y-2">
       <p>Forsøk: {r.state === "posting" ? "Påbegynt – resultat må kontrolleres" : outcomes[r.state] ?? r.state}{r.http_status ? ` · HTTP ${r.http_status}` : ""}</p>
       {r.state !== "succeeded" && <Button variant="outline" disabled={busy} onClick={() => perform({ action: "reconcile", run_id: r.id })}>Lesekontroller utfallet – ingen ny opprettelse</Button>}
     </div>)}
     {message && <p role="status">{message}</p>}
-  <MutationPanel />
+  {x.id === ONE_SHOT.id && <MutationPanel />}
   </section>;
 }

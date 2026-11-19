@@ -12,7 +12,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { missingSecrets } from "../_shared/hub-calendar-diagnostics-core.ts";
 import type { HubJob } from "../_shared/job-outlook-app-core.ts";
-import { pilotChoices, freshMailboxProbe, existingTargetDecision } from "../_shared/job-outlook-pilot-selector.ts";
+import { pilotChoices, freshMailboxProbe, existingTargetDecision, activeIdentity, mailboxReadiness, type IdentityFacts } from "../_shared/job-outlook-pilot-selector.ts";
 import { planJobDays, clampTargetHours, type PilotTarget } from "../_shared/job-outlook-app-days.ts";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -50,6 +50,24 @@ Deno.serve(async (req) => {
     const { data } = await admin.from("job_outlook_app_pilot_actions").select("created_at,result").eq("target_id", id).eq("action", "probe_mailbox").order("created_at", { ascending: false }).limit(1).maybeSingle();
     return data;
   };
+  // Live identity facts per technician for one company (read-only).
+  const identities = async (techIds: string[], companyId: string): Promise<Map<string, IdentityFacts>> => {
+    const out = new Map<string, IdentityFacts>();
+    if (!techIds.length) return out;
+    const { data: techs } = await admin.from("technicians").select("id,user_id,email,archived_at,deleted_at").in("id", techIds);
+    const users = (techs ?? []).map((t: any) => t.user_id).filter(Boolean);
+    const { data: accts } = users.length ? await admin.from("user_accounts").select("auth_user_id,person_id,is_active").in("auth_user_id", users).eq("is_active", true) : { data: [] as any[] };
+    const persons = (accts ?? []).map((a: any) => a.person_id);
+    const [{ data: ppl }, { data: emp }] = persons.length ? await Promise.all([
+      admin.from("people").select("id,is_active").in("id", persons),
+      admin.from("employment_profiles").select("person_id").in("person_id", persons).eq("company_id", companyId).eq("relationship_type", "employee").is("archived_at", null),
+    ]) : [{ data: [] as any[] }, { data: [] as any[] }];
+    for (const t of techs ?? []) {
+      const a = (accts ?? []).find((x: any) => x.auth_user_id === t.user_id);
+      out.set(t.id, { technician_id: t.id, archived: !!t.archived_at, deleted: !!t.deleted_at, account_active: !!a, person_active: !!a && !!(ppl ?? []).find((p: any) => p.id === a.person_id)?.is_active, employed_in_company: !!a && (emp ?? []).some((e: any) => e.person_id === a.person_id), mailbox: (t.email ?? "").trim().toLowerCase() });
+    }
+    return out;
+  };
   const choicesFor = async (eventId: string) => {
     const [{ data: ev }, { data: rows }, { data: blocks }, { data: links }] = await Promise.all([
       admin.from("events").select("id,company_id,deleted_at,project_type,title,project_number").eq("id", eventId).maybeSingle(),
@@ -57,7 +75,11 @@ Deno.serve(async (req) => {
       admin.from("schedule_blocks").select("company_id,technician_id,start_at,end_at,source,deleted_at").eq("project_id", eventId).is("deleted_at", null),
       admin.from("job_calendar_day_links").select("technician_id,work_date,status,outlook_event_id").eq("event_id", eventId),
     ]);
-    return { job: ev, technicians: ev ? pilotChoices(ev, (rows ?? []).map((r: any) => ({ technician_id: r.technician_id, ...r.technicians })), blocks ?? [], links ?? []) : [] };
+    if (!ev) return { job: ev, technicians: [] };
+    const ids = await identities((rows ?? []).map((r: any) => r.technician_id), ev.company_id);
+    // Former employees / inactive logins never appear and can never be confirmed.
+    const eligible = (rows ?? []).filter((r: any) => { const f = ids.get(r.technician_id); return !!f && activeIdentity(f); });
+    return { job: ev, technicians: pilotChoices(ev, eligible.map((r: any) => ({ technician_id: r.technician_id, ...r.technicians })), blocks ?? [], links ?? []) };
   };
   if (action === "candidates") {
     if (b.event_id !== undefined) {
@@ -69,6 +91,43 @@ Deno.serve(async (req) => {
     const { data, error } = await admin.from("events").select("id,title,project_number,company_id").is("deleted_at", null).neq("project_type", "task").ilike("title", `%${search}%`).order("start_time", { ascending: false }).limit(30);
     if (error) return json({ error: "lookup_failed" }, 500);
     return json({ jobs: data ?? [] });
+  }
+
+  if (action === "readiness") {
+    // Read-only overview: active technicians with planned future job days, per mailbox and day. No Graph call, no writes.
+    const horizon = new Date(now.getTime() + 60 * 86_400_000).toISOString();
+    const { data: blocks, error } = await admin.from("schedule_blocks").select("project_id,technician_id,company_id,start_at,end_at").eq("source", "manual").is("deleted_at", null).not("project_id", "is", null).gte("start_at", now.toISOString()).lt("start_at", horizon).limit(2000);
+    if (error) return json({ error: "lookup_failed" }, 500);
+    const byCompany = new Map<string, Set<string>>();
+    for (const bl of blocks ?? []) { if (!byCompany.has(bl.company_id)) byCompany.set(bl.company_id, new Set()); byCompany.get(bl.company_id)!.add(bl.technician_id); }
+    const idMaps = await Promise.all([...byCompany].map(async ([c, t]) => [c, await identities([...t], c)] as const));
+    const idByCompany = new Map(idMaps);
+    const [{ data: targets }, { data: links }, { data: names }] = await Promise.all([
+      admin.from("job_outlook_app_pilot_targets").select("id,event_id,technician_id,work_date,mailbox").is("revoked_at", null).gt("expires_at", now.toISOString()),
+      admin.from("job_calendar_day_links").select("event_id,technician_id,work_date,status,outlook_event_id").gte("work_date", now.toISOString().slice(0, 10)),
+      admin.from("technicians").select("id,name").in("id", [...new Set((blocks ?? []).map((b: any) => b.technician_id))]),
+    ]);
+    const evIds = [...new Set((blocks ?? []).map((b: any) => b.project_id))];
+    const { data: deliveries } = evIds.length ? await admin.from("event_recipient_delivery").select("event_id,technician_id,channel,status,graph_status").in("event_id", evIds) : { data: [] as any[] };
+    const { data: jobs } = evIds.length ? await admin.from("events").select("id,title,project_number").in("id", evIds) : { data: [] as any[] };
+    const osloDate = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date(iso));
+    const rows: any[] = [];
+    let excluded = 0;
+    for (const bl of blocks ?? []) {
+      const f = idByCompany.get(bl.company_id)?.get(bl.technician_id);
+      if (!f || !activeIdentity(f)) { excluded++; continue; }
+      const day = osloDate(bl.start_at);
+      const tgt = (targets ?? []).find((t: any) => t.event_id === bl.project_id && t.technician_id === bl.technician_id && t.work_date === day);
+      const link = (links ?? []).find((l: any) => l.event_id === bl.project_id && l.technician_id === bl.technician_id && l.work_date === day);
+      rows.push({ event_id: bl.project_id, technician_id: bl.technician_id, technician_name: (names ?? []).find((n: any) => n.id === bl.technician_id)?.name ?? null, mailbox: f.mailbox, work_date: day,
+        calendar: link?.outlook_event_id ? (link.status === "synced" ? "in_outlook" : "needs_check") : "not_in_outlook",
+        job: (jobs ?? []).find((j: any) => j.id === bl.project_id) ?? null,
+        // E-mail is a separate outcome; Graph 202 = accepted by Microsoft, never "delivered".
+        email: (() => { const d = (deliveries ?? []).find((x: any) => x.event_id === bl.project_id && x.technician_id === bl.technician_id && x.channel === "email"); return d ? (d.status === "sent" ? "accepted_by_microsoft" : d.status) : "none"; })(),
+        central: mailboxReadiness(tgt ? await latestProbe(tgt.id) : null, !!tgt, now) });
+    }
+    rows.sort((a, b) => a.work_date.localeCompare(b.work_date) || String(a.technician_name).localeCompare(String(b.technician_name)));
+    return json({ read_only: true, rows: rows.slice(0, 300), excluded_inactive_or_former: excluded, note: "Hver postkasse trenger egen lesetest; én godkjent postkasse beviser ikke en annen." });
   }
 
   if (action === "status") {
@@ -105,6 +164,9 @@ Deno.serve(async (req) => {
     const selected = choice.technicians.find((t) => t.id === techId);
     const day = selected?.days.find((d) => d.work_date === workDate);
     if (!ev || !selected || !day) return json({ error: "no_eligible_assigned_day" }, 409);
+    // choicesFor already filtered on active identity; re-check explicitly so a stale UI can never select a former employee.
+    const live = (await identities([techId], ev.company_id)).get(techId);
+    if (!live || !activeIdentity(live)) return json({ error: "inactive_or_former_employee" }, 409);
     if (day.synced) return json({ error: "already_synced_no_change" }, 409);
     const { data: et } = await admin.from("event_technicians").select("technicians(email)").eq("event_id", eventId).eq("technician_id", techId).maybeSingle();
     const email = ((et as any)?.technicians?.email ?? "").trim().toLowerCase();

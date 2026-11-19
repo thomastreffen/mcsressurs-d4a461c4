@@ -11384,6 +11384,54 @@ export type Database = {
           },
         ]
       }
+      job_calendar_one_shot_permits: {
+        Row: {
+          company_id: string
+          created_at: string
+          end_at: string
+          event_id: string
+          idempotency_key: string
+          mailbox: string
+          override_phrase: string
+          permit_id: string
+          phrase: string
+          revoked_at: string | null
+          start_at: string
+          technician_id: string
+          work_date: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          end_at: string
+          event_id: string
+          idempotency_key: string
+          mailbox: string
+          override_phrase: string
+          permit_id: string
+          phrase: string
+          revoked_at?: string | null
+          start_at: string
+          technician_id: string
+          work_date: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          end_at?: string
+          event_id?: string
+          idempotency_key?: string
+          mailbox?: string
+          override_phrase?: string
+          permit_id?: string
+          phrase?: string
+          revoked_at?: string | null
+          start_at?: string
+          technician_id?: string
+          work_date?: string
+        }
+        Relationships: []
+      }
       job_calendar_one_shot_runs: {
         Row: {
           actor: string

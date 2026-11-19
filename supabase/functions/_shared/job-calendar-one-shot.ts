@@ -3,7 +3,11 @@ import { buildDayPayload, jobDayDedupKey } from "./job-outlook-app-days.ts";
 import type { HubJob } from "./job-outlook-app-core.ts";
 import { isJobEnded } from "./assignment-lifecycle.ts";
 
-export const ONE_SHOT = Object.freeze({
+export interface OneShotPermit { id: string; event_id: string; technician_id: string; company_id: string; mailbox: string; work_date: string; start: string; end: string; key: string; phrase: string; overridePhrase: string; label: string }
+// Each permit is an exact, separately approved (job, technician, mailbox, Oslo day) tuple, mirrored by
+// job_calendar_one_shot_permits in the DB claim. Adding a permit never enables sync or releases queue work.
+export const ONE_SHOT: OneShotPermit = Object.freeze({
+  id: "mats_60570", label: "Mats · JOB 60570 Majorstua · 19.11.2026 08–16",
   event_id: "0ecc7c59-c231-4102-8f0c-91d2091172e8",
   technician_id: "b0716dc3-ddf7-4501-92af-2397a5180085",
   company_id: "a0000000-0000-0000-0000-000000000001",
@@ -14,6 +18,29 @@ export const ONE_SHOT = Object.freeze({
   phrase: "OPPRETT MATS 19.11.2026 08–16",
   overridePhrase: "OPPRETT LIKEVEL MATS 19.11.2026 08–16 – TIDSKONFLIKT KJENT",
 });
+export const ONE_SHOT_60576: OneShotPermit = Object.freeze({
+  id: "mats_60576", label: "Mats · JOB 60576 Ullevaal Stadion · 26.11.2026 08–16",
+  event_id: "1be4a135-c18d-43e8-8290-93eda534cca2",
+  technician_id: "b0716dc3-ddf7-4501-92af-2397a5180085",
+  company_id: "a0000000-0000-0000-0000-000000000001",
+  mailbox: "mats.lien.hansen@mcselektrotavler.no",
+  work_date: "2026-11-26",
+  start: "2026-11-26T07:00:00.000Z", end: "2026-11-26T15:00:00.000Z",
+  key: "8c0e2f6a-5b7d-4f4e-9a61-2d3c60576026",
+  phrase: "OPPRETT MATS 26.11.2026 08–16",
+  overridePhrase: "OPPRETT LIKEVEL MATS 26.11.2026 08–16 – TIDSKONFLIKT KJENT",
+});
+export const PERMITS: Readonly<Record<string, OneShotPermit>> = Object.freeze({ [ONE_SHOT.id]: ONE_SHOT, [ONE_SHOT_60576.id]: ONE_SHOT_60576 });
+/** Oslo-day calendarView window [00:00, 24:00) Europe/Oslo in UTC. */
+export function osloDayWindow(workDate: string): { start: string; end: string } {
+  const off = (d: Date) => { const p = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Oslo", timeZoneName: "shortOffset" }).formatToParts(d).find(x => x.type === "timeZoneName")?.value ?? "GMT+1"; const m = p.match(/GMT([+-]\d+)/); return m ? Number(m[1]) : 1; };
+  const noon = new Date(`${workDate}T12:00:00Z`);
+  const startMs = Date.parse(`${workDate}T00:00:00Z`) - off(noon) * 3600_000;
+  const next = new Date(Date.parse(`${workDate}T00:00:00Z`) + 86_400_000 + 12 * 3600_000);
+  const endMs = Date.parse(`${workDate}T00:00:00Z`) + 86_400_000 - off(next) * 3600_000;
+  const iso = (n: number) => new Date(n).toISOString().replace(".000Z", "Z");
+  return { start: iso(startMs), end: iso(endMs) };
+}
 export interface OneShotContext {
   job: HubJob; target: { id: string; event_id: string; technician_id: string; company_id: string; mailbox: string; work_date: string; expires_at: string; revoked_at: string | null };
   assigned: boolean; identityActive: boolean; mailbox: string; approval: string;
@@ -21,8 +48,8 @@ export interface OneShotContext {
   probe: { created_at: string; result: { http?: number; pass?: boolean; tid_match?: boolean; appid_match?: boolean } } | null;
   settings: { enabled: boolean; dry_run: boolean; pilot_mailboxes: string[]; scope_verified_at: string | null };
 }
-export function oneShotGate(c: OneShotContext, now: Date): string | null {
-  const x = ONE_SHOT, t = c.target;
+export function oneShotGate(c: OneShotContext, now: Date, x: OneShotPermit = ONE_SHOT): string | null {
+  const t = c.target;
   if (c.job.id !== x.event_id || c.job.company_id !== x.company_id || t.event_id !== x.event_id || t.technician_id !== x.technician_id || t.company_id !== x.company_id || t.work_date !== x.work_date || t.mailbox !== x.mailbox || c.mailbox !== x.mailbox) return "exact_scope_mismatch";
   if (isJobEnded(c.job)) return "job_ended";
   if (!c.assigned || !c.identityActive) return "inactive_assignment_or_identity";
@@ -36,15 +63,14 @@ export function oneShotGate(c: OneShotContext, now: Date): string | null {
   if (c.settings.enabled !== false || c.settings.dry_run !== true || c.settings.pilot_mailboxes.length || c.settings.scope_verified_at !== null) return "global_settings_changed";
   return null;
 }
-export function oneShotPayload(job: HubJob): Record<string, unknown> {
-  const x = ONE_SHOT;
+export function oneShotPayload(job: HubJob, x: OneShotPermit = ONE_SHOT): Record<string, unknown> {
   return { ...buildDayPayload(job, { technicianId: x.technician_id, workDate: x.work_date, startAt: x.start, endAt: x.end, operationKey: x.key }, x.key), isReminderOn: false, isOnlineMeeting: false };
 }
-export const oneShotDedupKey = () => jobDayDedupKey(ONE_SHOT.event_id, ONE_SHOT.technician_id, ONE_SHOT.work_date, ONE_SHOT.mailbox);
-export const oneShotBase = () => `/v1.0/users/${encodeURIComponent(ONE_SHOT.mailbox)}/calendar/events`;
-export const oneShotView = () => `/v1.0/users/${encodeURIComponent(ONE_SHOT.mailbox)}/calendarView?startDateTime=2026-11-18T23:00:00Z&endDateTime=2026-11-19T23:00:00Z&$select=id,transactionId,start,end,body,changeKey,showAs,isCancelled,type,isAllDay,subject&$top=100`;
-export function assertOneShotRequest(method: string, path: string) {
-  if ((method === "POST" && path === oneShotBase()) || (method === "GET" && path === oneShotView())) return;
+export const oneShotDedupKey = (x: OneShotPermit = ONE_SHOT) => jobDayDedupKey(x.event_id, x.technician_id, x.work_date, x.mailbox);
+export const oneShotBase = (x: OneShotPermit = ONE_SHOT) => `/v1.0/users/${encodeURIComponent(x.mailbox)}/calendar/events`;
+export const oneShotView = (x: OneShotPermit = ONE_SHOT) => { const w = osloDayWindow(x.work_date); return `/v1.0/users/${encodeURIComponent(x.mailbox)}/calendarView?startDateTime=${w.start}&endDateTime=${w.end}&$select=id,transactionId,start,end,body,changeKey,showAs,isCancelled,type,isAllDay,subject&$top=100`; };
+export function assertOneShotRequest(method: string, path: string, x: OneShotPermit = ONE_SHOT) {
+  if ((method === "POST" && path === oneShotBase(x)) || (method === "GET" && path === oneShotView(x))) return;
   throw new Error("one_shot_transport_denied");
 }
 export interface OneShotEvent { id?: string; transactionId?: string; start?: { dateTime?: string; timeZone?: string }; end?: { dateTime?: string; timeZone?: string }; body?: { content?: string }; changeKey?: string; showAs?: string; isCancelled?: boolean; type?: string; isAllDay?: boolean; subject?: string }
@@ -52,8 +78,7 @@ const instant = (d?: { dateTime?: string; timeZone?: string }) => {
   if (!d?.dateTime || d.timeZone !== "UTC") return NaN;
   return Date.parse(/[zZ]|[+-]\d\d:\d\d$/.test(d.dateTime) ? d.dateTime : `${d.dateTime}Z`);
 };
-export function inspectOneShotEvents(events: OneShotEvent[]) {
-  const x = ONE_SHOT;
+export function inspectOneShotEvents(events: OneShotEvent[], x: OneShotPermit = ONE_SHOT) {
   const own = events.filter(e => e.transactionId === x.key && e.id && instant(e.start) === Date.parse(x.start) && instant(e.end) === Date.parse(x.end) && e.body?.content?.includes(`MCS_EVENT_ID:${x.event_id}`) && e.body.content.includes(`MCS_TECHNICIAN_ID:${x.technician_id}`) && e.body.content.includes(`MCS_WORK_DATE:${x.work_date}`));
   // Any other overlapping appointment (or unreadable time) requires human reconciliation, never auto-adoption.
   const collision = events.some(e => !Number.isFinite(instant(e.start)) || !Number.isFinite(instant(e.end)) || instant(e.start) < Date.parse(x.end) && instant(e.end) > Date.parse(x.start));
@@ -67,11 +92,11 @@ export interface OneShotDiagnosis {
   conflicts: { classification: OneShotConflictClass; local_overlap: string | null; show_as: string; event_type: string; all_day: boolean; cancelled: boolean }[];
 }
 /** Strong identity and complete metadata precede any availability override. No private content leaves this projection. */
-export function diagnoseOneShotEvents(events: OneShotEvent[], jobTitle: string): OneShotDiagnosis {
-  const x = ONE_SHOT, start = Date.parse(x.start), end = Date.parse(x.end);
+export function diagnoseOneShotEvents(events: OneShotEvent[], jobTitle: string, x: OneShotPermit = ONE_SHOT): OneShotDiagnosis {
+  const start = Date.parse(x.start), end = Date.parse(x.end);
   const normalize = (s: string) => s.trim().toLocaleLowerCase("nb-NO").replace(/\s+/g, " ");
   const clock = (n: number) => new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(n));
-  const own = inspectOneShotEvents(events).own;
+  const own = inspectOneShotEvents(events, x).own;
   const conflicts: OneShotDiagnosis["conflicts"] = [];
   for (const e of events) {
     const a = instant(e.start), b = instant(e.end), readable = Number.isFinite(a) && Number.isFinite(b) && b > a;
@@ -107,24 +132,24 @@ export function oneShotConflictGuard(d: OneShotDiagnosis, override: boolean): st
   return null;
 }
 export type OneShotGraph = (method: "GET" | "POST", path: string, payload?: unknown) => Promise<{ status: number; data: any }>;
-export async function inspectMailbox(graph: OneShotGraph, jobTitle = "") {
-  const r = await graph("GET", oneShotView());
+export async function inspectMailbox(graph: OneShotGraph, jobTitle = "", x: OneShotPermit = ONE_SHOT) {
+  const r = await graph("GET", oneShotView(x));
   if (r.status !== 200 || !Array.isArray(r.data?.value) || r.data["@odata.nextLink"]) throw new Error("mailbox_lookup_incomplete");
-  const diagnosis = diagnoseOneShotEvents(r.data.value, jobTitle);
+  const diagnosis = diagnoseOneShotEvents(r.data.value, jobTitle, x);
   // Hash full read transiently; never persist/expose raw event IDs, titles or bodies.
   const canonical = r.data.value.map((e: OneShotEvent) => JSON.stringify(e)).sort().join("\n");
   const signature = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical)))).map(b => b.toString(16).padStart(2, "0")).join("");
-  return { ...inspectOneShotEvents(r.data.value), blocked: ["duplicate", "unknown"].includes(diagnosis.category), diagnosis, signature };
+  return { ...inspectOneShotEvents(r.data.value, x), blocked: ["duplicate", "unknown"].includes(diagnosis.category), diagnosis, signature };
 }
 /** claim() durably consumes the one permit BEFORE POST. Any failure afterwards is terminal/held. */
-export async function createOneShot(graph: OneShotGraph, payload: Record<string, unknown>, claim: () => Promise<boolean>, receipt: (state: "succeeded" | "uncertain" | "failed", id: string | null, http: number | null, changeKey?: string) => Promise<void>, consent?: { override: boolean; signature: string }) {
-  const seen = await inspectMailbox(graph, typeof payload.subject === "string" ? payload.subject : "");
+export async function createOneShot(graph: OneShotGraph, payload: Record<string, unknown>, claim: () => Promise<boolean>, receipt: (state: "succeeded" | "uncertain" | "failed", id: string | null, http: number | null, changeKey?: string) => Promise<void>, consent?: { override: boolean; signature: string }, x: OneShotPermit = ONE_SHOT) {
+  const seen = await inspectMailbox(graph, typeof payload.subject === "string" ? payload.subject : "", x);
   const denied = oneShotConflictGuard(seen.diagnosis, consent?.override === true);
   if (denied) return { state: denied, diagnosis: seen.diagnosis };
   if (consent && consent.signature !== seen.signature) return { state: "calendar_changed_requires_preflight", diagnosis: seen.diagnosis };
   if (!await claim()) return { state: "already_claimed" };
   let r;
-  try { r = await graph("POST", oneShotBase(), payload); }
+  try { r = await graph("POST", oneShotBase(x), payload); }
   catch { await receipt("uncertain", null, null); return { state: "uncertain" }; }
   if (r.status === 201 && typeof r.data?.id === "string" && r.data.id.length > 0) {
     await receipt("succeeded", r.data.id, 201, r.data.changeKey);

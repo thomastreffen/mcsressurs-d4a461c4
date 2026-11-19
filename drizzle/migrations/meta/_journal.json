@@ -834,6 +834,13 @@
       "when": 1795073424818,
       "tag": "0118_contract_watch_order_drafts",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1795078729479,
+      "tag": "0119_one_shot_calendar_permits",
+      "breakpoints": true
     }
   ]
 }

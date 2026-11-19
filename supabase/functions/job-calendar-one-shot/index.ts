@@ -7,14 +7,14 @@ import { tokenRoles } from "../_shared/hub-calendar-diagnostics-core.ts";
 import { diagnosticGate } from "../_shared/hub-calendar-write-pilot-core.ts";
 import { buildDayPayload } from "../_shared/job-outlook-app-days.ts";
 import { MUTATIONS_APPROVED, assertMutationRequest, storedScopeOk, verifyCopy, mutationGate, patchDiff, exactGetPath, type StoredCopy } from "../_shared/job-calendar-one-shot-mutation.ts";
-import { ONE_SHOT, oneShotGate, oneShotPayload, assertOneShotRequest, inspectMailbox, createOneShot, oneShotConflictGuard, type OneShotContext, type OneShotGraph } from "../_shared/job-calendar-one-shot.ts";
+import { ONE_SHOT, PERMITS, type OneShotPermit, oneShotGate, oneShotPayload, assertOneShotRequest, inspectMailbox, createOneShot, oneShotConflictGuard, type OneShotContext, type OneShotGraph } from "../_shared/job-calendar-one-shot.ts";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const Schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("status") }).strict(),
   z.object({ action: z.literal("preflight") }).strict(),
   z.object({ action: z.literal("diagnose") }).strict(),
-  z.object({ action: z.literal("create"), run_id: z.string().uuid(), payload_hash: z.string().regex(/^[a-f0-9]{64}$/), confirm: z.union([z.literal(ONE_SHOT.phrase), z.literal(ONE_SHOT.overridePhrase)]), pending_busy_confirmed: z.literal(true), conflict_override: z.boolean().default(false), resource_plan_confirmed: z.literal(true), calendar_signature: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  z.object({ action: z.literal("create"), run_id: z.string().uuid(), payload_hash: z.string().regex(/^[a-f0-9]{64}$/), confirm: z.string().max(120), pending_busy_confirmed: z.literal(true), conflict_override: z.boolean().default(false), resource_plan_confirmed: z.literal(true), calendar_signature: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   z.object({ action: z.literal("reconcile"), run_id: z.string().uuid() }).strict(),
   z.object({ action: z.literal("mutation_preview"), kind: z.enum(["update", "delete"]) }).strict(),
   z.object({ action: z.literal("mutation_execute"), kind: z.enum(["update", "delete"]) }).passthrough(),
@@ -34,25 +34,33 @@ Deno.serve(async req => {
   const caller = claims?.claims?.sub;
   if (authError || typeof caller !== "string") return json({ error: "unauthorized" }, 401);
   if (!await requireGlobalAccessManager(admin as never, caller)) return json({ error: "forbidden" }, 403);
-  const permission = await uc.rpc("has_company_access", { _uid: caller, _company: ONE_SHOT.company_id, _module: "resource_plan", _level: "edit" });
-  // Parameter names match the live function; fail closed, never a superadmin bypass.
-  if (permission.error || permission.data !== true) return json({ error: "company_edit_required" }, 403);
   let input: unknown;
   try { input = await req.json(); } catch { return json({ error: "invalid_json" }, 400); }
+  // Permit selection is an exact allow-list key; unknown permits fail closed. Default keeps the original 60570 permit.
+  const rawPermit = (input && typeof input === "object" && "permit" in input) ? (input as Record<string, unknown>).permit : ONE_SHOT.id;
+  const x: OneShotPermit | undefined = typeof rawPermit === "string" && Object.hasOwn(PERMITS, rawPermit) ? PERMITS[rawPermit] : undefined;
+  if (!x) return json({ error: "unknown_permit" }, 400);
+  if (input && typeof input === "object") { const { permit: _p, ...rest } = input as Record<string, unknown>; input = rest; }
+  const permission = await uc.rpc("has_company_access", { _uid: caller, _company: x.company_id, _module: "resource_plan", _level: "edit" });
+  // Parameter names match the live function; fail closed, never a superadmin bypass.
+  if (permission.error || permission.data !== true) return json({ error: "company_edit_required" }, 403);
   const parsed = Schema.safeParse(input);
   if (!parsed.success) return json({ error: "invalid_input" }, 400);
-  const b = parsed.data, x = ONE_SHOT;
+  const b = parsed.data;
+  if (b.action === "create" && ![x.phrase, x.overridePhrase].includes(b.confirm)) return json({ error: "conflict_confirmation_required" }, 409);
+  // Update/delete stay bound to the original verified 60570 copy only.
+  if ((b.action === "mutation_preview" || b.action === "mutation_execute") && x.id !== ONE_SHOT.id) return json({ error: "mutation_not_available_for_permit", no_graph_call: true }, 409);
   // Locked until separate written approval + claim migration: no PATCH/DELETE path exists.
   if (b.action === "mutation_execute" && !MUTATIONS_APPROVED) return json({ error: "mutation_not_approved", no_graph_call: true }, 409);
   const publicRun = (r: any) => ({ id: r.id, state: r.state, consumed_at: r.consumed_at, expires_at: r.expires_at, http_status: r.http_status, event_id_persisted: !!r.graph_event_id });
   try {
-    const history = check(await admin.from("job_calendar_one_shot_runs").select("id,state,consumed_at,expires_at,http_status,graph_event_id").order("created_at", { ascending: false }).limit(15));
+    const history = check(await admin.from("job_calendar_one_shot_runs").select("id,state,consumed_at,expires_at,http_status,graph_event_id").eq("event_id", x.event_id).eq("technician_id", x.technician_id).eq("work_date", x.work_date).order("created_at", { ascending: false }).limit(15));
     // A consumed permit cannot fall out of a bounded recent-preflight list.
-    const consumedRun = check(await admin.from("job_calendar_one_shot_runs").select("id,state,consumed_at,expires_at,http_status,graph_event_id").not("consumed_at", "is", null).limit(1));
+    const consumedRun = check(await admin.from("job_calendar_one_shot_runs").select("id,state,consumed_at,expires_at,http_status,graph_event_id").eq("event_id", x.event_id).eq("technician_id", x.technician_id).eq("work_date", x.work_date).not("consumed_at", "is", null).limit(1));
     const consumed = consumedRun.length > 0;
     if (consumed && !history.some(r => r.id === consumedRun[0].id)) history.unshift(consumedRun[0]);
-    if (b.action === "status") return json({ scope: { event_id: x.event_id, technician_id: x.technician_id, mailbox: x.mailbox, work_date: x.work_date }, runs: history.map(publicRun), consumed });
-    const run = b.action === "create" || b.action === "reconcile" ? check(await admin.from("job_calendar_one_shot_runs").select("*").eq("id", b.run_id).maybeSingle()) : null;
+    if (b.action === "status") return json({ permit: x.id, label: x.label, scope: { event_id: x.event_id, technician_id: x.technician_id, mailbox: x.mailbox, work_date: x.work_date }, runs: history.map(publicRun), consumed });
+    const run = b.action === "create" || b.action === "reconcile" ? check(await admin.from("job_calendar_one_shot_runs").select("*").eq("id", b.run_id).eq("event_id", x.event_id).eq("technician_id", x.technician_id).eq("work_date", x.work_date).maybeSingle()) : null;
     if ((b.action === "create" || b.action === "reconcile") && !run) return json({ error: "run_not_found" }, 404);
     if (b.action === "create" && (run?.actor !== caller || run.payload_hash !== b.payload_hash || run.state !== "prepared" || Date.parse(run.expires_at) <= Date.now() || run.consumed_at)) return json({ error: "preflight_expired_or_consumed" }, 409);
     if (b.action === "create" && (run.calendar_signature !== b.calendar_signature || b.confirm !== (run.conflict_summary?.category === "other" ? x.overridePhrase : x.phrase) || (run.conflict_summary?.category === "other" && !b.conflict_override))) return json({ error: "conflict_confirmation_required" }, 409);
@@ -73,12 +81,12 @@ Deno.serve(async req => {
     const settings = check(await admin.from("job_outlook_app_sync_settings").select("enabled,dry_run,pilot_mailboxes,scope_verified_at").eq("id", true).single());
     const signature = check(await admin.rpc("assignment_schedule_signature", { _event: x.event_id, _user: tech.user_id }));
     const c: OneShotContext = { job: { ...job, start_at: job.start_time, end_at: job.end_time }, target, assigned: !!assignment, identityActive: !!account && !!person?.is_active && employed.length > 0 && !tech.archived_at && !tech.deleted_at, mailbox: tech.email?.trim().toLowerCase() ?? "", approval: approval?.status ?? "unknown", blocks, probe: probe as any, settings };
-    const denied = oneShotGate(c, new Date());
+    const denied = oneShotGate(c, new Date(), x);
     // Recovery is read-only and must remain possible after a target or preview expires.
     // It still requires this exact scope, active identity, live assignment and caller company access.
     const mutationReadable = b.action === "mutation_preview" && !!denied && !["exact_scope_mismatch", "global_settings_changed"].includes(denied);
     if (denied && !mutationReadable && (b.action !== "reconcile" || ["exact_scope_mismatch", "inactive_assignment_or_identity"].includes(denied))) return json({ error: denied }, 409);
-    const payload = oneShotPayload(c.job);
+    const payload = oneShotPayload(c.job, x);
     const digest = await hash(JSON.stringify(payload));
     if (b.action === "create" && (digest !== run?.payload_hash || signature !== run.schedule_signature)) return json({ error: "preview_changed" }, 409);
     const diag = check(await admin.from("hub_calendar_diagnostic_runs").select("run_at,overall,checks").order("run_at", { ascending: false }).limit(1).maybeSingle());
@@ -95,7 +103,7 @@ Deno.serve(async req => {
     const decoded = JSON.parse(atob((token.split(".")[1] ?? "").replace(/-/g, "+").replace(/_/g, "/")));
     if (decoded.tid !== tenant || facts.appId !== client || !facts.roles.includes("Calendars.ReadWrite") || facts.roles.some(r => !["Calendars.Read", "Calendars.ReadWrite"].includes(r))) return json({ error: "calendar_identity_unverified" }, 409);
     const graph: OneShotGraph = async (method, path, body) => {
-      assertOneShotRequest(method, path);
+      assertOneShotRequest(method, path, x);
       const res = await fetch(`https://graph.microsoft.com${path}`, { method, signal: AbortSignal.timeout(20000), headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: 'outlook.timezone="UTC", IdType="ImmutableId"', "client-request-id": x.key }, body: body ? JSON.stringify(body) : undefined });
       const text = await res.text();
       let data = null; try { data = text ? JSON.parse(text) : null; } catch { /* non-JSON is held */ }
@@ -121,7 +129,7 @@ Deno.serve(async req => {
       return json({ read_only: true, kind: b.kind, verification: v.verification, facts: v.facts ?? null, day_still_planned: dayStillPlanned, changed_fields: changes, blocked_by: blockedBy ?? "mutation_not_approved", writes_enabled: MUTATIONS_APPROVED, confirm_phrase_required: true });
     }
     if (b.action === "reconcile") {
-      const seen = await inspectMailbox(graph);
+      const seen = await inspectMailbox(graph, "", x);
       if (!seen.own) {
         check(await admin.from("job_calendar_one_shot_audit").insert({ run_id: run.id, actor: caller, action: "reconcile", state: "unresolved" }));
         return json({ state: "unresolved_no_repost" });
@@ -137,23 +145,23 @@ Deno.serve(async req => {
     const hasMapping = !!(appLinks.some(l => l.work_date === x.work_date || !l.work_date) || dayLinks.length || legacy.length || organizer.length || assignment?.calendar_event_id || approval?.outlook_event_id);
     if (b.action === "diagnose") {
       // Explicit read-only action: no prepared permit, audit, claim, receipt or queue/flag writes.
-      const seen = await inspectMailbox(graph, c.job.title);
+      const seen = await inspectMailbox(graph, c.job.title, x);
       return json({ diagnosis: seen.diagnosis, existing_mapping: hasMapping, read_only: true });
     }
     if (hasMapping) return json({ error: "existing_mapping_requires_reconciliation" }, 409);
     if (b.action === "preflight") {
-      const seen = await inspectMailbox(graph, c.job.title);
+      const seen = await inspectMailbox(graph, c.job.title, x);
       const conflictDenied = oneShotConflictGuard(seen.diagnosis, true);
       if (conflictDenied) return json({ error: conflictDenied, diagnosis: seen.diagnosis }, 409);
-      const prepared = check(await admin.from("job_calendar_one_shot_runs").insert({ target_id: target.id, actor: caller, event_id: x.event_id, technician_id: x.technician_id, company_id: x.company_id, mailbox: x.mailbox, work_date: x.work_date, payload, payload_hash: digest, job_snapshot: job, schedule_signature: signature, calendar_signature: seen.signature, conflict_summary: seen.diagnosis }).select("id,expires_at").single());
+      const prepared = check(await admin.from("job_calendar_one_shot_runs").insert({ target_id: target.id, actor: caller, idempotency_key: x.key, event_id: x.event_id, technician_id: x.technician_id, company_id: x.company_id, mailbox: x.mailbox, work_date: x.work_date, payload, payload_hash: digest, job_snapshot: job, schedule_signature: signature, calendar_signature: seen.signature, conflict_summary: seen.diagnosis }).select("id,expires_at").single());
       check(await admin.from("job_calendar_one_shot_audit").insert({ run_id: prepared.id, actor: caller, action: "preflight", state: "prepared" }));
-      return json({ diagnosis: seen.diagnosis, preview: { run_id: prepared.id, payload_hash: digest, calendar_signature: seen.signature, conflict_override_required: seen.diagnosis.category === "other", expires_at: prepared.expires_at, mailbox: x.mailbox, work_date: x.work_date, local_time: "08:00–16:00 Europe/Oslo", approval: c.approval, show_as: "busy", payload, request_method: "POST", request_path: oneShotPathForPreview() } });
+      return json({ diagnosis: seen.diagnosis, preview: { run_id: prepared.id, payload_hash: digest, calendar_signature: seen.signature, conflict_override_required: seen.diagnosis.category === "other", expires_at: prepared.expires_at, mailbox: x.mailbox, work_date: x.work_date, local_time: "08:00–16:00 Europe/Oslo", approval: c.approval, show_as: "busy", payload, request_method: "POST", request_path: oneShotPathForPreview(x) } });
     }
     if (b.action === "create") {
       const result = await createOneShot(graph, run.payload, async () => check(await admin.rpc("claim_job_calendar_one_shot", { _run: run.id, _actor: caller, _hash: b.payload_hash, _calendar_signature: b.calendar_signature, _override: b.conflict_override, _resource_plan_confirmed: b.resource_plan_confirmed, _confirm: b.confirm })) === true, async (state, id, http, changeKey) => {
         const saved = check(await admin.rpc("finish_job_calendar_one_shot", { _run: run.id, _actor: caller, _state: state, _event_id: id, _http: http, _change_key: changeKey ?? null, _reconcile: false }));
         if (!saved) throw new Error("receipt_not_persisted");
-      }, { override: b.conflict_override, signature: b.calendar_signature });
+      }, { override: b.conflict_override, signature: b.calendar_signature }, x);
       return json({ ...result, event_id_persisted: result.state === "succeeded" });
     }
     return json({ error: "invalid_action" }, 400);
@@ -162,4 +170,4 @@ Deno.serve(async req => {
     return json({ error: "stopped_requires_status_check", no_automatic_retry: true }, 409);
   }
 });
-function oneShotPathForPreview() { return `/v1.0/users/${ONE_SHOT.mailbox}/calendar/events`; }
+function oneShotPathForPreview(x: OneShotPermit) { return `/v1.0/users/${x.mailbox}/calendar/events`; }
