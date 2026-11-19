@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   const url = Deno.env.get("SUPABASE_URL")!;
   const sb = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   if (!(await isSystemCaller(sb as never, url, Deno.env.get("SUPABASE_ANON_KEY")!, req.headers.get("Authorization")))) {
-    return json({ error: "unauthorized" }, 401);
+    return json({ error: "system_caller_rejected", stage: "auth" }, 401);
   }
   let body: { action?: string; event_id?: string; technician_id?: string; limit?: number };
   try { body = await req.json(); } catch { return json({ error: "invalid_json" }, 400); }

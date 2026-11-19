@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { invokeCentralSync, centralEnv } from "../_shared/central-sync-invoke.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { isTrustedOutlookBlock } from "../_shared/outlook-match-policy.ts";
 
@@ -115,7 +116,7 @@ Deno.serve(async (req) => {
     const { data: central } = await db.from("job_outlook_app_links").select("technician_id").eq("event_id", resolvedEventId).not("outlook_event_id", "is", null);
     const centralTechs = [...new Set((central ?? []).map((c: any) => c.technician_id).filter((t: string) => action === "remove_event" || !technicianId || t === technicianId))];
     const centralResults = [];
-    for (const t of centralTechs) centralResults.push((await db.functions.invoke("job-outlook-app-sync", { body: { action: "sync_event", event_id: resolvedEventId, technician_id: t } })).data ?? null);
+    for (const t of centralTechs) { const r = await invokeCentralSync({ action: "sync_event", event_id: resolvedEventId, technician_id: t }, centralEnv()); centralResults.push(r.ok ? r.data : { status: r.stage }); }
     const query = db.from("calendar_delete_retry_queue").select("*").eq("event_id", resolvedEventId);
     const { data: jobs, error: queueError } = technicianId && action !== "remove_event"
       ? await query.eq("technician_id", technicianId)

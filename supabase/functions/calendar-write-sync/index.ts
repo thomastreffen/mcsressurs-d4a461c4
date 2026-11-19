@@ -11,6 +11,7 @@ import { jobCalendarHtml } from "../_shared/job-communication.ts";
 import { syncTechnicianDays, type DayStore, type DayGraph } from "../_shared/multi-day-sync.ts";
 import { dayOperationKey, aggregateTechDayDelivery, type DayPlanItem, type DayLinkRow } from "../_shared/multi-day-calendar.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { invokeCentralSync, centralEnv } from "../_shared/central-sync-invoke.ts";
 
 
 
@@ -974,7 +975,8 @@ Deno.serve(async (req) => {
         const central = route === "central";
         // Ordinary routing invokes only the exact selected recipient, never drain_queue.
         // The dedicated function independently checks its deployment lock and live gates.
-        const routed = central ? await supabaseAdmin.functions.invoke("job-outlook-app-sync", { body: { action: "sync_event", event_id, technician_id: tech.id } }) : null;
+        const invoked = central ? await invokeCentralSync({ action: "sync_event", event_id, technician_id: tech.id }, centralEnv()) : null;
+        const routed = invoked ? { data: invoked.ok ? invoked.data : { results: [{ status: invoked.stage }] }, error: invoked.ok ? null : invoked.stage } : null;
         await recordDelivery(supabaseAdmin, { eventId: event_id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email,
           channel: "calendar", status: routed?.data?.status === "verified" ? "sent" : "pending", state: routed?.data?.status === "verified" ? "verified" : "pending", verificationSignal: routed?.data?.status === "verified" ? "exact_graph_get_200" : null, reasonCode: routed?.data?.status === "verified" ? "central_verified_readback" : central && (routed?.error || routed?.data?.results?.[0]?.status) ? `central_${String(routed?.data?.results?.[0]?.status ?? "invoke_failed").slice(0, 60)}` : route === "central_paused" ? "central_source_paused" : central ? "central_app_pending" : "central_partial_target_blocked", attemptedBy: callerUserId });
         results.push({ techId: tech.id, techName: tech.name, status: central ? "central_pending" : "central_blocked", skipTechDelivery: true, excludeFromEvidence: true });
@@ -1049,7 +1051,7 @@ Deno.serve(async (req) => {
     {
       const present = new Set(techRows.map((r) => r.tech.id));
       const removed = [...new Set((centralCopies ?? []).filter((l: any) => !!l.outlook_event_id && !present.has(l.technician_id)).map((l: any) => l.technician_id))];
-      for (const technician_id of removed) await supabaseAdmin.functions.invoke("job-outlook-app-sync", { body: { action: "sync_event", event_id, technician_id } });
+      for (const technician_id of removed) await invokeCentralSync({ action: "sync_event", event_id, technician_id }, centralEnv());
     }
 
     // ── Per-recipient delivery record + honest overall status (create/update) ──

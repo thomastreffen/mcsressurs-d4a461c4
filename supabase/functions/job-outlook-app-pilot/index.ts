@@ -8,6 +8,7 @@
 //  simulate        – per-day dry-run plan for a target (no Graph, no link writes)
 //  release_queue   – blocked pending separate staff-calendar write approval
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { invokeCentralSync, centralEnv } from "../_shared/central-sync-invoke.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { requireGlobalAccessManager } from "../_shared/security-boundary.ts";
 import { probeCalendarMailbox } from "../_shared/calendar-mailbox-probe.ts";
@@ -181,11 +182,11 @@ Deno.serve(async (req) => {
     const started = await audit("retry_central_assignment_started", { event_id: row.event_id, technician_id: row.technician_id, mailbox: row.mailbox }, { idempotency_key: operation + ":" + now.toISOString() });
     if (started.error) return json({ error: "audit_failed_no_microsoft_call" }, 409);
     // Only this technician; the daily claim/duplicate guard decides create vs reconcile, never a blind repost.
-    const r = await admin.functions.invoke("job-outlook-app-sync", { body: { action: "sync_event", event_id: row.event_id, technician_id: row.technician_id } });
-    await audit("retry_central_assignment", { result: r.data ?? null, error: r.error ? String(r.error) : null });
-    const st = r.data?.results?.[0]?.status ?? r.data?.status ?? "invoke_failed";
+    const r = await invokeCentralSync({ action: "sync_event", event_id: row.event_id, technician_id: row.technician_id }, centralEnv());
+    await audit("retry_central_assignment", { http_status: r.http_status, stage: r.stage, result: r.ok ? r.data : null, error: r.ok ? null : r.stage });
+    const st = r.ok ? (r.data?.results?.[0]?.status ?? r.data?.status ?? "no_result") : r.stage;
     await admin.from("event_recipient_delivery").update({ status: st === "verified" ? "sent" : "pending", reason_code: st === "verified" ? "central_verified_readback" : `central_${String(st).slice(0, 60)}` }).eq("event_id", row.event_id).eq("technician_id", row.technician_id).eq("channel", "calendar");
-    return json({ status: st });
+    return json({ status: st, stage: r.stage, http_status: r.http_status });
   }
   if (action === "candidates") {
     if (b.event_id !== undefined) {
