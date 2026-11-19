@@ -21,4 +21,5 @@ export async function invokeCentralSync(body: { action: "sync_event"; event_id: 
   return { ok: true, http_status: res.status, stage: "invoked", data };
 }
 
-export const centralEnv = () => ({ url: Deno.env.get("SUPABASE_URL") ?? "", serviceKey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "" });
+const envGet = (k: string): string => (globalThis as unknown as { Deno?: { env: { get(k: string): string | undefined } } }).Deno?.env.get(k) ?? "";
+export const centralEnv = () => ({ url: envGet("SUPABASE_URL"), serviceKey: envGet("SUPABASE_SERVICE_ROLE_KEY") });
