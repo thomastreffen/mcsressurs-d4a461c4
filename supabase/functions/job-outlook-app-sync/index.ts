@@ -5,6 +5,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { isSystemCaller } from "../_shared/system-caller.ts";
+import { CENTRAL_LIFECYCLE_APPROVED, syncDaily, type DailyScope, type DailyGraph } from "../_shared/central-calendar-lifecycle.ts";
+import { centralCalendarStore } from "../_shared/central-calendar-store.ts";
+import { osloDayWindow } from "../_shared/job-calendar-one-shot.ts";
 import { clampBatch, type AppFlags, type HubJob } from "../_shared/job-outlook-app-core.ts";
 import { planJobDays, effectiveAction, isReleasedQueueItem, type PilotTarget } from "../_shared/job-outlook-app-days.ts";
 
@@ -33,12 +36,14 @@ Deno.serve(async (req) => {
   if (!(await isSystemCaller(sb as never, url, Deno.env.get("SUPABASE_ANON_KEY")!, req.headers.get("Authorization")))) {
     return json({ error: "unauthorized" }, 401);
   }
-  let body: { action?: string; event_id?: string; limit?: number };
+  let body: { action?: string; event_id?: string; technician_id?: string; limit?: number };
   try { body = await req.json(); } catch { return json({ error: "invalid_json" }, 400); }
   const action = body.action ?? "sync_event";
   if (action !== "sync_event" && action !== "drain_queue") return json({ error: "invalid_action" }, 400);
   if (action === "sync_event" && (!body.event_id || !UUID.test(body.event_id))) return json({ error: "event_id must be uuid" }, 400);
 
+  if (!CENTRAL_LIFECYCLE_APPROVED) return json({ status: "activation_required", writes_enabled: false, no_queue_replay: true });
+  if (body.technician_id !== undefined && !UUID.test(body.technician_id)) return json({error:"invalid_technician_id"},400);
   const { data: s } = await sb.from("job_outlook_app_sync_settings").select("*").eq("id", true).maybeSingle();
   const flags: AppFlags = { enabled: !!s?.enabled, dryRun: s?.dry_run !== false, pilotMailboxes: s?.pilot_mailboxes ?? [], scopeVerified: !!s?.scope_verified_at };
   if (!flags.enabled) return json({ status: "flag_off" }); // no job reads, no network
@@ -79,41 +84,32 @@ Deno.serve(async (req) => {
       }
       const log = (act: string, detail: unknown) => sb.from("job_outlook_app_log").insert({ link_id: row.link?.id, company_id: ev.company_id, event_id: eventId, technician_id: row.technicianId, mailbox: row.mailbox, direction: "outbound", action: act, dry_run: flags.dryRun, detail: { work_date: row.workDate, ...(detail as object) } });
       if (eff === "dry_run") { await log(`would_${row.decision.kind}`, {}); out.push({ ...base, status: `dry_run_${row.decision.kind}` }); continue; }
-      const nowIso = new Date().toISOString();
-      const linkBase = { company_id: ev.company_id, event_id: eventId, technician_id: row.technicianId, mailbox: row.mailbox!, work_date: row.workDate, dedup_key: row.dedupKey ?? row.link!.dedup_key };
       const d = row.decision;
-      // A create/update queue release is not consent to delete. Central deletion
-      // remains held until a separately reviewed exact person/day removal exists.
-      if (d.kind === "delete") {
-        out.push({ ...base, status: "explicit_day_delete_approval_required" });
-        continue;
-      }
-      if (d.kind === "adopt") {
-        await sb.from("job_outlook_app_links").upsert({ ...linkBase, outlook_event_id: d.outlookEventId, hub_version: d.fingerprint, state: "synced", adopted_from_day_link_id: d.legacyId, last_error: null, updated_at: nowIso }, { onConflict: "dedup_key" });
-        await log("adopt", {}); out.push({ ...base, status: "adopted" }); continue;
-      }
+      // Legacy delegated copies are never silently promoted into central ownership.
+      if (d.kind === "adopt") { out.push({ ...base, status: "delegated_copy_requires_verified_adoption" }); continue; }
+      if (!row.mailbox || !row.startAt && d.kind !== "delete" || !row.endAt && d.kind !== "delete") { out.push({...base,status:"invalid_scope"}); continue; }
       token ??= await getCalendarAppToken();
-      if (!token) { out.push({ ...base, status: "calendar_app_unconfigured" }); continue; }
-      const coll = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(row.mailbox!)}/events`;
-      const evId = d.kind === "create" ? null : d.kind === "delete" ? d.outlookEventId : row.link!.outlook_event_id!;
-      const headers: Record<string, string> = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-      if (d.kind === "update" && row.link?.outlook_change_key) headers["If-Match"] = row.link.outlook_change_key;
-      const res = await fetch(evId ? `${coll}/${encodeURIComponent(evId)}` : coll, { method: d.kind === "create" ? "POST" : d.kind === "update" ? "PATCH" : "DELETE", headers, body: d.kind === "create" || d.kind === "update" ? JSON.stringify(d.payload) : undefined });
-      const text = await res.text();
-      if (!res.ok && !(d.kind === "delete" && res.status === 404)) {
-        const state = res.status === 412 ? "conflict" : "failed";
-        await sb.from("job_outlook_app_links").upsert({ ...linkBase, outlook_event_id: row.link?.outlook_event_id ?? null, state, last_error: `${res.status}`, last_attempt_at: nowIso, updated_at: nowIso }, { onConflict: "dedup_key" });
-        await log(`${d.kind}_failed`, { status: res.status }); out.push({ ...base, status: state, code: res.status }); continue;
-      }
-      const g = d.kind === "delete" ? {} : text ? JSON.parse(text) : {};
-      await sb.from("job_outlook_app_links").upsert({ ...linkBase, outlook_event_id: d.kind === "delete" ? evId : g.id ?? row.link?.outlook_event_id, outlook_change_key: g.changeKey ?? row.link?.outlook_change_key ?? null, hub_version: d.kind === "delete" ? row.link?.hub_version : (d as { fingerprint?: string }).fingerprint, state: d.kind === "delete" ? "deleted" : "synced", last_error: null, last_attempt_at: nowIso, updated_at: nowIso }, { onConflict: "dedup_key" });
-      await log(d.kind, { status: res.status }); out.push({ ...base, status: d.kind });
+      if (!token) { out.push({...base,status:"calendar_app_unconfigured"}); continue; }
+      const scope: DailyScope = {eventId, technicianId:row.technicianId, companyId:ev.company_id,mailbox:row.mailbox,workDate:row.workDate,start:row.startAt ?? `${row.workDate}T00:00:00Z`,end:row.endAt ?? `${row.workDate}T23:59:59Z`,key:row.dedupKey ?? ""};
+      const w=osloDayWindow(row.workDate);
+      const viewPath=`/v1.0/users/${encodeURIComponent(row.mailbox)}/calendarView?startDateTime=${w.start}&endDateTime=${w.end}&$select=id,changeKey,transactionId,start,end,showAs,isCancelled,type,isAllDay,body,subject,attendees&$top=100`;
+      const graph: DailyGraph=async(method,path,payload,ifMatch)=>{
+        const res=await fetch(`https://graph.microsoft.com${path}`,{method,signal:AbortSignal.timeout(20000),headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json",Prefer:'outlook.timezone="UTC", IdType="ImmutableId"',...(ifMatch?{"If-Match":ifMatch}:{})},body:payload?JSON.stringify(payload):undefined});
+        const text=await res.text();let data=null;try{data=text?JSON.parse(text):null;}catch{}return{status:res.status,data};
+      };
+      const version=d.kind==="delete"?row.link?.hub_version ?? null:d.fingerprint;
+      const copy=row.link?.outlook_event_id && row.link.outlook_change_key?{id:row.link.outlook_event_id,changeKey:row.link.outlook_change_key,source:row.link.adopted_from_day_link_id?"delegated" as const:"central" as const}:null;
+      const result=await syncDaily({scope,kind:d.kind,payload:d.kind==="delete"?{}:d.payload,copy,viewPath,graph,store:centralCalendarStore(sb,scope,version),authorized:true,conflictConsent:false,operationKey:`${scope.key}:${d.kind}:${version ?? copy?.changeKey ?? "none"}`});
+      await log("daily_lifecycle",{state:result.state});out.push({...base,status:result.state});
     }
     return out;
   };
 
-  if (action === "sync_event" && !flags.dryRun) return json({ status: "explicit_queue_release_required" }, 409);
-  if (action === "sync_event") return json({ status: "ok", dry_run: flags.dryRun, results: await syncOne(body.event_id!) });
+
+  if (action === "sync_event") {
+    const results = await syncOne(body.event_id!, body.technician_id);
+    return json({ status: results.length > 0 && results.every((r: any) => r.status === "verified") ? "verified" : "pending", dry_run: flags.dryRun, results });
+  }
 
   // Only explicitly released intents are ever drained. Held (released_at null) intents are never touched.
   const { data: items } = await sb.from("job_outlook_app_queue").select("*").eq("status", "pending").not("released_at", "is", null).order("created_at").limit(clampBatch(body.limit));

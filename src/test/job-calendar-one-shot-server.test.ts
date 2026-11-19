@@ -32,10 +32,13 @@ beforeAll(async () => {
   await db.exec(readFileSync("drizzle/migrations/0106_one_shot_conflict_consent.sql", "utf8").replace(/now\(\)/g, `'${clock}'::timestamptz`));
   await db.exec(readFileSync("drizzle/migrations/0119_one_shot_calendar_permits.sql", "utf8").replace(/now\(\)/g, `'${clock}'::timestamptz`));
   await db.exec(readFileSync("drizzle/migrations/0120_one_shot_preview_permit_scope.sql", "utf8"));
+  await db.exec("ALTER TABLE job_outlook_app_links ADD COLUMN adopted_from_day_link_id uuid");
+  await db.exec(readFileSync("drizzle/migrations/0121_central_calendar_daily_operations.sql","utf8"));
+  await db.exec(readFileSync("drizzle/migrations/0122_central_calendar_exact_claim.sql","utf8").replace(/now\(\)/g, `'${clock}'::timestamptz`));
 }, 120000);
 afterAll(() => db.close());
 beforeEach(async () => {
-  await db.exec(`RESET ROLE; TRUNCATE job_calendar_one_shot_audit,job_calendar_one_shot_runs,events,technicians,event_technicians,job_approvals,people,user_accounts,employment_profiles,schedule_blocks,job_outlook_app_sync_settings,job_outlook_app_pilot_targets,job_outlook_app_pilot_actions,job_calendar_links,m365_organizer_links,job_calendar_day_links,job_outlook_app_links,job_outlook_app_queue CASCADE;
+  await db.exec(`RESET ROLE; TRUNCATE job_calendar_daily_operations,job_calendar_one_shot_audit,job_calendar_one_shot_runs,events,technicians,event_technicians,job_approvals,people,user_accounts,employment_profiles,schedule_blocks,job_outlook_app_sync_settings,job_outlook_app_pilot_targets,job_outlook_app_pilot_actions,job_calendar_links,m365_organizer_links,job_calendar_day_links,job_outlook_app_links,job_outlook_app_queue CASCADE;
   INSERT INTO events VALUES('${x.event_id}','${x.company_id}','60570 Majorstua stasjon','rejected',NULL);
   INSERT INTO technicians VALUES('${x.technician_id}','${user}','${x.mailbox}',NULL,NULL);
   INSERT INTO event_technicians VALUES('${x.event_id}','${x.technician_id}',NULL);
@@ -98,3 +101,12 @@ it("60576 exact preview tuple saves; old 60570 key, wrong day/job fail at databa
   await expect(insert(second.key,second.work_date,x.event_id)).rejects.toThrow(/one_shot_run_exact_permit/);
   expect((await db.query("SELECT consumed_at FROM job_calendar_one_shot_runs")).rows).toEqual([{consumed_at:null}]);
 });
+
+it("ordinary daily claim is locked by globals, then exact day reserves once in isolated DB",async()=>{
+ const call=()=>db.query<{id:string|null}>("SELECT claim_central_calendar_day($1,$2,$3,$4,$5,$6,'create',$7,$8,'{}',NULL,NULL) id",["ordinary-key",x.event_id,x.technician_id,x.company_id,x.mailbox,x.work_date,x.start,x.end]);
+ expect((await call()).rows[0].id).toBeNull();
+ await db.exec(`UPDATE job_outlook_app_sync_settings SET enabled=true,dry_run=false,scope_verified_at='${clock}',pilot_mailboxes=ARRAY['${x.mailbox}'];`);
+ expect((await call()).rows[0].id).toEqual(expect.any(String));expect((await call()).rows[0].id).toBeNull();
+ expect((await db.query("SELECT status,attempts,released_at FROM job_outlook_app_queue")).rows).toEqual(Array(5).fill({status:"pending",attempts:0,released_at:null}));
+});
+it("daily journal is inaccessible to ordinary callers",async()=>{await db.exec("SET ROLE authenticated");await expect(db.query("SELECT * FROM job_calendar_daily_operations")).rejects.toThrow(/permission denied/);});

@@ -56,7 +56,7 @@ export function pilotTargetGate(
     !t.revoked_at && t.event_id === q.eventId && t.technician_id === q.technicianId &&
     t.work_date === q.workDate && norm(t.mailbox) === norm(q.mailbox) && t.company_id === q.companyId);
   if (!hit) return "not_pilot_target";
-  if (Date.parse(hit.expires_at) <= now.getTime()) return "pilot_target_expired";
+  if (!Number.isFinite(Date.parse(hit.expires_at)) || Date.parse(hit.expires_at) <= now.getTime()) return "pilot_target_expired";
   return null;
 }
 

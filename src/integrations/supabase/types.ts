@@ -11167,6 +11167,60 @@ export type Database = {
           },
         ]
       }
+      job_calendar_daily_operations: {
+        Row: {
+          company_id: string
+          created_at: string
+          event_id: string
+          finished_at: string | null
+          graph_change_key: string | null
+          graph_event_id: string | null
+          http_status: number | null
+          id: string
+          kind: string
+          mailbox: string
+          operation_key: string
+          payload: Json
+          state: string
+          technician_id: string
+          work_date: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          event_id: string
+          finished_at?: string | null
+          graph_change_key?: string | null
+          graph_event_id?: string | null
+          http_status?: number | null
+          id?: string
+          kind: string
+          mailbox: string
+          operation_key: string
+          payload: Json
+          state?: string
+          technician_id: string
+          work_date: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          event_id?: string
+          finished_at?: string | null
+          graph_change_key?: string | null
+          graph_event_id?: string | null
+          http_status?: number | null
+          id?: string
+          kind?: string
+          mailbox?: string
+          operation_key?: string
+          payload?: Json
+          state?: string
+          technician_id?: string
+          work_date?: string
+        }
+        Relationships: []
+      }
       job_calendar_day_links: {
         Row: {
           created_at: string
@@ -19683,6 +19737,23 @@ export type Database = {
           _user_id: string
         }
         Returns: Json
+      }
+      claim_central_calendar_day: {
+        Args: {
+          _change_key: string
+          _company: string
+          _day: string
+          _end: string
+          _event: string
+          _graph_id: string
+          _key: string
+          _kind: string
+          _mailbox: string
+          _payload: Json
+          _start: string
+          _tech: string
+        }
+        Returns: string
       }
       claim_job_calendar_one_shot: {
         Args: {

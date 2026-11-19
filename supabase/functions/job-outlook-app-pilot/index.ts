@@ -14,6 +14,9 @@ import { missingSecrets } from "../_shared/hub-calendar-diagnostics-core.ts";
 import type { HubJob } from "../_shared/job-outlook-app-core.ts";
 import { pilotChoices, freshMailboxProbe, existingTargetDecision, activeIdentity, mailboxReadiness, type IdentityFacts } from "../_shared/job-outlook-pilot-selector.ts";
 import { planJobDays, clampTargetHours, type PilotTarget } from "../_shared/job-outlook-app-days.ts";
+import { CENTRAL_LIFECYCLE_APPROVED, previewDaily, type DailyGraph, type DailyScope } from "../_shared/central-calendar-lifecycle.ts";
+import { osloDayWindow } from "../_shared/job-calendar-one-shot.ts";
+import { buildDayPayload, jobDayDedupKey } from "../_shared/job-outlook-app-days.ts";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -39,6 +42,38 @@ Deno.serve(async (req) => {
   const audit = (a: string, result: unknown, extra: Record<string, unknown> = {}) =>
     admin.from("job_outlook_app_pilot_actions").insert({ action: a, actor: caller, result, ...extra });
   const now = new Date();
+  if (action === "enable_rollout") return json({ error: "separate_live_activation_approval_required", writes_enabled: false, no_queue_replay: true }, 409);
+
+  if (action === "rollout_preflight") {
+    const eventId = b.event_id, techId = b.technician_id, day = b.work_date;
+    if (typeof eventId !== "string" || !UUID.test(eventId) || typeof techId !== "string" || !UUID.test(techId) || typeof day !== "string" || !DATE.test(day)) return json({error:"invalid_input"},400);
+    // Selection never saves or enables a target. The current administrator explicitly initiates this GET.
+    const {data: job,error:je}=await uc.from("events").select("*").eq("id",eventId).maybeSingle();
+    if(je || !job?.company_id) return json({error:"job_not_visible"},403);
+    const rights=await uc.rpc("has_company_access",{_uid:caller,_company:job.company_id,_module:"resource_plan",_level:"edit"});
+    if(rights.error || rights.data!==true) return json({error:"company_edit_required"},403);
+    const choice=await choicesFor(eventId);const person=choice.technicians.find(x=>x.id===techId);const selected=person?.days.find(x=>x.work_date===day);
+    if(!selected || Date.parse(selected.start_at)<=now.getTime())return json({error:"active_future_assignment_required"},409);
+    const tech=await admin.from("technicians").select("email").eq("id",techId).maybeSingle();
+    const mb=tech.data?.email?.trim().toLowerCase();if(tech.error || !mb)return json({error:"mailbox_unverified"},409);
+    const link=await admin.from("job_outlook_app_links").select("outlook_event_id,outlook_change_key,adopted_from_day_link_id").eq("event_id",eventId).eq("technician_id",techId).eq("company_id",job.company_id).eq("mailbox",mb).eq("work_date",day).maybeSingle();
+    if(link.error)return json({error:"copy_lookup_failed"},409);
+    const copy=link.data?.outlook_event_id && link.data.outlook_change_key?{id:link.data.outlook_event_id,changeKey:link.data.outlook_change_key,source:link.data.adopted_from_day_link_id?"delegated" as const:"central" as const}:null;
+    const scope:DailyScope={eventId,technicianId:techId,companyId:job.company_id,mailbox:mb,workDate:day,start:selected.start_at,end:selected.end_at,key:jobDayDedupKey(eventId,techId,day,mb)};
+    const payload=buildDayPayload({...job,start_at:job.start_time,end_at:job.end_time},{technicianId:techId,workDate:day,startAt:selected.start_at,endAt:selected.end_at,operationKey:scope.key},scope.key);
+    const env=(n:string)=>Deno.env.get(n)?.trim()??"";
+    if(missingSecrets(env).length)return json({error:"calendar_app_not_configured"},409);
+    try {
+      const tr=await fetch(`https://login.microsoftonline.com/${encodeURIComponent(env("HUB_CALENDAR_TENANT_ID"))}/oauth2/v2.0/token`,{method:"POST",signal:AbortSignal.timeout(15000),body:new URLSearchParams({client_id:env("HUB_CALENDAR_CLIENT_ID"),client_secret:env("HUB_CALENDAR_CLIENT_SECRET"),grant_type:"client_credentials",scope:"https://graph.microsoft.com/.default"})});
+      if(!tr.ok)return json({error:"calendar_token_failed"},409);
+      const token=(await tr.json()).access_token;
+      const facts=JSON.parse(atob(String(token).split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));
+      if(facts.tid!==env("HUB_CALENDAR_TENANT_ID")||(facts.appid??facts.azp)!==env("HUB_CALENDAR_CLIENT_ID")||env("HUB_CALENDAR_CLIENT_ID")===env("AZURE_CLIENT_ID")||(Array.isArray(facts.roles)&&facts.roles.some((r:string)=>!['Calendars.Read','Calendars.ReadWrite'].includes(r))))return json({error:"calendar_identity_unverified"},409);
+      const graph:DailyGraph=async(method,path)=>{if(method!=="GET")throw Error("read_only");const r=await fetch(`https://graph.microsoft.com${path}`,{method:"GET",signal:AbortSignal.timeout(20000),headers:{Authorization:`Bearer ${token}`,Prefer:'outlook.timezone="UTC", IdType="ImmutableId"'}});return{status:r.status,data:await r.json().catch(()=>null)};};
+      const w=osloDayWindow(day);const result=await previewDaily(graph,scope,`/v1.0/users/${encodeURIComponent(mb)}/calendarView?startDateTime=${w.start}&endDateTime=${w.end}&$select=id,changeKey,transactionId,start,end,showAs,isCancelled,type,isAllDay,body,subject,attendees&$top=100`,payload,copy);
+      return json({read_only:true,mailbox:mb,work_date:day,existing_central_copy:!!copy,blocked:result.blocked,diagnosis:result.diagnosis,writes_enabled:CENTRAL_LIFECYCLE_APPROVED,no_queue_replay:true});
+    }catch{return json({error:"calendar_read_failed",read_only:true,graph_write_attempted:false},409);}
+  }
 
   const loadTarget = async (id: unknown) => {
     if (typeof id !== "string" || !UUID.test(id)) return null;

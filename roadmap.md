@@ -1,3 +1,11 @@
+# Ordinary central calendar readiness – 19 November
+- [x] Generic locked daily lifecycle/journal/atomic claim, exact GET/If-Match/unknown hold and isolated multi-person/day tests; 1253 suite tests pass
+- [x] Ordinary router connects exact recipient to central lifecycle, pins existing app copies/claims while paused; no delegated fallback
+- [x] Admin selected-day GET preflight and locked activation control; explicit target revocation is stop, no queue release
+- [x] Three functions deployed, database journal empty, seven held intents and global flags unchanged; signed-in locked screen verified
+- [ ] Live activation and active-staff probes: separate operator initiation/authorization required
+- [ ] Remaining readiness gaps: audit/consent-backed known-conflict release; automatic true-unplan dispatch hookup; per-day central status read model; narrow per-mailbox activation transaction independent of global enabled; live route check after approval
+
 # Related pilot flow sweep
 - [x] Read exact permit/preview/claim/receipt/reconcile/UI/status and background paths; scoped original-copy read corrected without changing other flows
 - [ ] Unscoped broader simulation/readiness database errors and dormant generic lifecycle gaps: outside JOB60576 bugfix scope; separate authorization required

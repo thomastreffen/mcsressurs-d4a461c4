@@ -29,3 +29,5 @@
 - Self-assignment uses the atomic job-email claim for informational mail; approval state never counts as an email receipt in UI or dispatch. Why: autoapproval cannot hide missing or failed operational information.
 - calendar-write-sync routes each technician through routeTechnicianCalendar: delegated by default; central only when global gates are open and every planned Oslo day has an active exact target, then no delegated write and no fallback intent; partial coverage fails closed. Why: one source of truth per job/technician/day.
 - Unplanning deletion resolves exact removed-day links and uses the recipient's delegated token; central links require their dedicated gate, and old retries require explicit event confirmation. Why: no mail-app fallback, wrong-day deletion or deployment-triggered writes.
+
+- Ordinary central calendar lifecycle uses `_shared/central-calendar-lifecycle.ts` + private daily journal/service-only exact claim; deployment approval stays false, existing app receipts or claims pin central ownership even while paused, and old queues never release. Why: exact day/version GET verification, no blind retries or dual delegated writes.

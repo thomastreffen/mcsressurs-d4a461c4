@@ -126,7 +126,7 @@ export function osloDate(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date(iso));
 }
 
-export type CalendarRoute = "delegated" | "central" | "blocked_partial_target";
+export type CalendarRoute = "delegated" | "central" | "blocked_partial_target" | "central_paused";
 /**
  * Single source of truth per (job, technician): either the technician's delegated token OR the central
  * app-only path, never both. Central only when the global gates are fully open AND every planned Oslo
@@ -136,15 +136,19 @@ export function routeTechnicianCalendar(p: {
   settings: { enabled: boolean; dry_run: boolean; scope_verified_at: string | null; pilot_mailboxes: string[] } | null;
   mailbox: string | null; workDates: string[];
   targets: { work_date: string; mailbox: string; expires_at: string | null; revoked_at: string | null }[];
+  centralOwned?: boolean;
   now?: Date;
 }): CalendarRoute {
   const now = (p.now ?? new Date()).getTime();
   const mb = (p.mailbox ?? "").toLowerCase();
   const active = p.targets.filter((t) => !t.revoked_at && (!t.expires_at || Date.parse(t.expires_at) > now) && t.mailbox.toLowerCase() === mb);
   const covered = p.workDates.filter((d) => active.some((t) => t.work_date === d));
-  if (covered.length === 0) return "delegated";
   const s = p.settings;
   const gatesOpen = !!s && s.enabled && !s.dry_run && !!s.scope_verified_at && s.pilot_mailboxes.map((m) => m.toLowerCase()).includes(mb);
+  // Persistent app provenance owns the recipient even while stopped. Never borrow a delegated token.
+  if (p.centralOwned && !gatesOpen) return "central_paused";
+  if (p.centralOwned && covered.length !== p.workDates.length) return "blocked_partial_target";
+  if (covered.length === 0) return "delegated";
   if (!gatesOpen) return "delegated";
   return covered.length === p.workDates.length ? "central" : "blocked_partial_target";
 }

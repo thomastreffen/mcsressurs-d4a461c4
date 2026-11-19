@@ -946,10 +946,15 @@ Deno.serve(async (req) => {
     }
 
     // Central app-only routing (read-only lookups). With global flags off this always yields "delegated".
-    const { data: centralSettings } = await supabaseAdmin.from("job_outlook_app_sync_settings")
+    const { data: centralSettings, error: centralSettingsError } = await supabaseAdmin.from("job_outlook_app_sync_settings")
       .select("enabled,dry_run,scope_verified_at,pilot_mailboxes").limit(1).maybeSingle();
-    const { data: centralTargets } = await supabaseAdmin.from("job_outlook_app_pilot_targets")
+    const { data: centralTargets, error: centralTargetsError } = await supabaseAdmin.from("job_outlook_app_pilot_targets")
       .select("technician_id,work_date,mailbox,expires_at,revoked_at").eq("event_id", event_id);
+    const { data: centralCopies, error: centralCopiesError } = await supabaseAdmin.from("job_outlook_app_links")
+      .select("technician_id,mailbox,outlook_event_id,state").eq("event_id", event_id);
+    const { data: centralOperations, error: centralOperationsError } = await supabaseAdmin.from("job_calendar_daily_operations")
+      .select("technician_id,state").eq("event_id", event_id);
+    if (centralSettingsError || centralTargetsError || centralCopiesError || centralOperationsError) throw new Error("calendar_source_read_failed_no_fallback");
 
     // ── Sync for EACH technician independently ──
     const results: any[] = [];
@@ -959,12 +964,16 @@ Deno.serve(async (req) => {
       const route = routeTechnicianCalendar({
         settings: centralSettings as any, mailbox: tech.email ?? null, workDates,
         targets: (centralTargets ?? []).filter((t: any) => t.technician_id === tech.id).map((t: any) => ({ ...t, work_date: String(t.work_date) })),
+        centralOwned: (centralCopies ?? []).some((l: any) => l.technician_id === tech.id && !!l.outlook_event_id) || (centralOperations ?? []).some((o: any) => o.technician_id === tech.id),
       });
       if (route !== "delegated") {
         // Never a delegated write (no dual source) and no fallback queue intent; central writes stay operator-driven.
         const central = route === "central";
+        // Ordinary routing invokes only the exact selected recipient, never drain_queue.
+        // The dedicated function independently checks its deployment lock and live gates.
+        const routed = central ? await supabaseAdmin.functions.invoke("job-outlook-app-sync", { body: { action: "sync_event", event_id, technician_id: tech.id } }) : null;
         await recordDelivery(supabaseAdmin, { eventId: event_id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email,
-          channel: "calendar", status: central ? "pending" : "failed", reasonCode: central ? "central_app_pending" : "central_partial_target_blocked", attemptedBy: callerUserId });
+          channel: "calendar", status: routed?.data?.status === "verified" ? "sent" : "pending", state: routed?.data?.status === "verified" ? "verified" : "pending", verificationSignal: routed?.data?.status === "verified" ? "exact_graph_get_200" : null, reasonCode: routed?.data?.status === "verified" ? "central_verified_readback" : route === "central_paused" ? "central_source_paused" : central ? "central_app_pending" : "central_partial_target_blocked", attemptedBy: callerUserId });
         results.push({ techId: tech.id, techName: tech.name, status: central ? "central_pending" : "central_blocked", skipTechDelivery: true, excludeFromEvidence: true });
         continue;
       }
