@@ -1,0 +1,67 @@
+import { describe, it, expect } from "vitest";
+import { assessRoles, judgeProbe, overall, mayRead, confidenceClass, shouldNotify, classifyCoverage, prefilter, excerpt, resolveWeekday, dedupeKey, isSeparateIdentity, PILOT_MAILBOX } from "../../supabase/functions/_shared/contract-watch-core";
+
+describe("Avtalevakt access gates", () => {
+  it("app must have exactly Mail.Read", () => {
+    expect(assessRoles(["Mail.Read"]).ok).toBe(true);
+    expect(assessRoles(["Mail.Read", "Mail.Send"]).ok).toBe(false);
+    expect(assessRoles(["Mail.ReadWrite"]).ok).toBe(false);
+  });
+  it("own mailbox must give 200 and other mailbox 403; errors are never a pass", () => {
+    expect(judgeProbe(200, 200)).toBe("pass");
+    expect(judgeProbe(403, 200)).toBe("fail");
+    expect(judgeProbe(200, 503)).toBe("inconclusive");
+    expect(overall(["pass", "inconclusive"])).toBe("inconclusive");
+  });
+  it("reading needs enabled + verified scope + consent + explicit mailbox", () => {
+    const s = { enabled: true, allowed_mailboxes: [PILOT_MAILBOX], scope_verified_at: "x", consent_at: "x" };
+    expect(mayRead(s, PILOT_MAILBOX)).toBe(true);
+    expect(mayRead(s, "rune@mcsservice.no")).toBe(false);
+    expect(mayRead({ ...s, consent_at: null }, PILOT_MAILBOX)).toBe(false);
+    expect(mayRead({ ...s, enabled: false }, PILOT_MAILBOX)).toBe(false);
+  });
+  it("identity must differ from the mail and calendar apps", () => {
+    expect(isSeparateIdentity("a", ["b", "c"])).toBe(true);
+    expect(isSeparateIdentity("a", ["a"])).toBe(false);
+  });
+});
+
+describe("Avtalevakt classification", () => {
+  it("confidence thresholds 0.6 / 0.85", () => {
+    expect(confidenceClass(0.5, true)).toBe("uncertain");
+    expect(confidenceClass(0.7, true)).toBe("check");
+    expect(confidenceClass(0.9, false)).toBe("check");
+    expect(confidenceClass(0.9, true)).toBe("likely");
+  });
+  it("test runs and uncertain or covered promises never notify", () => {
+    expect(shouldNotify("likely", "missing", true)).toBe(false);
+    expect(shouldNotify("uncertain", "missing", false)).toBe(false);
+    expect(shouldNotify("likely", "covered", false)).toBe(false);
+    expect(shouldNotify("check", "partial", false)).toBe(true);
+  });
+  it("coverage against Resource Plan within ±1 day", () => {
+    expect(classifyCoverage({ date: "2026-11-25" }, [])).toBe("missing");
+    expect(classifyCoverage({ date: "2026-11-25", technicians: 2 }, [{ date: "2026-11-25", technicianCount: 2 }])).toBe("covered");
+    expect(classifyCoverage({ date: "2026-11-25", technicians: 2 }, [{ date: "2026-11-25", technicianCount: 1 }])).toBe("partial");
+    expect(classifyCoverage({ date: "2026-11-25" }, [{ date: "2026-11-26", technicianCount: 2 }])).toBe("partial");
+    expect(classifyCoverage({ date: "2026-11-25" }, [{ date: "2026-11-25", technicianCount: 1, techniciansBusy: true }])).toBe("conflict");
+  });
+  it("prefilter skips auto replies, newsletters, system mail and non-customers", () => {
+    expect(prefilter({ from: "a@b.no", subject: "Automatisk svar", customerHit: true }).process).toBe(false);
+    expect(prefilter({ from: "a@b.no", subject: "x", headers: { "List-Unsubscribe": "<x>" }, customerHit: true }).process).toBe(false);
+    expect(prefilter({ from: "noreply@b.no", subject: "x", customerHit: true }).process).toBe(false);
+    expect(prefilter({ from: "a@b.no", subject: "x", customerHit: false }).reason).toBe("no_customer");
+    expect(prefilter({ from: "a@bravida.no", subject: "Montering", customerHit: true }).process).toBe(true);
+  });
+  it("excerpt is capped at 500 chars", () => { expect(excerpt("a".repeat(900)).length).toBe(500); });
+  it("weekday resolves in Oslo; ambiguous 'neste' is never guessed", () => {
+    // Sent Thu 19 Nov 2026 23:30 Oslo (22:30 UTC) → tirsdag = 24 Nov
+    expect(resolveWeekday("tirsdag", "2026-11-19T22:30:00Z")).toBe("2026-11-24");
+    expect(resolveWeekday("torsdag", "2026-11-19T10:00:00Z")).toBe("2026-11-26");
+    expect(resolveWeekday("tirsdag", "2026-11-19T10:00:00Z", "neste")).toBeNull();
+  });
+  it("same conversation, customer, date and task dedupe to one key", () => {
+    const a = dedupeKey({ conversationId: "c1", customerId: "k", date: "2026-11-25", task: "Montering tavle Sandvika" });
+    expect(dedupeKey({ conversationId: "c1", customerId: "k", date: "2026-11-25", task: "montering  TAVLE sandvika!" })).toBe(a);
+  });
+});

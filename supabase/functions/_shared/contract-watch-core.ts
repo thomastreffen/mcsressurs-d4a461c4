@@ -1,0 +1,98 @@
+// Pure rules for MCS AI Avtalevakt (phase 1: one mailbox, read-only). No I/O here.
+export const PILOT_MAILBOX = "thomas.treffen@mcsservice.no";
+export const OTHER_MAILBOX_PROBE = "postkontoret@mcsservice.no";
+export const REQUIRED_SECRETS = ["AVTALEVAKT_TENANT_ID", "AVTALEVAKT_CLIENT_ID", "AVTALEVAKT_CLIENT_SECRET"] as const;
+
+export function missingSecrets(env: (n: string) => string | undefined): string[] {
+  return REQUIRED_SECRETS.filter((n) => !env(n));
+}
+
+/** App roles must be exactly Mail.Read: anything that can write, send or read calendars fails. */
+export function assessRoles(roles: string[]): { ok: boolean; extra: string[]; hasRead: boolean } {
+  const hasRead = roles.includes("Mail.Read");
+  const extra = roles.filter((r) => r !== "Mail.Read");
+  return { ok: hasRead && extra.length === 0, extra, hasRead };
+}
+
+/** The Avtalevakt app must never be the same identity as mail sender or calendar app. */
+export function isSeparateIdentity(clientId: string | undefined, others: (string | undefined)[]): boolean {
+  return !!clientId && others.filter(Boolean).every((o) => o !== clientId);
+}
+
+export type ProbeResult = "pass" | "fail" | "inconclusive";
+/** Expected: own mailbox 200, other mailbox 403. 401/5xx/429 are inconclusive, never a pass. */
+export function judgeProbe(expected: 200 | 403, status: number | null): ProbeResult {
+  if (status === expected) return "pass";
+  if (status === null || status === 401 || status === 429 || status >= 500) return "inconclusive";
+  return "fail";
+}
+
+export function overall(results: ProbeResult[]): ProbeResult {
+  if (results.includes("fail")) return "fail";
+  if (results.includes("inconclusive")) return "inconclusive";
+  return "pass";
+}
+
+/** Reading is allowed only when every gate is true. */
+export function mayRead(s: { enabled: boolean; allowed_mailboxes: string[]; scope_verified_at: string | null; consent_at: string | null }, mailbox: string): boolean {
+  return s.enabled && !!s.scope_verified_at && !!s.consent_at && s.allowed_mailboxes.map((m) => m.toLowerCase()).includes(mailbox.toLowerCase());
+}
+
+export type ConfidenceClass = "uncertain" | "check" | "likely";
+export function confidenceClass(confidence: number, dateCertain: boolean): ConfidenceClass {
+  if (confidence < 0.6) return "uncertain";
+  if (confidence > 0.85 && dateCertain) return "likely";
+  return "check";
+}
+
+/** Only these may notify Thomas; uncertain items are silent. */
+export function shouldNotify(c: ConfidenceClass, coverage: Coverage, isTest: boolean): boolean {
+  return !isTest && c !== "uncertain" && coverage !== "covered";
+}
+
+export function dedupeKey(p: { conversationId?: string | null; customerId?: string | null; date?: string | null; task?: string | null }): string {
+  const norm = (s?: string | null) => (s ?? "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
+  return [p.conversationId ?? "-", p.customerId ?? "-", p.date ?? "nodate", norm(p.task).split(" ").slice(0, 4).join(" ")].join("|");
+}
+
+export type Coverage = "covered" | "partial" | "missing" | "conflict";
+export interface PlanJob { date: string; technicianCount: number; techniciansBusy?: boolean }
+/** Compare a promise against Resource Plan jobs for the same customer (±1 day). Resource Plan is authoritative. */
+export function classifyCoverage(promise: { date: string; technicians?: number | null }, jobs: PlanJob[]): Coverage {
+  const day = (d: string) => Date.parse(`${d}T12:00:00Z`) / 86400000;
+  const near = jobs.filter((j) => Math.abs(day(j.date) - day(promise.date)) <= 1);
+  if (near.length === 0) return "missing";
+  const exact = near.find((j) => j.date === promise.date);
+  if (exact?.techniciansBusy) return "conflict";
+  if (!exact || exact.technicianCount === 0 || (promise.technicians ?? 0) > exact.technicianCount) return "partial";
+  return "covered";
+}
+
+/** Pre-AI filter: skip auto-replies, newsletters, system notices and mail without a customer hit. */
+export function prefilter(m: { from: string; subject: string; headers?: Record<string, string>; customerHit: boolean }): { process: boolean; reason?: string } {
+  const h = Object.fromEntries(Object.entries(m.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v.toLowerCase()]));
+  if (h["auto-submitted"] && h["auto-submitted"] !== "no") return { process: false, reason: "auto_reply" };
+  if (h["list-unsubscribe"] || h["precedence"] === "bulk" || h["precedence"] === "list") return { process: false, reason: "newsletter" };
+  if (/^(no-?reply|noreply|mailer-daemon|postmaster)@/i.test(m.from)) return { process: false, reason: "system" };
+  if (/^(automatisk svar|automatic reply|out of office|fraværende)/i.test(m.subject)) return { process: false, reason: "auto_reply" };
+  if (!m.customerHit) return { process: false, reason: "no_customer" };
+  return { process: true };
+}
+
+/** Excerpt is capped at 500 chars; full bodies are never stored. */
+export function excerpt(text: string): string {
+  return text.replace(/\s+/g, " ").trim().slice(0, 500);
+}
+
+/** Resolve a weekday mention relative to the send time in Europe/Oslo. Returns null if unclear (never guess). */
+const WD: Record<string, number> = { mandag: 1, tirsdag: 2, onsdag: 3, torsdag: 4, fredag: 5, lørdag: 6, søndag: 0 };
+/** Resolves the first coming weekday (never today) relative to send time in Oslo. "Neste <dag>" is ambiguous → null. */
+export function resolveWeekday(word: string, sentAtIso: string, qualifier?: "neste"): string | null {
+  const target = WD[word.toLowerCase()];
+  if (target === undefined || qualifier === "neste") return null;
+  const osloDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date(sentAtIso));
+  const base = new Date(`${osloDate}T12:00:00Z`);
+  const diff = ((target - base.getUTCDay() + 7) % 7) || 7;
+  base.setUTCDate(base.getUTCDate() + diff);
+  return base.toISOString().slice(0, 10);
+}

@@ -813,6 +813,13 @@
       "when": 1795003874559,
       "tag": "0115_crm_email_sends_traceability",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1795072974154,
+      "tag": "0116_contract_watch_foundation",
+      "breakpoints": true
     }
   ]
 }

@@ -4268,6 +4268,162 @@ export type Database = {
           },
         ]
       }
+      contract_watch_audit: {
+        Row: {
+          action: string
+          actor: string | null
+          at: string
+          details: Json
+          id: string
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          at?: string
+          details?: Json
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          at?: string
+          details?: Json
+          id?: string
+        }
+        Relationships: []
+      }
+      contract_watch_commitments: {
+        Row: {
+          company_id: string
+          confidence: number
+          confidence_class: string
+          conversation_id: string | null
+          coverage: string | null
+          created_at: string
+          customer_account_id: string | null
+          customer_id: string | null
+          date_certain: boolean
+          dedupe_key: string
+          excerpt: string | null
+          history: Json
+          id: string
+          internet_message_id: string | null
+          is_test: boolean
+          mailbox: string
+          message_hash: string | null
+          promised_date: string | null
+          promised_time: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          confidence?: number
+          confidence_class?: string
+          conversation_id?: string | null
+          coverage?: string | null
+          created_at?: string
+          customer_account_id?: string | null
+          customer_id?: string | null
+          date_certain?: boolean
+          dedupe_key: string
+          excerpt?: string | null
+          history?: Json
+          id?: string
+          internet_message_id?: string | null
+          is_test?: boolean
+          mailbox: string
+          message_hash?: string | null
+          promised_date?: string | null
+          promised_time?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          confidence?: number
+          confidence_class?: string
+          conversation_id?: string | null
+          coverage?: string | null
+          created_at?: string
+          customer_account_id?: string | null
+          customer_id?: string | null
+          date_certain?: boolean
+          dedupe_key?: string
+          excerpt?: string | null
+          history?: Json
+          id?: string
+          internet_message_id?: string | null
+          is_test?: boolean
+          mailbox?: string
+          message_hash?: string | null
+          promised_date?: string | null
+          promised_time?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contract_watch_diagnostic_runs: {
+        Row: {
+          app_roles: string[]
+          checks: Json
+          id: string
+          overall: string
+          run_at: string
+          run_by: string | null
+        }
+        Insert: {
+          app_roles?: string[]
+          checks?: Json
+          id?: string
+          overall: string
+          run_at?: string
+          run_by?: string | null
+        }
+        Update: {
+          app_roles?: string[]
+          checks?: Json
+          id?: string
+          overall?: string
+          run_at?: string
+          run_by?: string | null
+        }
+        Relationships: []
+      }
+      contract_watch_settings: {
+        Row: {
+          allowed_mailboxes: string[]
+          consent_at: string | null
+          consent_by: string | null
+          consent_text: string | null
+          enabled: boolean
+          id: boolean
+          scope_verified_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          allowed_mailboxes?: string[]
+          consent_at?: string | null
+          consent_by?: string | null
+          consent_text?: string | null
+          enabled?: boolean
+          id?: boolean
+          scope_verified_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allowed_mailboxes?: string[]
+          consent_at?: string | null
+          consent_by?: string | null
+          consent_text?: string | null
+          enabled?: boolean
+          id?: boolean
+          scope_verified_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contracts: {
         Row: {
           ai_confidence: number | null
