@@ -16,6 +16,7 @@ import { CalendarRolloutReadiness } from "./CalendarRolloutReadiness";
 import { SystemSenderDiagnostics } from "./SystemSenderDiagnostics";
 import { TechnicianMailboxTest } from "./TechnicianMailboxTest";
 import { CentralCalendarActivation } from "./CentralCalendarActivation";
+import { CentralCalendarRetry } from "./CentralCalendarRetry";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 type Any = Record<string, any>;
@@ -165,6 +166,7 @@ export function JobOutlookPilotScopeCard() {
         {msg && <p role="status">{msg}</p>}
         <ErrorBoundary><TechnicianMailboxTest key={"mailbox-test"} /></ErrorBoundary>
         <ErrorBoundary><CentralCalendarActivation key={"central-activation"} /></ErrorBoundary>
+        <ErrorBoundary><CentralCalendarRetry /></ErrorBoundary>
         <ErrorBoundary><CentralCalendarReadiness /></ErrorBoundary>
         <ErrorBoundary><CalendarRolloutReadiness key={`${form.event_id}:${form.technician_id}:${form.work_date}`} selection={form} eligible={!!day} /></ErrorBoundary>
         <JobCalendarOneShot />

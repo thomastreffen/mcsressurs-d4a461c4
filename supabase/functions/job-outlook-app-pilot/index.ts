@@ -149,6 +149,44 @@ Deno.serve(async (req) => {
     if (finished.error) return json({ error: "audit_result_failed", result, audit_complete: false }, 409);
     return json({ ok: true, result, audit_complete: true, rollout_approved: false });
   }
+  // Exact operator-authorized retry for ONE activated technician on ONE already-assigned job day. Never other recipients.
+  if (action === "central_pending" || action === "retry_central_assignment") {
+    const company = b.company_id;
+    if (typeof company !== "string" || !UUID.test(company)) return json({ error: "invalid_company" }, 400);
+    const rights = await uc.rpc("has_company_access", { _uid: caller, _company: company, _module: "resource_plan", _level: "edit" });
+    if (rights.error || rights.data !== true) return json({ error: "company_edit_required" }, 403);
+    const { data: acts, error: ae } = await admin.from("central_calendar_activations").select("scope,technician_id,mailbox").eq("company_id", company).is("revoked_at", null);
+    if (ae) return json({ error: "activation_read_failed" }, 409);
+    const { data: pend, error: pe } = await admin.from("event_recipient_delivery").select("event_id,technician_id,recipient_email,reason_code").eq("channel", "calendar").neq("status", "sent").like("reason_code", "central_%");
+    if (pe) return json({ error: "delivery_read_failed" }, 409);
+    const rows: any[] = [];
+    for (const p of pend ?? []) {
+      const { data: ev } = await admin.from("events").select("id,title,company_id,deleted_at,start_time,job_number,internal_number").eq("id", p.event_id).maybeSingle();
+      if (!ev || ev.company_id !== company || ev.deleted_at) continue;
+      const mailbox = String(p.recipient_email ?? "").trim().toLowerCase();
+      if (!(acts ?? []).some((a: any) => a.scope === "all_active" || (a.technician_id === p.technician_id && a.mailbox === mailbox))) continue;
+      const { data: et } = await admin.from("event_technicians").select("technician_id").eq("event_id", p.event_id).eq("technician_id", p.technician_id).maybeSingle();
+      if (!et) continue;
+      const live = (await identities([p.technician_id], company)).get(p.technician_id);
+      if (!live || !activeIdentity(live)) continue;
+      const { data: done } = await admin.from("job_outlook_app_links").select("id").eq("event_id", p.event_id).eq("technician_id", p.technician_id).not("outlook_event_id", "is", null).limit(1);
+      if (done?.length) continue;
+      rows.push({ event_id: p.event_id, technician_id: p.technician_id, mailbox, title: ev.title, job_number: ev.job_number ?? ev.internal_number, start_time: ev.start_time, reason_code: p.reason_code, phrase: `KJØR KALENDER ${mailbox} ${p.event_id.slice(0, 8)}` });
+    }
+    if (action === "central_pending") return json({ read_only: true, pending: rows });
+    const row = rows.find((r) => r.event_id === b.event_id && r.technician_id === b.technician_id);
+    if (!row) return json({ error: "not_pending_or_not_activated" }, 409);
+    if (b.phrase !== row.phrase) return json({ error: "exact_phrase_required" }, 400);
+    const operation = `retry:${row.event_id}:${row.technician_id}`;
+    const started = await audit("retry_central_assignment_started", { event_id: row.event_id, technician_id: row.technician_id, mailbox: row.mailbox }, { idempotency_key: operation + ":" + now.toISOString() });
+    if (started.error) return json({ error: "audit_failed_no_microsoft_call" }, 409);
+    // Only this technician; the daily claim/duplicate guard decides create vs reconcile, never a blind repost.
+    const r = await admin.functions.invoke("job-outlook-app-sync", { body: { action: "sync_event", event_id: row.event_id, technician_id: row.technician_id } });
+    await audit("retry_central_assignment", { result: r.data ?? null, error: r.error ? String(r.error) : null });
+    const st = r.data?.results?.[0]?.status ?? r.data?.status ?? "invoke_failed";
+    await admin.from("event_recipient_delivery").update({ status: st === "verified" ? "sent" : "pending", reason_code: st === "verified" ? "central_verified_readback" : `central_${String(st).slice(0, 60)}` }).eq("event_id", row.event_id).eq("technician_id", row.technician_id).eq("channel", "calendar");
+    return json({ status: st });
+  }
   if (action === "candidates") {
     if (b.event_id !== undefined) {
       if (typeof b.event_id !== "string" || !UUID.test(b.event_id)) return json({ error: "invalid_input" }, 400);

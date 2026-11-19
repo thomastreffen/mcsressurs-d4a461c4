@@ -976,7 +976,7 @@ Deno.serve(async (req) => {
         // The dedicated function independently checks its deployment lock and live gates.
         const routed = central ? await supabaseAdmin.functions.invoke("job-outlook-app-sync", { body: { action: "sync_event", event_id, technician_id: tech.id } }) : null;
         await recordDelivery(supabaseAdmin, { eventId: event_id, technicianId: tech.id, technicianUserId: tech.user_id, recipientEmail: tech.email,
-          channel: "calendar", status: routed?.data?.status === "verified" ? "sent" : "pending", state: routed?.data?.status === "verified" ? "verified" : "pending", verificationSignal: routed?.data?.status === "verified" ? "exact_graph_get_200" : null, reasonCode: routed?.data?.status === "verified" ? "central_verified_readback" : route === "central_paused" ? "central_source_paused" : central ? "central_app_pending" : "central_partial_target_blocked", attemptedBy: callerUserId });
+          channel: "calendar", status: routed?.data?.status === "verified" ? "sent" : "pending", state: routed?.data?.status === "verified" ? "verified" : "pending", verificationSignal: routed?.data?.status === "verified" ? "exact_graph_get_200" : null, reasonCode: routed?.data?.status === "verified" ? "central_verified_readback" : central && (routed?.error || routed?.data?.results?.[0]?.status) ? `central_${String(routed?.data?.results?.[0]?.status ?? "invoke_failed").slice(0, 60)}` : route === "central_paused" ? "central_source_paused" : central ? "central_app_pending" : "central_partial_target_blocked", attemptedBy: callerUserId });
         results.push({ techId: tech.id, techName: tech.name, status: central ? "central_pending" : "central_blocked", skipTechDelivery: true, excludeFromEvidence: true });
         continue;
       }
