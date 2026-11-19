@@ -65,3 +65,28 @@ describe("Avtalevakt classification", () => {
     expect(dedupeKey({ conversationId: "c1", customerId: "k", date: "2026-11-25", task: "montering  TAVLE sandvika!" })).toBe(a);
   });
 });
+
+import { attachmentDecision, looksSensitive, draftFromCommitment, draftMissing } from "../../supabase/functions/_shared/contract-watch-core";
+describe("Avtalevakt order drafts", () => {
+  it("date and time only when explicit", () => {
+    expect(draftFromCommitment({ excerpt: "x", promised_date: "2026-11-25", promised_time: "08:00", date_certain: false }).agreed_date).toBeNull();
+    expect(draftFromCommitment({ excerpt: "x", promised_date: "2026-11-25", promised_time: "08:00", date_certain: true }).agreed_time).toBe("08:00");
+  });
+  it("large jobs are suggested as project, others as service order", () => {
+    expect(draftFromCommitment({ excerpt: "", promised_date: null, promised_time: null, date_certain: false, estimatedDays: 5 }).suggested_type).toBe("project");
+    expect(draftFromCommitment({ excerpt: "", promised_date: null, promised_time: null, date_certain: false }).suggested_type).toBe("service_order");
+  });
+  it("attachments: images/PDF as references only; executables, macros, huge files and inline logos rejected", () => {
+    expect(attachmentDecision({ contentType: "application/pdf", size: 1e6, name: "tavle.pdf" })).toBe("reference_only");
+    expect(attachmentDecision({ contentType: "application/octet-stream", size: 1e3, name: "x.exe" })).toBe("rejected_type");
+    expect(attachmentDecision({ contentType: "image/jpeg", size: 30e6, name: "a.jpg" })).toBe("rejected_size");
+    expect(attachmentDecision({ contentType: "image/png", size: 5000, isInline: true, name: "logo.png" })).toBe("rejected_inline");
+  });
+  it("flags national ID numbers as sensitive", () => {
+    expect(looksSensitive("Fnr 01019912345")).toBe(true);
+    expect(looksSensitive("Montering av tavle i 2. etasje")).toBe(false);
+  });
+  it("missing fields are named", () => {
+    expect(draftMissing({ customer_id: null, description: "x", work_site: "" })).toEqual(["Kunde", "Arbeidssted"]);
+  });
+});

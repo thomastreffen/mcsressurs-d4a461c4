@@ -4391,6 +4391,92 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_watch_order_drafts: {
+        Row: {
+          agreed_date: string | null
+          agreed_time: string | null
+          ai_suggestion: Json
+          attachment_refs: Json
+          commitment_id: string
+          company_id: string
+          contact_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_account_id: string | null
+          customer_id: string | null
+          description: string | null
+          id: string
+          sensitive_flag: boolean
+          source_conversation_id: string | null
+          source_internet_message_id: string | null
+          source_mailbox: string | null
+          status: string
+          suggested_type: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+          work_site: string | null
+        }
+        Insert: {
+          agreed_date?: string | null
+          agreed_time?: string | null
+          ai_suggestion?: Json
+          attachment_refs?: Json
+          commitment_id: string
+          company_id: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_account_id?: string | null
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          sensitive_flag?: boolean
+          source_conversation_id?: string | null
+          source_internet_message_id?: string | null
+          source_mailbox?: string | null
+          status?: string
+          suggested_type?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          work_site?: string | null
+        }
+        Update: {
+          agreed_date?: string | null
+          agreed_time?: string | null
+          ai_suggestion?: Json
+          attachment_refs?: Json
+          commitment_id?: string
+          company_id?: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_account_id?: string | null
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          sensitive_flag?: boolean
+          source_conversation_id?: string | null
+          source_internet_message_id?: string | null
+          source_mailbox?: string | null
+          status?: string
+          suggested_type?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          work_site?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_watch_order_drafts_commitment_id_fkey"
+            columns: ["commitment_id"]
+            isOneToOne: false
+            referencedRelation: "contract_watch_commitments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_watch_settings: {
         Row: {
           allowed_mailboxes: string[]
@@ -19802,6 +19888,11 @@ export type Database = {
           _customer_id: string
         }
         Returns: Json
+      }
+      cw_draft_prepare: { Args: { _commitment_id: string }; Returns: string }
+      cw_draft_save: {
+        Args: { _id: string; _patch: Json; _version: number }
+        Returns: number
       }
       deactivate_conversation_participant: {
         Args: { _participant_id: string }

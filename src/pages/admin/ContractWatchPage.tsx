@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ShieldOff, Power, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { ContractWatchDiagnosticsCard } from "@/components/admin/ContractWatchDiagnosticsCard";
+import { ContractWatchDraftEditor, type Draft } from "@/components/admin/ContractWatchDraftEditor";
 
 const CONSENT = "Jeg, Thomas Treffen, samtykker til at MCS AI Avtalevakt i fase 1 kun leser innkommende og sendt e-post i thomas.treffen@mcsservice.no, at korte utdrag behandles av Lovable AI for å finne kundeløfter, og at data lagres etter valgt lagringstid. Ingen e-post sendes og ingen jobber opprettes automatisk.";
 const COVERAGE: Record<string, string> = { covered: "Dekket", partial: "Delvis", missing: "Mangler", conflict: "Konflikt" };
@@ -30,6 +31,13 @@ export default function ContractWatchPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cw-settings"] }); qc.invalidateQueries({ queryKey: ["cw-audit"] }); toast.success("Lagret"); },
     onError: (e: Error) => toast.error({ gates_not_met: "Kan ikke slås på: tilgang, postkasse og samtykke må være bekreftet først", diagnostic_not_passed: "Tilkoblingstesten må være bestått siste 24 timer", consent_text_required: "Samtykketekst mangler" }[e.message.match(/\w+$/)?.[0] ?? ""] ?? e.message),
   });
+  const drafts = useQuery({ queryKey: ["cw-drafts"], queryFn: async () => ((await supabase.from("contract_watch_order_drafts").select("*").neq("status", "discarded").order("updated_at", { ascending: false })).data ?? []) as unknown as Draft[] });
+  const [open, setOpen] = useState<Draft | null>(null);
+  const prepare = async (commitmentId: string) => {
+    const { data, error } = await supabase.rpc("cw_draft_prepare", { _commitment_id: commitmentId });
+    if (error) { toast.error(error.message); return; }
+    const r = await drafts.refetch(); setOpen((r.data ?? []).find((d) => d.id === data) ?? null);
+  };
   const s = settings.data;
   const [consentOk, setConsentOk] = useState(false);
   const [ret, setRet] = useState<string>(""); const [dis, setDis] = useState<string>("");
@@ -91,10 +99,19 @@ export default function ContractWatchPage() {
               <li key={i.id} className="py-3 space-y-1">
                 <div className="flex flex-wrap gap-2"><Badge variant="outline">{CONF[i.confidence_class] ?? i.confidence_class}</Badge>{i.coverage && <Badge variant={i.coverage === "covered" ? "secondary" : "destructive"}>{COVERAGE[i.coverage]}</Badge>}{i.is_test && <Badge variant="outline">Test</Badge>}<span className="text-muted-foreground">{i.promised_date ?? "Uklar dato"} {i.promised_time ?? ""}</span></div>
                 <p className="italic">«{i.excerpt}»</p>
+                <Button size="sm" variant="outline" onClick={() => prepare(i.id)}>Klargjør bestillingsutkast</Button>
               </li>))}</ul>
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Bestillingsutkast</CardTitle><CardDescription>Interne kladder – ikke bestillinger. Ingen varsler eller jobber.</CardDescription></CardHeader>
+        <CardContent className="text-sm">{(drafts.data ?? []).length === 0 ? <p className="text-muted-foreground">Ingen utkast.</p> :
+          <ul className="divide-y divide-border">{drafts.data!.map((d) => <li key={d.id} className="py-2 flex items-center justify-between gap-2"><span>{d.description?.slice(0, 80) || "Uten beskrivelse"} · {d.status === "ready" ? "Klar for kontroll" : "Kladd"}</span><Button size="sm" variant="outline" onClick={() => setOpen(d)}>Åpne</Button></li>)}</ul>}
+        </CardContent>
+      </Card>
+      {open && <ContractWatchDraftEditor draft={open} onClose={() => setOpen(null)} onSaved={() => drafts.refetch()} />}
 
       <Card>
         <CardHeader><CardTitle>Revisjonslogg</CardTitle></CardHeader>

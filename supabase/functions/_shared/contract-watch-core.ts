@@ -96,3 +96,41 @@ export function resolveWeekday(word: string, sentAtIso: string, qualifier?: "nes
   base.setUTCDate(base.getUTCDate() + diff);
   return base.toISOString().slice(0, 10);
 }
+
+// ---- Order drafts (phase 1: internal draft only, never a real order/job) ----
+export const ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024;
+const ALLOWED_MIME = ["application/pdf", "image/jpeg", "image/png", "image/heic", "image/webp"];
+export type AttachmentDecision = "reference_only" | "rejected_type" | "rejected_size" | "rejected_inline";
+/** Attachments stay as Graph references; files are fetched/stored only after explicit confirmation and a scan. */
+export function attachmentDecision(a: { contentType: string; size: number; isInline?: boolean; name: string }): AttachmentDecision {
+  if (a.isInline && a.size < 20 * 1024) return "rejected_inline"; // signatures/logos
+  if (!ALLOWED_MIME.includes(a.contentType.toLowerCase()) || /\.(exe|js|bat|cmd|scr|zip|docm|xlsm)$/i.test(a.name)) return "rejected_type";
+  if (a.size > ATTACHMENT_MAX_BYTES) return "rejected_size";
+  return "reference_only";
+}
+
+/** Simple sensitive-content signal: Norwegian national ID, card-like numbers, health words. Flags, never stores. */
+export function looksSensitive(text: string): boolean {
+  return /\b\d{6}\s?\d{5}\b/.test(text) || /\b(?:\d[ -]?){13,16}\b/.test(text) || /\b(sykemeld|diagnose|helseopplysning)/i.test(text);
+}
+
+/** Draft fields from a commitment: date/time only when explicit; type defaults to service order. */
+export function draftFromCommitment(c: { excerpt: string | null; promised_date: string | null; promised_time: string | null; date_certain: boolean; technicians?: number | null; estimatedDays?: number | null }) {
+  const project = (c.estimatedDays ?? 0) > 3 || (c.technicians ?? 0) > 3;
+  return {
+    suggested_type: project ? "project" as const : "service_order" as const,
+    agreed_date: c.date_certain ? c.promised_date : null,
+    agreed_time: c.date_certain ? c.promised_time : null,
+    description: c.excerpt ?? "",
+    sensitive_flag: looksSensitive(c.excerpt ?? ""),
+  };
+}
+
+/** A draft is "ready for check" only with customer, description and a work site. Readiness never creates an order. */
+export function draftMissing(d: { customer_id: string | null; description: string | null; work_site: string | null }): string[] {
+  const m: string[] = [];
+  if (!d.customer_id) m.push("Kunde");
+  if (!d.work_site?.trim()) m.push("Arbeidssted");
+  if (!d.description?.trim()) m.push("Arbeidsbeskrivelse");
+  return m;
+}
