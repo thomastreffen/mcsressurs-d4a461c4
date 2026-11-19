@@ -113,7 +113,7 @@ export function diagnoseOneShotEvents(events: OneShotEvent[], jobTitle: string, 
     else if (own === e) classification = "same_one_shot";
     else if (sameDay) classification = "same_hub_day";
     else if (sameJob) classification = "related_hub_job";
-    else if (e.transactionId === x.key || /MCS_(?:SOURCE|EVENT_ID|TECHNICIAN_ID|WORK_DATE):/.test(body) && !sameJob || !complete) classification = "unknown_availability";
+    else if (e.transactionId === x.key || /^mcs-/i.test(e.transactionId ?? "") || /MCS_(?:SOURCE|EVENT_ID|TECHNICIAN_ID|WORK_DATE):/.test(body) && !sameJob || !complete) classification = "unknown_availability"; // Hub-sent copy whose markers Exchange stripped: never an overridable "other" conflict
     else if (jobTitle.trim() && normalize(e.subject ?? "") === normalize(jobTitle)) classification = "same_title_unverified";
     else if (e.isCancelled === true) classification = "cancelled_overlap";
     else if (showAs === "free") classification = "free_overlap";

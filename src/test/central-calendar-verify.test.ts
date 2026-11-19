@@ -48,3 +48,12 @@ describe("POST201 then GET verification (JOB-000452 regression)", () => {
     expect(src).toContain("openOp?.length) continue");
   });
 });
+
+import { diagnoseOneShotEvents } from "../../supabase/functions/_shared/job-calendar-one-shot";
+describe("Hub copy with stripped markers is never an overridable conflict", () => {
+  it("classifies an mcs- transactionId copy as unknown (fail closed), even under another title", () => {
+    const permit: any = { id: "p", event_id: "d4089119", technician_id: "rune", company_id: "c", mailbox: "rune@x.no", work_date: "2026-11-24", start: "2026-11-24T11:00:00Z", end: "2026-11-24T12:00:00Z", key: "other-key", phrase: "", overridePhrase: "", label: "" };
+    const d = diagnoseOneShotEvents([{ ...graphCopy, subject: "Nytt navn", body: { content: "<html><body>Info</body></html>" } } as any], "Nytt jobbnavn", permit);
+    expect(d.category).toBe("unknown");
+  });
+});
