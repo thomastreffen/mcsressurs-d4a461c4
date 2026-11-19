@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     if (ev.project_type === "task") return [{ status: "not_a_project_job" }];
     const job: HubJob = { ...ev, id: ev.id, company_id: ev.company_id, title: ev.title, address: ev.address, start_at: ev.start_time, end_at: ev.end_time, status: ev.status, deleted_at: ev.deleted_at };
     const [{ data: rows, error: assignmentError }, { data: blocks, error: blockError }, { data: appLinks, error: linkError }, { data: legacy, error: legacyError }] = await Promise.all([
-      sb.from("event_technicians").select("technician_id, technicians(email)").eq("event_id", eventId),
+      sb.from("event_technicians").select("technician_id, calendar_event_id, technicians(email)").eq("event_id", eventId),
       sb.from("schedule_blocks").select("technician_id,start_at,end_at").eq("project_id", eventId).is("deleted_at", null),
       sb.from("job_outlook_app_links").select("*").eq("event_id", eventId),
       sb.from("job_calendar_day_links").select("id,technician_id,work_date,start_at,end_at,outlook_event_id,status").eq("event_id", eventId),
@@ -72,6 +72,11 @@ Deno.serve(async (req) => {
       const base = { technician_id: row.technicianId, work_date: row.workDate };
       if (eff === "none") { out.push({ ...base, status: (row.decision as any).reason }); continue; }
       if (eff === "blocked") { out.push({ ...base, status: row.gate }); continue; }
+      // A delegated single-event copy without a day link cannot be matched safely: never create a second copy.
+      const delegatedCopy = (rows ?? []).some((r: any) => r.technician_id === row.technicianId && r.calendar_event_id);
+      if (row.decision.kind === "create" && delegatedCopy && !(legacy ?? []).some((l: any) => l.technician_id === row.technicianId && l.work_date === row.workDate)) {
+        out.push({ ...base, status: "delegated_copy_exists_reconcile_required" }); continue;
+      }
       const log = (act: string, detail: unknown) => sb.from("job_outlook_app_log").insert({ link_id: row.link?.id, company_id: ev.company_id, event_id: eventId, technician_id: row.technicianId, mailbox: row.mailbox, direction: "outbound", action: act, dry_run: flags.dryRun, detail: { work_date: row.workDate, ...(detail as object) } });
       if (eff === "dry_run") { await log(`would_${row.decision.kind}`, {}); out.push({ ...base, status: `dry_run_${row.decision.kind}` }); continue; }
       const nowIso = new Date().toISOString();
