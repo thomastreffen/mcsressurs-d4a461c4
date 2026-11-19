@@ -1,0 +1,4 @@
+ALTER TABLE public.job_calendar_one_shot_permits ADD CONSTRAINT one_shot_permit_exact_tuple UNIQUE (idempotency_key,event_id,technician_id,company_id,mailbox,work_date);
+ALTER TABLE public.job_calendar_one_shot_runs ADD CONSTRAINT one_shot_run_exact_permit FOREIGN KEY (idempotency_key,event_id,technician_id,company_id,mailbox,work_date) REFERENCES public.job_calendar_one_shot_permits (idempotency_key,event_id,technician_id,company_id,mailbox,work_date);
+ALTER TABLE public.job_calendar_one_shot_runs DROP CONSTRAINT job_calendar_one_shot_runs_event_id_check, DROP CONSTRAINT job_calendar_one_shot_runs_work_date_check, DROP CONSTRAINT job_calendar_one_shot_runs_idempotency_key_check;
+COMMENT ON CONSTRAINT one_shot_run_exact_permit ON public.job_calendar_one_shot_runs IS 'Exact approved permit tuple; claim separately requires non-revoked permit and all live gates. No scope inference.';

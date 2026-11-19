@@ -841,6 +841,13 @@
       "when": 1795078729479,
       "tag": "0119_one_shot_calendar_permits",
       "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1795082133493,
+      "tag": "0120_one_shot_preview_permit_scope",
+      "breakpoints": true
     }
   ]
 }

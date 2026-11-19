@@ -1,3 +1,7 @@
+# JOB60576 preflight bug – 19 November
+- [x] Corrected permit-bound preview schema and safe stage/reason reporting; 104 isolated tests pass, function deployed, signed-in GET diagnosis 200 for 60576; 0 runs and 7 held intents unchanged
+- [ ] Owner publishes error presentation and runs preview; final calendar creation requires separate authorization
+
 # CRM kundeutvikling – kontrollert fase 1
 - [x] Liste/filtre → lokal kundeenhet → ansvarlig/oppfølging → sporbar historikk; 13 isolerte tester og PC/mobil verifisert
 - [x] Additivt CRM-lag med selskapskontroll, uten reparasjon/import eller endring av eksisterende kundedata; migrasjon 0108 aktiv, 0 CRM-/historikkrader

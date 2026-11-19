@@ -2,7 +2,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { beforeAll, beforeEach, afterAll, it, expect } from "vitest";
-import { ONE_SHOT as x } from "../../supabase/functions/_shared/job-calendar-one-shot";
+import { ONE_SHOT as x, ONE_SHOT_60576 as second } from "../../supabase/functions/_shared/job-calendar-one-shot";
 let db: PGlite;
 const actor = "00000000-0000-0000-0000-000000000001", user = "00000000-0000-0000-0000-000000000002", target = "00000000-0000-0000-0000-000000000003";
 const clock = "2026-11-17 10:00Z";
@@ -30,6 +30,8 @@ beforeAll(async () => {
   // Fixed local clock tests the deployed SQL on the exact future day without relying on runner timezone/date.
   await db.exec(readFileSync("drizzle/migrations/0105_job_calendar_one_shot.sql", "utf8").replace(/now\(\)/g, `'${clock}'::timestamptz`));
   await db.exec(readFileSync("drizzle/migrations/0106_one_shot_conflict_consent.sql", "utf8").replace(/now\(\)/g, `'${clock}'::timestamptz`));
+  await db.exec(readFileSync("drizzle/migrations/0119_one_shot_calendar_permits.sql", "utf8").replace(/now\(\)/g, `'${clock}'::timestamptz`));
+  await db.exec(readFileSync("drizzle/migrations/0120_one_shot_preview_permit_scope.sql", "utf8"));
 }, 120000);
 afterAll(() => db.close());
 beforeEach(async () => {
@@ -86,4 +88,13 @@ it.each(["signature","plan","phrase","override"])("SQL refuses missing %s withou
   const id=await prepare();await db.query("UPDATE job_calendar_one_shot_runs SET conflict_summary=$2 WHERE id=$1",[id,{category:"other"}]);
   expect((await db.query<{ok:boolean}>("SELECT claim_job_calendar_one_shot($1,$2,'frozen',$3,$4,$5,$6) ok",[id,actor,mode==="signature"?null:"calendar-frozen",mode!=="override",mode!=="plan",mode==="phrase"?x.phrase:x.overridePhrase])).rows[0].ok).toBe(false);
   expect((await db.query("SELECT * FROM job_calendar_one_shot_audit")).rows).toHaveLength(0);
+});
+it("60576 exact preview tuple saves; old 60570 key, wrong day/job fail at database boundary",async()=>{
+  await db.query("INSERT INTO events VALUES($1,$2,'60576','requested',NULL)",[second.event_id,second.company_id]);
+  const insert=(key:string,day:string,event:string)=>db.query(`INSERT INTO job_calendar_one_shot_runs(target_id,actor,event_id,technician_id,company_id,mailbox,work_date,idempotency_key,payload,payload_hash,job_snapshot,schedule_signature) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'{}','frozen','{}','signature') RETURNING work_date::text`,[target,actor,event,second.technician_id,second.company_id,second.mailbox,day,key]);
+  expect((await insert(second.key,second.work_date,second.event_id)).rows).toEqual([{work_date:"2026-11-26"}]);
+  await expect(insert(x.key,second.work_date,second.event_id)).rejects.toThrow(/one_shot_run_exact_permit/);
+  await expect(insert(second.key,"2026-11-27",second.event_id)).rejects.toThrow(/one_shot_run_exact_permit/);
+  await expect(insert(second.key,second.work_date,x.event_id)).rejects.toThrow(/one_shot_run_exact_permit/);
+  expect((await db.query("SELECT consumed_at FROM job_calendar_one_shot_runs")).rows).toEqual([{consumed_at:null}]);
 });

@@ -11525,6 +11525,27 @@ export type Database = {
             referencedRelation: "job_outlook_app_pilot_targets"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "one_shot_run_exact_permit"
+            columns: [
+              "idempotency_key",
+              "event_id",
+              "technician_id",
+              "company_id",
+              "mailbox",
+              "work_date",
+            ]
+            isOneToOne: false
+            referencedRelation: "job_calendar_one_shot_permits"
+            referencedColumns: [
+              "idempotency_key",
+              "event_id",
+              "technician_id",
+              "company_id",
+              "mailbox",
+              "work_date",
+            ]
+          },
         ]
       }
       job_change_order_events: {

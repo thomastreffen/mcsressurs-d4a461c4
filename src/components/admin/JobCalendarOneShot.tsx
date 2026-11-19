@@ -8,15 +8,16 @@ import { ONE_SHOT, PERMITS, type OneShotPermit, type OneShotDiagnosis, type OneS
 
 type Preview = { run_id: string; payload_hash: string; calendar_signature: string; conflict_override_required: boolean; expires_at: string; mailbox: string; local_time: string; approval: string; payload: { subject: string; body: { content: string }; location?: { displayName: string } }; request_method: string; request_path: string };
 type Result = { preview?: Preview; diagnosis?: OneShotDiagnosis; existing_mapping?: boolean; state?: string; consumed?: boolean; runs?: { id: string; state: string; consumed_at: string | null; event_id_persisted: boolean; http_status: number | null }[] };
-class CalendarCheckError extends Error { constructor(code: string, public diagnosis?: OneShotDiagnosis) { super(code); } }
+class CalendarCheckError extends Error { constructor(code: string, public diagnosis?: OneShotDiagnosis, public stage?: string) { super(code); } }
 async function callRaw(body: Record<string, unknown>): Promise<Result> {
   const r = await invokeWithSession<Result>("job-calendar-one-shot", { body });
   if (r.error) {
     let code = r.error.message;
     let diagnosis: OneShotDiagnosis | undefined;
+    let stage: string | undefined;
     const ctx = (r.error as any).context;
-    if (ctx?.json) { const details = await ctx.json().catch(() => null); code = details?.error ?? code; diagnosis = details?.diagnosis; }
-    throw new CalendarCheckError(code, diagnosis);
+    if (ctx?.json) { const details = await ctx.json().catch(() => null); code = details?.error ?? code; diagnosis = details?.diagnosis; stage = details?.stage; }
+    throw new CalendarCheckError(code, diagnosis, stage);
   }
   return r.data ?? {};
 }
@@ -26,6 +27,13 @@ const messages: Record<string, string> = {
   pilot_expired: "Pilotdagen er utløpt. Bekreft samme dag på nytt i pilotutvalget.",
   existing_mapping_requires_reconciliation: "En kalenderkobling finnes allerede. Ingen ny avtale opprettes.",
   duplicate_or_calendar_conflict: "En avtale eller konflikt finnes allerede i denne perioden. Ingen ny avtale opprettes.",
+  preview_scope_constraint_failed: "Forhåndskontrollen kunne ikke lagres: tillatelsen samsvarer ikke med databasens regler. Ingen kalenderopprettelse forsøkt.",
+  database_schema_mismatch: "Forhåndskontrollen stoppet på en databaseversjon som ikke samsvarer. Ingen kalenderopprettelse forsøkt.",
+  authoritative_row_count_invalid: "Forhåndskontrollen fant ikke én entydig oppføring. Ingen kalenderopprettelse forsøkt.",
+  authoritative_database_failed: "Forhåndskontrollen stoppet ved databasekontroll. Ingen kalenderopprettelse forsøkt.",
+  graph_calendar_read_failed: "Microsoft-kalenderen kunne ikke lesekontrolleres fullstendig. Ingen kalenderopprettelse forsøkt.",
+  calendar_token_read_failed: "Kalenderappens innlogging kunne ikke kontrolleres. Ingen kalenderopprettelse forsøkt.",
+  preflight_runtime_failed: "Forhåndskontrollen stoppet på en teknisk feil. Ingen kalenderopprettelse forsøkt.",
   stopped_requires_status_check: "Stoppet. Kontroller forsøksstatus; et ukjent resultat må lesekontrolleres, aldri sendes på nytt.",
   preflight_expired_or_consumed: "Forhåndskontrollen er utløpt eller allerede brukt.",
   preview_changed: "Jobben eller planen har endret seg. Ny forhåndskontroll kreves.",
@@ -113,7 +121,7 @@ export function OneShotPermitPanel({ permit: x }: { permit: OneShotPermit }) {
       if (r.diagnosis) setDiagnosis(r.diagnosis);
       if (r.preview) { setPreview(r.preview); setConfirm(""); setBusyAccepted(false); setPlanAccepted(false); setConflictAccepted(false); }
       else { setPreview(null); setMessage(r.diagnosis ? (r.existing_mapping ? messages.existing_mapping_requires_reconciliation : "Lesediagnose fullført. Ingen engangstillatelse opprettet eller brukt.") : outcomes[r.state ?? ""] ?? "Kontroll fullført uten ny utsending."); }
-    } catch (e) { setPreview(null); if (e instanceof CalendarCheckError && e.diagnosis) setDiagnosis(e.diagnosis); const code = e instanceof Error ? e.message : "stopped_requires_status_check"; setMessage(messages[code] ?? `Sperret: ${code}`); }
+    } catch (e) { setPreview(null); if (e instanceof CalendarCheckError && e.diagnosis) setDiagnosis(e.diagnosis); const code = e instanceof Error ? e.message : "stopped_requires_status_check"; setMessage(`${messages[code] ?? `Sperret: ${code}`}${e instanceof CalendarCheckError && e.stage ? ` [${code} · ${e.stage}]` : ""}`); }
     finally { await status.refetch(); setBusy(false); }
   };
   return <section className="space-y-3 border-t border-border pt-4" aria-label={`Engangspilot ${x.label}`}>
