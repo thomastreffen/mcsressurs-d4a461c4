@@ -140,13 +140,15 @@ Deno.serve(async req => {
     };
     if (b.action === "mutation_preview") {
       // Read-only: one GET of the exact stored ID. No claim, audit, queue, flag or Graph write.
-      const stored = check(await admin.from("job_calendar_one_shot_runs").select("graph_event_id,graph_change_key,mailbox,event_id,technician_id,work_date,company_id,state,payload").eq("state", "succeeded").not("consumed_at", "is", null).limit(2));
+      stage = "stored_copy_read";
+      const stored = check(await admin.from("job_calendar_one_shot_runs").select("graph_event_id,graph_change_key,mailbox,event_id,technician_id,work_date,company_id,state,payload").eq("event_id", x.event_id).eq("technician_id", x.technician_id).eq("company_id", x.company_id).eq("mailbox", x.mailbox).eq("work_date", x.work_date).eq("idempotency_key", x.key).eq("state", "succeeded").not("consumed_at", "is", null).limit(2));
       if (stored.length !== 1) return respond({ error: "no_verified_copy" }, 409);
       const s = stored[0] as StoredCopy & { payload: Record<string, unknown> };
       const scope = storedScopeOk(s); if (scope) return respond({ error: scope }, 409);
       if (c.mailbox !== x.mailbox) return respond({ error: "exact_scope_mismatch" }, 409);
       const path = exactGetPath(s.graph_event_id);
       assertMutationRequest("GET", path, s.graph_event_id);
+      stage = "graph_calendar_read";
       const res = await fetch(`https://graph.microsoft.com${path}`, { method: "GET", signal: AbortSignal.timeout(20000), headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC", IdType="ImmutableId"' } });
       let data = null; try { data = await res.json(); } catch { /* held as unknown */ }
       const v = verifyCopy({ status: res.status, data }, s);

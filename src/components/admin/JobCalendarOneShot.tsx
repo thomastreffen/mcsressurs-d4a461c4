@@ -121,7 +121,7 @@ export function OneShotPermitPanel({ permit: x }: { permit: OneShotPermit }) {
       if (r.diagnosis) setDiagnosis(r.diagnosis);
       if (r.preview) { setPreview(r.preview); setConfirm(""); setBusyAccepted(false); setPlanAccepted(false); setConflictAccepted(false); }
       else { setPreview(null); setMessage(r.diagnosis ? (r.existing_mapping ? messages.existing_mapping_requires_reconciliation : "Lesediagnose fullført. Ingen engangstillatelse opprettet eller brukt.") : outcomes[r.state ?? ""] ?? "Kontroll fullført uten ny utsending."); }
-    } catch (e) { setPreview(null); if (e instanceof CalendarCheckError && e.diagnosis) setDiagnosis(e.diagnosis); const code = e instanceof Error ? e.message : "stopped_requires_status_check"; setMessage(`${messages[code] ?? `Sperret: ${code}`}${e instanceof CalendarCheckError && e.stage ? ` [${code} · ${e.stage}]` : ""}`); }
+    } catch (e) { setPreview(null); if (e instanceof CalendarCheckError && e.diagnosis) setDiagnosis(e.diagnosis); const code = e instanceof Error ? e.message : "request_outcome_unavailable"; setMessage(`${messages[code] ?? `Sperret: ${code}`}${e instanceof CalendarCheckError && e.stage ? ` [${code} · ${e.stage}]` : ""}`); }
     finally { await status.refetch(); setBusy(false); }
   };
   return <section className="space-y-3 border-t border-border pt-4" aria-label={`Engangspilot ${x.label}`}>

@@ -109,3 +109,9 @@ it.each([401,403,429,500,"timeout","invalid","pagination"])("Graph GET %s stops 
   try {const data=await(await serve(request({action:"preflight",permit:"mats_60576"}))).json();expect(data).toMatchObject({reason_code:"graph_calendar_read_failed",stage:"graph_calendar_read",graph_post_attempted:false,status_check_required:false});expect(mutations).not.toHaveBeenCalled();}
   finally{fetch.mockRestore();vi.useRealTimers();}
 });
+
+it("60570 mutation preview reads only its exact permit tuple even after other successful pilots",()=>{
+  const source=readFileSync("supabase/functions/job-calendar-one-shot/index.ts","utf8");
+  const query=source.slice(source.indexOf('const stored = check('),source.indexOf('if (stored.length'));
+  for(const [column,value] of [["event_id","event_id"],["technician_id","technician_id"],["company_id","company_id"],["mailbox","mailbox"],["work_date","work_date"],["idempotency_key","key"]]) expect(query).toContain(`.eq("${column}", x.${value})`);
+});

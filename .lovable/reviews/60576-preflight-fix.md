@@ -14,3 +14,13 @@ Live checks: 0 60576 runs, 7 held intents with 0 attempts/unreleased, global ena
 
 ## Thomas's next steps
 Publish the UI (function and migration are already live), reload the app, open the 60576 permit and click “Lesekontroll og forhåndsvisning”. Expect a preview for 26 November 08–16 Oslo and the known conflict warning, including the explicit conflict checkbox/override phrase. Stop if a new reason/stage is reported. A preview is not consent to create: creation requires separate final authorization, the plan/busy/conflict confirmations and exact override phrase before the final button. No queues or global activation are involved.
+
+## Scoped flow sweep
+Rule: an approved pilot uses its own exact job/person/mailbox/day/key, and failed reads must not imply a calendar write.
+- One-shot 60570/60576 UI status, diagnosis, preview, create and reconcile: read handler/core/UI; exact permits and shared server reason/stage control apply. Status is read-only. No other function calls this endpoint. UI non-Error fallback no longer labels every exception uncertain POST.
+- Claim: read 0119; exact permit and live gates, per-day reservation and consumed uniqueness. Receipt/reconcile: read 0105 finish function; operate on run ID under consumed/state guards. Historical migration definitions remain unchanged; current constraints are 0120.
+- Original 60570 update/delete preview: read mutation core and handler; found unfiltered successful-run lookup that would fail once another permit succeeds. Fixed exact tuple/key filtering and GET failure stage. Mutations remain locked; no PATCH/DELETE executed.
+- Mutation claim storage: read 0107; per-run/kind/version uniqueness and service-only access; no live execution path enabled.
+- Pilot target selection/probe/simulation/status, readiness UI: read relevant handler paths/UI. No one-shot hardcoded preview restrictions. Generic probe/simulation/readiness contain unchecked database reads that can show missing data as empty; no uncertain-POST label, but potential misleading readiness/simulation. Outside the requested narrow one-shot fix; not changed or run.
+- Generic app-only background sync/queue: read complete handler; flags stop work, explicit queue release and delegated-copy guard apply. No use of one-shot preview table. Dormant generic writes still lack complete prewrite GET/claim/unknown reconciliation lifecycle; not fixed/activated in this narrow bugfix. No queues released or invoked.
+41 additional targeted tests pass; redeployed one-shot function, preview build OK. Live preview-persist still not executed (it writes run/audit rows). Earlier signed-in 60576 GET200 diagnosis remains the live check; no claim/Graph write.

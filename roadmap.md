@@ -1,3 +1,7 @@
+# Related pilot flow sweep
+- [x] Read exact permit/preview/claim/receipt/reconcile/UI/status and background paths; scoped original-copy read corrected without changing other flows
+- [ ] Unscoped broader simulation/readiness database errors and dormant generic lifecycle gaps: outside JOB60576 bugfix scope; separate authorization required
+
 # JOB60576 preflight bug – 19 November
 - [x] Corrected permit-bound preview schema and safe stage/reason reporting; 104 isolated tests pass, function deployed, signed-in GET diagnosis 200 for 60576; 0 runs and 7 held intents unchanged
 - [ ] Owner publishes error presentation and runs preview; final calendar creation requires separate authorization
