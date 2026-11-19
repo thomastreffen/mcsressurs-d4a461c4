@@ -1,7 +1,7 @@
 # Separate active-technician mailbox test – 19 November
 - [x] Shared metadata-only probe, superadmin/company-edit/verified active identity/fresh scope diagnostic, mandatory start/result audit; no job/day/target approval required
 - [x] Independent Admin selector and no-future-day explanation; Rune live GET200/app/tenant/mailbox match confirmed in UI and audit; 1264 tests pass, function deployed
-- [ ] Publish Admin UI; activation still locked and requires separate live-write consent
+- [x] Admin UI publication requested for mcsressurs.lovable.app; completion not yet verified, activation still locked and requires separate live-write consent
 - [x] Verified globals off/dry-run/empty/unverified and daily journal empty; original seven intents unreleased, one additional no_ms_connection intent appeared at 13:02:13 (outside metadata-test writer; untouched)
 
 # Ordinary central calendar readiness – 19 November
