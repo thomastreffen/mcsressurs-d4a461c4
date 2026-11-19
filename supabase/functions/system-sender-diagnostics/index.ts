@@ -39,7 +39,7 @@ Deno.serve(async req => {
       } else token = { ok: false, http: r.status, tid: null, appId: null, roles: [] };
     }
     const pilot = env("M365_PILOT_RECIPIENTS").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-    const result = evaluateSender({ secrets: { tenant: !!tenant, client: !!client, secret: !!secret }, calendarClientId: env("HUB_CALENDAR_CLIENT_ID") || null, mode: env("SYSTEM_SENDER_MODE"), scopeVerified: env("M365_MAILBOX_SCOPE_VERIFIED"), pilotRecipients: pilot, token, tenantId: tenant || null, mailClientId: client || null });
+    const result = evaluateSender({ secrets: { tenant: !!tenant, client: !!client, secret: !!secret }, calendarClientId: env("HUB_CALENDAR_CLIENT_ID") || null, mode: env("SYSTEM_SENDER_MODE"), scopeVerified: env("M365_MAILBOX_SCOPE_VERIFIED"), rbacAttestation: env("M365_RBAC_ATTESTATION"), pilotRecipients: pilot, token, tenantId: tenant || null, mailClientId: client || null });
     // Roles are permission names only; no IDs, secrets or tokens are returned.
     if (p.data.action === "diagnose") return json({ ...result, roles: token?.roles ?? [], read_only: true });
     const denied = testSendGate(result.ready_for_test, p.data.confirm, callerEmail, pilot);

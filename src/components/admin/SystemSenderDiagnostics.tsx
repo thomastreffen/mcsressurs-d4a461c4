@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TEST_SEND_PHRASE, type SenderCheck } from "../../../supabase/functions/_shared/system-sender-diagnostics-core";
 
-type Diag = { checks: SenderCheck[]; ready_for_test: boolean; mode_on: boolean; mailbox: string; roles: string[] };
+type Diag = { checks: SenderCheck[]; ready_for_test: boolean; mode_on: boolean; mailbox: string; roles: string[]; auth_path?: string };
 const icon: Record<SenderCheck["state"], string> = { ok: "OK", missing: "Mangler", warning: "Merk", manual: "Må bekreftes" };
 async function call(body: Record<string, unknown>) {
   const r = await invokeWithSession<any>("system-sender-diagnostics", { body });
@@ -34,6 +34,7 @@ export function SystemSenderDiagnostics() {
     <h3 className="font-semibold">Systemavsender · postkontoret@mcsservice.no</h3>
     <p className="text-muted-foreground">Kontrollen henter bare en tilgangsbekreftelse fra Microsoft. Ingen e-post sendes, ingen innstilling endres.</p>
     <Button variant="outline" disabled={busy} onClick={() => run({ action: "diagnose" })}>Kontroller avsender – kun lesing</Button>
+    {d?.auth_path && <p className="text-muted-foreground">Tilgangsmodell: {d.auth_path === "exchange_rbac" ? "Exchange RBAC for Applications (avgrenset i Exchange)" : "Klassisk Entra-tillatelse"}</p>}
     {d && <ul className="space-y-2">{d.checks.map(c => <li key={c.key} className="break-words"><span className="font-medium">{icon[c.state]}</span> · {c.label}{c.action && <span className="block text-muted-foreground">{c.action}</span>}</li>)}</ul>}
     {d?.ready_for_test && <div className="space-y-2 border-l-2 border-border pl-3">
       <label className="flex items-start gap-2"><Checkbox aria-label="Send én testmelding" checked={ok} onCheckedChange={v => setOk(v === true)} /><span>Send én testmelding bare til min egen jobbadresse.</span></label>
