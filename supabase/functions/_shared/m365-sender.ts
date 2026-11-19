@@ -6,7 +6,8 @@
 
 declare const Deno: { env: { get(k: string): string | undefined } };
 
-export const SYSTEM_MAILBOX = "postkontoret@mcsservice.no";
+import { SYSTEM_MAILBOX, proveSendScope, decodeTokenFacts } from "./m365-scope-proof.ts";
+export { SYSTEM_MAILBOX };
 
 export type SendResult =
   | { ok: true; status: number; via: "system" | "personal" }
@@ -69,9 +70,12 @@ export async function sendMail(
   let token: string | null;
   let url: string;
   if (useSystem) {
-    if (Deno.env.get("M365_MAILBOX_SCOPE_VERIFIED") !== "true" || !pilotAllows([m.to])) return { ok: false, status: null, via: "system", reason: "pilot_blocked" };
+    // Never falls back to the personal token: a blocked system send stays blocked.
+    if (!pilotAllows([m.to])) return { ok: false, status: null, via: "system", reason: "pilot_blocked" };
     try { token = await getAppToken(f); } catch { return { ok: false, status: null, via: "system", reason: "system_sender_unavailable" }; }
     if (!token) return { ok: false, status: null, via: "system", reason: "system_sender_unavailable" };
+    const proof = proveSendScope((k) => Deno.env.get(k), decodeTokenFacts(token));
+    if (!proof.ok) return { ok: false, status: null, via: "system", reason: "scope_not_proven", detail: proof.reason };
     url = `https://graph.microsoft.com/v1.0/users/${SYSTEM_MAILBOX}/sendMail`;
   } else {
     token = opts.personalToken;

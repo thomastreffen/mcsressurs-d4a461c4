@@ -16,7 +16,7 @@ function fixture() {
   };
   const calls: { url: string; method: string; payload: any }[] = [];
   const f = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-    if (String(url).includes("/oauth2/")) return Response.json({ access_token: "mock", expires_in: 3600 });
+    if (String(url).includes("/oauth2/")) return Response.json({ access_token: "x.eyJ0aWQiOiAibW9jayIsICJhcHBpZCI6ICJtb2NrIiwgInJvbGVzIjogWyJNYWlsLlNlbmQiXX0.y", expires_in: 3600 });
     calls.push({ url: String(url), method: init?.method ?? "GET", payload: init?.body ? JSON.parse(String(init.body)) : null });
     if (init?.method === "DELETE" || init?.method === "PATCH") return new Response(null, { status: 204 });
     return Response.json({ id: "immutable-id", attendees: [{ emailAddress: { address: "rune@example.test" }, status: { response: "accepted" } }] }, { status: 201 });
@@ -26,7 +26,7 @@ function fixture() {
 describe("Microsoft communication safety", () => {
   it("Rune without a personal token can use the approved system sender", async () => {
     const calls: string[] = [];
-    const f = vi.fn(async (url: any) => { if (String(url).includes("/oauth2/")) return Response.json({ access_token: "mock" }); calls.push(String(url)); return new Response(null, { status: 202 }); }) as unknown as typeof fetch;
+    const f = vi.fn(async (url: any) => { if (String(url).includes("/oauth2/")) return Response.json({ access_token: "x.eyJ0aWQiOiAibW9jayIsICJhcHBpZCI6ICJtb2NrIiwgInJvbGVzIjogWyJNYWlsLlNlbmQiXX0.y" }); calls.push(String(url)); return new Response(null, { status: 202 }); }) as unknown as typeof fetch;
     expect(await sendMail({ to: "rune@example.test", subject: "Mock", html: "Mock" }, { personalToken: null, fetchImpl: f })).toEqual({ ok: true, status: 202, via: "system" });
     expect(calls[0]).toContain("/users/postkontoret@mcsservice.no/sendMail");
   });

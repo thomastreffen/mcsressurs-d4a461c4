@@ -45,7 +45,7 @@ describe("hub calendar diagnostics – read-only connection test", () => {
   it("app roles: only calendar passes; Mail.* fails; none fails", () => {
     expect(assessRoles(["Calendars.ReadWrite"]).result).toBe("pass");
     expect(assessRoles(["Calendars.ReadWrite", "Mail.Send"]).result).toBe("fail");
-    expect(assessRoles([]).result).toBe("fail");
+    expect(assessRoles([]).result).toBe("pass");
   });
 
   it("calendar app must be a separate identity from the mail app", () => {

@@ -3,13 +3,15 @@ import { evaluateSender, testSendGate, TEST_SEND_PHRASE, type SenderFacts } from
 const tok = (roles: string[]) => ({ ok: true, tid: "t", appId: "mail", roles });
 const base: SenderFacts = { secrets: { tenant: true, client: true, secret: true }, calendarClientId: "cal", mode: "", scopeVerified: "", pilotRecipients: ["thomas.treffen@mcsservice.no"], token: tok(["Mail.Send"]), tenantId: "t", mailClientId: "mail" };
 const att = (o: Record<string, string> = {}) => JSON.stringify({ positive_at: "2026-11-19", negative_at: "2026-11-19", mailbox: "postkontoret@mcsservice.no", negative_mailbox: "thomas.treffen@mcsservice.no", unscoped_entra_grants: "none", ...o });
-const rbac: SenderFacts = { ...base, token: tok([]), rbacAttestation: att() };
+const NOW = Date.parse("2026-11-20T00:00:00Z");
+const rbac: SenderFacts = { ...base, token: tok([]), rbacAttestation: att(), now: NOW };
 const ev = (f: SenderFacts) => evaluateSender(f);
 const st = (f: SenderFacts, k: string) => ev(f).checks.find(c => c.key === k)?.state;
 describe("system sender readiness", () => {
   it("classic Entra: ready only with Mail.Send + scope verified + one pilot", () => {
     expect(ev({ ...base, scopeVerified: "true" }).auth_path).toBe("classic");
     expect(ev({ ...base, scopeVerified: "true" }).ready_for_test).toBe(true);
+    expect(ev({ ...base, token: tok(["Mail.Send"]), rbacAttestation: att(), now: NOW }).auth_path).toBe("exchange_rbac");
     expect(ev(base).ready_for_test).toBe(false);
     expect(ev({ ...base, scopeVerified: "true", calendarClientId: "mail" }).ready_for_test).toBe(false);
     expect(ev({ ...base, scopeVerified: "true", token: { ...tok(["Mail.Send"]), tid: "x" } }).ready_for_test).toBe(false);

@@ -9,7 +9,7 @@ const { sendMail, buildMailPayload, systemSenderEnabled, SYSTEM_MAILBOX } = mod;
 function fakeGraph(sendStatus = 202) {
   const calls: { url: string; body: any; auth: string }[] = [];
   const f = vi.fn(async (url: string, init: any) => {
-    if (url.includes("/oauth2/")) return new Response(JSON.stringify({ access_token: "APP", expires_in: 3600 }));
+    if (url.includes("/oauth2/")) return new Response(JSON.stringify({ access_token: "x.eyJ0aWQiOiAidCIsICJhcHBpZCI6ICJjIiwgInJvbGVzIjogWyJNYWlsLlNlbmQiXX0.y", expires_in: 3600 }));
     calls.push({ url, body: JSON.parse(init.body), auth: init.headers.Authorization });
     return new Response(sendStatus === 202 ? null : "denied", { status: sendStatus });
   });

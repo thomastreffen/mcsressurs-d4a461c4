@@ -7,11 +7,16 @@ export function missingSecrets(env: (n: string) => string | undefined): string[]
   return REQUIRED_SECRETS.filter((n) => !env(n));
 }
 
-/** App roles must be exactly Mail.Read: anything that can write, send or read calendars fails. */
-export function assessRoles(roles: string[]): { ok: boolean; extra: string[]; hasRead: boolean } {
+/**
+ * Token roles only show Entra grants. Classic: exactly Entra Mail.Read (+ ApplicationAccessPolicy).
+ * Exchange RBAC for Applications: NO Entra roles at all (scoped grants never appear in the token).
+ * Either way any other role fails, and the role check alone never proves scope: only the live
+ * own-mailbox 200 + other-mailbox 403 probes do. Never reuses the postkontoret send attestation.
+ */
+export function assessRoles(roles: string[]): { ok: boolean; extra: string[]; hasRead: boolean; path: "classic" | "exchange_rbac" } {
   const hasRead = roles.includes("Mail.Read");
   const extra = roles.filter((r) => r !== "Mail.Read");
-  return { ok: hasRead && extra.length === 0, extra, hasRead };
+  return { ok: extra.length === 0, extra, hasRead, path: hasRead ? "classic" : "exchange_rbac" };
 }
 
 /** The Avtalevakt app must never be the same identity as mail sender or calendar app. */

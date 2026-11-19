@@ -58,9 +58,9 @@ export function assessRoles(roles: string[]): DiagnosticCheck {
     return { id: "app_roles", label: "Apptillatelser", expected: "Kun kalender", result: "fail", explanation: `Appen har tillatelser utover kalender: ${forbidden.join(", ")}. Må fjernes før pilot.` };
   }
   if (!hasCalendar) {
-    return { id: "app_roles", label: "Apptillatelser", expected: "Kun kalender", result: "fail", explanation: "Tokenet har ingen kalendertillatelse. Admin-samtykke (Grant admin consent) mangler eller er ikke ferdig spredt." };
+    return { id: "app_roles", label: "Apptillatelser", expected: "Kun kalender", result: "pass", explanation: "Ingen Entra-roller i token – forventet ved Exchange RBAC for Applications. Kalendertilgang bevises bare av testpostkasse 200 og utenfor-gruppe 403." };
   }
-  return { id: "app_roles", label: "Apptillatelser", expected: "Kun kalender", result: "pass", explanation: `Kun kalendertillatelse: ${roles.join(", ")}.` };
+  return { id: "app_roles", label: "Apptillatelser", expected: "Kun kalender", result: "pass", explanation: `Klassisk Entra-tillatelse: ${roles.join(", ")} (gjelder hele organisasjonen hvis ikke Exchange begrenser). Avgrensning bevises bare av utenfor-gruppe 403.` };
 }
 
 export function assessIdentity(calendarClientId: string, mailClientId: string | undefined, tokenAppId: string | null): DiagnosticCheck {

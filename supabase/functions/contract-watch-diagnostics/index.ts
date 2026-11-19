@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
   if (tok?.ok) { token = (await tok.json()).access_token; try { roles = JSON.parse(atob(token!.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).roles ?? []; } catch { roles = []; } }
   checks.push({ id: "token", label: "Appen får tilgang fra Microsoft", result: token ? "pass" : "fail", httpStatus: tok?.status, explanation: token ? "OK" : "Sjekk app-ID, hemmelighet og tenant" });
   const r = assessRoles(roles);
-  checks.push({ id: "roles", label: "Bare Mail.Read (ingen sending/skriving/kalender)", result: r.ok ? "pass" : "fail", explanation: r.ok ? "OK" : !r.hasRead ? "Mail.Read mangler admin-samtykke" : `Fjern: ${r.extra.join(", ")}` });
+  checks.push({ id: "roles", label: "Ingen sending/skriving/kalender i appen", result: r.ok ? "pass" : "fail", explanation: !r.ok ? `Fjern Entra-tillatelser: ${r.extra.join(", ")}` : r.path === "exchange_rbac" ? "Ingen Entra-roller i token – forventet ved Exchange RBAC for Applications. Tilgang bevises bare av postkasseprøvene under." : "Klassisk Entra Mail.Read (gjelder hele organisasjonen uten Exchange-begrensning). Avgrensning bevises bare av postkasseprøvene under." });
   checks.push({ id: "identity", label: "Egen app, adskilt fra e-post- og kalenderappene", result: isSeparateIdentity(env("AVTALEVAKT_CLIENT_ID"), [env("AZURE_CLIENT_ID"), env("M365_SENDER_CLIENT_ID"), env("HUB_CALENDAR_CLIENT_ID")]) ? "pass" : "fail", explanation: "Avtalevakten skal ha sin egen identitet" });
   const probe = async (mb: string) => {
     if (!token) return null;
