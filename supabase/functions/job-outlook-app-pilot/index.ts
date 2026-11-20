@@ -16,7 +16,7 @@ import { diagnosticGate } from "../_shared/hub-calendar-write-pilot-core.ts";
 import { missingSecrets } from "../_shared/hub-calendar-diagnostics-core.ts";
 import type { HubJob } from "../_shared/job-outlook-app-core.ts";
 import { pilotChoices, freshMailboxProbe, existingTargetDecision, activeIdentity, mailboxReadiness, EXCLUDED_TECHNICIANS, type IdentityFacts } from "../_shared/job-outlook-pilot-selector.ts";
-import { ROLLOUT_BATCH_MAX, ROLLOUT_PROBE_SPACING_MS, technicianRolloutStatus, automaticProof, rolloutGoNoGo } from "../_shared/central-rollout.ts";
+import { ROLLOUT_BATCH_MAX, ROLLOUT_PROBE_SPACING_MS, technicianRolloutStatus, automaticProof, rolloutGoNoGo, nextRolloutStep } from "../_shared/central-rollout.ts";
 import { planJobDays, clampTargetHours, type PilotTarget } from "../_shared/job-outlook-app-days.ts";
 import { CENTRAL_LIFECYCLE_APPROVED, previewDaily, dailyGet, dailyVerification, type DailyGraph, type DailyScope } from "../_shared/central-calendar-lifecycle.ts";
 import { osloDayWindow } from "../_shared/job-calendar-one-shot.ts";
@@ -160,7 +160,16 @@ Deno.serve(async (req) => {
     const { data: techs, error: te } = await admin.from("technicians").select("id,name,email").is("archived_at", null).is("deleted_at", null);
     if (te) return json({ error: "identity_lookup_failed" }, 409);
     const facts = await identities((techs ?? []).map(t => t.id), company);
-    const eligible = (techs ?? []).filter(t => { const f = facts.get(t.id); return !!f && activeIdentity(f); });
+    const activeHere = (techs ?? []).filter(t => { const f = facts.get(t.id); return !!f && activeIdentity(f); });
+    // Personally access-restricted people (company_access.* deny) are shown as excluded and never probed/activated.
+    const { data: techUsers } = await admin.from("technicians").select("id,user_id").in("id", activeHere.map(t => t.id));
+    const userIds = (techUsers ?? []).map((t: any) => t.user_id).filter(Boolean);
+    const { data: accts2 } = userIds.length ? await admin.from("user_accounts").select("id,auth_user_id").in("auth_user_id", userIds) : { data: [] as any[] };
+    const { data: denies, error: dErr } = (accts2 ?? []).length ? await admin.from("user_permission_overrides_v2").select("user_account_id").like("permission_key", "company_access.%").eq("mode", "deny").in("user_account_id", (accts2 ?? []).map((a: any) => a.id)) : { data: [] as any[], error: null };
+    if (dErr) return json({ error: "restriction_lookup_failed" }, 409);
+    const restrictedAuth = new Set((accts2 ?? []).filter((a: any) => (denies ?? []).some((d: any) => d.user_account_id === a.id)).map((a: any) => a.auth_user_id));
+    const restricted = new Set((techUsers ?? []).filter((t: any) => restrictedAuth.has(t.user_id)).map((t: any) => t.id));
+    const eligible = activeHere.filter(t => !restricted.has(t.id));
     if (action === "probe_rollout_batch") {
       const ids = Array.isArray(b.technician_ids) ? b.technician_ids.filter((x): x is string => typeof x === "string" && UUID.test(x)) : [];
       if (b.confirm_read_only !== true || ids.length < 1 || ids.length > ROLLOUT_BATCH_MAX || new Set(ids).size !== ids.length) return json({ error: "batch_size_1_to_5" }, 400);
@@ -216,9 +225,17 @@ Deno.serve(async (req) => {
     const proof = { create: automaticProof(proofOps.data as any, proofActs.data as any, "create"), update: automaticProof(proofOps.data as any, proofActs.data as any, "update"), delete: automaticProof(proofOps.data as any, proofActs.data as any, "delete") };
     const decision = rolloutGoNoGo({ createProven: proof.create, updateProven: proof.update, deleteProven: proof.delete, unverifiedOperations: (open.data ?? []).length, legacyGlobalEnabled: settings.data?.enabled === true, heldQueue: held.count ?? 0, pendingConflicts: (conflicts.data ?? []).length });
     const former = (techs ?? []).filter(t => EXCLUDED_TECHNICIANS.has(t.id)).length;
+    const { data: boot, error: bErr } = await admin.from("central_calendar_activations").select("id,technician_id,mailbox,effective_from,revoked_at").eq("confirmation->>bootstrap", "true").limit(1).maybeSingle();
+    if (bErr) return json({ error: "bootstrap_lookup_failed" }, 409);
+    const lastPass = (id: string) => ((probes.data ?? []) as any[]).find(p => p.result?.technician_id === id && p.result?.pass === true)?.created_at ?? null;
+    const peopleOut = people.map(p => ({ ...p, last_pass_at: lastPass(p.id) }));
+    const restrictedPeople = activeHere.filter(t => restricted.has(t.id)).map(t => ({ id: t.id, name: t.name, mailbox: t.email.trim().toLowerCase(), reason: "access_restricted" }));
+    const bootstrap = { used: !!boot, active: !!boot && !boot.revoked_at, technician_id: boot?.technician_id ?? null, mailbox: boot?.mailbox ?? null, effective_from: boot?.effective_from ?? null };
+    const next_step = nextRolloutStep({ createProven: proof.create, bootstrapUsed: bootstrap.used, bootstrapActive: bootstrap.active, anyReady: people.some(p => p.status === "ready"), anyUnprobed: people.some(p => p.status === "probe_required" || p.status === "probe_failed"), unverified: (open.data ?? []).length });
     return json({ read_only: true, graph_read_attempted: false, proof, decision, all_active_disabled: true, held_queue: held.count ?? 0,
-      summary: { eligible: people.length, active: people.filter(p => p.status === "active").length, ready: people.filter(p => p.status === "ready").length, probe_required: people.filter(p => p.status === "probe_required").length, probe_failed: people.filter(p => p.status === "probe_failed").length, former_excluded: former, not_eligible_here: (techs ?? []).length - people.length - former },
-      people, batch_max: ROLLOUT_BATCH_MAX });
+      bootstrap, next_step, restricted: restrictedPeople,
+      summary: { restricted: restrictedPeople.length, eligible: people.length, active: people.filter(p => p.status === "active").length, ready: people.filter(p => p.status === "ready").length, probe_required: people.filter(p => p.status === "probe_required").length, probe_failed: people.filter(p => p.status === "probe_failed").length, former_excluded: former, not_eligible_here: (techs ?? []).length - people.length - former },
+      people: peopleOut, batch_max: ROLLOUT_BATCH_MAX });
   }
   // Accepted-but-unverified central operations: GET-only inspection and explicit operator-confirmed linking. Never creates.
   if (action === "inspect_central_operation" || action === "link_central_operation") {

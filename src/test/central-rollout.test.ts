@@ -70,3 +70,30 @@ it("the write claim gate honours only per-person activations, never all-active",
   expect(gate).toContain("a.scope='single' AND a.technician_id=_tech AND a.mailbox=_mailbox");
   expect(gate).not.toContain("scope='all_active'");
 });
+
+import { bootstrapDecision, bootstrapPhrase, nextRolloutStep } from "../../supabase/functions/_shared/central-rollout";
+describe("one-time bootstrap", () => {
+  const now = new Date("2026-11-20T10:00:00Z");
+  const ready = { status: "ready" as const, last_pass_at: "2026-11-20T09:00:00Z" };
+  it("allows exactly one named ready technician with probe < 24h before any automatic proof", () => {
+    expect(bootstrapDecision({ createProven: false, bootstrapUsed: false, person: ready }, now).allowed).toBe(true);
+  });
+  it("refuses when already used, already proven, stale probe, restricted or active", () => {
+    expect(bootstrapDecision({ createProven: false, bootstrapUsed: true, person: ready }, now).reason).toBe("bootstrap_already_used");
+    expect(bootstrapDecision({ createProven: true, bootstrapUsed: false, person: ready }, now).reason).toBe("not_needed_use_batches");
+    expect(bootstrapDecision({ createProven: false, bootstrapUsed: false, person: { status: "ready", last_pass_at: "2026-11-19T09:00:00Z" } }, now).reason).toBe("fresh_probe_24h_required");
+    expect(bootstrapDecision({ createProven: false, bootstrapUsed: false, person: { ...ready, restricted: true } }, now).allowed).toBe(false);
+    expect(bootstrapDecision({ createProven: false, bootstrapUsed: false, person: { status: "active" } }, now).reason).toBe("already_active");
+  });
+  it("phrase names the exact mailbox", () => {
+    expect(bootstrapPhrase(" Marcus.Bogen@mcselektrotavler.no ")).toBe("BOOTSTRAP KALENDER marcus.bogen@mcselektrotavler.no");
+  });
+  it("next step: probe → bootstrap → wait → batches", () => {
+    const base = { createProven: false, bootstrapUsed: false, bootstrapActive: false, anyReady: false, anyUnprobed: true, unverified: 0 };
+    expect(nextRolloutStep(base)).toBe("probe_click");
+    expect(nextRolloutStep({ ...base, anyReady: true })).toBe("bootstrap_click");
+    expect(nextRolloutStep({ ...base, bootstrapUsed: true, bootstrapActive: true })).toBe("wait_for_new_assignment");
+    expect(nextRolloutStep({ ...base, createProven: true, anyReady: true })).toBe("batch_click");
+    expect(nextRolloutStep({ ...base, unverified: 1 })).toBe("resolve_unverified");
+  });
+});

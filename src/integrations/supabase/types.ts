@@ -19779,6 +19779,10 @@ export type Database = {
         Returns: string
       }
       backfill_commercial_cases_for_active: { Args: never; Returns: Json }
+      bootstrap_central_calendar: {
+        Args: { _company: string; _phrase: string; _tech: string }
+        Returns: string
+      }
       calculation_company_id: { Args: { _id: string }; Returns: string }
       can_access_conversation_post: {
         Args: { _post_id: string }

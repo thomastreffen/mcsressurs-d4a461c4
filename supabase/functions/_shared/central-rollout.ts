@@ -50,3 +50,31 @@ export function rolloutGoNoGo(x: GoNoGoInput) {
 export function validBatch(ids: string[], statusById: Map<string, RolloutStatus>): boolean {
   return ids.length >= 1 && ids.length <= ROLLOUT_BATCH_MAX && new Set(ids).size === ids.length && ids.every(id => statusById.get(id) === "ready");
 }
+
+export const BOOTSTRAP_PROBE_FRESH_MS = 24 * 3600_000;
+export const bootstrapPhrase = (mailbox: string) => `BOOTSTRAP KALENDER ${mailbox.trim().toLowerCase()}`;
+
+/** One-time first-technician activation that breaks the proof deadlock. DB RPC re-checks everything. */
+export function bootstrapDecision(x: { createProven: boolean; bootstrapUsed: boolean; person?: { status: RolloutStatus; restricted?: boolean; last_pass_at?: string | null } }, now: Date) {
+  if (x.createProven) return { allowed: false, reason: "not_needed_use_batches" };
+  if (x.bootstrapUsed) return { allowed: false, reason: "bootstrap_already_used" };
+  const p = x.person;
+  if (!p) return { allowed: false, reason: "choose_one_technician" };
+  if (p.restricted || p.status === "excluded") return { allowed: false, reason: "not_eligible" };
+  if (p.status === "active") return { allowed: false, reason: "already_active" };
+  const age = p.last_pass_at ? now.getTime() - Date.parse(p.last_pass_at) : Infinity;
+  if (p.status !== "ready" || !(age >= 0 && age < BOOTSTRAP_PROBE_FRESH_MS)) return { allowed: false, reason: "fresh_probe_24h_required" };
+  return { allowed: true, reason: null };
+}
+
+/** The single next click Thomas should make, in order. */
+export function nextRolloutStep(x: { createProven: boolean; bootstrapUsed: boolean; bootstrapActive: boolean; anyReady: boolean; anyUnprobed: boolean; unverified: number }): string {
+  if (x.unverified > 0) return "resolve_unverified";
+  if (!x.createProven) {
+    if (x.bootstrapUsed && x.bootstrapActive) return "wait_for_new_assignment";
+    if (x.bootstrapUsed) return "bootstrap_used_contact";
+    return x.anyReady ? "bootstrap_click" : "probe_click";
+  }
+  if (x.anyReady) return "batch_click";
+  return x.anyUnprobed ? "probe_click" : "done";
+}
