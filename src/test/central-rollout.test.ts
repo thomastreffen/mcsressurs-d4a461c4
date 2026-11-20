@@ -64,3 +64,9 @@ describe("batches and go/no-go", () => {
     expect(block).not.toMatch(/job_outlook_app_queue"\)\.update/);
   });
 });
+
+it("the write claim gate honours only per-person activations, never all-active", () => {
+  const gate = readFileSync("drizzle/migrations/0125_central_calendar_ignore_all_active.sql", "utf8");
+  expect(gate).toContain("a.scope='single' AND a.technician_id=_tech AND a.mailbox=_mailbox");
+  expect(gate).not.toContain("scope='all_active'");
+});
