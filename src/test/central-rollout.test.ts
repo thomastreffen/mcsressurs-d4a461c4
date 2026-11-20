@@ -58,7 +58,7 @@ describe("batches and go/no-go", () => {
   });
   it("new single activations beyond the first pilot also need the automatic proof", () => expect(sql).toMatch(/central_calendar_activations WHERE revoked_at IS NULL\) AND NOT public\.central_calendar_automatic_pilot_proven/));
   it("rollout probes are GET-only, rate-limited and never touch the queue", () => {
-    const block = pilot.slice(pilot.indexOf('action === "rollout_overview"'), pilot.indexOf("// Accepted-but-unverified"));
+    const block = pilot.slice(pilot.indexOf('action === "rollout_overview"'), pilot.indexOf("// Isolated central API smoke test"));
     expect(block).not.toMatch(/method:\s*"(POST|PATCH|DELETE)"/);
     expect(block).toContain("60_000");
     expect(block).not.toMatch(/job_outlook_app_queue"\)\.update/);

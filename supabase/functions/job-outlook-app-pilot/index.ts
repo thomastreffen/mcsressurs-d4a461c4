@@ -20,6 +20,7 @@ import { ROLLOUT_BATCH_MAX, ROLLOUT_PROBE_SPACING_MS, technicianRolloutStatus, a
 import { planJobDays, clampTargetHours, type PilotTarget } from "../_shared/job-outlook-app-days.ts";
 import { CENTRAL_LIFECYCLE_APPROVED, previewDaily, dailyGet, dailyVerification, type DailyGraph, type DailyScope } from "../_shared/central-calendar-lifecycle.ts";
 import { osloDayWindow } from "../_shared/job-calendar-one-shot.ts";
+import { runSmokeTest, cleanupSmokeEvent, smokePhrase, validSmokeSlot } from "../_shared/central-smoke-test.ts";
 import { buildDayPayload, jobDayDedupKey } from "../_shared/job-outlook-app-days.ts";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -223,7 +224,10 @@ Deno.serve(async (req) => {
       return { id: t.id, name: t.name, mailbox: t.email.trim().toLowerCase(), activation_id: activeRows.find(a => a.technician_id === t.id)?.id ?? null, last_probe_at: lastProbe?.created_at ?? null, last_probe_http: lastProbe?.result?.http ?? null, ...st };
     });
     const proof = { create: automaticProof(proofOps.data as any, proofActs.data as any, "create"), update: automaticProof(proofOps.data as any, proofActs.data as any, "update"), delete: automaticProof(proofOps.data as any, proofActs.data as any, "delete") };
-    const decision = rolloutGoNoGo({ createProven: proof.create, updateProven: proof.update, deleteProven: proof.delete, unverifiedOperations: (open.data ?? []).length, legacyGlobalEnabled: settings.data?.enabled === true, heldQueue: held.count ?? 0, pendingConflicts: (conflicts.data ?? []).length });
+    const smokeRpc = await admin.rpc("central_calendar_api_smoke_proven", { _company: company });
+    if (smokeRpc.error) return json({ error: "smoke_proof_lookup_failed" }, 409);
+    (proof as any).api_smoke = smokeRpc.data === true;
+    const decision = rolloutGoNoGo({ apiSmokeProven: smokeRpc.data === true, createProven: proof.create, updateProven: proof.update, deleteProven: proof.delete, unverifiedOperations: (open.data ?? []).length, legacyGlobalEnabled: settings.data?.enabled === true, heldQueue: held.count ?? 0, pendingConflicts: (conflicts.data ?? []).length });
     const former = (techs ?? []).filter(t => EXCLUDED_TECHNICIANS.has(t.id)).length;
     const { data: boot, error: bErr } = await admin.from("central_calendar_activations").select("id,technician_id,mailbox,effective_from,revoked_at").eq("confirmation->>bootstrap", "true").limit(1).maybeSingle();
     if (bErr) return json({ error: "bootstrap_lookup_failed" }, 409);
@@ -231,11 +235,83 @@ Deno.serve(async (req) => {
     const peopleOut = people.map(p => ({ ...p, last_pass_at: lastPass(p.id) }));
     const restrictedPeople = activeHere.filter(t => restricted.has(t.id)).map(t => ({ id: t.id, name: t.name, mailbox: t.email.trim().toLowerCase(), reason: "access_restricted" }));
     const bootstrap = { used: !!boot, active: !!boot && !boot.revoked_at, technician_id: boot?.technician_id ?? null, mailbox: boot?.mailbox ?? null, effective_from: boot?.effective_from ?? null };
-    const next_step = nextRolloutStep({ createProven: proof.create, bootstrapUsed: bootstrap.used, bootstrapActive: bootstrap.active, anyReady: people.some(p => p.status === "ready"), anyUnprobed: people.some(p => p.status === "probe_required" || p.status === "probe_failed"), unverified: (open.data ?? []).length });
+    const next_step = nextRolloutStep({ apiSmokeProven: (proof as any).api_smoke === true, anyActive: people.some(p => p.status === "active"), createProven: proof.create, bootstrapUsed: bootstrap.used, bootstrapActive: bootstrap.active, anyReady: people.some(p => p.status === "ready"), anyUnprobed: people.some(p => p.status === "probe_required" || p.status === "probe_failed"), unverified: (open.data ?? []).length });
     return json({ read_only: true, graph_read_attempted: false, proof, decision, all_active_disabled: true, held_queue: held.count ?? 0,
       bootstrap, next_step, restricted: restrictedPeople,
       summary: { restricted: restrictedPeople.length, eligible: people.length, active: people.filter(p => p.status === "active").length, ready: people.filter(p => p.status === "ready").length, probe_required: people.filter(p => p.status === "probe_required").length, probe_failed: people.filter(p => p.status === "probe_failed").length, former_excluded: former, not_eligible_here: (techs ?? []).length - people.length - former },
       people: peopleOut, batch_max: ROLLOUT_BATCH_MAX });
+  }
+  // Isolated central API smoke test (one activated mailbox, neutral event, auto-deleted). Proves the
+  // app-only Graph write path only; never the Ressursplan trigger. Explicit cleanup for stranded events.
+  if (action === "central_smoke_test" || action === "central_smoke_cleanup" || action === "central_smoke_status") {
+    const company = b.company_id;
+    if (typeof company !== "string" || !UUID.test(company)) return json({ error: "invalid_company" }, 400);
+    const rights = await uc.rpc("has_company_access", { _uid: caller, _company: company, _module: "resource_plan", _level: "edit" });
+    if (rights.error || rights.data !== true) return json({ error: "company_edit_required" }, 403);
+    const { data: runs, error: re } = await admin.from("job_outlook_app_pilot_actions").select("created_at,result").eq("action", "central_smoke_test").eq("result->>company_id", company).order("created_at", { ascending: false }).limit(20);
+    if (re) return json({ error: "audit_lookup_failed" }, 409);
+    const { data: cleans } = await admin.from("job_outlook_app_pilot_actions").select("result").eq("action", "central_smoke_cleanup").eq("result->>company_id", company);
+    const cleaned = new Set((cleans ?? []).filter((c: any) => c.result?.ok === true).map((c: any) => c.result?.run_id));
+    const stranded = (runs ?? []).filter((r: any) => r.result?.stranded === true && !cleaned.has(r.result?.run_id)).map((r: any) => ({ run_id: r.result.run_id, mailbox: r.result.mailbox, graph_event_id: r.result.graph_event_id, created_at: r.created_at }));
+    // A run that died mid-way (no final row) but created an event is also stranded.
+    const { data: stepRows } = await admin.from("job_outlook_app_pilot_actions").select("created_at,result").eq("action", "central_smoke_test_step").eq("result->>company_id", company).in("result->>step", ["create_post", "create_reconcile_get", "verify_deleted"]).order("created_at", { ascending: false }).limit(100);
+    const finished = new Set((runs ?? []).map((r: any) => r.result?.run_id));
+    for (const st of (stepRows ?? []) as any[]) {
+      const rid = st.result?.run_id; const gid = st.result?.detail?.graph_event_id;
+      if (!rid || finished.has(rid) || cleaned.has(rid) || !gid || stranded.some(x => x.run_id === rid)) continue;
+      if ((stepRows ?? []).some((o: any) => o.result?.run_id === rid && o.result?.step === "verify_deleted" && o.result?.ok === true)) continue;
+      stranded.push({ run_id: rid, mailbox: st.result.mailbox, graph_event_id: gid, created_at: st.created_at });
+    }
+    if (action === "central_smoke_status") return json({ read_only: true, latest: runs?.[0] ?? null, stranded });
+    const env = (n: string) => Deno.env.get(n)?.trim() ?? "";
+    if (missingSecrets(env).length) return json({ error: "calendar_app_not_configured" }, 409);
+    const tokenFor = async () => {
+      const tr = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(env("HUB_CALENDAR_TENANT_ID"))}/oauth2/v2.0/token`, { method: "POST", signal: AbortSignal.timeout(15000), body: new URLSearchParams({ client_id: env("HUB_CALENDAR_CLIENT_ID"), client_secret: env("HUB_CALENDAR_CLIENT_SECRET"), grant_type: "client_credentials", scope: "https://graph.microsoft.com/.default" }) });
+      if (!tr.ok) return null;
+      const token = (await tr.json()).access_token;
+      const f = JSON.parse(atob(String(token).split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      if (f.tid !== env("HUB_CALENDAR_TENANT_ID") || (f.appid ?? f.azp) !== env("HUB_CALENDAR_CLIENT_ID") || env("HUB_CALENDAR_CLIENT_ID") === env("AZURE_CLIENT_ID") || (Array.isArray(f.roles) && f.roles.some((r: string) => !["Calendars.Read", "Calendars.ReadWrite"].includes(r)))) return null;
+      return token as string;
+    };
+    const graphWith = (token: string): DailyGraph => async (method, path, payload, ifMatch) => {
+      const r = await fetch(`https://graph.microsoft.com${path}`, { method, signal: AbortSignal.timeout(20000), headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: 'outlook.timezone="UTC", IdType="ImmutableId"', ...(ifMatch ? { "If-Match": ifMatch } : {}) }, body: payload ? JSON.stringify(payload) : undefined });
+      const t = await r.text(); let data = null; try { data = t ? JSON.parse(t) : null; } catch { /* */ } return { status: r.status, data };
+    };
+    if (action === "central_smoke_cleanup") {
+      const target = stranded.find(x => x.run_id === b.run_id);
+      if (!target || typeof target.graph_event_id !== "string") return json({ error: "no_such_stranded_test" }, 404);
+      const token = await tokenFor(); if (!token) return json({ error: "calendar_identity_unverified" }, 409);
+      const pre = await audit("central_smoke_cleanup_started", { company_id: company, run_id: target.run_id, mailbox: target.mailbox, graph_event_id: target.graph_event_id });
+      if (pre.error) return json({ error: "audit_required" }, 409);
+      const r = await cleanupSmokeEvent(graphWith(token), { runId: target.run_id, mailbox: target.mailbox, graphEventId: target.graph_event_id });
+      await audit("central_smoke_cleanup", { company_id: company, run_id: target.run_id, mailbox: target.mailbox, graph_event_id: target.graph_event_id, ...r });
+      return json({ ...r, run_id: target.run_id });
+    }
+    // central_smoke_test
+    if (stranded.length) return json({ error: "stranded_test_event_cleanup_first", stranded }, 409);
+    const techId = b.technician_id, start = String(b.start ?? ""), end = String(b.end ?? "");
+    if (typeof techId !== "string" || !UUID.test(techId)) return json({ error: "invalid_technician" }, 400);
+    const slotErr = validSmokeSlot(start, end, now); if (slotErr) return json({ error: slotErr }, 400);
+    const { data: actRow } = await admin.from("central_calendar_activations").select("mailbox").eq("company_id", company).eq("technician_id", techId).eq("scope", "single").is("revoked_at", null).maybeSingle();
+    if (!actRow?.mailbox) return json({ error: "technician_not_centrally_activated" }, 409);
+    const mailbox = String(actRow.mailbox).toLowerCase();
+    const live = (await identities([techId], company)).get(techId);
+    if (!live || !activeIdentity(live) || live.mailbox !== mailbox) return json({ error: "inactive_or_mailbox_changed" }, 409);
+    if (b.phrase !== smokePhrase(mailbox)) return json({ error: "phrase_mismatch", expected: smokePhrase(mailbox) }, 400);
+    const { data: probe } = await admin.from("job_outlook_app_pilot_actions").select("created_at,result").eq("action", "probe_technician_mailbox").eq("result->>technician_id", techId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!probe || probe.result?.pass !== true || String(probe.result?.mailbox).toLowerCase() !== mailbox || now.getTime() - Date.parse(probe.created_at) > 24 * 3600_000) return json({ error: "fresh_mailbox_probe_24h_required" }, 409);
+    if (runs?.[0] && now.getTime() - Date.parse(runs[0].created_at) < 120_000) return json({ error: "cooldown" }, 429);
+    const token = await tokenFor(); if (!token) return json({ error: "calendar_identity_unverified", graph_write_attempted: false }, 409);
+    const runId = crypto.randomUUID();
+    const ctx = { company_id: company, run_id: runId, technician_id: techId, mailbox, start, end, kind: "central_api_smoke", proves_ordinary_trigger: false, attendees: 0, email: false };
+    const pre = await audit("central_smoke_test_started", ctx, { idempotency_key: runId });
+    if (pre.error) return json({ error: "audit_required", graph_write_attempted: false }, 409);
+    let result;
+    try {
+      result = await runSmokeTest(graphWith(token), { runId, mailbox, technicianId: techId, companyId: company, start, end, onStep: async (st) => { await audit("central_smoke_test_step", { ...ctx, ...st }); } });
+    } catch (e) { result = { pass: false, failed_step: "exception", graph_event_id: null, transaction_id: `mcs-smoke-${runId}`, stranded: false, steps: [], error: String(e).slice(0, 200) }; }
+    await audit("central_smoke_test", { ...ctx, ...result });
+    return json({ ...ctx, ...result });
   }
   // Accepted-but-unverified central operations: GET-only inspection and explicit operator-confirmed linking. Never creates.
   if (action === "inspect_central_operation" || action === "link_central_operation") {

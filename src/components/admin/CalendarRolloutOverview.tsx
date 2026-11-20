@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { CentralSmokeTest } from "./CentralSmokeTest";
 import { batchPhrase, STOP_ALL_PHRASE, ROLLOUT_BATCH_MAX, bootstrapPhrase, bootstrapDecision } from "../../../supabase/functions/_shared/central-rollout";
 
 type Person = { id: string; name: string; mailbox: string; status: string; reason: string | null; attention: string | null; last_probe_at: string | null; last_probe_http: number | null; last_pass_at?: string | null };
-type Overview = { proof: { create: boolean; update: boolean; delete: boolean }; decision: { go: boolean; blockers: string[]; warnings: string[] }; summary: Record<string, number>; people: Person[]; held_queue: number; next_step?: string; restricted?: { id: string; name: string; mailbox: string }[]; bootstrap?: { used: boolean; active: boolean; mailbox: string | null; effective_from: string | null } };
+type Overview = { proof: { create: boolean; update: boolean; delete: boolean; api_smoke?: boolean }; decision: { go: boolean; blockers: string[]; warnings: string[] }; summary: Record<string, number>; people: Person[]; held_queue: number; next_step?: string; restricted?: { id: string; name: string; mailbox: string }[]; bootstrap?: { used: boolean; active: boolean; mailbox: string | null; effective_from: string | null } };
 
 export const NEXT_STEP: Record<string, string> = {
   resolve_unverified: "Neste klikk: løs ubekreftede Outlook-avtaler nedenfor før noe annet.",
+  smoke_test_click: "Neste klikk: kjør «Systemtest av Outlook-kalender» nedenfor for en aktivert montør (f.eks. Marcus). Bestått test åpner for puljer.",
   probe_click: "Neste klikk: kryss av første montør (f.eks. Marcus) og trykk «Test kalendertilgang for valgte – kun lesing».",
   bootstrap_click: "Neste klikk: velg ÉN klar montør i «Første montør (engangs)», kryss av godkjenning, skriv frasen og trykk «Aktiver første montør».",
   wait_for_new_assignment: "Neste steg: gi første montør en ny, vanlig tildeling i Ressursplan. Når avtalen er opprettet og bekreftet automatisk, blir puljer tilgjengelige.",
@@ -27,6 +29,7 @@ export const ROLLOUT_TEXT: Record<string, string> = {
   automatic_create_not_proven: "Ingen avtale er ennå opprettet og bekreftet helt automatisk (manuell kjøring/kobling teller ikke).",
   unconfirmed_outlook_operations: "Det finnes avtaler sendt til Outlook som ikke er bekreftet – løs disse først.",
   legacy_global_sync_enabled: "Gammel global kalenderbryter er på – skal være av.",
+  ordinary_trigger_not_proven: "Kalenderforbindelsen er bevist med systemtest, men en vanlig Ressursplan-tildeling er ennå ikke bekreftet automatisk – følg med på første ekte tildeling.",
   automatic_update_not_proven: "Automatisk endring av eksisterende avtale er ikke bevist ennå.",
   automatic_delete_not_proven: "Automatisk fjerning av avtale er ikke bevist ennå.",
   conflict_consent_pending: "Noen tildelinger venter på godkjenning fordi montøren har annen opptatt tid i Outlook.",
@@ -90,6 +93,7 @@ export function CalendarRolloutOverview() {
       {p.attention && <span className="text-destructive">{ROLLOUT_TEXT[p.attention === "outlook_unconfirmed" ? "unconfirmed_outlook_operations" : "conflict_consent_pending"]}</span>}
       <span className="ml-auto text-muted-foreground">Sist testet: {fmt(p.last_probe_at)}{p.last_probe_http ? ` (${p.last_probe_http})` : ""}</span>
     </li>)}</ul>
+    <CentralSmokeTest companyId={activeCompanyId} active={people.filter(p => p.status === "active")} />
     {(data.restricted ?? []).length > 0 && <p className="text-sm text-muted-foreground">Utelatt pga. personlig tilgangsbegrensning: {(data.restricted ?? []).map(r => r.name).join(", ")}</p>}
     <Button variant="outline" disabled={!canProbe || busy} onClick={probe}>Test kalendertilgang for valgte – kun lesing</Button>
     {!data.proof?.create && <div className="space-y-2 rounded-md border border-border p-3" aria-label="Første montør">

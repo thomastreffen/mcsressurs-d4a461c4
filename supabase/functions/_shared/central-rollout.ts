@@ -32,11 +32,13 @@ export function automaticProof(ops: ProofOp[], actions: ProofAction[], kind: "cr
       (["link_central_operation", "inspect_central_operation"].includes(a.action) && a.result?.operation_id === o.id)));
 }
 
-export type GoNoGoInput = { createProven: boolean; updateProven: boolean; deleteProven: boolean; unverifiedOperations: number; legacyGlobalEnabled: boolean; heldQueue: number; pendingConflicts: number };
+export type GoNoGoInput = { apiSmokeProven?: boolean; createProven: boolean; updateProven: boolean; deleteProven: boolean; unverifiedOperations: number; legacyGlobalEnabled: boolean; heldQueue: number; pendingConflicts: number };
 /** Go = next verified batch may be activated. Never implies queue release or blanket activation. */
 export function rolloutGoNoGo(x: GoNoGoInput) {
   const blockers: string[] = [], warnings: string[] = [];
-  if (!x.createProven) blockers.push("automatic_create_not_proven");
+  // Central API smoke (create/GET/PATCH/DELETE) may unblock batches, but never counts as ordinary trigger proof.
+  if (!x.createProven && !x.apiSmokeProven) blockers.push("automatic_create_not_proven");
+  if (!x.createProven && x.apiSmokeProven) warnings.push("ordinary_trigger_not_proven");
   if (x.unverifiedOperations > 0) blockers.push("unconfirmed_outlook_operations");
   if (x.legacyGlobalEnabled) blockers.push("legacy_global_sync_enabled");
   if (!x.updateProven) warnings.push("automatic_update_not_proven");
@@ -68,9 +70,10 @@ export function bootstrapDecision(x: { createProven: boolean; bootstrapUsed: boo
 }
 
 /** The single next click Thomas should make, in order. */
-export function nextRolloutStep(x: { createProven: boolean; bootstrapUsed: boolean; bootstrapActive: boolean; anyReady: boolean; anyUnprobed: boolean; unverified: number }): string {
+export function nextRolloutStep(x: { apiSmokeProven?: boolean; anyActive?: boolean; createProven: boolean; bootstrapUsed: boolean; bootstrapActive: boolean; anyReady: boolean; anyUnprobed: boolean; unverified: number }): string {
   if (x.unverified > 0) return "resolve_unverified";
-  if (!x.createProven) {
+  if (!x.createProven && !x.apiSmokeProven && x.anyActive) return "smoke_test_click";
+  if (!x.createProven && !x.apiSmokeProven) {
     if (x.bootstrapUsed && x.bootstrapActive) return "wait_for_new_assignment";
     if (x.bootstrapUsed) return "bootstrap_used_contact";
     return x.anyReady ? "bootstrap_click" : "probe_click";

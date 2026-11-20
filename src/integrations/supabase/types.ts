@@ -19818,6 +19818,10 @@ export type Database = {
         Returns: boolean
       }
       can_view_planning_finance: { Args: never; Returns: boolean }
+      central_calendar_api_smoke_proven: {
+        Args: { _company: string }
+        Returns: boolean
+      }
       central_calendar_automatic_pilot_proven: { Args: never; Returns: boolean }
       central_calendar_mailbox_active: {
         Args: {
