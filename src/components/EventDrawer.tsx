@@ -1153,9 +1153,9 @@ export function EventDrawer({
 
         // 2) Transactional batch create via RPC — one event per date
         const dateEntries = allDates.map((d) => {
-          const { startISO: dStart, endISO: dEnd } = normalizeOvernightDates(
-            d, startTime, d, endTime,
-          );
+          const { startISO: dStart, endISO: dEnd } = d === date
+            ? normalizeOvernightDates(d, startTime, d, endTime)
+            : workDayWindow({ date: d, ...(repeatTimes[d] ?? NEW_DAY_DEFAULT) });
           return { date: d, start: dStart, end: dEnd };
         });
 
@@ -1293,7 +1293,9 @@ export function EventDrawer({
                 p_title: title, p_description: description || null, p_customer: customer || null,
                 p_address: address || null, p_technician_ids: techIds, p_notify: taskNotify,
                 p_dates: creation.dates.map(d => {
-                  const { startISO, endISO } = normalizeOvernightDates(d, startTime, d === date ? endDate : d, endTime);
+                  const { startISO, endISO } = d === date
+                    ? normalizeOvernightDates(d, startTime, endDate, endTime)
+                    : workDayWindow({ date: d, ...(repeatTimes[d] ?? NEW_DAY_DEFAULT) });
                   return { start: startISO, end: endISO };
                 }),
               });
