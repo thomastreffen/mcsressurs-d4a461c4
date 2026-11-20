@@ -56,7 +56,7 @@ export function CentralCalendarActivation() {
       : <p className="text-muted-foreground">Ikke aktivert for noen montør.</p>}
     <Select value={tech} onValueChange={v => { setTech(v); setPhrase(""); }}>
       <SelectTrigger aria-label="Velg montør"><SelectValue placeholder="Velg montør" /></SelectTrigger>
-      <SelectContent>{techs?.map(t => <SelectItem key={t.id} value={t.id}>{t.name} · {t.email}</SelectItem>)}<SelectItem value="__all__">Alle aktive montører (krever bekreftet pilot)</SelectItem></SelectContent>
+      <SelectContent>{techs?.map(t => <SelectItem key={t.id} value={t.id}>{t.name} · {t.email}</SelectItem>)}</SelectContent>
     </Select>
     {expected && <div className="space-y-2">
       {EFFECTS.map((e, i) => <label key={i} className="flex items-start gap-2"><Checkbox checked={checks[i]} onCheckedChange={v => setChecks(c => c.map((x, j) => j === i ? v === true : x))} /><span>{e}</span></label>)}

@@ -11267,6 +11267,7 @@ export type Database = {
           payload: Json
           state: string
           technician_id: string
+          verification_source: string | null
           work_date: string
         }
         Insert: {
@@ -11284,6 +11285,7 @@ export type Database = {
           payload: Json
           state?: string
           technician_id: string
+          verification_source?: string | null
           work_date: string
         }
         Update: {
@@ -11301,6 +11303,7 @@ export type Database = {
           payload?: Json
           state?: string
           technician_id?: string
+          verification_source?: string | null
           work_date?: string
         }
         Relationships: []
@@ -19700,12 +19703,20 @@ export type Database = {
       }
     }
     Functions: {
+      _central_calendar_eligible: {
+        Args: { _company: string; _tech: string }
+        Returns: string
+      }
       _notif_admin_user_ids: { Args: never; Returns: string[] }
       _register_actor: { Args: never; Returns: string }
       account_auth_user: { Args: { _account: string }; Returns: string }
       activate_central_calendar: {
         Args: { _company: string; _phrase: string; _tech: string }
         Returns: string
+      }
+      activate_central_calendar_batch: {
+        Args: { _company: string; _phrase: string; _techs: string[] }
+        Returns: number
       }
       activity_entity_company: {
         Args: { _commercial_case: string; _id: string; _type: string }
@@ -19803,6 +19814,7 @@ export type Database = {
         Returns: boolean
       }
       can_view_planning_finance: { Args: never; Returns: boolean }
+      central_calendar_automatic_pilot_proven: { Args: never; Returns: boolean }
       central_calendar_mailbox_active: {
         Args: {
           _changed: string
@@ -21206,6 +21218,10 @@ export type Database = {
           _token: string
         }
         Returns: Json
+      }
+      revoke_all_central_calendar: {
+        Args: { _company: string; _phrase: string }
+        Returns: number
       }
       revoke_central_calendar: { Args: { _id: string }; Returns: boolean }
       save_crm_account: {

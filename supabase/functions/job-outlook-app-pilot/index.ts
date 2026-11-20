@@ -15,7 +15,8 @@ import { probeCalendarMailbox } from "../_shared/calendar-mailbox-probe.ts";
 import { diagnosticGate } from "../_shared/hub-calendar-write-pilot-core.ts";
 import { missingSecrets } from "../_shared/hub-calendar-diagnostics-core.ts";
 import type { HubJob } from "../_shared/job-outlook-app-core.ts";
-import { pilotChoices, freshMailboxProbe, existingTargetDecision, activeIdentity, mailboxReadiness, type IdentityFacts } from "../_shared/job-outlook-pilot-selector.ts";
+import { pilotChoices, freshMailboxProbe, existingTargetDecision, activeIdentity, mailboxReadiness, EXCLUDED_TECHNICIANS, type IdentityFacts } from "../_shared/job-outlook-pilot-selector.ts";
+import { ROLLOUT_BATCH_MAX, ROLLOUT_PROBE_SPACING_MS, technicianRolloutStatus, automaticProof, rolloutGoNoGo } from "../_shared/central-rollout.ts";
 import { planJobDays, clampTargetHours, type PilotTarget } from "../_shared/job-outlook-app-days.ts";
 import { CENTRAL_LIFECYCLE_APPROVED, previewDaily, dailyGet, dailyVerification, type DailyGraph, type DailyScope } from "../_shared/central-calendar-lifecycle.ts";
 import { osloDayWindow } from "../_shared/job-calendar-one-shot.ts";
@@ -150,6 +151,75 @@ Deno.serve(async (req) => {
     if (finished.error) return json({ error: "audit_result_failed", result, audit_complete: false }, 409);
     return json({ ok: true, result, audit_complete: true, rollout_approved: false });
   }
+  // Rollout overview (read-only, no Graph) and rate-limited per-person calendar GET probes for verified batches.
+  if (action === "rollout_overview" || action === "probe_rollout_batch") {
+    const company = b.company_id;
+    if (typeof company !== "string" || !UUID.test(company)) return json({ error: "invalid_company" }, 400);
+    const rights = await uc.rpc("has_company_access", { _uid: caller, _company: company, _module: "resource_plan", _level: "edit" });
+    if (rights.error || rights.data !== true) return json({ error: "company_edit_required" }, 403);
+    const { data: techs, error: te } = await admin.from("technicians").select("id,name,email").is("archived_at", null).is("deleted_at", null);
+    if (te) return json({ error: "identity_lookup_failed" }, 409);
+    const facts = await identities((techs ?? []).map(t => t.id), company);
+    const eligible = (techs ?? []).filter(t => { const f = facts.get(t.id); return !!f && activeIdentity(f); });
+    if (action === "probe_rollout_batch") {
+      const ids = Array.isArray(b.technician_ids) ? b.technician_ids.filter((x): x is string => typeof x === "string" && UUID.test(x)) : [];
+      if (b.confirm_read_only !== true || ids.length < 1 || ids.length > ROLLOUT_BATCH_MAX || new Set(ids).size !== ids.length) return json({ error: "batch_size_1_to_5" }, 400);
+      const chosen = ids.map(id => eligible.find(t => t.id === id));
+      if (chosen.some(c => !c)) return json({ error: "inactive_or_former_employee" }, 409);
+      const { data: last, error: le } = await admin.from("job_outlook_app_pilot_actions").select("created_at").in("action", ["probe_rollout_batch_started", "probe_technician_mailbox_started"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (le) return json({ error: "audit_lookup_failed" }, 409);
+      if (last && now.getTime() - Date.parse(last.created_at) < 60_000) return json({ error: "cooldown" }, 429);
+      const { data: diag, error: de } = await admin.from("hub_calendar_diagnostic_runs").select("run_at,overall,checks").order("run_at", { ascending: false }).limit(1).maybeSingle();
+      const scopeDenied = de ? "scope_lookup_failed" : diagnosticGate(diag, now);
+      const batchKey = crypto.randomUUID();
+      const started = await audit("probe_rollout_batch_started", { company_id: company, technician_ids: ids, read_only: true, scope_gate: scopeDenied ?? "passed" }, { idempotency_key: batchKey });
+      if (started.error) return json({ error: "audit_required", graph_read_attempted: false }, 409);
+      const results: Record<string, unknown>[] = [];
+      for (const [i, c] of chosen.entries()) {
+        const t = c!;
+        const mailbox = t.email.trim().toLowerCase();
+        const context = { company_id: company, technician_id: t.id, mailbox, read_only: true, writes_enabled: false, no_queue_replay: true, batch: batchKey };
+        const op = crypto.randomUUID();
+        const pre = await audit("probe_technician_mailbox_started", context, { idempotency_key: op });
+        if (pre.error) { results.push({ technician_id: t.id, pass: false, step: "audit" }); continue; }
+        if (i > 0) await new Promise(r => setTimeout(r, ROLLOUT_PROBE_SPACING_MS));
+        const result = scopeDenied ? { ...context, pass: false, step: "scope", reason: scopeDenied } : { ...context, ...await probeCalendarMailbox(mailbox, n => Deno.env.get(n)) };
+        await audit("probe_technician_mailbox", result, { idempotency_key: op });
+        // Only status/step leave the server; calendar content is never read.
+        results.push({ technician_id: t.id, pass: (result as any).pass === true, http: (result as any).http ?? null, step: (result as any).step ?? null });
+      }
+      return json({ read_only: true, graph_write_attempted: false, results });
+    }
+    const ids = eligible.map(t => t.id);
+    const [acts, probes, open, conflicts, proofOps, proofActs, held, settings] = await Promise.all([
+      admin.from("central_calendar_activations").select("id,scope,technician_id,mailbox,effective_from").eq("company_id", company).is("revoked_at", null),
+      ids.length ? admin.from("job_outlook_app_pilot_actions").select("created_at,result").eq("action", "probe_technician_mailbox").in("result->>technician_id", ids).order("created_at", { ascending: false }).limit(500) : Promise.resolve({ data: [], error: null }),
+      admin.from("job_calendar_daily_operations").select("technician_id").eq("company_id", company).in("state", ["claimed", "accepted", "uncertain"]),
+      admin.from("central_calendar_conflict_reviews").select("technician_id").eq("company_id", company).is("approved_at", null),
+      admin.from("job_calendar_daily_operations").select("id,event_id,technician_id,kind,state,verification_source,created_at").eq("state", "verified"),
+      admin.from("job_outlook_app_pilot_actions").select("action,result").or("action.like.retry_central_assignment*,action.eq.link_central_operation,action.eq.inspect_central_operation"),
+      admin.from("job_outlook_app_queue").select("id", { count: "exact", head: true }).eq("status", "pending").is("released_at", null),
+      admin.from("job_outlook_app_sync_settings").select("enabled,dry_run").eq("id", true).maybeSingle(),
+    ]);
+    if ([acts, probes, open, conflicts, proofOps, proofActs, held, settings].some((r: any) => r.error)) return json({ error: "overview_read_failed" }, 409);
+    const activeRows = (acts.data ?? []) as any[];
+    const people = eligible.map(t => {
+      const st = technicianRolloutStatus({
+        eligible: true, activated: activeRows.some(a => a.technician_id === t.id),
+        probes: ((probes.data ?? []) as any[]).filter(p => p.result?.technician_id === t.id && (p.result?.company_id ?? company) === company && String(p.result?.mailbox ?? "").toLowerCase() === t.email.trim().toLowerCase()).map(p => ({ created_at: p.created_at, pass: p.result?.pass === true, http: p.result?.http ?? null, step: p.result?.step ?? null })),
+        openOperations: ((open.data ?? []) as any[]).filter(o => o.technician_id === t.id).length,
+        pendingConflicts: ((conflicts.data ?? []) as any[]).filter(o => o.technician_id === t.id).length,
+      }, now);
+      const lastProbe = ((probes.data ?? []) as any[]).find(p => p.result?.technician_id === t.id);
+      return { id: t.id, name: t.name, mailbox: t.email.trim().toLowerCase(), activation_id: activeRows.find(a => a.technician_id === t.id)?.id ?? null, last_probe_at: lastProbe?.created_at ?? null, last_probe_http: lastProbe?.result?.http ?? null, ...st };
+    });
+    const proof = { create: automaticProof(proofOps.data as any, proofActs.data as any, "create"), update: automaticProof(proofOps.data as any, proofActs.data as any, "update"), delete: automaticProof(proofOps.data as any, proofActs.data as any, "delete") };
+    const decision = rolloutGoNoGo({ createProven: proof.create, updateProven: proof.update, deleteProven: proof.delete, unverifiedOperations: (open.data ?? []).length, legacyGlobalEnabled: settings.data?.enabled === true, heldQueue: held.count ?? 0, pendingConflicts: (conflicts.data ?? []).length });
+    const former = (techs ?? []).filter(t => EXCLUDED_TECHNICIANS.has(t.id)).length;
+    return json({ read_only: true, graph_read_attempted: false, proof, decision, all_active_disabled: true, held_queue: held.count ?? 0,
+      summary: { eligible: people.length, active: people.filter(p => p.status === "active").length, ready: people.filter(p => p.status === "ready").length, probe_required: people.filter(p => p.status === "probe_required").length, probe_failed: people.filter(p => p.status === "probe_failed").length, former_excluded: former, not_eligible_here: (techs ?? []).length - people.length - former },
+      people, batch_max: ROLLOUT_BATCH_MAX });
+  }
   // Accepted-but-unverified central operations: GET-only inspection and explicit operator-confirmed linking. Never creates.
   if (action === "inspect_central_operation" || action === "link_central_operation") {
     const opId = b.operation_id;
@@ -190,7 +260,7 @@ Deno.serve(async (req) => {
     const fp = String(op.operation_key).split(":create:")[1] ?? null;
     const lk = await admin.from("job_outlook_app_links").upsert({ event_id: op.event_id, technician_id: op.technician_id, company_id: op.company_id, mailbox: mb, work_date: op.work_date, dedup_key: scope.key, state: "synced", outlook_event_id: get.data.id, outlook_change_key: get.data.changeKey, hub_version: fp, updated_at: new Date().toISOString() }, { onConflict: "dedup_key" });
     if (lk.error) return json({ ...report, status: "link_write_failed" }, 409);
-    const up = await admin.from("job_calendar_daily_operations").update({ state: "verified", http_status: 200, graph_change_key: get.data.changeKey, finished_at: new Date().toISOString() }).eq("id", op.id).eq("state", "accepted").select("id");
+    const up = await admin.from("job_calendar_daily_operations").update({ state: "verified", verification_source: "manual_link", http_status: 200, graph_change_key: get.data.changeKey, finished_at: new Date().toISOString() }).eq("id", op.id).eq("state", "accepted").select("id");
     if (up.error) return json({ ...report, status: "receipt_write_failed" }, 409);
     await admin.from("event_recipient_delivery").update({ status: "sent", delivery_state: "verified", verification_signal: "exact_graph_get_200", reason_code: "central_verified_readback" }).eq("event_id", op.event_id).eq("technician_id", op.technician_id).eq("channel", "calendar");
     return json({ ...report, status: (up.data ?? []).length ? "linked_verified" : "already_linked" });

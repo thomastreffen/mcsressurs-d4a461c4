@@ -35,7 +35,7 @@ export function centralCalendarStore(db: any, s: DailyScope, version: string | n
       return typeof r === "string" ? r : null;
     },
     async receipt(id, state, http, graphId, changeKey) {
-      checked(await exact(db.from("job_calendar_daily_operations").update({ state, http_status: http, graph_event_id: graphId, graph_change_key: changeKey, finished_at: ["verified", "rejected", "conflict"].includes(state) ? new Date().toISOString() : null })).eq("id", id));
+      checked(await exact(db.from("job_calendar_daily_operations").update({ state, http_status: http, graph_event_id: graphId, graph_change_key: changeKey, finished_at: ["verified", "rejected", "conflict"].includes(state) ? new Date().toISOString() : null, ...(state === "verified" ? { verification_source: "automatic_readback" } : {}) })).eq("id", id));
     },
     async saveCopy(copy: DailyCopy | null, deleted: boolean) {
       const r = await db.from("job_outlook_app_links").upsert({ event_id: s.eventId, technician_id: s.technicianId, company_id: s.companyId, mailbox: s.mailbox, work_date: s.workDate, dedup_key: s.key, state: deleted ? "deleted" : "synced", outlook_event_id: copy?.id ?? null, outlook_change_key: copy?.changeKey ?? null, hub_version: version, updated_at: new Date().toISOString() }, { onConflict: "dedup_key" });
