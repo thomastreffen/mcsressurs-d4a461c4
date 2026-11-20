@@ -904,6 +904,13 @@
       "when": 1795180108830,
       "tag": "0128_central_calendar_api_smoke_proof",
       "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1795180441806,
+      "tag": "0129_central_calendar_single_accepts_smoke_proof",
+      "breakpoints": true
     }
   ]
 }
