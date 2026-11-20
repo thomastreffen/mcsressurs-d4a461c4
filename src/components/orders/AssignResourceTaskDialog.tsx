@@ -32,8 +32,9 @@ import { format, setHours, setMinutes } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { invokeWithSession } from "@/lib/invoke-session";
-import { orderPlanningDates, buildOrderScheduleBlocks } from "@/lib/order-task-dates";
 import { X, Plus } from "lucide-react";
+import { WorkDayRows } from "@/components/planning/WorkDayRows";
+import { buildWorkDayBlocks, validateWorkDays, NEW_DAY_DEFAULT, type WorkDay } from "@/lib/work-days";
 
 interface AssignResourceTaskDialogProps {
   open: boolean;
@@ -139,8 +140,8 @@ export function AssignResourceTaskDialog({
   const [selectedTechIds, setSelectedTechIds] = useState<string[]>([]);
   const [includeAttachments, setIncludeAttachments] = useState(true);
   const [notifyRequester, setNotifyRequester] = useState(false);
-  const [extraDates, setExtraDates] = useState<Date[]>([]);
-  const [extraPickerOpen, setExtraPickerOpen] = useState(false);
+  // Extra workdays with their OWN times; the primary day is always Fra/Til.
+  const [extraDays, setExtraDays] = useState<WorkDay[]>([]);
 
   // Reset all fields when dialog opens with fresh data
   useEffect(() => {
@@ -163,7 +164,7 @@ export function AssignResourceTaskDialog({
     setStartTime("08:00");
     setEndTime("16:00");
     setSelectedTechIds([]);
-    setExtraDates([]);
+    setExtraDays([]);
     setIncludeAttachments(true);
     setNotifyRequester(!!bestillerEpost && !!autoNotifyDefault);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -177,12 +178,20 @@ export function AssignResourceTaskDialog({
   const computedStart = useMemo(() => applyTime(startDate, startTime), [startDate, startTime]);
   const computedEnd = useMemo(() => applyTime(endDate, endTime), [endDate, endTime]);
   const isSingleDayWindow = !!startDate && !!endDate && format(startDate, "yyyy-MM-dd") === format(endDate, "yyyy-MM-dd");
-  const planningDates = useMemo(() => orderPlanningDates(startDate, isSingleDayWindow ? extraDates : []), [startDate, extraDates, isSingleDayWindow]);
+  const workDays = useMemo<WorkDay[]>(() => {
+    if (!startDate) return [];
+    const primary = { date: format(startDate, "yyyy-MM-dd"), start: startTime, end: endTime };
+    const extras = isSingleDayWindow ? extraDays.filter((d) => d.date !== primary.date) : [];
+    return [primary, ...[...extras].sort((a, b) => a.date.localeCompare(b.date))];
+  }, [startDate, startTime, endTime, extraDays, isSingleDayWindow]);
+  const planningDates = useMemo(() => workDays.map((d) => d.date).sort(), [workDays]);
+  const workDayErrors = useMemo(() => workDays.length > 1 ? validateWorkDays(workDays) : [], [workDays]);
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!activeCompanyId) throw new Error("Mangler selskap");
       if (selectedTechIds.length === 0) throw new Error("Velg minst én montør");
+      if (workDayErrors.length > 0) throw new Error(`Arbeidsdager: ${workDayErrors[0].message}`);
 
       const startTime = computedStart || new Date();
       const endTime = computedEnd || new Date(startTime.getTime() + 8 * 60 * 60 * 1000);
@@ -226,9 +235,9 @@ export function AssignResourceTaskDialog({
 
       // Flere arbeidsdager: samme jobb (én bestillingskobling), én plan-blokk per montør × dag.
       if (planningDates.length > 1) {
-        const rows = buildOrderScheduleBlocks({
+        const rows = buildWorkDayBlocks({
           companyId: activeCompanyId, eventId: newEvent.id, title: title || "Oppgave",
-          techIds: selectedTechIds, dates: planningDates, startTime: format(startTime, "HH:mm"), endTime: format(endTime, "HH:mm"),
+          techIds: selectedTechIds, days: workDays, matchReason: "Planlagt over flere dager fra bestilling",
         });
         const { data: existing } = await supabase.from("schedule_blocks")
           .select("technician_id,start_at,end_at").is("deleted_at", null).eq("project_id", newEvent.id);
@@ -304,6 +313,7 @@ export function AssignResourceTaskDialog({
           scheduled_start: startTime.toISOString(),
           scheduled_end: endTime.toISOString(),
           planned_dates: planningDates,
+          planned_days: workDays,
           summary: (techNames.length > 0
             ? `Tildelt ${techNames.join(", ")} ${startFormatted}`
             : `Planlagt ${startFormatted}`) + (planningDates.length > 1 ? ` (${planningDates.length} dager)` : ""),
@@ -588,7 +598,7 @@ export function AssignResourceTaskDialog({
                 </div>
               </div>
 
-              {startDate && endDate && (
+              {startDate && endDate && planningDates.length <= 1 && (
                 <p className="text-xs font-medium text-muted-foreground">
                   <span className="uppercase tracking-wider">Tidsrom</span>
                   <br />
@@ -598,56 +608,28 @@ export function AssignResourceTaskDialog({
                 </p>
               )}
 
-              {/* Flere arbeidsdager – spesifikke datoer, ikke ukentlig gjentakelse */}
+              {/* Flere arbeidsdager – én rad per dag med egen start/slutt */}
               <div className="rounded-lg border border-border/60 p-3 space-y-2" data-testid="extra-dates">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs font-medium">Flere arbeidsdager</p>
-                    <p className="text-[10px] text-muted-foreground">Samme jobb, tid og montører på valgte datoer</p>
-                  </div>
-                  <Popover open={extraPickerOpen} onOpenChange={setExtraPickerOpen}>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" size="sm" className="min-h-[36px]" disabled={!isSingleDayWindow}>
-                        <Plus className="mr-1 h-3.5 w-3.5" /> Legg til flere datoer
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                      <Calendar
-                        mode="multiple"
-                        selected={extraDates}
-                        onSelect={(d) => setExtraDates((d || []).filter((x) => !startDate || format(x, "yyyy-MM-dd") !== format(startDate, "yyyy-MM-dd")))}
-                        className={cn("p-3 pointer-events-auto")}
-                        locale={nb}
-                      />
-                      <div className="flex justify-end border-t p-2">
-                        <Button size="sm" onClick={() => setExtraPickerOpen(false)}>Ferdig</Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                <div>
+                  <p className="text-xs font-medium">Arbeidsdager</p>
+                  <p className="text-[10px] text-muted-foreground">Samme jobb og montører. Hver dag har egen tid – første dag følger Fra/Til.</p>
                 </div>
-                {!isSingleDayWindow && startDate && endDate && (
+                {!isSingleDayWindow && startDate && endDate ? (
                   <p className="text-[10px] text-muted-foreground">Velg samme Fra- og Til-dato for å legge til flere arbeidsdager.</p>
-                )}
-                {isSingleDayWindow && planningDates.length > 1 && (
-                  <ul className="flex flex-wrap gap-1.5">
-                    {planningDates.map((ds) => {
-                      const isPrimary = startDate && ds === format(startDate, "yyyy-MM-dd");
-                      const d = new Date(`${ds}T12:00:00`);
-                      return (
-                        <li key={ds}>
-                          <Badge variant={isPrimary ? "default" : "outline"} className="gap-1 text-[11px]">
-                            {format(d, "EEE d. MMM", { locale: nb })} {startTime}–{endTime}
-                            {!isPrimary && (
-                              <button type="button" aria-label={`Fjern ${format(d, "d. MMM", { locale: nb })}`} className="ml-0.5 rounded p-0.5 hover:bg-muted"
-                                onClick={() => setExtraDates((prev) => prev.filter((x) => format(x, "yyyy-MM-dd") !== ds))}>
-                                <X className="h-3 w-3" />
-                              </button>
-                            )}
-                          </Badge>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                ) : (
+                  <WorkDayRows
+                    days={workDays}
+                    errors={workDayErrors}
+                    onChangeTime={(date, field, value) => {
+                      if (startDate && date === format(startDate, "yyyy-MM-dd")) {
+                        if (field === "start") setStartTime(value); else setEndTime(value);
+                      } else {
+                        setExtraDays((prev) => prev.map((d) => d.date === date ? { ...d, [field]: value } : d));
+                      }
+                    }}
+                    onRemove={(date) => setExtraDays((prev) => prev.filter((d) => d.date !== date))}
+                    onAdd={(dates) => setExtraDays((prev) => [...prev, ...dates.filter((x) => !prev.some((p) => p.date === x)).map((x) => ({ date: x, ...NEW_DAY_DEFAULT }))])}
+                  />
                 )}
               </div>
             </div>
@@ -730,7 +712,7 @@ export function AssignResourceTaskDialog({
           <Button
             className="w-full"
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || selectedTechIds.length === 0}
+            disabled={mutation.isPending || selectedTechIds.length === 0 || workDayErrors.length > 0}
           >
             {mutation.isPending ? "Oppretter..." : (
               <>

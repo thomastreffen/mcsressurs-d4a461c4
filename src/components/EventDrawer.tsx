@@ -96,6 +96,8 @@ import type { JobStatus } from "@/lib/job-status";
 import { useCalendarSync } from "@/hooks/useCalendarSync";
 import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { TimeSelect } from "@/components/ui/time-select";
+import { WorkDayRows } from "@/components/planning/WorkDayRows";
+import { NEW_DAY_DEFAULT, validateWorkDays, workDayWindow, type WorkDay } from "@/lib/work-days";
 import { normalizeOvernightDates, isOvernightRange, autoAdjustEndDate } from "@/lib/overnight";
 import { OrderBriefingSection } from "@/components/orders/OrderBriefingSection";
 
@@ -211,6 +213,8 @@ export function EventDrawer({
   // Multi-day repeat (only for new projects/tasks)
   const [repeatEnabled, setRepeatEnabled] = useState(false);
   const [repeatDates, setRepeatDates] = useState<Date[]>([]);
+  // Own start/end per extra workday (default 08–16); primary day = Fra/Til.
+  const [repeatTimes, setRepeatTimes] = useState<Record<string, { start: string; end: string }>>({});
   const [repeatPickerOpen, setRepeatPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -383,7 +387,7 @@ export function EventDrawer({
     setReminderConfig({ responseRequired: true, profile: "company_default" });
     setSelectedCompanyId(isAllCompanies ? (companies.length === 1 ? companies[0].id : null) : activeCompanyId);
     setRepeatEnabled(false);
-    setRepeatDates([]);
+    setRepeatDates([]); setRepeatTimes({});
 
     // Load existing attachments for edit mode
     if (editEvent) {
@@ -1007,6 +1011,13 @@ export function EventDrawer({
     }
   };
 
+  const repeatWorkDays: WorkDay[] = date ? [
+    { date, start: startTime, end: endTime },
+    ...repeatDates.map((d) => format(d, "yyyy-MM-dd")).filter((ds) => ds !== date).sort()
+      .map((ds) => ({ date: ds, ...(repeatTimes[ds] ?? NEW_DAY_DEFAULT) })),
+  ] : [];
+  const repeatErrors = repeatEnabled && repeatDates.length > 0 ? validateWorkDays(repeatWorkDays, { allowOvernightFirst: true }) : [];
+
   // Save: create or update
   const handleSave = async () => {
     if (saving || submitted || readOnly) return;
@@ -1024,6 +1035,10 @@ export function EventDrawer({
       target?.scrollIntoView({ block: "center", behavior: "smooth" });
       target?.focus({ preventScroll: true });
       return;
+    }
+    if (!isEditing && repeatEnabled && repeatDates.length > 0) {
+      const errs = validateWorkDays(repeatWorkDays, { allowOvernightFirst: true });
+      if (errs.length > 0) { toast.error(`Arbeidsdag ${errs[0].date}: ${errs[0].message}`); return; }
     }
     setCreationError(null);
     await saveValidatedForm(creation);
@@ -1386,9 +1401,11 @@ export function EventDrawer({
             const blockMap = new Map<string, any>();
             for (const tid of techIds) {
               for (const ds of allDates) {
-                const { startISO: dStart, endISO: dEnd } = normalizeOvernightDates(
-                  ds, startTime, ds, endTime,
-                );
+                const isPrimaryDay = ds === date;
+                const t = isPrimaryDay ? { start: startTime, end: endTime } : (repeatTimes[ds] ?? NEW_DAY_DEFAULT);
+                const { startISO: dStart, endISO: dEnd } = isPrimaryDay
+                  ? normalizeOvernightDates(ds, t.start, ds, t.end)
+                  : workDayWindow({ date: ds, start: t.start, end: t.end });
                 const key = `${tid}|${dStart}|${dEnd}`;
                 if (blockMap.has(key)) continue;
                 blockMap.set(key, {
@@ -2121,7 +2138,7 @@ export function EventDrawer({
                       Gjenta flere dager
                     </Label>
                     <p className="text-[11px] text-muted-foreground">
-                      Opprett samme oppdrag på flere datoer (samme tid og montører)
+                      Samme oppdrag og montører på flere datoer – hver dag kan ha egen tid
                     </p>
                   </div>
                   <Switch
@@ -2178,37 +2195,23 @@ export function EventDrawer({
                       </PopoverContent>
                     </Popover>
 
-                    {repeatDates.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {[...repeatDates]
-                          .sort((a, b) => a.getTime() - b.getTime())
-                          .map((d) => (
-                            <span
-                              key={d.toISOString()}
-                              className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
-                            >
-                              {format(d, "d. MMM", { locale: nb })}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setRepeatDates((prev) =>
-                                    prev.filter((x) => x.getTime() !== d.getTime()),
-                                  )
-                                }
-                                className="hover:text-destructive"
-                                aria-label="Fjern dato"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                      </div>
+                    {repeatDates.length > 0 && date && (
+                      <WorkDayRows
+                        days={repeatWorkDays}
+                        errors={repeatErrors}
+                        onChangeTime={(ds, field, value) => {
+                          if (ds === date) { if (field === "start") handleStartTimeChange(value); else handleEndTimeChange(value); }
+                          else setRepeatTimes((prev) => ({ ...prev, [ds]: { ...(prev[ds] ?? NEW_DAY_DEFAULT), [field]: value } }));
+                        }}
+                        onRemove={(ds) => setRepeatDates((prev) => prev.filter((x) => format(x, "yyyy-MM-dd") !== ds))}
+                        onAdd={(dates) => setRepeatDates((prev) => [...prev, ...dates.map((ds) => new Date(`${ds}T12:00:00`))])}
+                      />
                     )}
 
                     <p className="text-[11px] text-muted-foreground leading-snug">
                       Hovedoppdrag opprettes på <strong>{date ? format(new Date(date), "d. MMM", { locale: nb }) : "valgt dato"}</strong>
                       {repeatDates.length > 0 && ` + ${repeatDates.length} ekstra ${repeatDates.length === 1 ? "dag" : "dager"}`}.
-                      Hver dag får egen planlagt blokk per montør.
+                      Hver dag får egen planlagt blokk med sin egen tid per montør.
                     </p>
                   </div>
                 )}
