@@ -4378,10 +4378,12 @@ export type Database = {
       }
       contract_watch_commitments: {
         Row: {
+          action_status: string | null
           company_id: string
           confidence: number
           confidence_class: string
           conversation_id: string | null
+          counterparty_domain: string | null
           coverage: string | null
           coverage_detail: Json | null
           created_at: string
@@ -4394,22 +4396,29 @@ export type Database = {
           id: string
           internet_message_id: string | null
           is_test: boolean
+          kind: string | null
+          link_suggestions: Json | null
           mailbox: string
           message_hash: string | null
+          pilot_version: number
           promised_date: string | null
           promised_time: string | null
+          related_refs: Json | null
           scan_run_id: string | null
           source_folder: string | null
           source_sent_at: string | null
           status: string
+          task_summary: string | null
           uncertainty: string | null
           updated_at: string
         }
         Insert: {
+          action_status?: string | null
           company_id: string
           confidence?: number
           confidence_class?: string
           conversation_id?: string | null
+          counterparty_domain?: string | null
           coverage?: string | null
           coverage_detail?: Json | null
           created_at?: string
@@ -4422,22 +4431,29 @@ export type Database = {
           id?: string
           internet_message_id?: string | null
           is_test?: boolean
+          kind?: string | null
+          link_suggestions?: Json | null
           mailbox: string
           message_hash?: string | null
+          pilot_version?: number
           promised_date?: string | null
           promised_time?: string | null
+          related_refs?: Json | null
           scan_run_id?: string | null
           source_folder?: string | null
           source_sent_at?: string | null
           status?: string
+          task_summary?: string | null
           uncertainty?: string | null
           updated_at?: string
         }
         Update: {
+          action_status?: string | null
           company_id?: string
           confidence?: number
           confidence_class?: string
           conversation_id?: string | null
+          counterparty_domain?: string | null
           coverage?: string | null
           coverage_detail?: Json | null
           created_at?: string
@@ -4450,14 +4466,19 @@ export type Database = {
           id?: string
           internet_message_id?: string | null
           is_test?: boolean
+          kind?: string | null
+          link_suggestions?: Json | null
           mailbox?: string
           message_hash?: string | null
+          pilot_version?: number
           promised_date?: string | null
           promised_time?: string | null
+          related_refs?: Json | null
           scan_run_id?: string | null
           source_folder?: string | null
           source_sent_at?: string | null
           status?: string
+          task_summary?: string | null
           uncertainty?: string | null
           updated_at?: string
         }
@@ -4579,36 +4600,42 @@ export type Database = {
       contract_watch_scan_runs: {
         Row: {
           counts: Json
+          discard_reasons: Json
           error_code: string | null
           error_detail: string | null
           finished_at: string | null
           id: string
           mailbox: string
           mode: string
+          pilot_version: number
           started_at: string
           started_by: string
           status: string
         }
         Insert: {
           counts?: Json
+          discard_reasons?: Json
           error_code?: string | null
           error_detail?: string | null
           finished_at?: string | null
           id?: string
           mailbox: string
           mode?: string
+          pilot_version?: number
           started_at?: string
           started_by: string
           status?: string
         }
         Update: {
           counts?: Json
+          discard_reasons?: Json
           error_code?: string | null
           error_detail?: string | null
           finished_at?: string | null
           id?: string
           mailbox?: string
           mode?: string
+          pilot_version?: number
           started_at?: string
           started_by?: string
           status?: string
@@ -20222,6 +20249,10 @@ export type Database = {
       cw_draft_save: {
         Args: { _id: string; _patch: Json; _version: number }
         Returns: number
+      }
+      cw_link_customer: {
+        Args: { _commitment_id: string; _customer_id: string }
+        Returns: undefined
       }
       deactivate_conversation_participant: {
         Args: { _participant_id: string }

@@ -208,3 +208,54 @@ export function coverageFor(p: { customerKnown: boolean; date: string | null; te
   if (!p.customerKnown || !p.date) return "unclear";
   return classifyCoverage({ date: p.date, technicians: p.technicians }, jobs);
 }
+
+// ---- Pilot v2 (manual, read-only) ----
+export const PILOT_VERSION = 2;
+export const V2_MAX_PER_FOLDER = 600;
+export const V2_MAX_THREADS = 200;
+export const V2_TEXT_MAX = 1200; // new part of a message only (Graph uniqueBody), held in RAM, never stored
+export const KINDS = ["confirmed_job", "job_request", "reminder_no_reply", "promised_contact", "waiting_customer", "cancelled_or_handled", "not_actionable"] as const;
+export type Kind = typeof KINDS[number];
+export type ActionStatus = "handled" | "scheduling" | "action_required" | "unknown";
+
+/** Short sanitized text: strips quoted history markers, signatures after "--", URLs and long digit runs; caps length. */
+export function sanitizeText(t: string, max = V2_TEXT_MAX): string {
+  let s = (t ?? "").replace(/\r/g, "");
+  const cut = s.search(/\n(-{2,}\s*\n|_{5,}|Fra:\s|From:\s|Sendt:\s|Sent:\s|On .+ wrote:|Den .+ skrev)/i);
+  if (cut > 0) s = s.slice(0, cut);
+  s = s.split("\n").filter((l) => !l.trim().startsWith(">")).join("\n");
+  s = s.replace(/https?:\/\/\S+/g, "[lenke]").replace(/\b\d{6}\s?\d{5}\b/g, "[nr]").replace(/\b(?:\d[ -]?){13,19}\b/g, "[nr]");
+  return s.replace(/[ \t]+/g, " ").replace(/\n{2,}/g, "\n").trim().slice(0, max);
+}
+
+/** v2 prefilter: no CRM requirement. Drops only auto-replies, bulk, system senders and purely internal mail. */
+export function prefilterV2(m: { from: string; to: string[]; subject: string; folder: "inbox" | "sentitems" }): { process: boolean; reason?: string } {
+  const base = prefilter({ from: m.from, subject: m.subject, customerHit: true });
+  if (!base.process) return base;
+  const parties = [m.from, ...m.to].filter(Boolean);
+  if (parties.length && parties.every((p) => OWN_DOMAINS.includes(domainOf(p)))) return { process: false, reason: "internal_only" };
+  return { process: true };
+}
+
+/**
+ * Action status. Only an explicit cancel/handled statement or a confirmed job covered by Resource Plan is "handled".
+ * Requests/reminders/promised contact need action unless MCS answered later in the thread or a related job/order exists
+ * (then "scheduling", never "handled"). Unknown customer/date never becomes "missing".
+ */
+export function actionStatusFor(p: { kind: Kind; coverage: UiCoverage | null; mcsRepliedAfter: boolean; relatedFound: boolean }): ActionStatus {
+  switch (p.kind) {
+    case "cancelled_or_handled": return "handled";
+    case "waiting_customer": return "scheduling";
+    case "confirmed_job":
+      if (p.coverage === "covered") return "handled";
+      if (p.coverage === "unclear" || p.coverage === null) return p.relatedFound ? "scheduling" : "unknown";
+      return p.coverage === "missing" && p.relatedFound ? "scheduling" : "action_required";
+    case "job_request": case "reminder_no_reply": case "promised_contact":
+      if (p.kind === "reminder_no_reply" && !p.mcsRepliedAfter) return "action_required";
+      return p.mcsRepliedAfter || p.relatedFound ? "scheduling" : "action_required";
+    default: return "unknown";
+  }
+}
+
+/** Aggregated discard reasons (counts only, no content). */
+export function bump(r: Record<string, number>, k: string, n = 1) { r[k] = (r[k] ?? 0) + n; }

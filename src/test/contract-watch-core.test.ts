@@ -134,3 +134,28 @@ describe("Avtalevakt historical test", () => {
     expect(matchableDomain("mcsservice.no")).toBe(false); expect(matchableDomain("gmail.com")).toBe(false); expect(matchableDomain("caverion.no")).toBe(true);
   });
 });
+
+import { sanitizeText, prefilterV2, actionStatusFor } from "../../supabase/functions/_shared/contract-watch-core";
+describe("Avtalevakt pilot v2", () => {
+  it("keeps only the new part, strips links, quoted text and ID numbers, caps length", () => {
+    const t = sanitizeText("Hei, kan dere ringe meg og avtale tid? https://x.no/a\n> gammel\nFra: Thomas\nSendt: i går\ntidligere tråd");
+    expect(t).toBe("Hei, kan dere ringe meg og avtale tid? [lenke]");
+    expect(sanitizeText("x".repeat(5000)).length).toBe(1200);
+    expect(sanitizeText("fnr 01019912345")).toContain("[nr]");
+  });
+  it("no CRM requirement; drops only auto/system/internal", () => {
+    expect(prefilterV2({ from: "ola@ukjentkunde.no", to: ["thomas.treffen@mcsservice.no"], subject: "Purring", folder: "inbox" }).process).toBe(true);
+    expect(prefilterV2({ from: "rune@mcsservice.no", to: ["thomas.treffen@mcsservice.no"], subject: "x", folder: "inbox" }).reason).toBe("internal_only");
+    expect(prefilterV2({ from: "noreply@x.no", to: [], subject: "x", folder: "inbox" }).reason).toBe("system");
+  });
+  it("reminder without reply requires action; confirmed job covered is handled", () => {
+    expect(actionStatusFor({ kind: "reminder_no_reply", coverage: null, mcsRepliedAfter: false, relatedFound: true })).toBe("action_required");
+    expect(actionStatusFor({ kind: "job_request", coverage: null, mcsRepliedAfter: true, relatedFound: false })).toBe("scheduling");
+    expect(actionStatusFor({ kind: "promised_contact", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("action_required");
+    expect(actionStatusFor({ kind: "confirmed_job", coverage: "covered", mcsRepliedAfter: false, relatedFound: false })).toBe("handled");
+    expect(actionStatusFor({ kind: "confirmed_job", coverage: "unclear", mcsRepliedAfter: false, relatedFound: false })).toBe("unknown");
+    expect(actionStatusFor({ kind: "confirmed_job", coverage: "missing", mcsRepliedAfter: false, relatedFound: false })).toBe("action_required");
+    expect(actionStatusFor({ kind: "cancelled_or_handled", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("handled");
+    expect(actionStatusFor({ kind: "not_actionable", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("unknown");
+  });
+});

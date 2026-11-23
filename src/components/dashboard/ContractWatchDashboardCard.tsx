@@ -12,8 +12,8 @@ export function ContractWatchDashboardCard() {
   const { isSuperAdmin } = useEffectiveAppRole();
   const q = useQuery({ queryKey: ["cw-dashboard"], enabled: isSuperAdmin, staleTime: 60_000, queryFn: async () => {
     const [items, runs] = await Promise.all([
-      supabase.from("contract_watch_commitments").select("id, coverage, status, is_test, confidence_class, created_at").eq("status", "open").limit(500),
-      supabase.from("contract_watch_scan_runs").select("status, started_at").order("started_at", { ascending: false }).limit(1),
+      supabase.from("contract_watch_commitments").select("id, action_status, status, is_test, created_at, source_sent_at").eq("status", "open").eq("pilot_version", 2).limit(500),
+      supabase.from("contract_watch_scan_runs").select("status, started_at").eq("pilot_version", 2).eq("mode", "historical_test").order("started_at", { ascending: false }).limit(1),
     ]);
     if (items.error) throw items.error; if (runs.error) throw runs.error;
     return { s: summarizeContractWatch((items.data ?? []) as CwRow[]), lastRun: runs.data?.[0] ?? null };
@@ -31,12 +31,12 @@ export function ContractWatchDashboardCard() {
     {q.isLoading && <p className="text-sm text-muted-foreground">Henter…</p>}
     {q.isError && <QueryErrorNotice what="Avtalevakt-funn" error={q.error} onRetry={() => q.refetch()} retrying={q.isFetching} />}
     {s && (s.total === 0
-      ? <p className="text-sm text-muted-foreground">{q.data?.lastRun ? "Ingen uløste funn." : "Ingen funn – ingen testkjøring ennå."} <Link className="underline" to="/admin/avtalevakt">Åpne Avtalevakt</Link></p>
+      ? <p className="text-sm text-muted-foreground">{q.data?.lastRun ? "Ingen uløste funn." : "Ingen funn – ingen testkjøring (v2) ennå."} <Link className="underline" to="/admin/avtalevakt">Åpne Avtalevakt</Link></p>
       : <Link to={to} className="flex flex-wrap gap-2 text-sm hover:underline">
-          <Badge variant={s.missing ? "destructive" : "outline"}>Mangler: {s.missing}</Badge>
-          <Badge variant={s.partialOrConflict ? "destructive" : "outline"}>Delvis/Konflikt: {s.partialOrConflict}</Badge>
-          <Badge variant="outline">Uavklart: {s.unclear}</Badge>
-          {s.testCount > 0 && <Badge variant="secondary">TEST{s.allTest ? "" : `: ${s.testCount}`}</Badge>}
+          <Badge variant={s.actionRequired ? "destructive" : "outline"}>Krever handling: {s.actionRequired}</Badge>
+          <Badge variant="outline">Avtales: {s.scheduling}</Badge>
+          <Badge variant="outline">Ukjent: {s.unknown}</Badge>
+          {s.testCount > 0 && <Badge variant="secondary">TEST v2{s.allTest ? "" : `: ${s.testCount}`}</Badge>}
         </Link>)}
   </section>;
 }
