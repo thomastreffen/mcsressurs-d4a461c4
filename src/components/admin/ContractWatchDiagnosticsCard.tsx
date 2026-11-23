@@ -34,7 +34,7 @@ export function ContractWatchDiagnosticsCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />AI Avtalevakt – tilkoblingstest</CardTitle>
-        <CardDescription>Bare lesing. Sjekker at egen app kun har Mail.Read og bare når {s?.pilot_mailbox ?? "pilotpostkassen"}. Ingen e-post leses eller lagres.</CardDescription>
+        <CardDescription>Bare lesing. Exchange RBAC for Applications: Application Mail.Read avgrenset til {s?.pilot_mailbox ?? "pilotpostkassen"}, ingen Graph-e-posttillatelser i Entra. Testen henter bare mappeinfo – ingen e-post leses eller lagres.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {q.isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -43,7 +43,7 @@ export function ContractWatchDiagnosticsCard() {
             {Object.entries(s.secrets).map(([k, v]) => <Badge key={k} variant={v ? "default" : "outline"}>{k}: {v ? "satt" : "mangler"}</Badge>)}
           </div>
           <p>Avtalevakt: <strong>{s.settings?.enabled ? "på" : "av"}</strong> · Samtykke: {s.settings?.consent_at ? "gitt" : "ikke gitt"} · Tilgang bekreftet: {s.settings?.scope_verified_at ? "ja" : "nei"} · Postkasser: {s.settings?.allowed_mailboxes?.length ? s.settings.allowed_mailboxes.join(", ") : "ingen"}</p>
-          {!s.configured && <p className="text-muted-foreground">Simen må opprette appen «MCS Hub Avtalevakt» med bare Mail.Read, begrense den til Thomas sin postkasse i Exchange og legge inn de tre hemmelighetene.</p>}
+          {!s.configured && <p className="text-muted-foreground">Simen må opprette appen «MCS Hub Avtalevakt» uten Graph-e-posttillatelser i Entra, gi Application Mail.Read via Exchange RBAC kun for Thomas sin postkasse, og de tre verdiene legges inn i sikre hemmeligheter (aldri på e-post).</p>}
           <Button size="sm" disabled={!s.configured || run.isPending} onClick={() => run.mutate()}>{run.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Kjør tilkoblingstest</Button>
           {run.error && <p className="text-destructive">{(run.error as Error).message}</p>}
           {last && <ul className="space-y-1">{last.checks.map((c) => <li key={c.id} className="flex items-start gap-2"><Icon r={c.result} /><span>{c.label}{c.httpStatus ? ` (${c.httpStatus})` : ""} – <span className="text-muted-foreground">{c.explanation}</span></span></li>)}</ul>}

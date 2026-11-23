@@ -7,16 +7,33 @@ export function missingSecrets(env: (n: string) => string | undefined): string[]
   return REQUIRED_SECRETS.filter((n) => !env(n));
 }
 
+/** Entra application roles that union with Exchange RBAC and would widen mailbox scope (kept in sync with m365-scope-proof). */
+export const UNSCOPED_MAIL_ROLES = ["Mail.Send", "Mail.ReadWrite", "Mail.Read", "Mail.ReadBasic", "Mail.ReadBasic.All", "MailboxSettings.ReadWrite", "MailboxSettings.Read", "Calendars.ReadWrite", "Calendars.Read", "Contacts.ReadWrite", "Contacts.Read"];
+
 /**
- * Token roles only show Entra grants. Classic: exactly Entra Mail.Read (+ ApplicationAccessPolicy).
- * Exchange RBAC for Applications: NO Entra roles at all (scoped grants never appear in the token).
- * Either way any other role fails, and the role check alone never proves scope: only the live
- * own-mailbox 200 + other-mailbox 403 probes do. Never reuses the postkontoret send attestation.
+ * RBAC-only: Exchange RBAC for Applications grants never appear in the token, so the token must carry
+ * NO Entra mail/mailbox/calendar/contacts role. Any such role unions with RBAC and is a failure.
+ * Role check alone never proves scope: only the live positive 200 + negative 403 AccessDenied probes do.
  */
-export function assessRoles(roles: string[]): { ok: boolean; extra: string[]; hasRead: boolean; path: "classic" | "exchange_rbac" } {
-  const hasRead = roles.includes("Mail.Read");
-  const extra = roles.filter((r) => r !== "Mail.Read");
-  return { ok: extra.length === 0, extra, hasRead, path: hasRead ? "classic" : "exchange_rbac" };
+export function assessRoles(roles: string[]): { ok: boolean; extra: string[]; path: "exchange_rbac" } {
+  const extra = roles.filter((r) => UNSCOPED_MAIL_ROLES.includes(r) || /^(Mail|MailboxSettings|Calendars|Contacts)\./.test(r));
+  return { ok: extra.length === 0, extra, path: "exchange_rbac" };
+}
+
+/** Token must be issued by the configured tenant for the configured Avtalevakt app. */
+export function assessTokenIdentity(claims: { tid?: string; appid?: string; azp?: string } | null, tenantId?: string, clientId?: string): { ok: boolean; reason?: "no_claims" | "tenant_mismatch" | "app_mismatch" } {
+  if (!claims) return { ok: false, reason: "no_claims" };
+  if (!tenantId || claims.tid?.toLowerCase() !== tenantId.trim().toLowerCase()) return { ok: false, reason: "tenant_mismatch" };
+  const app = (claims.appid ?? claims.azp ?? "").toLowerCase();
+  if (!clientId || app !== clientId.trim().toLowerCase()) return { ok: false, reason: "app_mismatch" };
+  return { ok: true };
+}
+
+/** Negative probe passes only on 403 with an explicit access-denied Graph code. 404/unknown is never a pass. */
+export function judgeNegativeProbe(status: number | null, errorCode: string | null): ProbeResult {
+  if (status === 200) return "fail";
+  if (status === 403 && (errorCode === "ErrorAccessDenied" || errorCode === "AccessDenied" || errorCode === "Authorization_RequestDenied")) return "pass";
+  return "inconclusive";
 }
 
 /** The Avtalevakt app must never be the same identity as mail sender or calendar app. */

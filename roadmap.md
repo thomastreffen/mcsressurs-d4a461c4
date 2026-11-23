@@ -146,3 +146,5 @@
 - [ ] Publisering av tidligere UI-endringer må bekreftes av eier; ikke del av godkjenningsrettelsen
 - [ ] Mats kalenderdekning blokkeres av manglende personlig kobling inntil sentral app har secrets + godkjent Graph-pilot; Emil 60570 begge dager bekreftet, ingen replay
 - [x] CRM e-post fra selgerens egen konto (steg 3–4) – bygget, sending av til godkjenning
+
+- [x] Avtalevakt-diagnostikk RBAC-only (venter: Simen roterer hemmelighet)

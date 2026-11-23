@@ -1,11 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { assessRoles, judgeProbe, overall, mayRead, confidenceClass, shouldNotify, classifyCoverage, prefilter, excerpt, resolveWeekday, dedupeKey, isSeparateIdentity, PILOT_MAILBOX } from "../../supabase/functions/_shared/contract-watch-core";
+import { assessRoles, assessTokenIdentity, judgeNegativeProbe, judgeProbe, overall, mayRead, confidenceClass, shouldNotify, classifyCoverage, prefilter, excerpt, resolveWeekday, dedupeKey, isSeparateIdentity, PILOT_MAILBOX } from "../../supabase/functions/_shared/contract-watch-core";
 
 describe("Avtalevakt access gates", () => {
-  it("app must have exactly Mail.Read", () => {
-    expect(assessRoles(["Mail.Read"]).ok).toBe(true);
+  it("RBAC-only: no Entra mail/calendar roles at all", () => {
+    expect(assessRoles([]).ok).toBe(true);
+    expect(assessRoles(["User.Read.All"]).ok).toBe(true);
+    expect(assessRoles(["Mail.Read"]).ok).toBe(false);
+    expect(assessRoles(["Calendars.Read"]).ok).toBe(false);
     expect(assessRoles(["Mail.Read", "Mail.Send"]).ok).toBe(false);
     expect(assessRoles(["Mail.ReadWrite"]).ok).toBe(false);
+  });
+  it("token must match tenant and app", () => {
+    expect(assessTokenIdentity({ tid: "T", appid: "A" }, "t", "a").ok).toBe(true);
+    expect(assessTokenIdentity({ tid: "X", appid: "A" }, "t", "a").reason).toBe("tenant_mismatch");
+    expect(assessTokenIdentity({ tid: "T", azp: "B" }, "t", "a").reason).toBe("app_mismatch");
+    expect(assessTokenIdentity(null, "t", "a").ok).toBe(false);
+  });
+  it("negative probe passes only on 403 access denied", () => {
+    expect(judgeNegativeProbe(403, "ErrorAccessDenied")).toBe("pass");
+    expect(judgeNegativeProbe(403, null)).toBe("inconclusive");
+    expect(judgeNegativeProbe(404, "ResourceNotFound")).toBe("inconclusive");
+    expect(judgeNegativeProbe(200, null)).toBe("fail");
   });
   it("own mailbox must give 200 and other mailbox 403; errors are never a pass", () => {
     expect(judgeProbe(200, 200)).toBe("pass");
