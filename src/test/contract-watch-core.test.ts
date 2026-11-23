@@ -145,7 +145,8 @@ describe("Avtalevakt pilot v2", () => {
   });
   it("no CRM requirement; drops only auto/system/internal", () => {
     expect(prefilterV2({ from: "ola@ukjentkunde.no", to: ["thomas.treffen@mcsservice.no"], subject: "Purring", folder: "inbox" }).process).toBe(true);
-    expect(prefilterV2({ from: "rune@mcsservice.no", to: ["thomas.treffen@mcsservice.no"], subject: "x", folder: "inbox" }).reason).toBe("internal_only");
+    const r = prefilterV2({ from: "stian.fosse@mcselektrotavler.no", to: ["thomas.treffen@mcsservice.no"], subject: "Purring", folder: "inbox" });
+    expect(r.process).toBe(true); expect(r.internal).toBe(true);
     expect(prefilterV2({ from: "noreply@x.no", to: [], subject: "x", folder: "inbox" }).reason).toBe("system");
   });
   it("reminder without reply requires action; confirmed job covered is handled", () => {
@@ -157,5 +158,30 @@ describe("Avtalevakt pilot v2", () => {
     expect(actionStatusFor({ kind: "confirmed_job", coverage: "missing", mcsRepliedAfter: false, relatedFound: false })).toBe("action_required");
     expect(actionStatusFor({ kind: "cancelled_or_handled", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("handled");
     expect(actionStatusFor({ kind: "not_actionable", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("unknown");
+  });
+});
+
+import { canSuggestOrderDraft as coreDraft, quoteMeaningful, relatedByIdentity } from "../../supabase/functions/_shared/contract-watch-core";
+describe("pilot v3 quality", () => {
+  it("internal statuses", () => {
+    expect(actionStatusFor({ kind: "internal_reminder", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("action_required");
+    expect(actionStatusFor({ kind: "technical_decision", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("awaiting_me");
+    expect(actionStatusFor({ kind: "documentation_request", coverage: null, mcsRepliedAfter: true, relatedFound: false })).toBe("answered");
+    expect(actionStatusFor({ kind: "information", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("info");
+  });
+  it("no order draft for documentation, deviation or handled", () => {
+    expect(coreDraft("documentation_request", "awaiting_me")).toBe(false);
+    expect(coreDraft("deviation_hms", "action_required")).toBe(false);
+    expect(coreDraft("job_request", "handled")).toBe(false);
+    expect(coreDraft("job_request", "action_required")).toBe(true);
+  });
+  it("rejects trivial quotes", () => {
+    expect(quoteMeaningful("Sak lukkes")).toBe(false);
+    expect(quoteMeaningful("Legger ved her jeg")).toBe(false);
+    expect(quoteMeaningful("Kan dere ringe meg for å avtale tidspunkt?")).toBe(true);
+  });
+  it("needs identity to relate a job", () => {
+    expect(relatedByIdentity({ job_number: "JOB-000452", title: "Service" }, "Gjelder JOB-000452")).toBe(true);
+    expect(relatedByIdentity({ job_number: "JOB-1", title: "Termografi hovedtavle" }, "Dokumentasjon Ullevaal")).toBe(false);
   });
 });

@@ -14,7 +14,7 @@ import { ShieldOff, Power, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { ContractWatchDiagnosticsCard } from "@/components/admin/ContractWatchDiagnosticsCard";
 import { ContractWatchScanCard } from "@/components/admin/ContractWatchScanCard";
-import { KIND_LABEL, ACTION_LABEL } from "@/lib/contract-watch-labels";
+import { KIND_LABEL, ACTION_LABEL, canSuggestOrderDraft } from "@/lib/contract-watch-labels";
 import { ContractWatchDraftEditor, type Draft } from "@/components/admin/ContractWatchDraftEditor";
 
 const CONSENT = "Jeg, Thomas Treffen, samtykker til at MCS AI Avtalevakt i fase 1 kun leser innkommende og sendt e-post i thomas.treffen@mcsservice.no, at korte utdrag behandles av Lovable AI for å finne kundeløfter, og at data lagres etter valgt lagringstid. Ingen e-post sendes og ingen jobber opprettes automatisk.";
@@ -26,7 +26,7 @@ const CONF: Record<string, string> = { uncertain: "Usikker", check: "Bør sjekke
 export default function ContractWatchPage() {
   const qc = useQueryClient();
   const settings = useQuery({ queryKey: ["cw-settings"], queryFn: async () => (await supabase.from("contract_watch_settings").select("*").eq("id", true).maybeSingle()).data });
-  const [ver, setVer] = useState<1 | 2>(2);
+  const [ver, setVer] = useState<1 | 2 | 3>(3);
   const items = useQuery({ queryKey: ["cw-items", ver], queryFn: async () => { const r = await supabase.from("contract_watch_commitments").select("id, excerpt, promised_date, promised_time, confidence_class, coverage, status, is_test, created_at, source_folder, source_sent_at, uncertainty, coverage_detail, customer_id, pilot_version, kind, action_status, task_summary, counterparty_domain, link_suggestions, related_refs").eq("pilot_version", ver).order("source_sent_at", { ascending: false, nullsFirst: false }).limit(300); if (r.error) throw r.error; return r.data ?? []; } });
   const link = async (id: string, customerId: string) => { const { error } = await supabase.rpc("cw_link_customer", { _commitment_id: id, _customer_id: customerId }); if (error) toast.error(error.message); else { toast.success("Kunde koblet"); items.refetch(); } };
   const audit = useQuery({ queryKey: ["cw-audit"], queryFn: async () => (await supabase.from("contract_watch_audit").select("at, action").order("at", { ascending: false }).limit(10)).data ?? [] });
@@ -103,10 +103,10 @@ export default function ContractWatchPage() {
 
       <Card>
         <CardHeader><CardTitle>Funn og oppfølging</CardTitle><CardDescription>Henvendelser, purringer, avtaler og løfter fra e-post, sammenlignet med Ressursplan og bestillinger. Kun testfunn – ingen jobber eller varsler lages.</CardDescription>
-          <div className="flex gap-2 pt-1"><Button size="sm" variant={ver === 2 ? "default" : "outline"} onClick={() => setVer(2)}>Test v2</Button><Button size="sm" variant={ver === 1 ? "default" : "outline"} onClick={() => setVer(1)}>Gamle testfunn v1</Button></div></CardHeader>
+          <div className="flex gap-2 pt-1"><Button size="sm" variant={ver === 3 ? "default" : "outline"} onClick={() => setVer(3)}>Test v3 (inkl. interne)</Button><Button size="sm" variant={ver === 2 ? "default" : "outline"} onClick={() => setVer(2)}>Gamle testfunn v2</Button><Button size="sm" variant={ver === 1 ? "default" : "outline"} onClick={() => setVer(1)}>Gamle testfunn v1</Button></div></CardHeader>
         <CardContent className="text-sm">
           {items.isError && <p role="alert" className="text-destructive">Kunne ikke hente funn: {(items.error as Error).message} <Button size="sm" variant="outline" onClick={() => items.refetch()}>Prøv igjen</Button></p>}
-          {(items.data ?? []).length === 0 ? <p className="text-muted-foreground">{ver === 2 ? "Ingen funn i test v2 – kjør «Historisk test v2»." : "Ingen funn fra v1."}</p> : (
+          {(items.data ?? []).length === 0 ? <p className="text-muted-foreground">{ver === 3 ? "Ingen funn i test v3 – kjør historisk test på nytt." : `Ingen funn fra v${ver}.`}</p> : (
             <ul className="divide-y divide-border">{items.data!.map((i) => (
               <li key={i.id} id={`sak-${i.id}`} className={`py-3 space-y-1 ${sak === i.id ? "rounded-md ring-2 ring-primary px-2" : ""}`}>
                 <div className="flex flex-wrap gap-2">{i.kind && <Badge>{KIND_LABEL[i.kind] ?? i.kind}</Badge>}{i.action_status && <Badge variant={i.action_status === "action_required" ? "destructive" : i.action_status === "handled" ? "secondary" : "outline"}>{ACTION_LABEL[i.action_status] ?? i.action_status}</Badge>}<Badge variant="outline">{CONF[i.confidence_class] ?? i.confidence_class}</Badge>{i.coverage && (i.kind ? i.kind === "confirmed_job" : true) && <Badge variant={i.coverage === "covered" ? "secondary" : i.coverage === "unclear" ? "outline" : "destructive"}>{COVERAGE[i.coverage]}</Badge>}{i.is_test && <Badge variant="outline">TEST v{i.pilot_version ?? 1}</Badge>}<span className="text-muted-foreground">{i.promised_date ?? "Uklar dato"} {i.promised_time ?? ""}</span></div>
@@ -114,7 +114,7 @@ export default function ContractWatchPage() {
                 <p className="italic">«{i.excerpt}»</p>
                 <p className="text-xs text-muted-foreground">Kilde: {SRC[i.source_folder ?? ""] ?? "e-post"}{i.source_sent_at ? ` ${new Date(i.source_sent_at).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" })}` : ""} · Kunde: {i.customer_id ? "funnet i CRM" : `ukjent${i.counterparty_domain ? ` (${i.counterparty_domain})` : ""}`}{Array.isArray(i.related_refs) && i.related_refs.length ? ` · Relatert: ${(i.related_refs as string[]).join(", ")}` : ""}{i.uncertainty ? ` · Usikkerhet: ${WHY[i.uncertainty] ?? i.uncertainty}` : ""}{Array.isArray((i.coverage_detail as { jobs?: string[] } | null)?.jobs) && (i.coverage_detail as { jobs: string[] }).jobs.length ? ` · Ressursplan: ${(i.coverage_detail as { jobs: string[] }).jobs.join(", ")}` : ""}</p>
                 {!i.customer_id && Array.isArray(i.link_suggestions) && i.link_suggestions.length > 0 && <div className="flex flex-wrap items-center gap-2 text-xs"><span>Koblingsforslag:</span>{(i.link_suggestions as { id: string; name: string; why: string }[]).map((c) => <Button key={c.id} size="sm" variant="outline" onClick={() => link(i.id, c.id)}>Koble til {c.name} ({c.why})</Button>)}</div>}
-                <Button size="sm" variant="outline" onClick={() => prepare(i.id)}>Klargjør bestillingsutkast</Button>
+                {canSuggestOrderDraft(i.kind, i.action_status) ? <Button size="sm" variant="outline" onClick={() => prepare(i.id)}>Klargjør bestillingsutkast</Button> : <span className="text-xs text-muted-foreground">Følg opp manuelt i eksisterende oppgave, avvik eller prosjekt</span>}
               </li>))}</ul>
           )}
         </CardContent>

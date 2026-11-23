@@ -210,13 +210,27 @@ export function coverageFor(p: { customerKnown: boolean; date: string | null; te
 }
 
 // ---- Pilot v2 (manual, read-only) ----
-export const PILOT_VERSION = 2;
+export const PILOT_VERSION = 3;
 export const V2_MAX_PER_FOLDER = 600;
-export const V2_MAX_THREADS = 200;
+export const V2_MAX_THREADS = 300;
 export const V2_TEXT_MAX = 1200; // new part of a message only (Graph uniqueBody), held in RAM, never stored
-export const KINDS = ["confirmed_job", "job_request", "reminder_no_reply", "promised_contact", "waiting_customer", "cancelled_or_handled", "not_actionable"] as const;
+export const KINDS = ["confirmed_job", "job_request", "reminder_no_reply", "promised_contact", "waiting_customer", "cancelled_or_handled",
+  "internal_action_request", "technical_decision", "deviation_hms", "documentation_request", "internal_reminder", "information", "not_actionable"] as const;
+export const ORDER_DRAFT_KINDS: readonly string[] = ["confirmed_job", "job_request"];
+export const INTERNAL_KINDS: readonly string[] = ["internal_action_request", "technical_decision", "deviation_hms", "documentation_request", "internal_reminder"];
 export type Kind = typeof KINDS[number];
-export type ActionStatus = "handled" | "scheduling" | "action_required" | "unknown";
+export type ActionStatus = "handled" | "scheduling" | "action_required" | "awaiting_me" | "answered" | "info" | "unknown";
+/** Order draft only for real customer work that is not already handled. */
+export function canSuggestOrderDraft(kind: string, status: string): boolean { return ORDER_DRAFT_KINDS.includes(kind) && status !== "handled" && status !== "answered"; }
+/** Quotes too short to carry meaning (e.g. "Sak lukkes") are rejected. */
+export function quoteMeaningful(q: string): boolean { const t = (q ?? "").trim(); return t.length >= 20 && t.split(/\s+/).length >= 4; }
+/** Related job/order only with an identity signal: job/project number in text, or ≥2 shared significant title words. */
+export function relatedByIdentity(job: { job_number?: string | null; title?: string | null }, text: string): boolean {
+  const low = (text ?? "").toLowerCase();
+  if (job.job_number && low.includes(String(job.job_number).toLowerCase())) return true;
+  const words = (job.title ?? "").toLowerCase().split(/[^a-zæøå0-9]+/).filter((w) => w.length >= 5);
+  return new Set(words.filter((w) => low.includes(w))).size >= 2;
+}
 
 /** Short sanitized text: strips quoted history markers, signatures after "--", URLs and long digit runs; caps length. */
 export function sanitizeText(t: string, max = V2_TEXT_MAX): string {
@@ -228,13 +242,15 @@ export function sanitizeText(t: string, max = V2_TEXT_MAX): string {
   return s.replace(/[ \t]+/g, " ").replace(/\n{2,}/g, "\n").trim().slice(0, max);
 }
 
-/** v2 prefilter: no CRM requirement. Drops only auto-replies, bulk, system senders and purely internal mail. */
-export function prefilterV2(m: { from: string; to: string[]; subject: string; folder: "inbox" | "sentitems" }): { process: boolean; reason?: string } {
+export function isInternalOnly(m: { from: string; to: string[] }): boolean {
+  const parties = [m.from, ...m.to].filter(Boolean);
+  return parties.length > 0 && parties.every((p) => OWN_DOMAINS.includes(domainOf(p)));
+}
+/** v3 prefilter: no CRM requirement and internal mail is KEPT (AI triages it). Drops only auto-replies, bulk and system senders. */
+export function prefilterV2(m: { from: string; to: string[]; subject: string; folder: "inbox" | "sentitems" }): { process: boolean; reason?: string; internal?: boolean } {
   const base = prefilter({ from: m.from, subject: m.subject, customerHit: true });
   if (!base.process) return base;
-  const parties = [m.from, ...m.to].filter(Boolean);
-  if (parties.length && parties.every((p) => OWN_DOMAINS.includes(domainOf(p)))) return { process: false, reason: "internal_only" };
-  return { process: true };
+  return { process: true, internal: isInternalOnly(m) };
 }
 
 /**
@@ -246,6 +262,10 @@ export function actionStatusFor(p: { kind: Kind; coverage: UiCoverage | null; mc
   switch (p.kind) {
     case "cancelled_or_handled": return "handled";
     case "waiting_customer": return "scheduling";
+    case "information": return "info";
+    case "internal_action_request": case "technical_decision": case "documentation_request": case "internal_reminder": case "deviation_hms":
+      if (p.mcsRepliedAfter) return "answered";
+      return p.kind === "internal_reminder" || p.kind === "deviation_hms" ? "action_required" : "awaiting_me";
     case "confirmed_job":
       if (p.coverage === "covered") return "handled";
       if (p.coverage === "unclear" || p.coverage === null) return p.relatedFound ? "scheduling" : "unknown";

@@ -12,8 +12,8 @@ export function ContractWatchDashboardCard() {
   const { isSuperAdmin } = useEffectiveAppRole();
   const q = useQuery({ queryKey: ["cw-dashboard"], enabled: isSuperAdmin, staleTime: 60_000, queryFn: async () => {
     const [items, runs] = await Promise.all([
-      supabase.from("contract_watch_commitments").select("id, action_status, status, is_test, created_at, source_sent_at").eq("status", "open").eq("pilot_version", 2).limit(500),
-      supabase.from("contract_watch_scan_runs").select("status, started_at").eq("pilot_version", 2).eq("mode", "historical_test").order("started_at", { ascending: false }).limit(1),
+      supabase.from("contract_watch_commitments").select("id, action_status, status, is_test, created_at, source_sent_at").eq("status", "open").eq("pilot_version", 3).limit(500),
+      supabase.from("contract_watch_scan_runs").select("status, started_at").eq("pilot_version", 3).eq("mode", "historical_test").order("started_at", { ascending: false }).limit(1),
     ]);
     if (items.error) throw items.error; if (runs.error) throw runs.error;
     return { s: summarizeContractWatch((items.data ?? []) as CwRow[]), lastRun: runs.data?.[0] ?? null };
