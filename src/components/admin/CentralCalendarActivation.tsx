@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { QueryErrorNotice } from "./QueryErrorNotice";
 
 type Technician = { id: string; name: string; email: string };
 export const ALL_PHRASE = "AKTIVER KALENDER FOR ALLE AKTIVE MONTØRER";
@@ -28,10 +29,10 @@ export function CentralCalendarActivation() {
   const [phrase, setPhrase] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const { data: rawTechs } = useQuery({ queryKey: ["calendar-mailbox-candidates", activeCompanyId], enabled: !!activeCompanyId,
+  const { data: rawTechs, error: techErr, refetch: refetchTechs, isFetching: fT } = useQuery({ queryKey: ["calendar-mailbox-candidates", activeCompanyId], enabled: !!activeCompanyId,
     queryFn: async () => { const r = await invokeWithSession<{ technicians: Technician[] }>("job-outlook-app-pilot", { body: { action: "mailbox_candidates", company_id: activeCompanyId } }); if (r.error) throw r.error; return r.data; } });
   const techs = normalizeMailboxCandidates(rawTechs);
-  const { data: active } = useQuery({ queryKey: ["central-calendar-activations", activeCompanyId], enabled: !!activeCompanyId,
+  const { data: active, error: actErr, refetch: refetchAct, isFetching: fA } = useQuery({ queryKey: ["central-calendar-activations", activeCompanyId], enabled: !!activeCompanyId,
     queryFn: async () => { const r = await supabase.from("central_calendar_activations").select("id,scope,mailbox,effective_from").eq("company_id", activeCompanyId!).is("revoked_at", null); if (r.error) throw r.error; return r.data; } });
   const { data: status } = useQuery({ queryKey: ["central-calendar-status", activeCompanyId], enabled: !!activeCompanyId,
     queryFn: async () => { const r = await supabase.rpc("central_calendar_status", { _company: activeCompanyId! }); if (r.error) throw r.error; return r.data; } });
@@ -50,7 +51,9 @@ export function CentralCalendarActivation() {
   const revoke = async (id: string) => { const r = await supabase.rpc("revoke_central_calendar", { _id: id }); setMsg(r.error ? `Stopp feilet: ${r.error.message}` : "Stoppet. Eksisterende avtaler er ikke endret."); refresh(); };
   return <section className="space-y-3 border-t border-border pt-4" aria-label="Automatisk Outlook-kalender">
     <h3 className="font-semibold">Automatisk Outlook-kalender fra Ressursplan</h3>
-    {Array.isArray(active) && active.length ? <ul className="space-y-1">{active.map(a => <li key={a.id} className="flex items-center gap-2">
+    {actErr && <QueryErrorNotice what="hvem som er aktivert" error={actErr} onRetry={() => refetchAct()} retrying={fA} />}
+    {techErr && <QueryErrorNotice what="montørlisten" error={techErr} onRetry={() => refetchTechs()} retrying={fT} />}
+    {actErr ? null : Array.isArray(active) && active.length ? <ul className="space-y-1">{active.map(a => <li key={a.id} className="flex items-center gap-2">
       <span>{a.scope === "all_active" ? "Alle aktive montører" : a.mailbox} · aktiv fra {new Date(a.effective_from).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" })}</span>
       <Button size="sm" variant="destructive" onClick={() => revoke(a.id)}>Stopp</Button></li>)}</ul>
       : <p className="text-muted-foreground">Ikke aktivert for noen montør.</p>}

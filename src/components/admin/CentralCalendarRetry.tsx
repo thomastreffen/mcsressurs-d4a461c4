@@ -4,6 +4,7 @@ import { useCompanyContext } from "@/hooks/useCompanyContext";
 import { invokeWithSession } from "@/lib/invoke-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QueryErrorNotice } from "./QueryErrorNotice";
 
 type Pending = { event_id: string; technician_id: string; mailbox: string; title: string; job_number: string | null; start_time: string; reason_code: string; phrase: string };
 
@@ -14,7 +15,7 @@ export function CentralCalendarRetry() {
   const [phrases, setPhrases] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState("");
-  const { data } = useQuery({ queryKey: ["central-calendar-pending", activeCompanyId], enabled: !!activeCompanyId,
+  const { data, error, refetch, isFetching } = useQuery({ queryKey: ["central-calendar-pending", activeCompanyId], enabled: !!activeCompanyId,
     queryFn: async () => { const r = await invokeWithSession<{ pending: Pending[] }>("job-outlook-app-pilot", { body: { action: "central_pending", company_id: activeCompanyId } }); if (r.error) throw r.error; return Array.isArray(r.data?.pending) ? r.data!.pending : []; } });
   const rows = Array.isArray(data) ? data : [];
   const run = async (p: Pending) => {
@@ -26,7 +27,7 @@ export function CentralCalendarRetry() {
   };
   return <section className="space-y-2 border-t border-border pt-4" aria-label="Mangler i Outlook">
     <h3 className="font-semibold">Mangler i Outlook – kjør på nytt for én montør</h3>
-    {rows.length === 0 ? <p className="text-muted-foreground">Ingen aktiverte montører mangler avtale.</p> :
+    {error ? <QueryErrorNotice what="montører som mangler avtale" error={error} onRetry={() => refetch()} retrying={isFetching} /> : rows.length === 0 ? <p className="text-muted-foreground">Ingen aktiverte montører mangler avtale.</p> :
       <ul className="space-y-3">{rows.map(p => { const k = `${p.event_id}:${p.technician_id}`; return <li key={k} className="space-y-1">
         <p>{p.job_number ?? ""} {p.title} · {p.mailbox} · {new Date(p.start_time).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" })} · {p.reason_code}</p>
         <p className="text-sm">Skriv nøyaktig: <code>{p.phrase}</code></p>

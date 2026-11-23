@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { osloToUtcISO } from "@/lib/work-days";
 import { smokePhrase } from "../../../supabase/functions/_shared/central-smoke-test";
+import { QueryErrorNotice } from "./QueryErrorNotice";
 
 type P = { id: string; name: string; mailbox: string };
 type Step = { step: string; http: number | null; ok: boolean };
@@ -34,7 +35,7 @@ export function CentralSmokeTest({ companyId, active }: { companyId: string; act
   const stranded = status.data?.stranded ?? [];
   const start = day && time ? osloToUtcISO(day, time) : "";
   const end = start ? new Date(Date.parse(start) + 30 * 60_000).toISOString() : "";
-  const can = !!person && !!start && ack && phrase === smokePhrase(person.mailbox) && stranded.length === 0;
+  const can = !!person && !!start && ack && phrase === smokePhrase(person.mailbox) && stranded.length === 0 && status.isSuccess;
   const refresh = () => { qc.invalidateQueries({ queryKey: ["central-smoke-status"] }); qc.invalidateQueries({ queryKey: ["calendar-rollout-overview"] }); };
   const run = async () => { setBusy(true); setErr(""); setOut(null); try { setOut(await call({ action: "central_smoke_test", company_id: companyId, technician_id: tech, start, end, phrase })); setPhrase(""); setAck(false); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); refresh(); } };
   const clean = async (run_id: string) => { setBusy(true); setErr(""); try { const r = await call<{ ok: boolean; reason?: string }>({ action: "central_smoke_cleanup", company_id: companyId, run_id }); if (!r.ok) setErr(`Opprydding feilet: ${r.reason ?? "ukjent"}`); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); refresh(); } };
@@ -43,6 +44,7 @@ export function CentralSmokeTest({ companyId, active }: { companyId: string; act
   return <div className="space-y-2 rounded-md border border-border p-3" aria-label="Systemtest kalender">
     <h4 className="font-medium">Systemtest av Outlook-kalender (ett klikk)</h4>
     <p className="text-sm text-muted-foreground">Lager én nøytral avtale «MCS Hub systemtest – ikke en jobb» (vist som ledig, 30 min, ingen deltakere, ingen e-post) i én aktivert montørs kalender, leser den tilbake, endrer den, sletter den og bekrefter at den er borte. Beviser kalenderforbindelsen – <strong>ikke</strong> at vanlige Ressursplan-tildelinger trigges.</p>
+    {status.isError && <QueryErrorNotice what="status for tidligere systemtester (testen er sperret til dette er kjent)" error={status.error} onRetry={() => status.refetch()} retrying={status.isFetching} />}
     {stranded.length > 0 && <div className="rounded-md border border-destructive p-2 text-sm text-destructive">
       {stranded.map(s => <div key={s.run_id} className="flex items-center gap-2">Testavtale ble ikke bekreftet slettet i {s.mailbox}. <Button size="sm" variant="destructive" disabled={busy} onClick={() => clean(s.run_id)}>Rydd opp testavtalen</Button></div>)}
     </div>}

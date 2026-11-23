@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { FlaskConical, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import { QueryErrorNotice } from "./QueryErrorNotice";
 
 const CONFIRM = "KJØR TESTPILOT";
 interface Step { id: string; label: string; method: string; expectStatus: number[]; httpStatus?: number; result: "pass" | "fail"; graphCode?: string; phase?: string; category?: string; reason?: string }
@@ -38,7 +39,7 @@ export function HubCalendarWritePilotCard() {
   const [confirm, setConfirm] = useState("");
   const [running, setRunning] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const { data } = useQuery({ queryKey: ["hub-calendar-write-pilot"], queryFn: () => call({ action: "status" }), staleTime: 30_000 });
+  const { data, error: loadErr, refetch, isFetching } = useQuery({ queryKey: ["hub-calendar-write-pilot"], queryFn: () => call({ action: "status" }), staleTime: 30_000 });
 
   const run = async () => {
     setRunning(true); setErr(null);
@@ -59,6 +60,7 @@ export function HubCalendarWritePilotCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {loadErr && <QueryErrorNotice what="status for skrivepiloten" error={loadErr} onRetry={() => refetch()} retrying={isFetching} />}
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
           <Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={`Skriv ${CONFIRM}`} className="sm:max-w-56" aria-label="Bekreftelse" />
           <Button size="sm" onClick={run} disabled={confirm !== CONFIRM || running || !data}>
