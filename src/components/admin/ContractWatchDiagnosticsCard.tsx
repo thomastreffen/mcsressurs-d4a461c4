@@ -38,6 +38,7 @@ export function ContractWatchDiagnosticsCard() {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {q.isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+        {q.isError && <div role="alert" className="space-y-2"><p className="text-destructive">Kunne ikke hente status for tilkoblingstesten: {(q.error as Error)?.message ?? "ukjent feil"}</p><Button size="sm" variant="outline" onClick={() => q.refetch()} disabled={q.isFetching}>{q.isFetching && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Prøv igjen</Button></div>}
         {s && <>
           <div className="flex flex-wrap gap-2">
             {Object.entries(s.secrets).map(([k, v]) => <Badge key={k} variant={v ? "default" : "outline"}>{k}: {v ? "satt" : "mangler"}</Badge>)}

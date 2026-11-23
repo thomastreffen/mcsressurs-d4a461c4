@@ -38,10 +38,10 @@ Deno.serve(async (req) => {
   const checks: { id: string; label: string; result: "pass" | "fail" | "inconclusive"; httpStatus?: number; explanation: string }[] = [];
   const tok = await fetch(`https://login.microsoftonline.com/${env("AVTALEVAKT_TENANT_ID")}/oauth2/v2.0/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ client_id: env("AVTALEVAKT_CLIENT_ID")!, client_secret: env("AVTALEVAKT_CLIENT_SECRET")!, grant_type: "client_credentials", scope: "https://graph.microsoft.com/.default" }) }).catch(() => null);
-  let token: string | null = null; let roles: string[] = []; let claims: { tid?: string; appid?: string; azp?: string; roles?: string[] } | null = null;
-  if (tok?.ok) { token = (await tok.json()).access_token; try { claims = JSON.parse(atob(token!.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); roles = claims?.roles ?? []; } catch { claims = null; roles = []; } }
+  let token: string | null = null; let roles: string[] = []; let tokClaims: { tid?: string; appid?: string; azp?: string; roles?: string[] } | null = null;
+  if (tok?.ok) { token = (await tok.json()).access_token; try { tokClaims = JSON.parse(atob(token!.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); roles = tokClaims?.roles ?? []; } catch { tokClaims = null; roles = []; } }
   checks.push({ id: "token", label: "Appen får tilgang fra Microsoft", result: token ? "pass" : "fail", httpStatus: tok?.status, explanation: token ? "OK" : "Sjekk app-ID, hemmelighet og tenant" });
-  const ti = assessTokenIdentity(claims, env("AVTALEVAKT_TENANT_ID"), env("AVTALEVAKT_CLIENT_ID"));
+  const ti = assessTokenIdentity(tokClaims, env("AVTALEVAKT_TENANT_ID"), env("AVTALEVAKT_CLIENT_ID"));
   checks.push({ id: "token_identity", label: "Token gjelder riktig tenant og Avtalevakt-app", result: !token ? "inconclusive" : ti.ok ? "pass" : "fail", explanation: ti.ok ? "OK" : ti.reason === "tenant_mismatch" ? "Feil tenant i token" : ti.reason === "app_mismatch" ? "Token er utstedt til en annen app" : "Kunne ikke lese token" });
   const r = assessRoles(roles);
   checks.push({ id: "roles", label: "Ingen brede Graph-e-post/kalendertillatelser i Entra", result: !token ? "inconclusive" : r.ok ? "pass" : "fail", explanation: r.ok ? "Ingen Entra-roller for e-post/kalender – riktig for Exchange RBAC for Applications. Tilgang bevises bare av postkasseprøvene." : `Fjern Entra-tillatelser (gjelder hele organisasjonen og overstyrer Exchange-avgrensningen): ${r.extra.join(", ")}` });
