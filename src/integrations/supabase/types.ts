@@ -4484,6 +4484,38 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_watch_cursors: {
+        Row: {
+          folder: string
+          folder_id: string | null
+          last_ok_at: string | null
+          mailbox: string
+          next_url: string | null
+        }
+        Insert: {
+          folder: string
+          folder_id?: string | null
+          last_ok_at?: string | null
+          mailbox: string
+          next_url?: string | null
+        }
+        Update: {
+          folder?: string
+          folder_id?: string | null
+          last_ok_at?: string | null
+          mailbox?: string
+          next_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_watch_cursors_mailbox_fkey"
+            columns: ["mailbox"]
+            isOneToOne: false
+            referencedRelation: "contract_watch_monitor"
+            referencedColumns: ["mailbox"]
+          },
+        ]
+      }
       contract_watch_diagnostic_runs: {
         Row: {
           app_roles: string[]
@@ -4508,6 +4540,136 @@ export type Database = {
           overall?: string
           run_at?: string
           run_by?: string | null
+        }
+        Relationships: []
+      }
+      contract_watch_followups: {
+        Row: {
+          commitment_id: string
+          company_id: string
+          owner_id: string
+          resolution: string | null
+          snoozed_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          commitment_id: string
+          company_id: string
+          owner_id: string
+          resolution?: string | null
+          snoozed_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          commitment_id?: string
+          company_id?: string
+          owner_id?: string
+          resolution?: string | null
+          snoozed_until?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_watch_followups_commitment_id_fkey"
+            columns: ["commitment_id"]
+            isOneToOne: true
+            referencedRelation: "contract_watch_commitments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_watch_message_queue: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          expires_at: string
+          folder: string
+          graph_id: string
+          id: string
+          mailbox: string
+          message_at: string | null
+          message_key: string
+          state: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          expires_at?: string
+          folder: string
+          graph_id: string
+          id?: string
+          mailbox: string
+          message_at?: string | null
+          message_key: string
+          state?: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          expires_at?: string
+          folder?: string
+          graph_id?: string
+          id?: string
+          mailbox?: string
+          message_at?: string | null
+          message_key?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_watch_message_queue_mailbox_fkey"
+            columns: ["mailbox"]
+            isOneToOne: false
+            referencedRelation: "contract_watch_monitor"
+            referencedColumns: ["mailbox"]
+          },
+        ]
+      }
+      contract_watch_monitor: {
+        Row: {
+          auto_enabled: boolean
+          commissioned_at: string | null
+          company_id: string
+          failure_count: number
+          last_attempt_at: string | null
+          last_error: string | null
+          last_ok_at: string | null
+          lease_id: string | null
+          lease_until: string | null
+          mailbox: string
+          paused_reason: string | null
+          retry_at: string | null
+          started_at: string
+        }
+        Insert: {
+          auto_enabled?: boolean
+          commissioned_at?: string | null
+          company_id?: string
+          failure_count?: number
+          last_attempt_at?: string | null
+          last_error?: string | null
+          last_ok_at?: string | null
+          lease_id?: string | null
+          lease_until?: string | null
+          mailbox: string
+          paused_reason?: string | null
+          retry_at?: string | null
+          started_at?: string
+        }
+        Update: {
+          auto_enabled?: boolean
+          commissioned_at?: string | null
+          company_id?: string
+          failure_count?: number
+          last_attempt_at?: string | null
+          last_error?: string | null
+          last_ok_at?: string | null
+          lease_id?: string | null
+          lease_until?: string | null
+          mailbox?: string
+          paused_reason?: string | null
+          retry_at?: string | null
+          started_at?: string
         }
         Relationships: []
       }
@@ -20250,10 +20412,30 @@ export type Database = {
         Args: { _id: string; _patch: Json; _version: number }
         Returns: number
       }
+      cw_followup: {
+        Args: { _action: string; _id: string }
+        Returns: undefined
+      }
+      cw_is_monitor_owner: { Args: { _uid: string }; Returns: boolean }
       cw_link_customer: {
         Args: { _commitment_id: string; _customer_id: string }
         Returns: undefined
       }
+      cw_monitor_baseline_ok: { Args: never; Returns: boolean }
+      cw_monitor_claim: { Args: { _lease: string }; Returns: boolean }
+      cw_monitor_commit_page: {
+        Args: {
+          _expected: string
+          _folder: string
+          _folder_id: string
+          _lease: string
+          _messages: Json
+          _next: string
+        }
+        Returns: undefined
+      }
+      cw_monitor_status: { Args: never; Returns: Json }
+      cw_monitor_stop: { Args: never; Returns: undefined }
       deactivate_conversation_participant: {
         Args: { _participant_id: string }
         Returns: undefined

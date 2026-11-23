@@ -1,4 +1,10 @@
+# Auto Avtalevakt – 23 November
+- [x] Staged incremental metadata core and private cursor/lease/queue schema; default-off gates and honest health/baseline UI
+- [x] Audited owner-only phone/snooze/reopen; queued-ID expiry on commit; 59 isolated regressions and PC/mobile component checks, status/scan functions deployed
+- [ ] Full pipeline and production activation: requires full v3 baseline and separately approved authenticated E2E; live Graph runner, AI consumer, persisted thread-state, bell writer, task drafts and stopped-state retention remain unimplemented (see .lovable/avtalevakt-auto-status.md). No cron/activation permitted
+
 # Separate active-technician mailbox test – 19 November
+
 - [x] Shared metadata-only probe, superadmin/company-edit/verified active identity/fresh scope diagnostic, mandatory start/result audit; no job/day/target approval required
 - [x] Independent Admin selector and no-future-day explanation; Rune live GET200/app/tenant/mailbox match confirmed in UI and audit; 1264 tests pass, function deployed
 - [x] Admin UI publication requested for mcsressurs.lovable.app; completion not yet verified, activation still locked and requires separate live-write consent

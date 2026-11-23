@@ -16,6 +16,8 @@ import { ContractWatchDiagnosticsCard } from "@/components/admin/ContractWatchDi
 import { ContractWatchScanCard } from "@/components/admin/ContractWatchScanCard";
 import { KIND_LABEL, ACTION_LABEL, canSuggestOrderDraft } from "@/lib/contract-watch-labels";
 import { ContractWatchDraftEditor, type Draft } from "@/components/admin/ContractWatchDraftEditor";
+import { ContractWatchMonitorCard } from "@/components/admin/ContractWatchMonitorCard";
+import { ContractWatchFollowupActions } from "@/components/admin/ContractWatchFollowupActions";
 
 const CONSENT = "Jeg, Thomas Treffen, samtykker til at MCS AI Avtalevakt i fase 1 kun leser innkommende og sendt e-post i thomas.treffen@mcsservice.no, at korte utdrag behandles av Lovable AI for å finne kundeløfter, og at data lagres etter valgt lagringstid. Ingen e-post sendes og ingen jobber opprettes automatisk.";
 const COVERAGE: Record<string, string> = { covered: "Dekket", partial: "Delvis", missing: "Mangler", conflict: "Konflikt", unclear: "Uavklart" };
@@ -27,6 +29,7 @@ export default function ContractWatchPage() {
   const qc = useQueryClient();
   const settings = useQuery({ queryKey: ["cw-settings"], queryFn: async () => (await supabase.from("contract_watch_settings").select("*").eq("id", true).maybeSingle()).data });
   const [ver, setVer] = useState<1 | 2 | 3>(3);
+  const followups = useQuery({ queryKey: ["cw-followups"], queryFn: async () => { const r = await supabase.from("contract_watch_followups").select("commitment_id,resolution,snoozed_until"); if (r.error) throw r.error; return r.data ?? []; } });
   const items = useQuery({ queryKey: ["cw-items", ver], queryFn: async () => { const r = await supabase.from("contract_watch_commitments").select("id, excerpt, promised_date, promised_time, confidence_class, coverage, status, is_test, created_at, source_folder, source_sent_at, uncertainty, coverage_detail, customer_id, pilot_version, kind, action_status, task_summary, counterparty_domain, link_suggestions, related_refs").eq("pilot_version", ver).order("source_sent_at", { ascending: false, nullsFirst: false }).limit(300); if (r.error) throw r.error; return r.data ?? []; } });
   const link = async (id: string, customerId: string) => { const { error } = await supabase.rpc("cw_link_customer", { _commitment_id: id, _customer_id: customerId }); if (error) toast.error(error.message); else { toast.success("Kunde koblet"); items.refetch(); } };
   const audit = useQuery({ queryKey: ["cw-audit"], queryFn: async () => (await supabase.from("contract_watch_audit").select("at, action").order("at", { ascending: false }).limit(10)).data ?? [] });
@@ -78,6 +81,7 @@ export default function ContractWatchPage() {
 
       <ContractWatchDiagnosticsCard />
       <ContractWatchScanCard enabled={!!s?.enabled} />
+      <ContractWatchMonitorCard />
 
       <Card>
         <CardHeader><CardTitle>Samtykke og lagring</CardTitle><CardDescription>Samtykket gjelder bare Thomas sin postkasse i fase 1.</CardDescription></CardHeader>
@@ -107,7 +111,7 @@ export default function ContractWatchPage() {
         <CardContent className="text-sm">
           {items.isError && <p role="alert" className="text-destructive">Kunne ikke hente funn: {(items.error as Error).message} <Button size="sm" variant="outline" onClick={() => items.refetch()}>Prøv igjen</Button></p>}
           {(items.data ?? []).length === 0 ? <p className="text-muted-foreground">{ver === 3 ? "Ingen funn i test v3 – kjør historisk test på nytt." : `Ingen funn fra v${ver}.`}</p> : (
-            <ul className="divide-y divide-border">{items.data!.map((i) => (
+            <ul className="divide-y divide-border">{(items.data ?? []).map((i) => (
               <li key={i.id} id={`sak-${i.id}`} className={`py-3 space-y-1 ${sak === i.id ? "rounded-md ring-2 ring-primary px-2" : ""}`}>
                 <div className="flex flex-wrap gap-2">{i.kind && <Badge>{KIND_LABEL[i.kind] ?? i.kind}</Badge>}{i.action_status && <Badge variant={i.action_status === "action_required" ? "destructive" : i.action_status === "handled" ? "secondary" : "outline"}>{ACTION_LABEL[i.action_status] ?? i.action_status}</Badge>}<Badge variant="outline">{CONF[i.confidence_class] ?? i.confidence_class}</Badge>{i.coverage && (i.kind ? i.kind === "confirmed_job" : true) && <Badge variant={i.coverage === "covered" ? "secondary" : i.coverage === "unclear" ? "outline" : "destructive"}>{COVERAGE[i.coverage]}</Badge>}{i.is_test && <Badge variant="outline">TEST v{i.pilot_version ?? 1}</Badge>}<span className="text-muted-foreground">{i.promised_date ?? "Uklar dato"} {i.promised_time ?? ""}</span></div>
                 {i.task_summary && <p className="font-medium">{i.task_summary}</p>}
@@ -115,6 +119,7 @@ export default function ContractWatchPage() {
                 <p className="text-xs text-muted-foreground">Kilde: {SRC[i.source_folder ?? ""] ?? "e-post"}{i.source_sent_at ? ` ${new Date(i.source_sent_at).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" })}` : ""} · Kunde: {i.customer_id ? "funnet i CRM" : `ukjent${i.counterparty_domain ? ` (${i.counterparty_domain})` : ""}`}{Array.isArray(i.related_refs) && i.related_refs.length ? ` · Relatert: ${(i.related_refs as string[]).join(", ")}` : ""}{i.uncertainty ? ` · Usikkerhet: ${WHY[i.uncertainty] ?? i.uncertainty}` : ""}{Array.isArray((i.coverage_detail as { jobs?: string[] } | null)?.jobs) && (i.coverage_detail as { jobs: string[] }).jobs.length ? ` · Ressursplan: ${(i.coverage_detail as { jobs: string[] }).jobs.join(", ")}` : ""}</p>
                 {!i.customer_id && Array.isArray(i.link_suggestions) && i.link_suggestions.length > 0 && <div className="flex flex-wrap items-center gap-2 text-xs"><span>Koblingsforslag:</span>{(i.link_suggestions as { id: string; name: string; why: string }[]).map((c) => <Button key={c.id} size="sm" variant="outline" onClick={() => link(i.id, c.id)}>Koble til {c.name} ({c.why})</Button>)}</div>}
                 {canSuggestOrderDraft(i.kind, i.action_status) ? <Button size="sm" variant="outline" onClick={() => prepare(i.id)}>Klargjør bestillingsutkast</Button> : <span className="text-xs text-muted-foreground">Følg opp manuelt i eksisterende oppgave, avvik eller prosjekt</span>}
+                {ver === 3 && !followups.isError && <ContractWatchFollowupActions id={i.id} resolved={!!followups.data?.find((f) => f.commitment_id === i.id)?.resolution} snoozed={Date.parse(followups.data?.find((f) => f.commitment_id === i.id)?.snoozed_until ?? "") > Date.now()} />}
               </li>))}</ul>
           )}
         </CardContent>

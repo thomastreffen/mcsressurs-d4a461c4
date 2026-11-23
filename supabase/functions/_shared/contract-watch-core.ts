@@ -219,7 +219,7 @@ export const KINDS = ["confirmed_job", "job_request", "reminder_no_reply", "prom
 export const ORDER_DRAFT_KINDS: readonly string[] = ["confirmed_job", "job_request"];
 export const INTERNAL_KINDS: readonly string[] = ["internal_action_request", "technical_decision", "deviation_hms", "documentation_request", "internal_reminder"];
 export type Kind = typeof KINDS[number];
-export type ActionStatus = "handled" | "scheduling" | "action_required" | "awaiting_me" | "answered" | "info" | "unknown";
+export type ActionStatus = "handled" | "scheduling" | "action_required" | "awaiting_me" | "awaiting_other" | "answered" | "info" | "unknown";
 /** Order draft only for real customer work that is not already handled. */
 export function canSuggestOrderDraft(kind: string, status: string): boolean { return ORDER_DRAFT_KINDS.includes(kind) && status !== "handled" && status !== "answered"; }
 /** Quotes too short to carry meaning (e.g. "Sak lukkes") are rejected. */
@@ -264,7 +264,7 @@ export function actionStatusFor(p: { kind: Kind; coverage: UiCoverage | null; mc
     case "waiting_customer": return "scheduling";
     case "information": return "info";
     case "internal_action_request": case "technical_decision": case "documentation_request": case "internal_reminder": case "deviation_hms":
-      if (p.mcsRepliedAfter) return "answered";
+      if (p.mcsRepliedAfter) return "awaiting_other";
       return p.kind === "internal_reminder" || p.kind === "deviation_hms" ? "action_required" : "awaiting_me";
     case "confirmed_job":
       if (p.coverage === "covered") return "handled";

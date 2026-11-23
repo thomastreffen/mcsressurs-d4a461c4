@@ -932,6 +932,13 @@
       "when": 1795436074064,
       "tag": "0132_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1795436874096,
+      "tag": "0133_contract_watch_monitor_foundation",
+      "breakpoints": true
     }
   ]
 }

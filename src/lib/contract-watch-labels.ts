@@ -3,7 +3,7 @@ export const KIND_LABEL: Record<string, string> = {
   promised_contact: "Lovet å kontakte/ringe", waiting_customer: "Avventer kunde", cancelled_or_handled: "Avlyst/utsatt/håndtert",
   internal_action_request: "Intern forespørsel om handling", technical_decision: "Teknisk beslutning", deviation_hms: "Avvik/HMS", documentation_request: "Dokumentasjonsforespørsel", internal_reminder: "Intern purring", information: "Informasjon", not_actionable: "Ikke relevant",
 };
-export const ACTION_LABEL: Record<string, string> = { action_required: "Krever handling", scheduling: "Avtales", handled: "Allerede håndtert", awaiting_me: "Avventer meg", answered: "Besvart", info: "Informasjon", unknown: "Ukjent" };
+export const ACTION_LABEL: Record<string, string> = { action_required: "Krever handling", scheduling: "Avtales", handled: "Allerede håndtert", awaiting_me: "Avventer meg", awaiting_other: "Avventer andre – svar er ikke en avslutning", answered: "Besvart", info: "Informasjon", unknown: "Ukjent" };
 export const REASON_LABEL: Record<string, string> = {
   auto_reply: "Autosvar", newsletter: "Nyhetsbrev/liste", system: "Systemavsender", internal_only: "Kun intern e-post (v1/v2)", ai_quote_too_short: "AI-sitat for kort (forkastet)", order_nearby_unverified: "Bestilling i nærheten uten sikker kobling", empty_text: "Uten lesbar ny tekst",
   thread_cap: "Over trådgrensen", folder_cap_inbox: "Innboks over lesegrensen", folder_cap_sentitems: "Sendt over lesegrensen", ai_not_actionable: "AI: ikke relevant",

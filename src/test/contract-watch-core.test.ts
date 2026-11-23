@@ -166,7 +166,7 @@ describe("pilot v3 quality", () => {
   it("internal statuses", () => {
     expect(actionStatusFor({ kind: "internal_reminder", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("action_required");
     expect(actionStatusFor({ kind: "technical_decision", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("awaiting_me");
-    expect(actionStatusFor({ kind: "documentation_request", coverage: null, mcsRepliedAfter: true, relatedFound: false })).toBe("answered");
+    expect(actionStatusFor({ kind: "documentation_request", coverage: null, mcsRepliedAfter: true, relatedFound: false })).toBe("awaiting_other");
     expect(actionStatusFor({ kind: "information", coverage: null, mcsRepliedAfter: false, relatedFound: false })).toBe("info");
   });
   it("no order draft for documentation, deviation or handled", () => {
