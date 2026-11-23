@@ -105,3 +105,32 @@ describe("Avtalevakt order drafts", () => {
     expect(draftMissing({ customer_id: null, description: "x", work_site: "" })).toEqual(["Kunde", "Arbeidssted"]);
   });
 });
+
+import { groupThreads, quoteGrounded, resolvePromisedDate, coverageFor, matchableDomain } from "../../supabase/functions/_shared/contract-watch-core";
+describe("Avtalevakt historical test", () => {
+  const m = (id: string, conv: string, at: string, imid = id) => ({ id, conversationId: conv, folder: "inbox" as const, sentAt: at, from: "a@kunde.no", to: [], subject: "", preview: "", internetMessageId: imid });
+  it("dedupes threads and identical messages across folders", () => {
+    const g = groupThreads([m("1", "c1", "2026-11-01"), m("2", "c1", "2026-11-02"), m("3", "c1", "2026-11-02", "2"), m("4", "c2", "2026-11-03")]);
+    expect(g.length).toBe(2); expect(g[0].key).toBe("c2"); expect(g[1].messages.length).toBe(2);
+  });
+  it("quote must exist in source", () => {
+    expect(quoteGrounded("Vi kommer onsdag 25.11", "Hei! Vi  kommer onsdag 25.11 kl 12.")).toBe(true);
+    expect(quoteGrounded("Vi kommer fredag", "Hei! Vi kommer onsdag")).toBe(false);
+  });
+  it("dates are certain only when explicit and in range (Oslo)", () => {
+    expect(resolvePromisedDate({ date_iso: "2026-11-25", weekday: null, quote: "kommer 25.11" }, "2026-11-20T10:00:00Z")).toEqual({ date: "2026-11-25", certain: true });
+    expect(resolvePromisedDate({ date_iso: "2026-11-25", weekday: null, quote: "kommer snart" }, "2026-11-20T10:00:00Z").certain).toBe(false);
+    expect(resolvePromisedDate({ date_iso: "2030-01-01", weekday: null, quote: "1.1.2030" }, "2026-11-20T10:00:00Z").date).toBeNull();
+    expect(resolvePromisedDate({ date_iso: null, weekday: "onsdag", quote: "vi kommer onsdag" }, "2026-11-20T10:00:00Z")).toEqual({ date: "2026-11-25", certain: false, reason: "weekday_relative" });
+    expect(resolvePromisedDate({ date_iso: null, weekday: null, quote: "vi tar det" }, "2026-11-20T10:00:00Z").date).toBeNull();
+  });
+  it("coverage unclear without customer or date", () => {
+    expect(coverageFor({ customerKnown: false, date: "2026-11-25" }, [])).toBe("unclear");
+    expect(coverageFor({ customerKnown: true, date: null }, [])).toBe("unclear");
+    expect(coverageFor({ customerKnown: true, date: "2026-11-25" }, [])).toBe("missing");
+    expect(coverageFor({ customerKnown: true, date: "2026-11-25" }, [{ date: "2026-11-25", technicianCount: 1 }])).toBe("covered");
+  });
+  it("own and public domains are never matched", () => {
+    expect(matchableDomain("mcsservice.no")).toBe(false); expect(matchableDomain("gmail.com")).toBe(false); expect(matchableDomain("caverion.no")).toBe(true);
+  });
+});

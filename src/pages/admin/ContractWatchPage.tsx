@@ -12,16 +12,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ShieldOff, Power, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { ContractWatchDiagnosticsCard } from "@/components/admin/ContractWatchDiagnosticsCard";
+import { ContractWatchScanCard } from "@/components/admin/ContractWatchScanCard";
 import { ContractWatchDraftEditor, type Draft } from "@/components/admin/ContractWatchDraftEditor";
 
 const CONSENT = "Jeg, Thomas Treffen, samtykker til at MCS AI Avtalevakt i fase 1 kun leser innkommende og sendt e-post i thomas.treffen@mcsservice.no, at korte utdrag behandles av Lovable AI for å finne kundeløfter, og at data lagres etter valgt lagringstid. Ingen e-post sendes og ingen jobber opprettes automatisk.";
-const COVERAGE: Record<string, string> = { covered: "Dekket", partial: "Delvis", missing: "Mangler", conflict: "Konflikt" };
+const COVERAGE: Record<string, string> = { covered: "Dekket", partial: "Delvis", missing: "Mangler", conflict: "Konflikt", unclear: "Uavklart" };
+const SRC: Record<string, string> = { inbox: "Mottatt", sentitems: "Sendt" };
+const WHY: Record<string, string> = { customer_unknown: "kunde ikke funnet i CRM", no_date: "ingen dato i teksten", weekday_relative: "bare ukedag – dato beregnet", weekday_ambiguous: "uklar ukedag", date_not_in_quote: "dato ikke ordrett i utdraget", date_out_of_range: "urimelig dato" };
 const CONF: Record<string, string> = { uncertain: "Usikker", check: "Bør sjekkes", likely: "Sannsynlig løfte" };
 
 export default function ContractWatchPage() {
   const qc = useQueryClient();
   const settings = useQuery({ queryKey: ["cw-settings"], queryFn: async () => (await supabase.from("contract_watch_settings").select("*").eq("id", true).maybeSingle()).data });
-  const items = useQuery({ queryKey: ["cw-items"], queryFn: async () => (await supabase.from("contract_watch_commitments").select("id, excerpt, promised_date, promised_time, confidence_class, coverage, status, is_test, created_at").order("created_at", { ascending: false }).limit(100)).data ?? [] });
+  const items = useQuery({ queryKey: ["cw-items"], queryFn: async () => (await supabase.from("contract_watch_commitments").select("id, excerpt, promised_date, promised_time, confidence_class, coverage, status, is_test, created_at, source_folder, source_sent_at, uncertainty, coverage_detail, customer_id").order("created_at", { ascending: false }).limit(100)).data ?? [] });
   const audit = useQuery({ queryKey: ["cw-audit"], queryFn: async () => (await supabase.from("contract_watch_audit").select("at, action").order("at", { ascending: false }).limit(10)).data ?? [] });
   const act = useMutation({
     mutationFn: async (a: { action: string; consent?: string; retention?: number; dismissed?: number }) => {
@@ -58,7 +61,7 @@ export default function ContractWatchPage() {
             <Badge variant={s?.consent_at ? "default" : "outline"}>Samtykke {s?.consent_at ? "gitt" : "ikke gitt"}</Badge>
             <Badge variant="outline">Postkasser: {s?.allowed_mailboxes?.length ? s.allowed_mailboxes.join(", ") : "ingen"}</Badge>
           </div>
-          <p className="text-muted-foreground flex items-center gap-1"><Lock className="h-4 w-4" />E-postlesing og AI-analyse er ikke bygget inn ennå. Selv når bryteren er på, leses ingenting før lesefunksjonen er godkjent separat.</p>
+          <p className="text-muted-foreground flex items-center gap-1"><Lock className="h-4 w-4" />Ingen automatisk overvåking. E-post leses bare når du klikker «Kjør historisk test».</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: "verify_scope" })}>Bekreft tilgang fra bestått test</Button>
             <Button size="sm" disabled={act.isPending || !s?.scope_verified_at || !s?.consent_at || !!s?.enabled} onClick={() => act.mutate({ action: "enable" })}>Slå på</Button>
@@ -68,6 +71,7 @@ export default function ContractWatchPage() {
       </Card>
 
       <ContractWatchDiagnosticsCard />
+      <ContractWatchScanCard enabled={!!s?.enabled} />
 
       <Card>
         <CardHeader><CardTitle>Samtykke og lagring</CardTitle><CardDescription>Samtykket gjelder bare Thomas sin postkasse i fase 1.</CardDescription></CardHeader>
@@ -97,8 +101,9 @@ export default function ContractWatchPage() {
           {(items.data ?? []).length === 0 ? <p className="text-muted-foreground">Ingen funn. Listen fylles først når lesing er godkjent og den historiske testen er kjørt.</p> : (
             <ul className="divide-y divide-border">{items.data!.map((i) => (
               <li key={i.id} className="py-3 space-y-1">
-                <div className="flex flex-wrap gap-2"><Badge variant="outline">{CONF[i.confidence_class] ?? i.confidence_class}</Badge>{i.coverage && <Badge variant={i.coverage === "covered" ? "secondary" : "destructive"}>{COVERAGE[i.coverage]}</Badge>}{i.is_test && <Badge variant="outline">Test</Badge>}<span className="text-muted-foreground">{i.promised_date ?? "Uklar dato"} {i.promised_time ?? ""}</span></div>
+                <div className="flex flex-wrap gap-2"><Badge variant="outline">{CONF[i.confidence_class] ?? i.confidence_class}</Badge>{i.coverage && <Badge variant={i.coverage === "covered" ? "secondary" : i.coverage === "unclear" ? "outline" : "destructive"}>{COVERAGE[i.coverage]}</Badge>}{i.is_test && <Badge variant="outline">Test</Badge>}<span className="text-muted-foreground">{i.promised_date ?? "Uklar dato"} {i.promised_time ?? ""}</span></div>
                 <p className="italic">«{i.excerpt}»</p>
+                <p className="text-xs text-muted-foreground">Kilde: {SRC[i.source_folder ?? ""] ?? "e-post"}{i.source_sent_at ? ` ${new Date(i.source_sent_at).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" })}` : ""} · Kunde: {i.customer_id ? "funnet i CRM" : "ukjent"}{i.uncertainty ? ` · Usikkerhet: ${WHY[i.uncertainty] ?? i.uncertainty}` : ""}{Array.isArray((i.coverage_detail as { jobs?: string[] } | null)?.jobs) && (i.coverage_detail as { jobs: string[] }).jobs.length ? ` · Ressursplan: ${(i.coverage_detail as { jobs: string[] }).jobs.join(", ")}` : ""}</p>
                 <Button size="sm" variant="outline" onClick={() => prepare(i.id)}>Klargjør bestillingsutkast</Button>
               </li>))}</ul>
           )}

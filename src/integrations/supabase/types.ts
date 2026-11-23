@@ -4383,6 +4383,7 @@ export type Database = {
           confidence_class: string
           conversation_id: string | null
           coverage: string | null
+          coverage_detail: Json | null
           created_at: string
           customer_account_id: string | null
           customer_id: string | null
@@ -4397,7 +4398,11 @@ export type Database = {
           message_hash: string | null
           promised_date: string | null
           promised_time: string | null
+          scan_run_id: string | null
+          source_folder: string | null
+          source_sent_at: string | null
           status: string
+          uncertainty: string | null
           updated_at: string
         }
         Insert: {
@@ -4406,6 +4411,7 @@ export type Database = {
           confidence_class?: string
           conversation_id?: string | null
           coverage?: string | null
+          coverage_detail?: Json | null
           created_at?: string
           customer_account_id?: string | null
           customer_id?: string | null
@@ -4420,7 +4426,11 @@ export type Database = {
           message_hash?: string | null
           promised_date?: string | null
           promised_time?: string | null
+          scan_run_id?: string | null
+          source_folder?: string | null
+          source_sent_at?: string | null
           status?: string
+          uncertainty?: string | null
           updated_at?: string
         }
         Update: {
@@ -4429,6 +4439,7 @@ export type Database = {
           confidence_class?: string
           conversation_id?: string | null
           coverage?: string | null
+          coverage_detail?: Json | null
           created_at?: string
           customer_account_id?: string | null
           customer_id?: string | null
@@ -4443,7 +4454,11 @@ export type Database = {
           message_hash?: string | null
           promised_date?: string | null
           promised_time?: string | null
+          scan_run_id?: string | null
+          source_folder?: string | null
+          source_sent_at?: string | null
           status?: string
+          uncertainty?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -4560,6 +4575,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      contract_watch_scan_runs: {
+        Row: {
+          counts: Json
+          error_code: string | null
+          error_detail: string | null
+          finished_at: string | null
+          id: string
+          mailbox: string
+          mode: string
+          started_at: string
+          started_by: string
+          status: string
+        }
+        Insert: {
+          counts?: Json
+          error_code?: string | null
+          error_detail?: string | null
+          finished_at?: string | null
+          id?: string
+          mailbox: string
+          mode?: string
+          started_at?: string
+          started_by: string
+          status?: string
+        }
+        Update: {
+          counts?: Json
+          error_code?: string | null
+          error_detail?: string | null
+          finished_at?: string | null
+          id?: string
+          mailbox?: string
+          mode?: string
+          started_at?: string
+          started_by?: string
+          status?: string
+        }
+        Relationships: []
       }
       contract_watch_settings: {
         Row: {

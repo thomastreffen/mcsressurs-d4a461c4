@@ -156,3 +156,55 @@ export function draftMissing(d: { customer_id: string | null; description: strin
   if (!d.description?.trim()) m.push("Arbeidsbeskrivelse");
   return m;
 }
+
+// ---- Phase 1 historical test (read-only, Thomas only) ----
+export const SCAN_DAYS = 30;
+export const SCAN_MAX_PER_FOLDER = 300;
+export const SCAN_MAX_THREADS = 60;
+export const SCAN_COOLDOWN_MIN = 15;
+export const OWN_DOMAINS = ["mcsservice.no", "mcselektrotavler.no", "busbar.no"];
+const PUBLIC_DOMAINS = ["gmail.com", "hotmail.com", "outlook.com", "live.no", "online.no", "icloud.com", "yahoo.com", "me.com", "msn.com"];
+export const domainOf = (e: string) => (e.split("@")[1] ?? "").trim().toLowerCase();
+/** Domain matching is only trusted for non-public, non-own business domains. */
+export const matchableDomain = (d: string) => !!d && !OWN_DOMAINS.includes(d) && !PUBLIC_DOMAINS.includes(d);
+
+export interface MiniMsg { id: string; conversationId: string; folder: "inbox" | "sentitems"; sentAt: string; from: string; to: string[]; subject: string; preview: string; internetMessageId: string }
+/** Thread dedupe: one group per conversationId (message id as fallback), newest last, capped to the last N messages. */
+export function groupThreads(msgs: MiniMsg[], perThread = 6): { key: string; messages: MiniMsg[] }[] {
+  const seen = new Set<string>(); const map = new Map<string, MiniMsg[]>();
+  for (const m of msgs) {
+    const dk = m.internetMessageId || m.id; if (seen.has(dk)) continue; seen.add(dk); // same message in two folders
+    const k = m.conversationId || `msg:${m.id}`; (map.get(k) ?? map.set(k, []).get(k)!).push(m);
+  }
+  return [...map.entries()].map(([key, ms]) => ({ key, messages: ms.sort((a, b) => a.sentAt.localeCompare(b.sentAt)).slice(-perThread) }))
+    .sort((a, b) => b.messages.at(-1)!.sentAt.localeCompare(a.messages.at(-1)!.sentAt));
+}
+
+const norm = (s: string) => s.toLowerCase().normalize("NFKC").replace(/\s+/g, " ").trim();
+/** Anti-hallucination: the AI quote must appear verbatim (whitespace-insensitive) in the source preview. */
+export function quoteGrounded(quote: string, source: string): boolean {
+  const q = norm(quote); return q.length >= 8 && norm(source).includes(q);
+}
+
+const DATE_TOKEN = /\b(\d{1,2}[./]\d{1,2}([./]\d{2,4})?|\d{1,2}\.\s?(jan|feb|mar|apr|mai|jun|jul|aug|sep|okt|nov|des)\w*|mandag|tirsdag|onsdag|torsdag|fredag|lørdag|søndag|i morgen)\b/i;
+/** A date is "certain" only when the AI gave a valid ISO date, the quote itself contains a date/weekday token,
+ * and the date lies within -1..+365 days of the send time (Oslo). Otherwise null + reason. */
+export function resolvePromisedDate(a: { date_iso: string | null; weekday: string | null; quote: string }, sentAtIso: string): { date: string | null; certain: boolean; reason?: string } {
+  const sentOslo = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date(sentAtIso));
+  const dayDiff = (d: string) => (Date.parse(`${d}T12:00:00Z`) - Date.parse(`${sentOslo}T12:00:00Z`)) / 86400000;
+  const hasToken = DATE_TOKEN.test(a.quote);
+  if (a.date_iso && /^\d{4}-\d{2}-\d{2}$/.test(a.date_iso) && !Number.isNaN(Date.parse(a.date_iso))) {
+    const diff = dayDiff(a.date_iso);
+    if (diff < -1 || diff > 365) return { date: null, certain: false, reason: "date_out_of_range" };
+    return hasToken ? { date: a.date_iso, certain: true } : { date: a.date_iso, certain: false, reason: "date_not_in_quote" };
+  }
+  if (a.weekday) { const d = resolveWeekday(a.weekday, sentAtIso); return d && hasToken ? { date: d, certain: false, reason: "weekday_relative" } : { date: null, certain: false, reason: "weekday_ambiguous" }; }
+  return { date: null, certain: false, reason: "no_date" };
+}
+
+/** Coverage for the UI: unclear when customer or date is unknown – never guessed. */
+export type UiCoverage = Coverage | "unclear";
+export function coverageFor(p: { customerKnown: boolean; date: string | null; technicians?: number | null }, jobs: PlanJob[]): UiCoverage {
+  if (!p.customerKnown || !p.date) return "unclear";
+  return classifyCoverage({ date: p.date, technicians: p.technicians }, jobs);
+}
