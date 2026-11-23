@@ -1,6 +1,7 @@
 // MCS AI Avtalevakt – superadmin module. Phase 1: settings, kill switch, consent, retention, diagnostics and
 // the deviation/suggestion queue UI. No email is read and nothing is created or sent from this page.
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,8 @@ export default function ContractWatchPage() {
     if (error) { toast.error(error.message); return; }
     const r = await drafts.refetch(); setOpen((r.data ?? []).find((d) => d.id === data) ?? null);
   };
+  const [params] = useSearchParams(); const sak = params.get("sak");
+  useEffect(() => { if (sak && items.data?.length) document.getElementById(`sak-${sak}`)?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [sak, items.data]);
   const s = settings.data;
   const [consentOk, setConsentOk] = useState(false);
   const [ret, setRet] = useState<string>(""); const [dis, setDis] = useState<string>("");
@@ -100,7 +103,7 @@ export default function ContractWatchPage() {
         <CardContent className="text-sm">
           {(items.data ?? []).length === 0 ? <p className="text-muted-foreground">Ingen funn. Listen fylles først når lesing er godkjent og den historiske testen er kjørt.</p> : (
             <ul className="divide-y divide-border">{items.data!.map((i) => (
-              <li key={i.id} className="py-3 space-y-1">
+              <li key={i.id} id={`sak-${i.id}`} className={`py-3 space-y-1 ${sak === i.id ? "rounded-md ring-2 ring-primary px-2" : ""}`}>
                 <div className="flex flex-wrap gap-2"><Badge variant="outline">{CONF[i.confidence_class] ?? i.confidence_class}</Badge>{i.coverage && <Badge variant={i.coverage === "covered" ? "secondary" : i.coverage === "unclear" ? "outline" : "destructive"}>{COVERAGE[i.coverage]}</Badge>}{i.is_test && <Badge variant="outline">Test</Badge>}<span className="text-muted-foreground">{i.promised_date ?? "Uklar dato"} {i.promised_time ?? ""}</span></div>
                 <p className="italic">«{i.excerpt}»</p>
                 <p className="text-xs text-muted-foreground">Kilde: {SRC[i.source_folder ?? ""] ?? "e-post"}{i.source_sent_at ? ` ${new Date(i.source_sent_at).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" })}` : ""} · Kunde: {i.customer_id ? "funnet i CRM" : "ukjent"}{i.uncertainty ? ` · Usikkerhet: ${WHY[i.uncertainty] ?? i.uncertainty}` : ""}{Array.isArray((i.coverage_detail as { jobs?: string[] } | null)?.jobs) && (i.coverage_detail as { jobs: string[] }).jobs.length ? ` · Ressursplan: ${(i.coverage_detail as { jobs: string[] }).jobs.join(", ")}` : ""}</p>

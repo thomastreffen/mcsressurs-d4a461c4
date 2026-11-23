@@ -1,4 +1,5 @@
 import { MyPlanningTasks } from "@/components/planning/MyPlanningTasks";
+import { ContractWatchDashboardCard } from "@/components/dashboard/ContractWatchDashboardCard";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -377,6 +378,7 @@ export default function OverviewPage() {
       </div>
 
       <div className="mb-8"><MyPlanningTasks /></div>
+      <div className="mb-8 empty:hidden"><ContractWatchDashboardCard /></div>
 
       {/* ─── KPI Row ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3 mb-8">
