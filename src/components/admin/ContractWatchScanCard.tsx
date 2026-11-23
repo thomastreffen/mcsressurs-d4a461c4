@@ -46,8 +46,8 @@ export function ContractWatchScanCard({ enabled }: { enabled: boolean }) {
   const fmt = (iso: string) => new Date(iso).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" });
   return <Card>
     <CardHeader>
-      <CardTitle className="flex items-center gap-2"><History className="h-5 w-5" />Historisk test v2 – siste 30 dager <Badge variant="outline">Kun manuell test / ikke løpende overvåking</Badge></CardTitle>
-      <CardDescription>Kun når du klikker. Leser emne, avsender/mottaker, tidspunkt og bare den nye delen av hver e-post (uten sitert tråd), renset for lenker og ID-numre og kuttet til 1200 tegn. Teksten holdes bare i minnet under kjøringen; vedlegg hentes aldri. Lagret blir bare kort kildesitat, type, status og kontrollsum. Ukjente kunder tas med og vises som «ukjent kunde». Ingenting sendes, ingen jobber eller kalenderavtaler lages, ingen varsles. Funn merkes TEST v2, adskilt fra v1.</CardDescription>
+      <CardTitle className="flex items-center gap-2"><History className="h-5 w-5" />Historisk test v3 – siste 30 dager <Badge variant="outline">Kun manuell test / ikke løpende overvåking</Badge></CardTitle>
+      <CardDescription>Kun når du klikker. Leser emne, avsender/mottaker, tidspunkt og bare den nye delen av hver e-post (uten sitert tråd), renset for lenker og ID-numre og kuttet til 1200 tegn. Teksten holdes bare i minnet under kjøringen; vedlegg hentes aldri. Lagret blir bare kort kildesitat, type, status og kontrollsum. Ukjente kunder tas med og vises som «ukjent kunde». Interne e-poster (kolleger, montører) tas også med og vurderes som interne forespørsler, avvik, purringer eller dokumentasjonsbehov. Ingenting sendes, ingen jobber eller kalenderavtaler lages, ingen varsles. Funn merkes TEST v3, adskilt fra v1 og v2.</CardDescription>
     </CardHeader>
     <CardContent className="space-y-3 text-sm">
       {q.isError && <QueryErrorNotice what="status for historisk test" error={q.error} onRetry={() => q.refetch()} retrying={q.isFetching} />}

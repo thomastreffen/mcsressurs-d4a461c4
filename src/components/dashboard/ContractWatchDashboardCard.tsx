@@ -31,12 +31,12 @@ export function ContractWatchDashboardCard() {
     {q.isLoading && <p className="text-sm text-muted-foreground">Henter…</p>}
     {q.isError && <QueryErrorNotice what="Avtalevakt-funn" error={q.error} onRetry={() => q.refetch()} retrying={q.isFetching} />}
     {s && (s.total === 0
-      ? <p className="text-sm text-muted-foreground">{q.data?.lastRun ? "Ingen uløste funn." : "Ingen funn – ingen testkjøring (v2) ennå."} <Link className="underline" to="/admin/avtalevakt">Åpne Avtalevakt</Link></p>
+      ? <p className="text-sm text-muted-foreground">{q.data?.lastRun ? "Ingen uløste funn." : "Ingen funn – ingen testkjøring (v3) ennå."} <Link className="underline" to="/admin/avtalevakt">Åpne Avtalevakt</Link></p>
       : <Link to={to} className="flex flex-wrap gap-2 text-sm hover:underline">
           <Badge variant={s.actionRequired ? "destructive" : "outline"}>Krever handling: {s.actionRequired}</Badge>
           <Badge variant="outline">Avtales: {s.scheduling}</Badge>
           <Badge variant="outline">Ukjent: {s.unknown}</Badge>
-          {s.testCount > 0 && <Badge variant="secondary">TEST v2{s.allTest ? "" : `: ${s.testCount}`}</Badge>}
+          {s.testCount > 0 && <Badge variant="secondary">TEST v3{s.allTest ? "" : `: ${s.testCount}`}</Badge>}
         </Link>)}
   </section>;
 }

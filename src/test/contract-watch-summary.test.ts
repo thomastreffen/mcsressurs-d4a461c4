@@ -13,3 +13,11 @@ describe("Avtalevakt dashboard summary (v2)", () => {
   });
   it("only action required raises the indicator", () => { expect(needsAttention(summarizeContractWatch([r("x", "scheduling"), r("y", "unknown")]))).toBe(false); });
 });
+
+describe("v3 statuses", () => {
+  it("awaiting_me counts as action, answered/info do not", () => {
+    const base = { status: "open", is_test: true, created_at: "2026-11-23" };
+    const s = summarizeContractWatch([{ id: "a", action_status: "awaiting_me", ...base }, { id: "b", action_status: "answered", ...base }, { id: "c", action_status: "info", ...base }]);
+    expect(s.actionRequired).toBe(1); expect(s.total).toBe(1);
+  });
+});
