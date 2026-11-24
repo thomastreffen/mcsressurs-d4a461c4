@@ -79,6 +79,7 @@ export function ContractWatchScanCard({ enabled }: { enabled: boolean }) {
   const run = useMutation({ mutationFn: (resumeId?: string) => drive(resumeId), onSettled: invalidate });
   const markTimeout = useMutation({ mutationFn: (id: string) => call("mark_timeout", { run_id: id }), onSettled: invalidate });
   const listed = (q.data?.runs as Run[] | undefined)?.find((r) => r.mode !== "lookup");
+  const staleLookup = (q.data?.runs as Run[] | undefined)?.find((r) => r.mode === "lookup" && r.status === "running" && r.stale);
   const last = run.isPending && progress?.started_at ? progress : listed;
   const [day, setDay] = useState(""); const [time, setTime] = useState("");
   const look = useMutation({ mutationFn: () => call("lookup", { date: day, time }) as Promise<Lookup>, onSettled: () => qc.invalidateQueries({ queryKey: ["cw-audit"] }) });
@@ -96,6 +97,7 @@ export function ContractWatchScanCard({ enabled }: { enabled: boolean }) {
         {!run.isPending && last?.status === "running" && last.stale && <Button size="sm" variant="outline" disabled={markTimeout.isPending} onClick={() => markTimeout.mutate(last.id)}>Marker som tidsavbrutt</Button>}
       </div>
       {!enabled && <p className="text-muted-foreground">Slå på Avtalevakt først.</p>}
+      {staleLookup && <p className="text-muted-foreground">En kontroll av enkelt-e-post har hengt seg og sperrer nye tester. <Button size="sm" variant="outline" disabled={markTimeout.isPending} onClick={() => markTimeout.mutate(staleLookup.id)}>Marker kontrollen som tidsavbrutt</Button></p>}
       {!run.isPending && last?.status === "running" && <p className="text-muted-foreground">{last.stale ? "Denne testen har ikke gitt livstegn på over 10 minutter. Du kan fortsette den (om arbeidslisten finnes) eller markere den som tidsavbrutt. Funn som allerede er lagret beholdes; ingenting slettes." : "Testen er ikke ferdig. Den fortsetter bare mens denne siden er åpen – trykk «Fortsett testen»."}</p>}
       {run.isPending && <p className="text-muted-foreground" aria-live="polite">{progress?.total_batches != null ? `Analyserer del ${Math.min((progress.done_batches ?? 0) + (progress.failed_batches ?? 0) + 1, progress.total_batches)} av ${progress.total_batches}` : "Leser oversikt over e-poster…"} – la siden være åpen.{waitNote ? ` ${waitNote}` : ""}</p>}
       {run.error && <p role="alert" className="text-destructive">{(run.error as Error).message} Testen kan fortsettes – ferdige deler kjøres ikke på nytt.</p>}
