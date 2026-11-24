@@ -4759,48 +4759,104 @@ export type Database = {
           },
         ]
       }
+      contract_watch_scan_batches: {
+        Row: {
+          attempts: number
+          error_code: string | null
+          idx: number
+          next_attempt_at: string
+          run_id: string
+          status: string
+          threads: Json
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          error_code?: string | null
+          idx: number
+          next_attempt_at?: string
+          run_id: string
+          status?: string
+          threads: Json
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          error_code?: string | null
+          idx?: number
+          next_attempt_at?: string
+          run_id?: string
+          status?: string
+          threads?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_watch_scan_batches_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "contract_watch_scan_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_watch_scan_runs: {
         Row: {
           counts: Json
           discard_reasons: Json
+          done_batches: number
           error_code: string | null
           error_detail: string | null
+          failed_batches: number
           finished_at: string | null
+          heartbeat_at: string | null
           id: string
+          lease_until: string | null
           mailbox: string
           mode: string
           pilot_version: number
           started_at: string
           started_by: string
           status: string
+          total_batches: number | null
         }
         Insert: {
           counts?: Json
           discard_reasons?: Json
+          done_batches?: number
           error_code?: string | null
           error_detail?: string | null
+          failed_batches?: number
           finished_at?: string | null
+          heartbeat_at?: string | null
           id?: string
+          lease_until?: string | null
           mailbox: string
           mode?: string
           pilot_version?: number
           started_at?: string
           started_by: string
           status?: string
+          total_batches?: number | null
         }
         Update: {
           counts?: Json
           discard_reasons?: Json
+          done_batches?: number
           error_code?: string | null
           error_detail?: string | null
+          failed_batches?: number
           finished_at?: string | null
+          heartbeat_at?: string | null
           id?: string
+          lease_until?: string | null
           mailbox?: string
           mode?: string
           pilot_version?: number
           started_at?: string
           started_by?: string
           status?: string
+          total_batches?: number | null
         }
         Relationships: []
       }
