@@ -32,6 +32,13 @@ const ERR: Record<string, string> = {
   stale_timeout: "Markert som tidsavbrutt etter at testen sluttet å gi livstegn.",
   stale_running: "En tidligere test henger. Marker den som tidsavbrutt først.",
   not_stale: "Testen er fortsatt aktiv og kan ikke markeres som tidsavbrutt ennå.",
+  not_running: "Testen er allerede avsluttet. Oppdater siden.",
+  already_finished: "Testen ble avsluttet i mellomtiden. Ingenting er endret.",
+  invalid_timestamps: "Testen mangler gyldig starttid og kan ikke vurderes automatisk.",
+  timeout_update_failed: "Databasen avviste endringen. Testen er ikke endret.",
+  timeout_update_conflict: "Testen ble tatt opp igjen i mellomtiden. Prøv igjen om litt.",
+  timeout_read_failed: "Kunne ikke lese testen. Prøv igjen.",
+  final_write_failed: "Kunne ikke lagre sluttresultatet; testen er avsluttet som feilet.",
   run_not_found: "Fant ikke testen.",
   invalid_lookup: "Skriv dato og klokkeslett.",
 };
@@ -45,7 +52,7 @@ async function call(action: "status" | "run_historical_test" | "lookup" | "conti
   if (error) {
     const ctx = (error as { context?: Response }).context;
     const p = await ctx?.clone?.().json?.().catch(() => null);
-    if (p?.error) throw new Error(`${ERR[p.error] ?? p.error}${p.detail ? ` (${p.detail})` : ""} [${p.error}]`);
+    if (p?.error) throw new Error(`${ERR[p.error] ?? p.error}${p.retry_after_sec ? ` Mulig om ca. ${Math.ceil(p.retry_after_sec / 60)} min.` : ""}${p.detail ? ` (${p.detail})` : ""} [${p.error}]`);
     const st = ctx?.status;
     throw new Error(st ? `Funksjonen svarte HTTP ${st} uten forklaring${st >= 500 ? " – trolig avbrutt (tidsgrense/minne)" : ""}.` : `Fikk ikke kontakt med funksjonen (${error.message}).`);
   }

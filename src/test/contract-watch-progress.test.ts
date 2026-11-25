@@ -35,3 +35,41 @@ describe("resumable historical test", () => {
     expect(finalStatus(25, 25, 0)).toEqual({ status: "done", code: null });
   });
 });
+
+import { readFileSync } from "node:fs";
+import { decideMarkTimeout, classifyTimeoutUpdate, staleInSec, RUN_STATUSES } from "../../supabase/functions/_shared/contract-watch-progress";
+
+describe("mark_timeout (24.11 legacy run bb08b6b6)", () => {
+  const legacy = { status: "running", started_at: "2026-11-24T07:29:47.003071+00:00", heartbeat_at: null, lease_until: null };
+  const T = (s: string) => Date.parse(s);
+
+  it("legacy run without heartbeat/lease is stale after 10 min and may be timed out", () => {
+    expect(decideMarkTimeout(legacy, T("2026-11-25T12:39:00Z"))).toEqual({ ok: true });
+    expect(decideMarkTimeout(legacy, T("2026-11-24T07:40:00Z"))).toEqual({ ok: true });
+  });
+  it("is not stale at 9 min and reports remaining seconds", () => {
+    const d = decideMarkTimeout(legacy, T("2026-11-24T07:38:47Z"));
+    expect(d).toMatchObject({ ok: false, code: "not_stale", http: 409 });
+    expect((d as { retry_after_sec: number }).retry_after_sec).toBe(61);
+  });
+  it("a held lease blocks timeout until it expires", () => {
+    const r = { ...legacy, heartbeat_at: "2026-11-24T07:00:00Z", lease_until: "2026-11-24T08:00:00Z" };
+    expect(decideMarkTimeout(r, T("2026-11-24T07:59:00Z"))).toMatchObject({ ok: false, code: "not_stale" });
+    expect(staleInSec(r, T("2026-11-24T07:59:00Z"))).toBe(60);
+    expect(decideMarkTimeout(r, T("2026-11-24T08:00:01Z"))).toEqual({ ok: true });
+  });
+  it("finished runs are not_running, not not_stale", () => {
+    expect(decideMarkTimeout({ ...legacy, status: "timeout" })).toMatchObject({ ok: false, code: "not_running" });
+  });
+  it("database rejection is timeout_update_failed, never not_stale", () => {
+    const o = classifyTimeoutUpdate({ error: { code: "23514", message: "violates check constraint" }, rows: 0 });
+    expect(o).toMatchObject({ ok: false, code: "timeout_update_failed", http: 500 });
+    expect(classifyTimeoutUpdate({ rows: 0, currentStatus: "done" })).toMatchObject({ code: "already_finished" });
+    expect(classifyTimeoutUpdate({ rows: 0, currentStatus: "running" })).toMatchObject({ code: "timeout_update_conflict" });
+    expect(classifyTimeoutUpdate({ rows: 1 })).toEqual({ ok: true });
+  });
+  it("database status constraint accepts every status the scan writes (incl. timeout)", () => {
+    const sql = readFileSync("drizzle/migrations/0135_contract_watch_scan_runs_allow_timeout.sql", "utf8");
+    for (const s of RUN_STATUSES) expect(sql).toContain(`'${s}'::text`);
+  });
+});

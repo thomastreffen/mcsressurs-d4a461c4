@@ -54,3 +54,34 @@ export function finalStatus(total: number, done: number, failed: number): { stat
   if (failed > 0) return { status: "done", code: "partial_ai_failures" };
   return { status: "done", code: null };
 }
+
+/** Every status the scan function writes. Must match contract_watch_scan_runs_status_check (migration 0135). */
+export const RUN_STATUSES = ["running", "done", "failed", "blocked", "timeout"] as const;
+
+type RunLike = { status: string; started_at: string; heartbeat_at?: string | null; lease_until?: string | null };
+
+/** Seconds until a running run becomes stale (0 when already stale). Legacy runs without heartbeat/lease use started_at. */
+export function staleInSec(r: RunLike, now = Date.now()): number {
+  const leaseEnd = r.lease_until ? Date.parse(r.lease_until) : NaN;
+  const last = Date.parse(r.heartbeat_at ?? r.started_at);
+  const staleAt = Math.max(last + STALE_MIN * 60_000, Number.isFinite(leaseEnd) ? leaseEnd : -Infinity);
+  return Math.max(0, Math.ceil((staleAt - now) / 1000));
+}
+
+export type MarkTimeoutDecision = { ok: true } | { ok: false; code: "not_running" | "not_stale" | "invalid_timestamps"; http: number; retry_after_sec?: number };
+/** Server-side decision for mark_timeout; the UI's stale flag is display only. */
+export function decideMarkTimeout(r: RunLike, now = Date.now()): MarkTimeoutDecision {
+  if (r.status !== "running") return { ok: false, code: "not_running", http: 409 };
+  if (!Number.isFinite(Date.parse(r.heartbeat_at ?? r.started_at))) return { ok: false, code: "invalid_timestamps", http: 422 };
+  if (!isStale(r, now)) return { ok: false, code: "not_stale", http: 409, retry_after_sec: Math.max(1, staleInSec(r, now)) };
+  return { ok: true };
+}
+
+/** Classify an empty/failed guarded UPDATE so a DB error is never reported as "not stale". */
+export function classifyTimeoutUpdate(res: { error?: { code?: string; message?: string } | null; rows: number; currentStatus?: string | null }):
+  { ok: true } | { ok: false; code: "timeout_update_failed" | "already_finished" | "timeout_update_conflict"; http: number; detail?: string } {
+  if (res.error) return { ok: false, code: "timeout_update_failed", http: 500, detail: `${res.error.code ?? "db_error"}: ${res.error.message ?? ""}`.slice(0, 300) };
+  if (res.rows > 0) return { ok: true };
+  if (res.currentStatus && res.currentStatus !== "running") return { ok: false, code: "already_finished", http: 409 };
+  return { ok: false, code: "timeout_update_conflict", http: 409 };
+}

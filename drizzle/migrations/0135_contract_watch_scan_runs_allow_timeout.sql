@@ -1,0 +1,2 @@
+ALTER TABLE public.contract_watch_scan_runs DROP CONSTRAINT contract_watch_scan_runs_status_check;
+ALTER TABLE public.contract_watch_scan_runs ADD CONSTRAINT contract_watch_scan_runs_status_check CHECK (status = ANY (ARRAY['running'::text, 'done'::text, 'failed'::text, 'blocked'::text, 'timeout'::text]));

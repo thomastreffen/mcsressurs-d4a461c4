@@ -12,7 +12,7 @@ import {
   domainOf, matchableDomain, groupThreads, quoteGrounded, resolvePromisedDate, coverageFor, confidenceClass, dedupeKey,
   excerpt, prefilterV2, isInternalOnly, quoteMeaningful, relatedByIdentity, canSuggestOrderDraft, ORDER_DRAFT_KINDS, sanitizeText, actionStatusFor, bump, type MiniMsg, type PlanJob,
 } from "../_shared/contract-watch-core.ts";
-import { planBatches, backoffMs, classifyAiError, isStale, mergeCounts, finalStatus, BATCHES_PER_STEP, MAX_BATCH_ATTEMPTS, LEASE_SEC, AI_TIMEOUT_MS, type ThreadRef } from "../_shared/contract-watch-progress.ts";
+import { planBatches, backoffMs, classifyAiError, isStale, staleInSec, decideMarkTimeout, classifyTimeoutUpdate, mergeCounts, finalStatus, BATCHES_PER_STEP, MAX_BATCH_ATTEMPTS, LEASE_SEC, AI_TIMEOUT_MS, type ThreadRef } from "../_shared/contract-watch-progress.ts";
 
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const COMPANY_ID = "a0000000-0000-0000-0000-000000000001"; // MCS Service AS
@@ -239,19 +239,37 @@ Deno.serve(async (req) => {
   const action = body.action ?? "status";
   const loadRuns = async () => ((await admin.from("contract_watch_scan_runs").select(RUN_COLS).order("started_at", { ascending: false }).limit(5)).data ?? []) as any[];
   const runs = await loadRuns();
-  const withStale = (rs: any[]) => rs.map((r) => ({ ...r, stale: isStale(r) }));
+  const withStale = (rs: any[]) => rs.map((r) => ({ ...r, stale: isStale(r), stale_in_sec: r.status === "running" ? staleInSec(r) : null }));
   if (action === "status") return json({ runs: withStale(runs), pilot_version: PILOT_VERSION });
 
   // ---- Mark a confirmed-stale running test as timed out (audited; nothing deleted, results kept) ----
   if (action === "mark_timeout") {
-    const { data: r } = await admin.from("contract_watch_scan_runs").select(RUN_COLS).eq("id", body.run_id ?? "").maybeSingle();
+    const runId = body.run_id ?? "";
+    if (!/^[0-9a-f-]{36}$/i.test(runId)) return json({ error: "run_not_found" }, 404);
+    const { data: r, error: readErr } = await admin.from("contract_watch_scan_runs").select(RUN_COLS).eq("id", runId).maybeSingle();
+    if (readErr) { console.error("mark_timeout read failed", runId, readErr.code, readErr.message); return json({ error: "timeout_read_failed", detail: readErr.code }, 500); }
     if (!r) return json({ error: "run_not_found" }, 404);
-    if (!isStale(r as never)) return json({ error: "not_stale", runs: withStale(runs) }, 409);
-    const before = { status: (r as any).status, heartbeat_at: (r as any).heartbeat_at, started_at: (r as any).started_at, done_batches: (r as any).done_batches, total_batches: (r as any).total_batches };
-    const { data: upd } = await admin.from("contract_watch_scan_runs").update({ status: "timeout", finished_at: new Date().toISOString(), lease_until: null, error_code: "stale_timeout", error_detail: `Ingen livstegn siden ${(r as any).heartbeat_at ?? (r as any).started_at}; markert manuelt.` } as never).eq("id", (r as any).id).eq("status", "running").select("id");
-    if (!upd?.length) return json({ error: "not_stale", runs: withStale(await loadRuns()) }, 409);
-    await admin.from("contract_watch_scan_batches").delete().eq("run_id", (r as any).id);
-    await admin.from("contract_watch_audit").insert({ actor: callerId, action: "historical_test_marked_timeout", details: { run: (r as any).id, before, after: { status: "timeout" } } } as never);
+    const run = r as any;
+    const before = { status: run.status, heartbeat_at: run.heartbeat_at, lease_until: run.lease_until, started_at: run.started_at, done_batches: run.done_batches, total_batches: run.total_batches, legacy: !run.heartbeat_at && !run.lease_until };
+    const decision = decideMarkTimeout(run);
+    if (!decision.ok) return json({ error: decision.code, retry_after_sec: decision.retry_after_sec ?? null, runs: withStale(runs) }, decision.http);
+    const nowIso = new Date().toISOString();
+    // Guarded update: only a still-running run whose lease has not been (re)claimed meanwhile.
+    const { data: upd, error: updErr } = await admin.from("contract_watch_scan_runs")
+      .update({ status: "timeout", finished_at: nowIso, lease_until: null, error_code: "stale_timeout", error_detail: `Ingen livstegn siden ${run.heartbeat_at ?? run.started_at}; markert manuelt.` } as never)
+      .eq("id", run.id).eq("status", "running").or(`lease_until.is.null,lease_until.lt.${nowIso}`).select("id");
+    let currentStatus: string | null = null;
+    if (!updErr && !upd?.length) currentStatus = ((await admin.from("contract_watch_scan_runs").select("status").eq("id", run.id).maybeSingle()).data as any)?.status ?? null;
+    const outcome = classifyTimeoutUpdate({ error: updErr, rows: upd?.length ?? 0, currentStatus });
+    if (!outcome.ok) {
+      console.error("mark_timeout update not applied", run.id, outcome.code, outcome.detail ?? "");
+      await admin.from("contract_watch_audit").insert({ actor: callerId, action: "historical_test_mark_timeout_failed", details: { run: run.id, before, code: outcome.code, detail: outcome.detail ?? null } } as never);
+      return json({ error: outcome.code, detail: outcome.detail ?? null, runs: withStale(await loadRuns()) }, outcome.http);
+    }
+    // Status left 'running', so the single-running lock is released. Drop the stored Graph message IDs (no content; findings are kept).
+    const { error: delErr } = await admin.from("contract_watch_scan_batches").delete().eq("run_id", run.id);
+    if (delErr) console.error("mark_timeout batch cleanup failed", run.id, delErr.code, delErr.message);
+    await admin.from("contract_watch_audit").insert({ actor: callerId, action: "historical_test_marked_timeout", details: { run: run.id, before, after: { status: "timeout", finished_at: nowIso }, batch_cleanup: delErr ? "failed" : "ok" } } as never);
     return json({ ok: true, runs: withStale(await loadRuns()) });
   }
 
@@ -319,7 +337,11 @@ Deno.serve(async (req) => {
     if (halt) final = { status: halt.code === "rbac_only_check_failed" ? "blocked" : "failed", code: halt.code, detail: halt.detail };
     else if (!left) { const fs = finalStatus(f.total_batches ?? 0, patch.done_batches as number, patch.failed_batches as number); final = { status: fs.status, code: fs.code }; }
     if (final) Object.assign(patch, { status: final.status, finished_at: new Date().toISOString(), error_code: final.code, error_detail: final.detail?.slice(0, 500) ?? null });
-    await admin.from("contract_watch_scan_runs").update(patch as never).eq("id", run.id);
+    const { error: patchErr } = await admin.from("contract_watch_scan_runs").update(patch as never).eq("id", run.id);
+    if (patchErr) {
+      console.error("continue run update failed", run.id, patchErr.code, patchErr.message);
+      if (final) await admin.from("contract_watch_scan_runs").update({ status: "failed", finished_at: new Date().toISOString(), lease_until: null, error_code: "final_write_failed", error_detail: `${patchErr.code}: ${patchErr.message}`.slice(0, 500) } as never).eq("id", run.id);
+    }
     if (final) {
       await admin.from("contract_watch_scan_batches").delete().eq("run_id", run.id); // IDs only; no longer needed
       await admin.from("contract_watch_audit").insert({ actor: callerId, action: "historical_test_v3", details: { run: run.id, status: final.status, code: final.code, counts: patch.counts, reasons: patch.discard_reasons, batches: { total: f.total_batches, done: patch.done_batches, failed: patch.failed_batches } } } as never);
@@ -336,7 +358,11 @@ Deno.serve(async (req) => {
   const runId = (run as any).id as string;
   const counts: Record<string, number> = {}; const reasons: Record<string, number> = {};
   const finish = async (status: string, code?: string, detail?: string) => {
-    await admin.from("contract_watch_scan_runs").update({ status, finished_at: new Date().toISOString(), counts, discard_reasons: reasons, error_code: code ?? null, error_detail: detail?.slice(0, 500) ?? null, lease_until: null } as never).eq("id", runId);
+    const { error: finErr } = await admin.from("contract_watch_scan_runs").update({ status, finished_at: new Date().toISOString(), counts, discard_reasons: reasons, error_code: code ?? null, error_detail: detail?.slice(0, 500) ?? null, lease_until: null } as never).eq("id", runId);
+    if (finErr) {
+      console.error("finish run update failed", runId, status, finErr.code, finErr.message);
+      await admin.from("contract_watch_scan_runs").update({ status: "failed", finished_at: new Date().toISOString(), lease_until: null, error_code: "final_write_failed", error_detail: `${finErr.code}: ${finErr.message}`.slice(0, 500) } as never).eq("id", runId);
+    }
     await admin.from("contract_watch_audit").insert({ actor: callerId, action: action === "lookup" ? "lookup_v3" : "historical_test_v3", details: { run: runId, status, code: code ?? null, counts, reasons, lookup: action === "lookup" ? `${body.date} ${body.time}` : null } } as never);
   };
   try {
